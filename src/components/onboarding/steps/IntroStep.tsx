@@ -20,6 +20,7 @@ interface Props {
 }
 
 export function IntroStep({ next, back, dotStep, totalSteps }: Props) {
+  const tk = useTranslations("onboarding.introStep");
   const t = useTranslations("welcome");
 
   return (
@@ -30,8 +31,8 @@ export function IntroStep({ next, back, dotStep, totalSteps }: Props) {
       <div className="flex-none md:w-2/5 flex flex-col items-center justify-center p-8 pt-14 sm:p-10 md:p-16 border-b md:border-b-0 md:border-e border-border-default">
         <div className="text-center">
           <p className="font-display text-4xl sm:text-5xl md:text-7xl font-bold text-accent-primary leading-none">ADOS</p>
-          <p className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-text-primary mt-2">Mission</p>
-          <p className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-text-primary">Control</p>
+          <p className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-text-primary mt-2">{tk("mission")}</p>
+          <p className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-text-primary">{tk("control")}</p>
           <div className="mt-4 sm:mt-6 w-16 h-px bg-accent-primary mx-auto opacity-50" />
         </div>
       </div>

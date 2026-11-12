@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Save, HardDrive, Play, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const SERVO_COUNT = 16;
 
@@ -38,6 +39,7 @@ interface ServoRowProps {
 }
 
 function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, connected }: ServoRowProps) {
+  const tm = useTranslations("fcPanels.servoCalibrationSection");
   const n = index + 1;
   const [expanded, setExpanded] = useState(false);
   const [testPwm, setTestPwm] = useState(trim);
@@ -94,7 +96,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
         <div className="px-3 pb-3 pt-1 bg-bg-tertiary/30">
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div>
-              <label className="text-[10px] text-text-tertiary block mb-1">Min PWM</label>
+              <label className="text-[10px] text-text-tertiary block mb-1">{tm("minPWM")}</label>
               <input
                 type="number"
                 min={PWM_ABS_MIN}
@@ -105,7 +107,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
               />
             </div>
             <div>
-              <label className="text-[10px] text-text-tertiary block mb-1">Trim PWM</label>
+              <label className="text-[10px] text-text-tertiary block mb-1">{tm("trimPWM")}</label>
               <input
                 type="number"
                 min={PWM_ABS_MIN}
@@ -116,7 +118,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
               />
             </div>
             <div>
-              <label className="text-[10px] text-text-tertiary block mb-1">Max PWM</label>
+              <label className="text-[10px] text-text-tertiary block mb-1">{tm("maxPWM")}</label>
               <input
                 type="number"
                 min={PWM_ABS_MIN}
@@ -176,7 +178,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
           {/* Servo test */}
           {connected && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-text-tertiary shrink-0">Test PWM:</span>
+              <span className="text-[10px] text-text-tertiary shrink-0">{tm("testPWM")}</span>
               <input
                 type="number"
                 min={PWM_ABS_MIN}
@@ -199,7 +201,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
                 icon={<Play size={10} />}
                 onClick={() => onTest(n, testPwm)}
               >
-                Test
+                {tm("test")}
               </Button>
             </div>
           )}
@@ -210,6 +212,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
 }
 
 export function ServoCalibrationSection() {
+  const tm = useTranslations("fcPanels.servoCalibrationSection");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.misc");
@@ -220,7 +223,7 @@ export function ServoCalibrationSection() {
     params, loading, dirtyParams, hasRamWrites,
     hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: SERVO_PARAMS, panelId: "servo-cal", autoLoad: false });
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit(
     { saveAllToRam, commitToFlash, revertAll },
     { saved: t("servoEndpointsSaved"), flash: { successMessage: t("flashWritten") } },
   );
@@ -274,14 +277,14 @@ export function ServoCalibrationSection() {
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-medium text-text-primary">Servo Endpoint Calibration</h3>
+          <h3 className="text-sm font-medium text-text-primary">{tm("servoEndpointCalibration")}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Set min/max/trim PWM and travel range for each servo output. Click a row to expand.
+            {tm("setMinMaxTrimPWM")}
           </p>
         </div>
         {!hasLoaded && connected && (
           <Button variant="secondary" size="sm" onClick={refresh} loading={loading}>
-            Read
+            {tm("read")}
           </Button>
         )}
       </div>
@@ -296,7 +299,7 @@ export function ServoCalibrationSection() {
           </span>
         </div>
         <Toggle
-          label="Enable output test (props removed)"
+          label={tm("enableOutputTestPropsRemoved")}
           checked={testEnabled}
           onChange={setTestEnabled}
           disabled={isHardBlocked || !connected}
@@ -315,11 +318,11 @@ export function ServoCalibrationSection() {
             {/* Header */}
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-default text-[10px] text-text-tertiary">
               <span className="w-4" />
-              <span className="w-16 shrink-0">Output</span>
-              <span className="w-16 shrink-0">Function</span>
-              <span className="flex-1">Range</span>
+              <span className="w-16 shrink-0">{tm("output")}</span>
+              <span className="w-16 shrink-0">{tm("function")}</span>
+              <span className="flex-1">{tm("range")}</span>
               <span className="w-20 text-right shrink-0">PWM</span>
-              <span className="w-10 text-right shrink-0">Travel</span>
+              <span className="w-10 text-right shrink-0">{tm("travel")}</span>
             </div>
             {Array.from({ length: SERVO_COUNT }, (_, i) => {
               const n = i + 1;
@@ -349,11 +352,11 @@ export function ServoCalibrationSection() {
               disabled={!hasDirty || saving}
               loading={saving}
             >
-              Save
+              {tm("save")}
             </Button>
             {hasRamWrites && (
-              <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} onClick={handleFlash}>
-                Write to Flash
+              <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} loading={flashing} onClick={handleFlash}>
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
           </div>

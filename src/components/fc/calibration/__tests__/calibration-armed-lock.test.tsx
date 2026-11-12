@@ -115,24 +115,24 @@ describe("CalibrationWizard · blockedReason", () => {
   const base = { title: "Accel", description: "d", steps: [], currentStep: 0, onStart: vi.fn(), onCancel: vi.fn() };
 
   it("disables Start and shows the lock reason", () => {
-    render(<CalibrationWizard {...base} status="idle" blockedReason={LOCKED} />);
+    render(<CalibrationWizard {...base} status="idle" blockedReason={LOCKED} />, { wrapper: IntlWrapper });
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
     expect(screen.getByText(LOCKED)).toBeInTheDocument();
   });
 
   it("disables Retry after an error", () => {
-    render(<CalibrationWizard {...base} status="error" blockedReason={LOCKED} />);
+    render(<CalibrationWizard {...base} status="error" blockedReason={LOCKED} />, { wrapper: IntlWrapper });
     expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled();
   });
 
   it("keeps Cancel usable for a calibration already running", () => {
-    render(<CalibrationWizard {...base} status="in_progress" blockedReason={LOCKED} />);
+    render(<CalibrationWizard {...base} status="in_progress" blockedReason={LOCKED} />, { wrapper: IntlWrapper });
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     expect(screen.queryByText(LOCKED)).toBeNull();
   });
 
   it("enables Start with no lock", () => {
-    render(<CalibrationWizard {...base} status="idle" />);
+    render(<CalibrationWizard {...base} status="idle" />, { wrapper: IntlWrapper });
     expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
   });
 });

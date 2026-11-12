@@ -1,5 +1,7 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import type { CalibrationState } from "./calibration-types";
 import { LEVEL_STEPS } from "./calibration-types";
 import { CalibrationWizard } from "./CalibrationWizard";
@@ -28,6 +30,8 @@ export function PX4CalibrationsSection({
   cancelCalibration,
   setPx4QuickLevel,
 }: PX4CalibrationsSectionProps) {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.pX4CalibrationsSection");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   // The command calibrates against this yaw, so it is never defaulted: an
   // empty field is NaN and the protocol layer refuses it.
@@ -38,17 +42,17 @@ export function PX4CalibrationsSection({
   return (
     <>
       <div>
-        <h2 className="text-sm font-display font-semibold text-text-primary mt-2 mb-1">PX4-Only Calibrations</h2>
+        <h2 className="text-sm font-display font-semibold text-text-primary mt-2 mb-1">{tr("px4OnlyCalibrations")}</h2>
         <p className="text-[10px] text-text-tertiary mb-4">
-          Additional calibration options available on PX4 firmware
+          {tr("additionalCalibrationOptionsAvailableOn")}
         </p>
       </div>
 
       {/* PX4 Quick Level */}
       <CalibrationWizard
-        title="Quick Level (PX4)"
-        description="Set level reference from current orientation. Place vehicle level before starting."
-        steps={LEVEL_STEPS}
+        title={tr("quickLevelPX4")}
+        description={tr("setLevelReferenceFromCurrent")}
+        steps={ol(LEVEL_STEPS)}
         currentStep={px4QuickLevel.currentStep}
         status={px4QuickLevel.status}
         progress={px4QuickLevel.progress}
@@ -60,14 +64,14 @@ export function PX4CalibrationsSection({
 
       {/* PX4 Quick Level Reboot Banner */}
       {px4QuickLevel.needsReboot && px4QuickLevel.status === "success" && (
-        <CalibrationRebootBanner label="Quick level calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label={tr("quickLevelCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       {/* Known-heading (fixed yaw) compass calibration */}
       <div className="mb-2 max-w-[220px]">
         <Input
           id="fixed-yaw-mag-cal-heading"
-          label="Vehicle heading (true, degrees)"
+          label={tr("vehicleHeadingTrueDegrees")}
           type="number"
           min={0}
           max={359}
@@ -79,8 +83,8 @@ export function PX4CalibrationsSection({
         />
       </div>
       <CalibrationWizard
-        title="Known-Heading Compass Calibration"
-        description="Calibrate the compass from the world magnetic model and the heading the vehicle's nose points to. Requires a position fix. No rotation needed."
+        title={tr("knownHeadingCompassCalibration")}
+        description={tr("calibrateTheCompassFromThe")}
         steps={[{ label: "Heading", description: "Point the vehicle at a known heading and enter it above" }]}
         currentStep={px4GnssMagCal.currentStep}
         status={px4GnssMagCal.status}
@@ -98,14 +102,14 @@ export function PX4CalibrationsSection({
 
       {/* GNSS Mag Cal Reboot Banner */}
       {px4GnssMagCal.needsReboot && px4GnssMagCal.status === "success" && (
-        <CalibrationRebootBanner label="Compass calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label={tr("compassCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       {/* PX4 Thermal Calibration lives in its own panel */}
       <div className="mt-4 p-3 rounded-md bg-bg-tertiary border border-border-default">
-        <div className="text-xs font-medium text-text-secondary">Thermal Calibration</div>
+        <div className="text-xs font-medium text-text-secondary">{tr("thermalCalibration")}</div>
         <div className="text-[10px] text-text-tertiary">
-          Configure and trigger thermal calibration from the Thermal Cal panel in the Sensors section. It runs on the next cold boot.
+          {tr("configureAndTriggerThermalCalibration")}
         </div>
       </div>
     </>

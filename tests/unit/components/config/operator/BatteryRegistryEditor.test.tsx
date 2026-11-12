@@ -19,7 +19,7 @@ describe("BatteryRegistryEditor", () => {
 
   it("decays a new pack's health with its recorded cycles", () => {
     render(<BatteryRegistryEditor />);
-    fireEvent.click(screen.getByText("Add pack"));
+    fireEvent.click(screen.getByText("add"));
     const [pack] = Object.values(useBatteryRegistryStore.getState().packs);
     act(() => {
       for (let i = 0; i < 300; i++) useBatteryRegistryStore.getState().recordCycle(pack.id);
@@ -29,7 +29,7 @@ describe("BatteryRegistryEditor", () => {
 
   it("shows the operator's override instead of the projection", () => {
     render(<BatteryRegistryEditor />);
-    fireEvent.click(screen.getByText("Add pack"));
+    fireEvent.click(screen.getByText("add"));
     const [pack] = Object.values(useBatteryRegistryStore.getState().packs);
     act(() => {
       useBatteryRegistryStore.getState().update(pack.id, { healthOverridePercent: 72 });

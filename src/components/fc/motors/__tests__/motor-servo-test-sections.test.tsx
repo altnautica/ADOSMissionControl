@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { CommandResult, DroneProtocol } from "@/lib/protocol/types";
 import type { OutputRow } from "../../misc/ServoMappingTable";
@@ -50,7 +50,7 @@ describe("ServoTestSection", () => {
     const protocol = { setServo } as Partial<DroneProtocol> as DroneProtocol;
     const outputs: (OutputRow | null)[] = Array.from({ length: 16 }, () => ROW);
     outputs[15] = null;
-    render(
+    renderWithIntl(
       <ServoTestSection
         protocol={protocol}
         isHardBlocked={false}

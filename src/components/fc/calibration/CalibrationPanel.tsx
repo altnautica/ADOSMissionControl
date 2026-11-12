@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -22,6 +23,7 @@ import { AgentSetupStep } from "./AgentSetupStep";
 import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
 
 export function CalibrationPanel() {
+  const ol = useOptionLabels();
   const t = useTranslations("calibration");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -66,7 +68,7 @@ export function CalibrationPanel() {
           {!mspFirmware && <AgentSetupStep setup={setup} wizard="ground" step="accel"><CalibrationWizard
             title={t("accelCalibrationTitle")}
             description={t("accelCalibrationDesc")}
-            steps={ACCEL_STEPS}
+            steps={ol(ACCEL_STEPS)}
             currentStep={cal.accel.currentStep}
             status={cal.accel.status}
             progress={cal.accel.progress}
@@ -82,7 +84,7 @@ export function CalibrationPanel() {
           {!mspFirmware && <AgentSetupStep setup={setup} wizard="ground" step="gyro"><CalibrationWizard
             title={t("gyroCalibrationTitle")}
             description={t("gyroCalibrationDesc")}
-            steps={GYRO_STEPS}
+            steps={ol(GYRO_STEPS)}
             currentStep={cal.gyro.currentStep}
             status={cal.gyro.status}
             progress={cal.gyro.progress}
@@ -104,7 +106,7 @@ export function CalibrationPanel() {
           {!mspFirmware && <AgentSetupStep setup={setup} wizard="ground" step="compass"><CalibrationWizard
             title={t("compassCalibrationTitle")}
             description={t("compassCalibrationDesc")}
-            steps={COMPASS_STEPS}
+            steps={ol(COMPASS_STEPS)}
             currentStep={cal.compass.currentStep}
             status={cal.compass.status}
             progress={cal.compass.progress}

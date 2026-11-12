@@ -16,7 +16,7 @@ import { getFrames } from "@/lib/cockpit/layers/frame-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { freshOnly } from "@/lib/telemetry/freshness";
-import { haversineDistance } from "@/lib/geo/distance";
+import { chipHomeDistance } from "@/lib/cockpit/home-distance";
 
 /** Re-render cadence of the chip (staleness and the 10 s complete chip). */
 const CHIP_TICK_MS = 500;
@@ -63,8 +63,7 @@ export function useFlightStateChip(droneId: string | null | undefined): ChipView
   const local = freshOnly(tel.localPosition.latest(), now);
   const pos = freshOnly(tel.position.latest(), now);
   const home = tel.homePosition.latest() ?? null;
-  const homeDistM =
-    home && pos && pos.lat !== 0 && pos.lon !== 0 ? haversineDistance(home.lat, home.lon, pos.lat, pos.lon) : null;
+  const homeDistM = chipHomeDistance(droneId, now, home, pos ?? null);
   const ar = droneId ? getFrames(droneId).ar : null;
 
   return flightStateChip(

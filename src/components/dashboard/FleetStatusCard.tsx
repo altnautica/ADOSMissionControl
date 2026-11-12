@@ -19,6 +19,7 @@ const statusDotMap: Record<DroneStatus, StatusLevel> = {
 };
 
 export function FleetStatusCard() {
+  const tq = useTranslations("dashboard.fleetStatusCard");
   const t = useTranslations("dashboard");
   const drones = useFleetDrones(selectFleet, fleetSummaryEqual);
 
@@ -69,7 +70,7 @@ export function FleetStatusCard() {
           <div className="flex items-center justify-between border-t border-border-default/40 mt-1 pt-1.5">
             <div className="flex items-center gap-2">
               <StatusDot status="critical" />
-              <span className="text-xs text-text-secondary">FC link lost</span>
+              <span className="text-xs text-text-secondary">{tq("fcLinkLost")}</span>
             </div>
             <span className="text-xs font-mono text-text-primary tabular-nums">
               {linkLostCount}
@@ -83,7 +84,7 @@ export function FleetStatusCard() {
                 aria-hidden
                 className="inline-flex h-2 w-2 rounded-full bg-accent-primary"
               />
-              <span className="text-xs text-text-secondary">GPS-denied</span>
+              <span className="text-xs text-text-secondary">{tq("gpsDenied")}</span>
             </div>
             <span className="text-xs font-mono text-text-primary tabular-nums">
               {gpsDeniedCount}

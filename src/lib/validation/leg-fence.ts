@@ -14,7 +14,7 @@
 import { haversineDistance, lonDelta, pointInPolygon, pointToSegmentM } from "@/lib/geo/distance";
 import type { FenceZone } from "@/stores/geofence-store";
 import type { Waypoint } from "@/lib/types";
-import type { ValidationIssue } from "./mission-validator";
+import type { ValidationIssue } from "./issue-types";
 
 type LatLon = readonly [number, number];
 
@@ -97,6 +97,7 @@ export function legFenceIssues(
     severity: "blocking" as const,
     code: "LEG_OUTSIDE_GEOFENCE",
     message: `WP${i} to WP${i + 1}: the straight leg leaves the geofence`,
+    text: { key: "wpToWPTheStraightLeg", params: { v0: i, v1: i + 1 } },
     waypointIndex: i,
     waypointId: wp.id,
   };
@@ -122,6 +123,7 @@ export function legFenceIssues(
         severity: "blocking",
         code: "LEG_CROSSES_EXCLUSION_ZONE",
         message: `WP${i} to WP${i + 1}: the straight leg crosses a no-fly exclusion zone`,
+        text: { key: "wpToWPTheStraightLeg2", params: { v0: i, v1: i + 1 } },
         waypointIndex: i,
         waypointId: wp.id,
       });

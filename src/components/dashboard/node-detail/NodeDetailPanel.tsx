@@ -285,9 +285,14 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             aria-labelledby={`drone-tab-${visibleTab}`}
             // Focusable so a keyboard operator can scroll a body with no
             // focusable content of its own (WCAG 2.1.1). The tabpanel is the
-            // single scroll owner for content-height bodies.
+            // single scroll owner for content-height bodies; the embedded
+            // cockpit fills it instead and never scrolls.
             tabIndex={0}
-            className="flex-1 min-h-0 overflow-y-auto flex flex-col"
+            className={
+              visibleTab === "cockpit"
+                ? "flex-1 min-h-0 overflow-hidden flex flex-col"
+                : "flex-1 min-h-0 overflow-y-auto flex flex-col"
+            }
           >
             <SurfaceErrorBoundary
               key={`${droneId}:${visibleTab}`}

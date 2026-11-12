@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DEMO_PLANS, DEMO_PLAN_IDS } from '@/mock/demo-missions';
-import { validateMission, type ValidationOptions } from '@/lib/validation/mission-validator';
+import { validateMission } from '@/lib/validation/mission-validator';
+import type { ValidationOptions } from '@/lib/validation/issue-types';
 import type { GeofenceSnapshot } from '@/stores/geofence-store';
 import type { RallyPoint } from '@/stores/rally-store';
 

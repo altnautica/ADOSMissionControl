@@ -7,7 +7,7 @@
 import type {
   DroneProtocol, Transport, VehicleInfo, CommandResult, ParameterValue,
   ProtocolCapabilities, CommandQueueSnapshot, FirmwareHandler, MissionItem, UnifiedFlightMode,
-  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, AccelCalPosition,
+  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, AccelCalPosition, MissionUploadProgressCallback,
   SysStatusCallback, RadioCallback, EkfCallback, VibrationCallback,
   ServoOutputCallback, WindCallback, TerrainCallback, ScaledImuCallback,
   ScaledPressureCallback, HomePositionCallback, GpsOriginCallback, PowerStatusCallback,
@@ -283,14 +283,16 @@ export class MockProtocol extends MockProtocolPeripherals implements DroneProtoc
   private mission = new MockMission(() => this._vehicleInfo.firmwareType.startsWith("ardupilot-"));
   /** Seed the mission this vehicle holds without a transfer (the demo route it flies). */
   loadMission(items: readonly MissionItem[]): void { this.mission.load(items); }
-  async uploadMission(items: MissionItem[]): Promise<CommandResult> {
+  async uploadMission(items: MissionItem[], onProgress?: MissionUploadProgressCallback): Promise<CommandResult> {
     // A PX4 vehicle refuses the first item it cannot parse and keeps its old mission.
     if (this._vehicleInfo.firmwareType === "px4") {
       const refused = px4MissionRejection(items, this._vehicleInfo.vehicleClass);
       if (refused) {
+        for (let sent = 1; sent <= refused.seq + 1; sent++) onProgress?.(sent, items.length);
         return { success: false, resultCode: refused.result, message: `Mission rejected: item ${refused.seq}, MAV_MISSION_RESULT ${refused.result}` };
       }
     }
+    for (let sent = 1; sent <= items.length; sent++) onProgress?.(sent, items.length);
     return this.mission.upload(items);
   }
   async downloadMission(): Promise<MissionItem[]> { return this.mission.download(); }

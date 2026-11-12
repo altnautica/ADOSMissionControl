@@ -46,13 +46,13 @@ vi.mock("@/lib/validation/mission-validator", () => ({
       : {
           valid: false,
           errors: [
-            { severity: "blocking", code: "x", message: "Waypoint 2 below terrain", waypointId: "wp-2" },
+            { severity: "blocking", code: "x", message: "", text: { key: "wpOutsideGeofencePolygon", params: { v0: 2 } }, waypointId: "wp-2" },
             {
-              severity: "blocking", code: "LEG_TERRAIN_CLEARANCE", message: "Leg 1 → 2 clips terrain by 12 m",
+              severity: "blocking", code: "LEG_TERRAIN_CLEARANCE", message: "", text: { key: "legTerrainUnchecked", params: { from: 1, to: 2 } },
               waypointId: "wp-1", leg: { toWaypointId: "wp-2", clearanceM: -12, alongM: 300 },
             },
           ],
-          warnings: [{ severity: "advisory", code: "y", message: "Long leg" }],
+          warnings: [{ severity: "advisory", code: "y", message: "", text: { key: "homeNotSet" } }],
         },
 }));
 vi.mock("@/components/planner/MissionAdvisories", () => ({ MissionAdvisories: () => null }));
@@ -168,7 +168,7 @@ describe("PlannerDock tabs", () => {
     renderWithIntl(<PlannerDock p={p} />);
     setDock("issues", true);
     // The panel validates after a 500 ms debounce.
-    const row = await screen.findByText("Waypoint 2 below terrain", undefined, { timeout: 2000 });
+    const row = await screen.findByText("WP2: Outside geofence polygon", undefined, { timeout: 2000 });
     fireEvent.click(row);
     expect(p.setSelectedWaypoint).toHaveBeenCalledWith("wp-2");
     expect(screen.getByText("2 errors, 1 warning")).toBeDefined();
@@ -178,7 +178,7 @@ describe("PlannerDock tabs", () => {
     const p = makeP();
     renderWithIntl(<PlannerDock p={p} />);
     setDock("issues", true);
-    fireEvent.click(await screen.findByText("Leg 1 → 2 clips terrain by 12 m", undefined, { timeout: 2000 }));
+    fireEvent.click(await screen.findByText("WP1 to WP2: terrain along the leg not checked (no ground profile or home elevation yet)", undefined, { timeout: 2000 }));
     expect(p.setSelectedWaypoint).toHaveBeenCalledWith("wp-1");
   });
 

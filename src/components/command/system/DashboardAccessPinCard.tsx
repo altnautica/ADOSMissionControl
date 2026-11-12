@@ -17,6 +17,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, KeyRound, Lock } from "lucide-react";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
@@ -33,6 +34,7 @@ import {
 const PIN_LENGTH = 4;
 
 export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string | null }) {
+  const tk = useTranslations("command.dashboardAccessPinCard");
   const node = useLocalNodesStore((s) =>
     nodeDeviceId ? (s.nodes.find((n) => n.deviceId === nodeDeviceId) ?? null) : null,
   );
@@ -85,7 +87,7 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
     setBusy(true);
     try {
       await setDashboardPin(node.hostname, node.apiKey, pin);
-      toast("Dashboard PIN set", "success");
+      toast(tk("dashboardPINSet"), "success");
       setPin("");
       await refresh();
     } catch (err) {
@@ -100,7 +102,7 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
     setBusy(true);
     try {
       await clearDashboardPin(node.hostname, node.apiKey);
-      toast("Dashboard PIN cleared", "success");
+      toast(tk("dashboardPINCleared"), "success");
       setConfirmingReset(false);
       await refresh();
     } catch (err) {
@@ -116,21 +118,21 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
     <section className="rounded border border-border-default bg-bg-secondary p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <KeyRound size={16} className="text-accent-primary" />
-        <h2 className="text-lg font-medium text-text-primary">Dashboard access</h2>
+        <h2 className="text-lg font-medium text-text-primary">{tk("dashboardAccess")}</h2>
         <div className="flex-1" />
         {loading && !current ? (
           <span className="text-xs text-text-tertiary">checking…</span>
         ) : failed ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary/40 px-2.5 py-1 text-xs font-medium text-text-secondary">
-            Unknown
+            {tk("unknown")}
           </span>
         ) : status?.locked ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-status-warning/40 bg-status-warning/10 px-2.5 py-1 text-xs font-medium text-status-warning">
-            <Lock size={12} /> Locked
+            <Lock size={12} /> {tk("locked")}
           </span>
         ) : status?.pinSet ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-status-success/40 bg-status-success/10 px-2.5 py-1 text-xs font-medium text-status-success">
-            PIN set
+            {tk("pinSet")}
           </span>
         ) : status ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary/40 px-2.5 py-1 text-xs font-medium text-text-secondary">
@@ -140,16 +142,14 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
       </div>
 
       <p className="mb-4 text-sm text-text-secondary">
-        Visitors to this node&apos;s web dashboard enter a 4-digit PIN to unlock it. Clearing the
-        PIN signs out anyone currently connected and leaves the dashboard open until a new PIN is
-        set.
+        {tk("visitorsToThisNodeApos")}
       </p>
 
       {failed && (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-text-secondary">
-          <span>Could not read the PIN status from this node.</span>
+          <span>{tk("couldNotReadThePIN")}</span>
           <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={loading}>
-            Retry
+            {tk("retry")}
           </Button>
         </div>
       )}
@@ -162,7 +162,7 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
 
       {/* Reach URL */}
       <div className="mb-4 rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2">
-        <div className="text-[10px] uppercase tracking-wide text-text-tertiary">Web dashboard</div>
+        <div className="text-[10px] uppercase tracking-wide text-text-tertiary">{tk("webDashboard")}</div>
         <a
           href={reachUrl}
           target="_blank"
@@ -178,7 +178,7 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
         // Trust-on-first-use: Mission Control can seed the initial PIN.
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-[160px]">
-            <label className="mb-1 block text-xs text-text-secondary">Set a 4-digit PIN</label>
+            <label className="mb-1 block text-xs text-text-secondary">{tk("setA4DigitPIN")}</label>
             <input
               type="text"
               inputMode="numeric"
@@ -204,8 +204,7 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
         confirmingReset ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-text-secondary">
-              Clear the PIN? Connected browsers will be signed out and the dashboard stays open
-              until a new PIN is set.
+              {tk("clearThePINConnectedBrowsers")}
             </span>
             <Button variant="danger" size="sm" onClick={() => void onReset()} disabled={busy}>
               {busy ? "Clearing…" : "Confirm clear"}
@@ -216,12 +215,12 @@ export function DashboardAccessPinCard({ nodeDeviceId }: { nodeDeviceId: string 
               onClick={() => setConfirmingReset(false)}
               disabled={busy}
             >
-              Cancel
+              {tk("cancel")}
             </Button>
           </div>
         ) : (
           <Button variant="danger" size="sm" onClick={() => setConfirmingReset(true)}>
-            Clear PIN
+            {tk("clearPIN")}
           </Button>
         )
       ) : null}

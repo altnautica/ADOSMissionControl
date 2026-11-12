@@ -31,11 +31,7 @@ import type {
 } from "@/lib/agent/agent-client/types";
 import { formatLogTime } from "../shared/LogViewer";
 import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
-import {
-  AgentArmedRefusal,
-  armedRefusalReason,
-  type ArmedOverrideOptions,
-} from "@/lib/agent/agent-client/transport";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 import { ConfigIntField, ConfigReadonlyRow } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
@@ -134,17 +130,12 @@ export function MavlinkRoutingSection({
 
   // The router identity keys are refused while armed. Ask once and resend the
   // same write with the override; a declined prompt writes nothing and the
-  // field reports the agent's reason.
+  // field reports the refusal (its E_ARMED text, else the agent's reason).
   const armedSetValue = useCallback(
     async (key: string, value: string) => {
-      try {
-        await withArmedOverride((force) =>
-          force ? setValue(key, value, { force: true }) : setValue(key, value),
-        );
-      } catch (err) {
-        if (err instanceof AgentArmedRefusal) throw new Error(armedRefusalReason(err));
-        throw err;
-      }
+      await withArmedOverride((force) =>
+        force ? setValue(key, value, { force: true }) : setValue(key, value),
+      );
     },
     [withArmedOverride, setValue],
   );

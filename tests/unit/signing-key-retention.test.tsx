@@ -9,7 +9,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, renderHook, screen, waitFor } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/intl-wrapper";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../locales/en.json";
 

@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Compass, Save, RotateCcw, HardDrive, Layers } from "lucide-react";
+import { Compass, Layers } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -16,6 +16,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field {
   param: string;
@@ -75,6 +77,7 @@ const ALL_FIELDS = [
 ] as const;
 
 export function Ekf3Panel() {
+  const tr = useTranslations("fcPanels.ekf3Panel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -87,7 +90,7 @@ export function Ekf3Panel() {
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, panelId: "ekf3", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
@@ -128,7 +131,7 @@ export function Ekf3Panel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="EKF3 Estimator" subtitle="Extended Kalman Filter source sets, IMU selection, and measurement noise"
+        <PanelHeader title={tr("ekf3Estimator")} subtitle={tr("extendedKalmanFilterSourceSets")}
           icon={<Compass size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -138,7 +141,7 @@ export function Ekf3Panel() {
         <div className="border border-border-default bg-bg-secondary">
           <button onClick={() => setShowAdvanced((a) => !a)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
             <Layers size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Alternate Source Sets &amp; Noise</h2>
+            <h2 className="text-sm font-medium text-text-primary">{tr("alternateSourceSetsAmpNoise")}</h2>
             <span className="text-[10px] text-text-tertiary ml-auto">{showAdvanced ? "▾" : "▸"}</span>
           </button>
           {showAdvanced && (
@@ -151,13 +154,18 @@ export function Ekf3Panel() {
           )}
         </div>
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

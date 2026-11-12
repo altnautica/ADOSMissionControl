@@ -25,6 +25,7 @@ const MOTOR_OPTIONS = [
 ];
 
 export function BfDshotCommands({ connected }: { connected: boolean }) {
+  const tr = useTranslations("fcPanels.bfDshotCommands");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { toast } = useToast();
@@ -108,35 +109,35 @@ export function BfDshotCommands({ connected }: { connected: boolean }) {
           onChange={(e) => setPropsRemoved(e.target.checked)}
           className="w-4 h-4 rounded border-border-default bg-bg-tertiary accent-accent-primary"
         />
-        <span className="text-xs text-text-secondary">I confirm all propellers have been removed</span>
+        <span className="text-xs text-text-secondary">{tr("iConfirmAllPropellersHave")}</span>
       </label>
-      {isHardBlocked && <p className="text-[10px] text-status-error">Disarm to send ESC commands.</p>}
+      {isHardBlocked && <p className="text-[10px] text-status-error">{tr("disarmToSendESCCommands")}</p>}
 
       <div className="flex items-center gap-2">
         <Button variant="secondary" size="sm" icon={<Bell size={12} />} disabled={disabled} onClick={beep}>
-          Beep (locate)
+          {tr("beepLocate")}
         </Button>
       </div>
 
       <div className="flex items-end gap-2 flex-wrap">
         <div className="w-32">
-          <Select label="Spin direction — motor" options={MOTOR_OPTIONS} value={motor} onChange={setMotor} disabled={disabled} />
+          <Select label={tr("spinDirectionMotor")} options={MOTOR_OPTIONS} value={motor} onChange={setMotor} disabled={disabled} />
         </div>
         <Button variant="secondary" size="sm" disabled={disabled} onClick={() => setDirection(false)}>
-          Set Normal
+          {tr("setNormal")}
         </Button>
         <Button variant="secondary" size="sm" icon={<RotateCw size={12} />} disabled={disabled} onClick={() => setDirection(true)}>
-          Set Reversed
+          {tr("setReversed")}
         </Button>
       </div>
 
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-text-secondary">3D mode:</span>
         <Button variant="secondary" size="sm" disabled={disabled} onClick={() => set3d(true)}>
-          Enable
+          {tr("enable")}
         </Button>
         <Button variant="secondary" size="sm" disabled={disabled} onClick={() => set3d(false)}>
-          Disable
+          {tr("disable")}
         </Button>
       </div>
     </div>

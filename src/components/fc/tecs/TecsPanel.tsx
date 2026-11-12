@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { Wind, Save, RotateCcw, HardDrive, Navigation } from "lucide-react";
+import { Wind, Navigation } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field {
   param: string;
@@ -48,6 +50,7 @@ const L1: Field[] = [
 const ALL_FIELDS = [...TECS, ...L1];
 
 export function TecsPanel() {
+  const tr = useTranslations("fcPanels.tecsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -58,7 +61,7 @@ export function TecsPanel() {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, panelId: "tecs", autoLoad: true });
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -95,7 +98,7 @@ export function TecsPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="TECS / L1 Tuning" subtitle="Fixed-wing total-energy control and L1 lateral navigation"
+        <PanelHeader title={tr("tecsL1Tuning")} subtitle={tr("fixedWingTotalEnergyControl")}
           icon={<Wind size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -104,13 +107,18 @@ export function TecsPanel() {
         {section("L1 — Lateral Navigation", <Navigation size={14} className="text-accent-primary" />, L1,
           "Controls how tightly the plane tracks its path. Lower L1 period = tighter turns; raise it if the plane oscillates.")}
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

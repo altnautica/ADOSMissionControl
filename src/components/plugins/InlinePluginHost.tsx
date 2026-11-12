@@ -7,8 +7,9 @@
  * the host through `host.ctx`, an in-memory channel into the same envelope
  * dispatcher the iframe bridge uses, so every call is gated exactly as an
  * iframe plugin's. The host pushes the same events the iframe host does
- * (theme, capability token, config, the plugin's agent state, the slot's host
- * event) and runs the module's disposer when it unmounts or the node changes.
+ * (theme, capability token, config, the node's camera names, the plugin's
+ * agent state, the slot's host event) and runs the module's disposer when it
+ * unmounts or the node changes.
  *
  * @license GPL-3.0-only
  */
@@ -26,12 +27,17 @@ import {
 import { createInlineHostSession } from "@/lib/plugins/inline-host-api";
 import type { InlineBundle } from "@/lib/plugins/inline-loader";
 import { pluginClientForReach, resolveNodeAgentReach } from "@/lib/plugins/node-agent-reach";
+import { acquireAgentStateFeed } from "@/lib/plugins/agent-state-feed";
 import {
   agentStateOrigin,
   isReservedEventTopic,
   subscribePluginEvent,
 } from "@/lib/plugins/event-bus";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
+import {
+  PLUGIN_CAMERAS_EVENT,
+  usePluginCameraNames,
+} from "@/lib/plugins/use-plugin-camera-names";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { isDemoMode } from "@/lib/utils";
 import { useNodeRegistryStore } from "@/stores/node-registry";
@@ -210,15 +216,28 @@ function InlineMount({
     if (push && knownConfig) push("config.changed", "", knownConfig);
   }, [push, knownConfig]);
 
+  // The node's camera display names, once mounted and on every change.
+  const cameraNames = usePluginCameraNames(agentId);
+  useEffect(() => {
+    if (push && cameraNames) push(PLUGIN_CAMERAS_EVENT, "", cameraNames);
+  }, [push, cameraNames]);
+
   // This plugin's own agent-published state on this node, as host events
   // whose method is the topic; host-reserved namespaces are never forwarded.
+  // The node's agent-state feed is held while the module is mounted, as the
+  // iframe host does, so the state arrives however the node is reached.
   useEffect(() => {
     if (!push || !agentId) return;
     const origin = agentStateOrigin(pluginId, agentId);
-    return subscribePluginEvent("*", pluginId, (payload, topic, from) => {
+    const off = subscribePluginEvent("*", pluginId, (payload, topic, from) => {
       if (from !== origin || isReservedEventTopic(topic)) return;
       push(topic, "", payload);
     });
+    const release = acquireAgentStateFeed(pluginId, agentId);
+    return () => {
+      off();
+      release();
+    };
   }, [push, pluginId, agentId]);
 
   return (

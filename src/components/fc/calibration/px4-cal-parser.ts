@@ -40,7 +40,8 @@ export function subscribePx4CalStatus(
     setPx4GnssMagCal: React.Dispatch<React.SetStateAction<CalibrationState>>;
     setPx4CalActiveType: React.Dispatch<React.SetStateAction<string | null>>;
   },
-  toast: (msg: string, status?: "success" | "warning" | "error" | "info") => void,
+  /** Announces a calibration that finished (`ok`) or failed; the caller words it. */
+  notify: (calType: string, ok: boolean) => void,
   manager: SubsManager,
 ): () => void {
   const { setAccel, setCompass, setGyro, setLevel, setPx4QuickLevel, setPx4GnssMagCal, setPx4CalActiveType } = setters;
@@ -117,7 +118,7 @@ export function subscribePx4CalStatus(
       const s = calSetters[px4CalActiveTypeRef.current ?? ""];
       if (s) s((prev) => prev.status !== "in_progress" ? prev : { ...INITIAL_STATE, status: "success", progress: 100, message: text, needsReboot: ["accel", "compass", "level"].includes(px4CalActiveTypeRef.current ?? "") });
       const label = px4CalActiveTypeRef.current ?? "PX4";
-      toast(`${label.charAt(0).toUpperCase() + label.slice(1)} calibration complete`, "success");
+      notify(label, true);
       useDiagnosticsStore.getState().logCalibration(px4CalActiveTypeRef.current ?? "px4", "success");
       clearActiveTimeout();
       setPx4CalActiveType(null);
@@ -132,7 +133,7 @@ export function subscribePx4CalStatus(
       const s = calSetters[px4CalActiveTypeRef.current ?? ""];
       if (s) s((prev) => ({ ...prev, status: "error", message: text, waitingForConfirm: false }));
       const label = px4CalActiveTypeRef.current ?? "PX4";
-      toast(`${label.charAt(0).toUpperCase() + label.slice(1)} calibration failed`, "error");
+      notify(label, false);
       useDiagnosticsStore.getState().logCalibration(px4CalActiveTypeRef.current ?? "px4", "failed");
       clearActiveTimeout();
       setPx4CalActiveType(null);

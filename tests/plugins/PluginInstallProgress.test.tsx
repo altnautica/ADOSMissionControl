@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { IntlWrapper } from "../helpers/intl-wrapper";
+
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: IntlWrapper });
 
 // --- Mocks ----------------------------------------------------------
 

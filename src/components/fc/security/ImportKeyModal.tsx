@@ -24,6 +24,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, KeyRound, AlertTriangle, Loader2, Check } from "lucide-react";
 
@@ -52,6 +53,7 @@ const REQUIRED_LEN = 64;
 const MIN_SHANNON_BITS_PER_CHAR = 3.0;
 
 export function ImportKeyModal({ droneId, open, onClose }: Props) {
+  const tr = useTranslations("fcPanels.importKeyModal");
   const [hex, setHex] = useState("");
   const [state, setState] = useState<ImportState>("entry");
   const [errorMsg, setErrorMsg] = useState("");
@@ -118,14 +120,14 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
           <div className="flex items-center gap-2">
             <KeyRound size={18} className="text-accent-primary" aria-hidden="true" />
             <h2 id="import-key-title" className="text-base font-semibold text-text-primary">
-              Import signing key
+              {tr("importSigningKey")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={state === "importing"}
-            aria-label="Close"
+            aria-label={tr("close")}
             className="text-text-tertiary hover:text-text-primary disabled:opacity-40"
           >
             <X size={18} />
@@ -135,18 +137,16 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
         {state === "entry" && (
           <div className="space-y-3">
             <p className="text-sm text-text-secondary">
-              Paste a 64-character hex MAVLink signing key. The key is assumed
-              to already be enrolled on the flight controller. No enrollment
-              happens here.
+              {tr("pasteA64CharacterHex")}
             </p>
             <label className="block text-sm text-text-secondary">
-              <span className="block mb-1">Signing key (hex)</span>
+              <span className="block mb-1">{tr("signingKeyHex")}</span>
               <textarea
                 ref={inputRef}
                 value={hex}
                 onChange={(e) => setHex(e.target.value.trim())}
                 className="w-full bg-bg-primary border border-border-default px-3 py-2 text-xs font-mono text-text-primary break-all min-h-[80px] resize-none"
-                placeholder="64 lowercase hex chars"
+                placeholder={tr("n64LowercaseHexChars")}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -167,7 +167,7 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
                 onClick={onClose}
                 className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary"
               >
-                Cancel
+                {tr("cancel")}
               </button>
               <button
                 type="button"
@@ -175,7 +175,7 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
                 disabled={!validation.valid}
                 className="px-3 py-1.5 text-sm bg-accent-primary text-accent-foreground disabled:opacity-40"
               >
-                Import
+                {tr("import")}
               </button>
             </div>
           </div>
@@ -184,14 +184,14 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
         {state === "importing" && (
           <div className="flex items-center gap-3 text-sm text-text-secondary py-4">
             <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-            <span>Importing key…</span>
+            <span>{tr("importingKey")}</span>
           </div>
         )}
 
         {state === "done" && (
           <div className="flex items-center gap-2 text-sm text-status-success py-4">
             <Check size={16} aria-hidden="true" />
-            <span>Key imported. Signed commands will use this key.</span>
+            <span>{tr("keyImportedSignedCommandsWill")}</span>
           </div>
         )}
 
@@ -213,14 +213,14 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
                 }}
                 className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary"
               >
-                Try again
+                {tr("tryAgain")}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary"
               >
-                Close
+                {tr("close")}
               </button>
             </div>
           </div>

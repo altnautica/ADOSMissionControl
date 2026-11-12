@@ -94,15 +94,21 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
       ),
     [registry, pilot?.vehicleClass],
   );
-  // A point picked on a map ("Launch here") prefills the go-to once; with
-  // none, there is no default go-to offset and the operator enters the point.
-  const [picked] = useState(() => {
+  // A point picked on a map ("Launch here") prefills the go-to once, and the
+  // planner's "Fly this mission" chooses "start the mission"; with neither,
+  // there is no default go-to offset and the operator enters the point.
+  const [request] = useState(() => {
     const req = liveLaunchRequest(useLaunchRequestStore.getState().pending, droneId);
-    if (req?.north === undefined || req.east === undefined) return null;
+    if (req?.after === "mission") {
+      useLaunchRequestStore.getState().consume();
+      return { mission: true, picked: null };
+    }
+    if (req?.north === undefined || req.east === undefined) return { mission: false, picked: null };
     useLaunchRequestStore.getState().consume();
-    return [Math.round(req.north * 10) / 10, Math.round(req.east * 10) / 10] as [number, number];
+    return { mission: false, picked: [Math.round(req.north * 10) / 10, Math.round(req.east * 10) / 10] as [number, number] };
   });
-  const [after, setAfter] = useState<LaunchAfter>(picked ? "goto" : "hold");
+  const picked = request.picked;
+  const [after, setAfter] = useState<LaunchAfter>(request.mission ? "mission" : picked ? "goto" : "hold");
   const [alt, setAlt] = useState<number>(LAUNCH_DEFAULT_ALT_M);
   const [skillId, setSkillId] = useState<string | null>(null);
   const [gotoNE, setGotoNE] = useState<[number | null, number | null]>(picked ?? [null, null]);

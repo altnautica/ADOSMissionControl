@@ -16,7 +16,7 @@ import { isFlownCommand } from "@/lib/mission/command-classes";
 import { resolveWaypointAltitude, type AltitudeDatums } from "@/lib/mission/altitude-frame";
 import { findCollisionSegments, type ClearanceSample } from "@/lib/terrain/terrain-clearance";
 import { haversineDistance } from "@/lib/geo/distance";
-import type { ValidationIssue } from "./mission-validator";
+import type { ValidationIssue } from "./issue-types";
 
 /** Ground AMSL along each leg, keyed `${fromId}>${toId}`, from-waypoint to to-waypoint inclusive. */
 export type LegGroundProfiles = ReadonlyMap<string, readonly number[]>;
@@ -126,6 +126,7 @@ export function legTerrainIssues(input: LegTerrainInput): {
       severity: "blocking",
       code: "LEG_TERRAIN_CLEARANCE",
       message: `WP${a + 1} to WP${b + 1}: ${detail} ${along}m along the leg (min: ${minClearance}m)`,
+      text: { key: "wpToWPMAlongThe", params: { v0: a + 1, v1: b + 1, v2: detail, v3: along, v4: minClearance } },
       waypointIndex: a,
       waypointId: from.id,
       leg: { toWaypointId: to.id, clearanceM: at.agl, alongM: at.distance },
@@ -141,6 +142,9 @@ export function legTerrainIssues(input: LegTerrainInput): {
         unchecked.length === 1
           ? `WP${a + 1} to WP${b + 1}: terrain along the leg not checked (no ground profile or home elevation yet)`
           : `Terrain along ${unchecked.length} legs not checked, starting WP${a + 1} to WP${b + 1} (no ground profile or home elevation yet)`,
+      text: unchecked.length === 1
+        ? { key: "legTerrainUnchecked", params: { from: a + 1, to: b + 1 } }
+        : { key: "legsTerrainUnchecked", params: { count: unchecked.length, from: a + 1, to: b + 1 } },
       waypointIndex: a,
       waypointId: waypoints[a].id,
     });

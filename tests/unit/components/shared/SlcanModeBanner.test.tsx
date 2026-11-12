@@ -9,7 +9,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../helpers/intl-wrapper";
 import { SlcanModeBanner } from "@/components/shared/SlcanModeBanner";
 import { useSlcanModeStore } from "@/stores/slcan-mode-store";
 

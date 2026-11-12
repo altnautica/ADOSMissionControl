@@ -117,6 +117,12 @@ describe("flight-screen video placeholder", () => {
     expect(screen.queryByTestId("video-retry")).toBeNull();
   });
 
+  it("offers manual video setup in the spec's words for a drone with no agent", () => {
+    useVideoStore.setState({ agentWhepUrl: null });
+    renderCanvas();
+    expect(screen.getByRole("button", { name: specString("cockpit.video.configure") })).toBeTruthy();
+  });
+
   it("maps each condition to one spec state", () => {
     const base = { connecting: false, failed: false, retrying: false, recovering: false, running: false, hasSource: true };
     expect(cockpitVideoState({ ...base, connecting: true })).toBe("connecting");

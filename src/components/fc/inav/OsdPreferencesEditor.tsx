@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import type { INavOsdPreferences } from "@/lib/protocol/types/inav";
 import {
@@ -32,65 +33,66 @@ export function OsdPreferencesEditor({
   preferences,
   onUpdate,
 }: OsdPreferencesEditorProps) {
+  const tm = useTranslations("fcPanels.osdPreferencesEditor");
   if (!preferences) {
     return (
       <p className="text-[11px] text-text-tertiary">
-        No preference data returned by FC.
+        {tm("noPreferenceDataReturnedBy")}
       </p>
     );
   }
   return (
     <div className="space-y-3">
-      <Row label="Video system">
+      <Row label={tm("videoSystem")}>
         <Select
           value={String(preferences.videoSystem)}
           onChange={(v) => onUpdate("videoSystem", parseInt(v, 10))}
           options={VIDEO_SYSTEM_OPTIONS}
         />
       </Row>
-      <Row label="Units">
+      <Row label={tm("units")}>
         <Select
           value={String(preferences.units)}
           onChange={(v) => onUpdate("units", parseInt(v, 10))}
           options={UNITS_OPTIONS}
         />
       </Row>
-      <Row label="Energy unit">
+      <Row label={tm("energyUnit")}>
         <Select
           value={String(preferences.statsEnergyUnit)}
           onChange={(v) => onUpdate("statsEnergyUnit", parseInt(v, 10))}
           options={ENERGY_UNIT_OPTIONS}
         />
       </Row>
-      <Row label="Crosshairs style">
+      <Row label={tm("crosshairsStyle")}>
         <Select
           value={String(preferences.crosshairsStyle)}
           onChange={(v) => onUpdate("crosshairsStyle", parseInt(v, 10))}
           options={CROSSHAIRS_OPTIONS}
         />
       </Row>
-      <Row label="Left sidebar">
+      <Row label={tm("leftSidebar")}>
         <Select
           value={String(preferences.leftSidebarScroll)}
           onChange={(v) => onUpdate("leftSidebarScroll", parseInt(v, 10))}
           options={SIDEBAR_SCROLL_OPTIONS}
         />
       </Row>
-      <Row label="Right sidebar">
+      <Row label={tm("rightSidebar")}>
         <Select
           value={String(preferences.rightSidebarScroll)}
           onChange={(v) => onUpdate("rightSidebarScroll", parseInt(v, 10))}
           options={SIDEBAR_SCROLL_OPTIONS}
         />
       </Row>
-      <Row label="ADS-B warning style">
+      <Row label={tm("adsBWarningStyle")}>
         <Select
           value={String(preferences.adsbWarningStyle)}
           onChange={(v) => onUpdate("adsbWarningStyle", parseInt(v, 10))}
           options={ADSB_WARNING_STYLE_OPTIONS}
         />
       </Row>
-      <Row label="Voltage decimals">
+      <Row label={tm("voltageDecimals")}>
         <input
           type="number"
           min={VOLTAGE_DECIMALS_MIN}
@@ -104,7 +106,7 @@ export function OsdPreferencesEditor({
           className="w-28 bg-bg-tertiary border border-border-default rounded px-2 py-1 text-[11px] font-mono text-text-primary text-right"
         />
       </Row>
-      <Row label="Reverse AHI roll">
+      <Row label={tm("reverseAHIRoll")}>
         <ToggleButton
           on={preferences.ahiReverseRoll !== 0}
           onClick={() =>
@@ -112,7 +114,7 @@ export function OsdPreferencesEditor({
           }
         />
       </Row>
-      <Row label="Sidebar scroll arrows">
+      <Row label={tm("sidebarScrollArrows")}>
         <ToggleButton
           on={preferences.sidebarScrollArrows !== 0}
           onClick={() =>

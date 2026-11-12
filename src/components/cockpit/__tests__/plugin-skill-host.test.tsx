@@ -21,6 +21,7 @@ vi.mock("@/hooks/use-plugin-skill-egress", () => ({
   usePluginSkillEgress: () => {},
 }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en",
   useTranslations: () => (key: string, vals?: Record<string, string>) =>
     vals ? `${key}(${Object.values(vals).join("|")})` : key,
 }));

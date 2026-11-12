@@ -20,6 +20,7 @@ import { useMqttBrokerTest } from "@/hooks/use-mqtt-broker-test";
 import { CollapsibleSection } from "./shared";
 
 export function FleetNetworkPanel() {
+  const tq = useTranslations("command.fleetNetworkPanel");
   const t = useTranslations("fleetNetwork");
   const connected = useAgentConnectionStore((s) => s.connected);
   const mqttConnected = useAgentConnectionStore((s) => s.mqttConnected);
@@ -34,7 +35,7 @@ export function FleetNetworkPanel() {
 
   return (
     <CollapsibleSection
-      title="Fleet Network"
+      title={tq("fleetNetwork")}
       icon={Network}
       defaultOpen={false}
       badge={peers.length > 0 ? peers.length : undefined}

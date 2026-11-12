@@ -71,6 +71,7 @@ interface NodeDetailDrawerProps {
 }
 
 function NodeDetailDrawer({ node, onClose }: NodeDetailDrawerProps) {
+  const tq = useTranslations("configUi.nodeBrowserSection");
   const t = useTranslations("canConfig.nodeBrowser");
 
   if (!node) return null;
@@ -88,7 +89,7 @@ function NodeDetailDrawer({ node, onClose }: NodeDetailDrawerProps) {
               {node.nodeInfo?.name ?? "—"}
             </p>
           </div>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary" aria-label="Close">
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary" aria-label={tq("close")}>
             <X size={16} />
           </button>
         </div>

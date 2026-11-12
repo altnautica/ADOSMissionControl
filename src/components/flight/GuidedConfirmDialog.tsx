@@ -2,14 +2,16 @@
  * @module GuidedConfirmDialog
  * @description Confirmation dialog for "Fly Here" guided mode commands.
  * Shows target coordinates, distance, ETA, and altitude picker.
- * Requires hold-to-confirm (1.5 seconds) for safety, then dispatches the
- * `fly-here` skill so the command passes the same arm gate, debounce and
- * refusal reporting as every other flight command.
+ * Requires the spec Fly Here hold (`holds_ms.fly_here`, 800 ms) through the
+ * shared confirm hold (pointer, Enter or the gamepad button), then dispatches
+ * the `fly-here` skill so the command passes the same arm gate, debounce and
+ * refusal reporting as every other flight command. On the flight screen it
+ * sits under the sheet rules: below the top bar, beside the left column.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, type CSSProperties } from "react";
 import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -20,7 +22,11 @@ import { FLY_HERE_ALTITUDE_M, parseFlyHereAltitude } from "@/lib/skills/builtins
 import { X, Navigation } from "lucide-react";
 import { haversineDistance } from "@/lib/geo/distance";
 import { specString } from "@/lib/cockpit/spec-strings";
-import { countdownS, fmtDistance } from "@/lib/hud/format";
+import { fmtDistance, fmtEta } from "@/lib/hud/format";
+import { useConfirmHold } from "@/components/cockpit/confirm/use-confirm-hold";
+import { HoldControl } from "@/components/cockpit/confirm/HoldControl";
+import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { sheetPlacement, useFlightRoot } from "@/components/cockpit/flight/flight-sheet";
 
 /** The Fly Here confirm hold, the same on every surface (spec `holds_ms`). */
 const HOLD_DURATION_MS = SPEC_HOLD_MS.fly_here;
@@ -40,10 +46,9 @@ export function GuidedConfirmDialog() {
 
   // Kept as typed so a cleared box reads as "no altitude", never as 0 m.
   const [altitudeText, setAltitudeText] = useState(String(DEFAULT_ALT_M));
-  const [holdProgress, setHoldProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdStartRef = useRef(0);
+  const grid = useFlightGrid();
+  const onFlightScreen = useFlightRoot() !== null;
 
   const altitude = parseFlyHereAltitude(altitudeText);
 
@@ -55,7 +60,6 @@ export function GuidedConfirmDialog() {
       setAltitudeText(
         String(Math.min(Math.max(initAlt, FLY_HERE_ALTITUDE_M.min), FLY_HERE_ALTITUDE_M.max)),
       );
-      setHoldProgress(0);
       setError(null);
     }
   }, [confirmPending]);
@@ -73,7 +77,6 @@ export function GuidedConfirmDialog() {
   const handleConfirm = useCallback(async () => {
     if (!confirmPending) return;
     if (altitude === null) {
-      setHoldProgress(0);
       setError(specString("refusal.fly_here_target"));
       return;
     }
@@ -85,41 +88,30 @@ export function GuidedConfirmDialog() {
       lon: confirmPending.lon,
       altitudeM: altitude,
     });
-    setHoldProgress(0);
   }, [confirmPending, altitude]);
 
-  const startHold = useCallback(() => {
-    if (altitude === null) return;
-    setError(null);
-    holdStartRef.current = Date.now();
-    holdTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - holdStartRef.current;
-      const progress = Math.min(elapsed / HOLD_DURATION_MS, 1);
-      setHoldProgress(progress);
-      if (progress >= 1) {
-        if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-        handleConfirm();
-      }
-    }, 30);
-  }, [handleConfirm, altitude]);
-
-  const cancelHold = useCallback(() => {
-    if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-    holdTimerRef.current = null;
-    setHoldProgress(0);
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-    };
-  }, []);
+  // One hold engine for every confirm: pointer, Enter (the altitude box keeps
+  // its own Enter) or the gamepad confirm button.
+  const hold = useConfirmHold({
+    holdMs: HOLD_DURATION_MS,
+    enabled: confirmPending !== null && altitude !== null,
+    onComplete: () => void handleConfirm(),
+  });
 
   if (!confirmPending) return null;
 
+  // On the flight screen the dialog follows the sheet rules; elsewhere it
+  // keeps to the bottom centre of its map.
+  const placement: CSSProperties | undefined = onFlightScreen
+    ? { position: "absolute", ...sheetPlacement(grid, "left") }
+    : undefined;
+
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1100] w-[320px] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden">
+    <div
+      data-testid="fly-here-dialog"
+      style={placement}
+      className={`${onFlightScreen ? "" : "absolute bottom-4 left-1/2 -translate-x-1/2 "}z-[1100] w-[320px] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2">
@@ -129,7 +121,7 @@ export function GuidedConfirmDialog() {
         <button
           onClick={dismissConfirm}
           className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-          aria-label="Close dialog"
+          aria-label={specString("cockpit.close")}
         >
           <X size={14} />
         </button>
@@ -140,20 +132,18 @@ export function GuidedConfirmDialog() {
         {/* GPS warning */}
         {!hasGps && (
           <div className="px-2 py-1 bg-status-error/10 border border-status-error/30 rounded">
-            <span className="text-[10px] text-status-error">
-              No GPS fix. Distance and ETA unavailable.
-            </span>
+            <span className="text-[10px] text-status-error">{specString("map.fly_here.no_gps")}</span>
           </div>
         )}
 
         {/* Coordinates */}
         <div className="flex gap-4">
           <div>
-            <span className="text-[9px] text-text-tertiary uppercase">Lat</span>
+            <span className="text-[9px] text-text-tertiary uppercase">{specString("map.fly_here.lat")}</span>
             <p className="text-xs font-mono text-text-primary">{confirmPending.lat.toFixed(6)}</p>
           </div>
           <div>
-            <span className="text-[9px] text-text-tertiary uppercase">Lon</span>
+            <span className="text-[9px] text-text-tertiary uppercase">{specString("map.fly_here.lon")}</span>
             <p className="text-xs font-mono text-text-primary">{confirmPending.lon.toFixed(6)}</p>
           </div>
         </div>
@@ -167,10 +157,8 @@ export function GuidedConfirmDialog() {
             </div>
             {eta !== null && (
               <div>
-                <span className="text-[9px] text-text-tertiary uppercase">ETA</span>
-                <p className="text-xs font-mono text-text-primary">
-                  {eta < 60 ? `${Math.round(eta)}s` : `${Math.floor(eta / 60)}m ${Math.round(eta % 60)}s`}
-                </p>
+                <span className="text-[9px] text-text-tertiary uppercase">{specString("map.fly_here.eta")}</span>
+                <p className="text-xs font-mono text-text-primary">{fmtEta(eta)}</p>
               </div>
             )}
           </div>
@@ -179,7 +167,7 @@ export function GuidedConfirmDialog() {
         {/* Altitude picker */}
         <div>
           <label className="text-[9px] text-text-tertiary uppercase" htmlFor="fly-here-altitude">
-            Altitude (m rel)
+            {specString("map.fly_here.altitude_rel")}
           </label>
           <input
             id="fly-here-altitude"
@@ -192,9 +180,7 @@ export function GuidedConfirmDialog() {
             className="w-full mt-0.5 px-2 py-1 text-xs font-mono bg-bg-tertiary border border-border-default rounded text-text-primary focus:border-accent-primary focus:outline-none"
           />
           {altitude === null && (
-            <p className="mt-0.5 text-[10px] text-status-error">
-              Enter an altitude of {FLY_HERE_ALTITUDE_M.min}-{FLY_HERE_ALTITUDE_M.max} m
-            </p>
+            <p className="mt-0.5 text-[10px] text-status-error">{specString("refusal.fly_here_target")}</p>
           )}
         </div>
 
@@ -202,8 +188,9 @@ export function GuidedConfirmDialog() {
         {distance !== null && distance > 500 && (
           <div className="px-2 py-1 bg-status-warning/10 border border-status-warning/30 rounded">
             <span className="text-[10px] text-status-warning">
-              Target is {(distance / 1000).toFixed(1)} km away
-              {eta !== null && eta > 120 && ` (ETA ${Math.round(eta / 60)} min)`}
+              {eta !== null && eta > 120
+                ? specString("map.fly_here.far_eta", { km: (distance / 1000).toFixed(1), min: Math.round(eta / 60) })
+                : specString("map.fly_here.far", { km: (distance / 1000).toFixed(1) })}
             </span>
           </div>
         )}
@@ -219,28 +206,16 @@ export function GuidedConfirmDialog() {
         )}
       </div>
 
-      {/* Hold-to-confirm button */}
+      {/* Hold-to-confirm */}
       <div className="px-3 py-2 border-t border-border-default">
-        <button
-          onMouseDown={startHold}
-          onMouseUp={cancelHold}
-          onMouseLeave={cancelHold}
-          onTouchStart={startHold}
-          onTouchEnd={cancelHold}
+        <HoldControl
+          hold={hold}
+          holdMs={HOLD_DURATION_MS}
+          label={specString("map.fly_here.hold")}
+          hint={specString("confirm.input_hint")}
+          danger={false}
           disabled={altitude === null}
-          className="relative w-full h-8 rounded bg-accent-primary/20 border border-accent-primary/40 overflow-hidden cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {/* Progress fill */}
-          <div
-            className="absolute inset-0 bg-accent-primary/40 transition-none"
-            style={{ width: `${holdProgress * 100}%` }}
-          />
-          <span className="relative text-xs font-semibold text-accent-primary">
-            {holdProgress > 0
-              ? specString("hold.keep_holding", { s: countdownS((1 - holdProgress) * SPEC_HOLD_MS.fly_here) })
-              : specString("map.fly_here.hold")}
-          </span>
-        </button>
+        />
       </div>
     </div>
   );

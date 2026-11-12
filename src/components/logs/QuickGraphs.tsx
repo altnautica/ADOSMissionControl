@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { Mountain, Battery, TrendingUp, Activity, Radio } from "lucide-react";
@@ -34,6 +35,7 @@ function useRingStamp(select: (s: TelemetryState) => RingBuffer<{ timestamp: num
 // ── Altitude chart ──────────────────────────────────────────────
 
 function AltitudeChart() {
+  const tq = useTranslations("logs.quickGraphs");
   const positionRing = useTelemetryStore((s) => s.position);
   const stamp = useRingStamp((s) => s.position);
 
@@ -48,10 +50,10 @@ function AltitudeChart() {
       <div className="flex items-center gap-2 mb-2">
         <Mountain size={12} className="text-accent-primary" />
         <span className="text-xs font-semibold text-text-primary">
-          Altitude
+          {tq("altitude")}
         </span>
       </div>
-      <TimeSeriesChart data={data} color="var(--accent-primary)" label="Alt" unit="m" />
+      <TimeSeriesChart data={data} color="var(--accent-primary)" label={tq("alt")} unit="m" />
     </div>
   );
 }
@@ -59,6 +61,7 @@ function AltitudeChart() {
 // ── Battery chart ───────────────────────────────────────────────
 
 function BatteryChart() {
+  const tq = useTranslations("logs.quickGraphs");
   const batteryRing = useTelemetryStore((s) => s.battery);
   const stamp = useRingStamp((s) => s.battery);
 
@@ -76,13 +79,13 @@ function BatteryChart() {
       <div className="flex items-center gap-2 mb-2">
         <Battery size={12} className="text-status-warning" />
         <span className="text-xs font-semibold text-text-primary">
-          Battery
+          {tq("battery")}
         </span>
       </div>
       <TimeSeriesChart
         data={voltageData}
         color="#f59e0b"
-        label="Voltage"
+        label={tq("voltage")}
         unit="V"
         secondaryData={currentData}
         secondaryColor="#ef4444"
@@ -96,6 +99,7 @@ function BatteryChart() {
 // ── Climb rate chart ────────────────────────────────────────────
 
 function ClimbRateChart() {
+  const tq = useTranslations("logs.quickGraphs");
   const positionRing = useTelemetryStore((s) => s.position);
   const stamp = useRingStamp((s) => s.position);
 
@@ -110,10 +114,10 @@ function ClimbRateChart() {
       <div className="flex items-center gap-2 mb-2">
         <TrendingUp size={12} className="text-status-success" />
         <span className="text-xs font-semibold text-text-primary">
-          Climb Rate
+          {tq("climbRate")}
         </span>
       </div>
-      <TimeSeriesChart data={data} color="#22c55e" label="VSpd" unit="m/s" />
+      <TimeSeriesChart data={data} color="#22c55e" label={tq("vspd")} unit="m/s" />
     </div>
   );
 }
@@ -162,6 +166,7 @@ function VibrationChart() {
 // ── RC inputs chart (channels 1-4) ─────────────────────────────
 
 function RcInputChart() {
+  const tq = useTranslations("logs.quickGraphs");
   const rcRing = useTelemetryStore((s) => s.rc);
   const stamp = useRingStamp((s) => s.rc);
 
@@ -184,12 +189,12 @@ function RcInputChart() {
       <div className="flex items-center gap-2 mb-2">
         <Radio size={12} className="text-accent-primary" />
         <span className="text-xs font-semibold text-text-primary">
-          RC Inputs
+          {tq("rcInputs")}
         </span>
       </div>
       {noInput ? (
         <div className="flex items-center justify-center bg-bg-tertiary/30 rounded" style={{ height: 120 }}>
-          <span className="text-[10px] text-text-tertiary">No RC input</span>
+          <span className="text-[10px] text-text-tertiary">{tq("noRCInput")}</span>
         </div>
       ) : (
       <MultiSeriesChart

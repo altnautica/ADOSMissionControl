@@ -122,17 +122,17 @@ describe("NodeRow — command-authority indicator", () => {
   it("badges a relay transport that reports it cannot publish", () => {
     seedTransport({ type: "mqtt-mavlink", canCommand: false });
     renderRow(liveDrone());
-    expect(screen.getByText("Receive only")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Receive only" })).toBeTruthy();
   });
 
-  it("keeps the health ring on LIVE while showing receive-only", () => {
+  it("keeps the liveness dot on LIVE while showing receive-only", () => {
     // The whole point of a separate badge: the node is reachable and healthy,
     // and simultaneously cannot be commanded. Folding authority into the ring
-    // would lose one of the two facts.
+    // would lose one of the two facts. The authority icon is separate from the tile dot.
     seedTransport({ type: "mqtt-mavlink", canCommand: false });
     const node = liveDrone();
     renderRow(node);
-    expect(screen.getByText("Receive only")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Receive only" })).toBeTruthy();
     expect(nodeStatusLevel(node)).toBe("good");
   });
 
@@ -140,7 +140,7 @@ describe("NodeRow — command-authority indicator", () => {
     seedGrant();
     seedTransport({ type: "mqtt-mavlink", canCommand: true });
     renderRow(liveDrone());
-    expect(screen.queryByText("Receive only")).toBeNull();
+    expect(screen.queryByRole("img", { name: "Receive only" })).toBeNull();
   });
 
   it("badges a relay transport claiming publish after the grant is gone", () => {
@@ -150,26 +150,26 @@ describe("NodeRow — command-authority indicator", () => {
     // that no longer exists.
     seedTransport({ type: "mqtt-mavlink", canCommand: true });
     renderRow(liveDrone());
-    expect(screen.getByText("Receive only")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Receive only" })).toBeTruthy();
   });
 
   it("badges a relay transport whose grant covers a different drone", () => {
     seedGrant({ deviceIds: ["drone-b"] });
     seedTransport({ type: "mqtt-mavlink", canCommand: true });
     renderRow(liveDrone());
-    expect(screen.getByText("Receive only")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Receive only" })).toBeTruthy();
   });
 
   it("stays silent on a direct transport", () => {
     seedTransport({ type: "websocket", canCommand: true });
     renderRow(liveDrone());
-    expect(screen.queryByText("Receive only")).toBeNull();
+    expect(screen.queryByRole("img", { name: "Receive only" })).toBeNull();
   });
 
   it("claims nothing for a node this browser has no transport for", () => {
     // Nothing has been dialled, so nothing has been proven. A warning here
     // would be a prediction dressed as a measurement.
     renderRow(liveDrone());
-    expect(screen.queryByText("Receive only")).toBeNull();
+    expect(screen.queryByRole("img", { name: "Receive only" })).toBeNull();
   });
 });

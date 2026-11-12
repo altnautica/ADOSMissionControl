@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ interface DiffEntry {
 }
 
 export function ParamDefaultsDiff({ parameters, modified, metadata }: ParamDefaultsDiffProps) {
+  const tl = useTranslations("fcPanels.paramDefaultsDiff");
   const [search, setSearch] = useState("");
 
   const diffs = useMemo(() => {
@@ -69,7 +71,7 @@ export function ParamDefaultsDiff({ parameters, modified, metadata }: ParamDefau
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Filter params..."
+          placeholder={tl("filterParams")}
           className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
         />
       </div>
@@ -79,10 +81,10 @@ export function ParamDefaultsDiff({ parameters, modified, metadata }: ParamDefau
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-bg-tertiary border-b border-border-default z-10">
             <tr>
-              <th className="px-3 py-1.5 text-left text-text-tertiary font-semibold uppercase tracking-wider text-[10px]">Parameter</th>
-              <th className="px-3 py-1.5 text-right text-text-tertiary font-semibold uppercase tracking-wider text-[10px] w-28">Current</th>
-              <th className="px-3 py-1.5 text-right text-text-tertiary font-semibold uppercase tracking-wider text-[10px] w-28">Default</th>
-              <th className="px-3 py-1.5 text-right text-text-tertiary font-semibold uppercase tracking-wider text-[10px] w-28">Diff</th>
+              <th className="px-3 py-1.5 text-left text-text-tertiary font-semibold uppercase tracking-wider text-[10px]">{tl("parameter")}</th>
+              <th className="px-3 py-1.5 text-right text-text-tertiary font-semibold uppercase tracking-wider text-[10px] w-28">{tl("current")}</th>
+              <th className="px-3 py-1.5 text-right text-text-tertiary font-semibold uppercase tracking-wider text-[10px] w-28">{tl("default")}</th>
+              <th className="px-3 py-1.5 text-right text-text-tertiary font-semibold uppercase tracking-wider text-[10px] w-28">{tl("diff")}</th>
             </tr>
           </thead>
           <tbody>

@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { describeFleetOutcome, returnFleetToLaunch } from "@/lib/fleet-commands";
@@ -19,6 +20,7 @@ interface RthAllConfirmDialogProps {
 }
 
 export function RthAllConfirmDialog({ open, onClose }: RthAllConfirmDialogProps) {
+  const tk = useTranslations("shared.rthallconfirmdialog");
   const { toast } = useToast();
 
   return (
@@ -33,9 +35,9 @@ export function RthAllConfirmDialog({ open, onClose }: RthAllConfirmDialogProps)
         })();
       }}
       onCancel={onClose}
-      title="Return to Home — All Drones"
-      message="This will command ALL active drones to return to their home positions immediately. This action cannot be undone."
-      confirmLabel="RTH All"
+      title={tk("returnToHomeAllDrones")}
+      message={tk("thisWillCommandALLActive")}
+      confirmLabel={tk("rthAll")}
       variant="danger"
     />
   );

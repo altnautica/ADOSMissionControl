@@ -23,6 +23,7 @@ import { deriveHudStatus } from "@/lib/hud-readings";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useBatteryBand, type BatteryBand } from "@/lib/battery-bands";
 import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { linkStateFromHeartbeat, type LinkState } from "../band/link-state";
 import { formatElapsed } from "../band/format";
@@ -153,6 +154,9 @@ function LinkDetail({ droneId }: { droneId: string }) {
 export function LinkCell(props: { droneId: string; detail: boolean; inMenu?: boolean; textOnly?: boolean }) {
   const { droneId, detail, inMenu = false, textOnly = false } = props;
   useClockTick();
+  // The shared clock's last tick time: read from state, never from the clock
+  // in render, so the age text moves on the same 1 Hz tick as every cell.
+  const now = useClockStore((s) => s.now);
   const { radio } = useHudTopBarData();
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
@@ -160,7 +164,7 @@ export function LinkCell(props: { droneId: string; detail: boolean; inMenu?: boo
   const polled = useNavStreamStore((s) => s.byDrone[droneId]?.transport === "poll");
   const { signalBars } = deriveHudStatus({ radio }, { armState, flightMode, lastHeartbeat });
   const link: LinkState = linkStateFromHeartbeat(lastHeartbeat);
-  const { text, severity } = linkAgeView(lastHeartbeat, Date.now());
+  const { text, severity } = linkAgeView(lastHeartbeat, now);
   // At least one bar is lit once a frame has arrived, so the icon carries
   // the age's colour even with no signal reading.
   const bars = signalBars ?? (link === "ok" ? 4 : link === "stale" ? 1 : 0);

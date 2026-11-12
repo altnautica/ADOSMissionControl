@@ -39,6 +39,7 @@ export interface NetworkTabProps {
 }
 
 export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
+  const tk = useTranslations("command.networkTab");
   const direct = useNodeDirectAgent(nodeDeviceId);
   const agentUrl = direct?.agentUrl ?? null;
   const apiKey = direct?.apiKey ?? null;
@@ -149,7 +150,7 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     const client = writeClient();
     if (!client) return;
     const ok = await leaveWifi(client);
-    if (ok) toast("Disconnected from WiFi network.", "info");
+    if (ok) toast(tk("disconnectedFromWiFiNetwork"), "info");
   };
 
   const handleApplyModem = async () => {
@@ -163,10 +164,10 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     });
     setSavingModem(false);
     if (res) {
-      toast("Modem configuration saved.", "success");
+      toast(tk("modemConfigurationSaved"), "success");
       setModemOpen(false);
     } else {
-      toast("Failed to save modem configuration.", "error");
+      toast(tk("failedToSaveModemConfiguration"), "error");
     }
   };
 
@@ -175,7 +176,7 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     if (!client) return;
     const res = await applyPriority(client, next);
     if (res == null) {
-      toast("Failed to update uplink priority.", "error");
+      toast(tk("failedToUpdateUplinkPriority"), "error");
     }
   };
 
@@ -183,7 +184,7 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     const client = writeClient();
     if (!client) return;
     const res = await toggleShareUplink(client, next);
-    if (res == null) toast("Failed to update share setting.", "error");
+    if (res == null) toast(tk("failedToUpdateShareSetting"), "error");
   };
 
   const handleShareToggle = (next: boolean) => {
@@ -209,8 +210,8 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     return (
       <div className="flex flex-col">
         <PageIntro
-          title="Network"
-          description="Manage every uplink path: WiFi access point, WiFi client, Ethernet, and 4G modem. The active uplink decides which network the agent uses for cloud relay."
+          title={tk("network")}
+          description={tk("manageEveryUplinkPathWiFi")}
         />
         <CloudModeLimitedNotice feature="network" />
       </div>
@@ -220,8 +221,8 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
   return (
     <div className="flex flex-col">
       <PageIntro
-        title="Network"
-        description="Manage every uplink path: WiFi access point, WiFi client, Ethernet, and 4G modem. The active uplink decides which network the agent uses for cloud relay."
+        title={tk("network")}
+        description={tk("manageEveryUplinkPathWiFi")}
       />
       <div className="flex flex-col gap-4">
         <WifiSection
@@ -264,7 +265,7 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
 
         <div className="flex justify-end">
           <Button variant="secondary" onClick={() => setPairOpen(true)}>
-            Pair with drone
+            {tk("pairWithDrone")}
           </Button>
         </div>
 

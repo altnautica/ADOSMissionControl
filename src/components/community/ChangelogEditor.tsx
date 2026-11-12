@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { X } from "lucide-react";
@@ -13,6 +14,7 @@ interface ChangelogEditorProps {
 }
 
 export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
+  const tq = useTranslations("community.changelogEditor");
   const createChangelog = useMutation(communityApi.changelog.create);
   const updateChangelog = useMutation(communityApi.changelog.update);
 
@@ -128,7 +130,7 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           )}
 
           <div>
-            <label className="text-[10px] text-text-tertiary block mb-1">Version</label>
+            <label className="text-[10px] text-text-tertiary block mb-1">{tq("version")}</label>
             <input
               type="text"
               value={version}
@@ -139,36 +141,36 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
           </div>
 
           <div>
-            <label className="text-[10px] text-text-tertiary block mb-1">Title</label>
+            <label className="text-[10px] text-text-tertiary block mb-1">{tq("title")}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Release title"
+              placeholder={tq("releaseTitle")}
               className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
             />
           </div>
 
           <div>
-            <label className="text-[10px] text-text-tertiary block mb-1">Body</label>
+            <label className="text-[10px] text-text-tertiary block mb-1">{tq("body")}</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={8}
-              placeholder="What changed in this release?"
+              placeholder={tq("whatChangedInThisRelease")}
               className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary resize-y"
             />
           </div>
 
           <div>
             <label className="text-[10px] text-text-tertiary block mb-1">
-              Tags (comma-separated)
+              {tq("tagsCommaSeparated")}
             </label>
             <input
               type="text"
               value={tagsStr}
               onChange={(e) => setTagsStr(e.target.value)}
-              placeholder="e.g. feature, bugfix, breaking"
+              placeholder={tq("eGFeatureBugfixBreaking")}
               className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
             />
           </div>
@@ -180,12 +182,12 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
               onChange={(e) => setPublished(e.target.checked)}
               className="accent-accent-primary"
             />
-            <span className="text-xs text-text-secondary">Published</span>
+            <span className="text-xs text-text-secondary">{tq("published")}</span>
           </label>
 
           {/* Translation Section */}
           <div className="border-t border-border-default pt-4 mt-4">
-            <p className="text-xs font-medium text-text-secondary mb-2">Add Translation (optional)</p>
+            <p className="text-xs font-medium text-text-secondary mb-2">{tq("addTranslationOptional")}</p>
             <div className="flex gap-2 mb-2">
               <Select
                 value={translationLocale}
@@ -199,13 +201,13 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
             <input
               value={translationTitle}
               onChange={e => setTranslationTitle(e.target.value)}
-              placeholder="Title (translated)"
+              placeholder={tq("titleTranslated")}
               className="w-full text-xs bg-bg-tertiary border border-border-default px-2 py-1 text-text-primary mb-1"
             />
             <textarea
               value={translationDescription}
               onChange={e => setTranslationDescription(e.target.value)}
-              placeholder="Description (translated)"
+              placeholder={tq("descriptionTranslated")}
               className="w-full text-xs bg-bg-tertiary border border-border-default px-2 py-1 text-text-primary mb-2"
               rows={2}
             />
@@ -214,7 +216,7 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
               onClick={addTranslation}
               className="text-xs text-accent-primary border border-accent-primary/30 px-3 py-1 hover:bg-accent-primary/10"
             >
-              Add Translation
+              {tq("addTranslation")}
             </button>
             {Object.entries(translations).length > 0 && (
               <div className="mt-2 space-y-1">
@@ -244,7 +246,7 @@ export function ChangelogEditor({ entry, onClose }: ChangelogEditorProps) {
               onClick={onClose}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
             >
-              Cancel
+              {tq("cancel")}
             </button>
             <button
               type="submit"

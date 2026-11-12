@@ -22,14 +22,14 @@
  * node's LAN or ground-station reach. A `plugin.config` key the read returned
  * (or a value the caller passed in `values`, or one committed this session) is
  * confirmed. Until then, or when the read cannot reach the node, the control
- * seeds from the schema default and is badged "Default — not read from drone"
+ * seeds from the schema default and is badged as a default not read from the drone
  * so a default is never presented as the drone's live setting.
  *
  * @license GPL-3.0-only
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
 import {
@@ -44,6 +44,7 @@ import {
 import { loadPluginLocale, type PluginLocaleBundle } from "@/lib/plugins/plugin-locale";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
 import { isDemoMode } from "@/lib/utils";
+import { demoExtensionLocale } from "@/mock/extension-locales";
 
 import { ParameterControl } from "./ParameterControl";
 
@@ -63,17 +64,6 @@ interface PluginParametersPanelProps {
 /** Ungrouped parameters collect under this sentinel group (no header). */
 const DEFAULT_GROUP = "";
 
-const AGENT_UNREACHABLE = "Couldn't reach the agent to apply this change";
-
-/** Shown on a `plugin.config` control whose displayed value is the schema
- * default rather than a value confirmed to be the drone's live setting. */
-const UNCONFIRMED_DEFAULT_NOTE = "Default — not read from drone";
-
-/** Shown on an `agent.config` control: it binds a shared agent-level setting,
- * which this surface renders read-only (the agent owns it), so the disabled
- * state is self-explaining rather than a mysteriously-dead control. */
-const AGENT_MANAGED_NOTE = "Agent-managed — read-only here";
-
 export function PluginParametersPanel({
   droneId,
   pluginId,
@@ -81,6 +71,7 @@ export function PluginParametersPanel({
   values,
 }: PluginParametersPanelProps) {
   const { toast } = useToast();
+  const t = useTranslations("plugins.parameters");
 
   const [state, setState] = useState<Record<string, ParameterValue>>(() => {
     const seed: Record<string, ParameterValue> = {};
@@ -142,24 +133,28 @@ export function PluginParametersPanel({
     };
   }, [droneId, pluginId, parameters]);
 
-  // A group heading is a key into the plugin's own locale bundle (the
-  // manifests use e.g. `settings.title`); read the bundle once per node,
-  // plugin and language. The raw value shows only when it has no entry.
+  // Group headings, control labels, help and enum options are keys into the
+  // plugin's own locale bundle (the manifests use e.g. `settings.title`,
+  // `follow_mode.orbit`); read the bundle once per node, plugin and language.
+  // The raw value shows only when it has no entry.
   const lang = useLocale();
-  const [strings, setStrings] = useState<PluginLocaleBundle>({});
-  const hasGroups = parameters.some((param) => param.ui?.group);
+  const [fetched, setFetched] = useState<PluginLocaleBundle>({});
+  // Demo mode has no node to read the bundle from; it ships the published
+  // English bundles of the extensions it installs.
+  const demo = isDemoMode();
   useEffect(() => {
-    if (!hasGroups || isDemoMode()) return;
+    if (parameters.length === 0 || demo) return;
     const reach = resolveNodeAgentReach(droneId);
     if (!reach) return;
     let alive = true;
     void loadPluginLocale(reach, pluginId, lang).then((bundle) => {
-      if (alive) setStrings(bundle);
+      if (alive) setFetched(bundle);
     });
     return () => {
       alive = false;
     };
-  }, [droneId, pluginId, lang, hasGroups]);
+  }, [droneId, pluginId, lang, parameters.length, demo]);
+  const strings: PluginLocaleBundle = demo ? demoExtensionLocale(pluginId) : fetched;
 
   // Group parameters by `ui.group`; order groups by first appearance and
   // controls within a group by `ui.order` then declaration order.
@@ -239,15 +234,15 @@ export function PluginParametersPanel({
         if (!ok) {
           setState((s) => ({ ...s, [param.key]: previous }));
           setConfirmed((c) => ({ ...c, [param.key]: wasConfirmed }));
-          toast(AGENT_UNREACHABLE, "warning");
+          toast(t("agentUnreachable"), "warning");
         }
       } catch {
         setState((s) => ({ ...s, [param.key]: previous }));
         setConfirmed((c) => ({ ...c, [param.key]: wasConfirmed }));
-        toast(AGENT_UNREACHABLE, "warning");
+        toast(t("agentUnreachable"), "warning");
       }
     },
-    [droneId, pluginId, state, confirmed, toast],
+    [droneId, pluginId, state, confirmed, toast, t],
   );
 
   if (parameters.length === 0) return null;
@@ -284,16 +279,19 @@ export function PluginParametersPanel({
                     value={state[param.key] ?? defaultFor(param.schema)}
                     disabled={!interactive}
                     droneId={droneId}
+                    strings={strings}
                     onCommit={(next) => handleCommit(param, next)}
                   />
                   {unconfirmedDefault ? (
                     <span className="text-[10px] text-text-tertiary italic leading-tight">
-                      {UNCONFIRMED_DEFAULT_NOTE}
+                      {t("unconfirmedDefault")}
                     </span>
                   ) : null}
+                  {/* agent.config binds a shared agent-level setting this
+                      surface renders read-only, so the note says why. */}
                   {binding === "agent.config" ? (
                     <span className="text-[10px] text-text-tertiary italic leading-tight">
-                      {AGENT_MANAGED_NOTE}
+                      {t("agentManaged")}
                     </span>
                   ) : null}
                 </div>

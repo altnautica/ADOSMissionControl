@@ -1,5 +1,10 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import path from "path";
+import {
+  createBluetoothChooser,
+  loadFailureDialog,
+  shouldReportLoadFailure,
+} from "./desktop-dialogs";
 
 const EXTERNAL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 
@@ -81,14 +86,45 @@ export function createMainWindow(port: number): BrowserWindow {
       win.show();
     }
   });
-  win.webContents.on("did-fail-load", (_e, code, desc, url) => {
+  win.webContents.on("did-fail-load", (_e, code, desc, url, isMainFrame) => {
     console.error(`[window] did-fail-load: ${code} ${desc} ${url}`);
-    if (!win.isDestroyed() && !win.isVisible()) {
+    if (win.isDestroyed()) return;
+    if (!win.isVisible()) {
       win.show();
       if (!app.isPackaged) {
         win.webContents.openDevTools({ mode: "detach" });
       }
     }
+    if (!shouldReportLoadFailure(code, isMainFrame)) return;
+    // An empty window gives the operator nothing to act on: offer Retry and Quit.
+    void dialog.showMessageBox(win, loadFailureDialog(desc)).then(({ response }) => {
+      if (win.isDestroyed()) return;
+      if (response === 0) {
+        void win.loadURL(`http://127.0.0.1:${port}`);
+      } else {
+        app.quit();
+      }
+    });
+  });
+
+  // Without a handler Electron connects to the first Bluetooth device that
+  // answers the scan; ask the operator instead, as serial and USB do.
+  const chooseBluetooth = createBluetoothChooser((labels) =>
+    win.isDestroyed()
+      ? -1
+      : dialog.showMessageBoxSync(win, {
+          type: "question",
+          title: "Select Bluetooth device",
+          message: "Choose the Bluetooth device Mission Control should use.",
+          buttons: [...labels, "Cancel"],
+          cancelId: labels.length,
+          defaultId: labels.length,
+          noLink: true,
+        }),
+  );
+  win.webContents.on("select-bluetooth-device", (event, devices, callback) => {
+    event.preventDefault();
+    chooseBluetooth(devices, callback);
   });
 
   // Load the Next.js app

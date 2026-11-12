@@ -126,6 +126,6 @@ describe("ProximityRadar geometry from OBSTACLE_DISTANCE", () => {
 
     expect(container.querySelector("[data-ref]")?.textContent).toBe("N");
     expect(container.querySelectorAll("[data-sector]")).toHaveLength(0);
-    expect(container.textContent).toContain("CLEAR");
+    expect(container.textContent).toContain("Clear");
   });
 });

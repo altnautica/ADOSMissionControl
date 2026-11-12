@@ -5,6 +5,8 @@
  * only in demo mode, so this component's mount/unmount brackets demo on/off. The
  * demo plans carry their own geofence + rally, so the normal load path restores
  * them; this component only owns seeding, the plan opened on start, and teardown.
+ * A plan already open when demo starts (a reload) keeps its live workspace, so
+ * unsaved edits to its path, fence and rally points survive the reload.
  * @license GPL-3.0-only
  */
 "use client";
@@ -43,7 +45,7 @@ export function demoStartPlan(activePlanId: string | null, plans: readonly Saved
 let lastDemoPlanId: string | null = null;
 
 /** Seed the demo plans and open the start plan; returns the teardown. */
-function seedDemoMissions(): () => void {
+export function seedDemoMissions(): () => void {
   const lib = usePlanLibraryStore.getState();
 
   // Capture the user's real workspace so teardown restores it. A demo plan left
@@ -63,9 +65,12 @@ function seedDemoMissions(): () => void {
     expandedFolders: s.expandedFolders.includes(DEMO_MISSION_FOLDER_ID) ? s.expandedFolders : [...s.expandedFolders, DEMO_MISSION_FOLDER_ID],
   }));
 
-  // Open the start plan in both tabs (restores its fence + rally + fit).
+  // Open the start plan in both tabs (restores its fence + rally + fit). The
+  // plan already open (a reload) is left as the persisted workspace holds it:
+  // reloading its saved copy would drop the edits made since the last save.
   const after = usePlanLibraryStore.getState();
-  applyPlanToWorkspace(demoStartPlan(after.activePlanId ?? lastDemoPlanId, after.plans));
+  const start = demoStartPlan(after.activePlanId ?? lastDemoPlanId, after.plans);
+  if (start.id !== after.activePlanId) applyPlanToWorkspace(start);
 
   return () => {
     const open = usePlanLibraryStore.getState().activePlanId;

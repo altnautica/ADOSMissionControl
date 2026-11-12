@@ -164,13 +164,21 @@ describe("CockpitView", () => {
     expect(getByTestId("flight-state-chip")).toBeInTheDocument();
   });
 
-  it("enters immersive mode from the flight menu (does not self-mount bridges)", () => {
+  it("words the re-enable prompt from the shared spec", () => {
+    useCockpitStore.setState({ enabled: false });
+    const { getByTestId } = renderCockpit();
+    const prompt = getByTestId("fs-enable-skills");
+    expect(prompt.querySelector("h2")?.textContent).toBe(specString("cockpit.enable.title"));
+    expect(prompt.querySelector("p")?.textContent).toBe(specString("cockpit.enable.body"));
+    expect(prompt.querySelector("button")?.textContent).toBe(specString("cockpit.enable.button"));
+  });
+
+  it("enters full screen from the top bar's button (does not self-mount bridges)", () => {
     const { getByTestId, queryByTestId } = renderCockpit();
     // The embedded cockpit relies on CommandShell for the bridges — it must not
     // re-mount them itself.
     expect(queryByTestId("bridge-agent-mavlink")).toBeNull();
-    fireEvent.click(getByTestId("fs-menu-button"));
-    fireEvent.click(getByTestId("fs-immersive"));
+    fireEvent.click(getByTestId("fs-fullscreen"));
     expect(useUiStore.getState().immersiveMode).toBe(true);
   });
 

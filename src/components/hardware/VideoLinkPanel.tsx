@@ -118,6 +118,7 @@ const _POLL_INTERVAL_MS = 1000;
  * on older firmware.
  */
 export function VideoLinkPanel() {
+  const tq = useTranslations("hardware.videoLinkPanel");
   const t = useTranslations("hardware.videoLink");
   const tRadio = useTranslations("hardware.radio");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
@@ -294,7 +295,7 @@ export function VideoLinkPanel() {
       ) : null}
       <div className="grid grid-cols-2 gap-2 p-3 text-[11px] font-mono">
         <ReadoutRow
-          label="Latency"
+          label={tq("latency")}
           value={
             latency?.latency_ms != null
               ? `${Math.round(latency.latency_ms)} ms`
@@ -307,7 +308,7 @@ export function VideoLinkPanel() {
           }
         />
         <ReadoutRow
-          label="Encoder"
+          label={tq("encoder")}
           value={
             encoder.bitrate_kbps != null
               ? `${encoder.bitrate_kbps} kbps`
@@ -322,7 +323,7 @@ export function VideoLinkPanel() {
           }
         />
         <ReadoutRow
-          label="Radio FEC"
+          label={tq("radioFEC")}
           value={
             radio.fec_k != null && radio.fec_n != null
               ? `${radio.fec_k}/${radio.fec_n}`
@@ -333,7 +334,7 @@ export function VideoLinkPanel() {
           }
         />
         <ReadoutRow
-          label="Channel"
+          label={tq("channel")}
           value={radio.channel != null ? String(radio.channel) : "—"}
           hint={radio.tx_power_dbm != null ? `${radio.tx_power_dbm} dBm` : undefined}
         />
@@ -377,7 +378,7 @@ export function VideoLinkPanel() {
         <div className="border-t border-border-default px-3 py-2">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[10px] font-mono uppercase tracking-widest text-text-tertiary">
-              Tier ladder
+              {tq("tierLadder")}
             </span>
             <label className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest text-text-primary">
               <input

@@ -414,10 +414,9 @@ describe("parseManifestYaml — PyYAML-emitted Convex fixture", () => {
   // (built on the `yaml` npm package) is what serves the live modal, so
   // this regression pins behavior against the actual Convex bytes that
   // crashed the previous regex parser.
-  const CONVEX_FIXTURE = path.join(
-    REPO_ROOT,
-    "ADOSMissionControl",
-    "tests",
+  const CONVEX_FIXTURE = path.resolve(
+    __dirname,
+    "..",
     "fixtures",
     "vision-nav-v0.2.5-convex.yaml",
   );

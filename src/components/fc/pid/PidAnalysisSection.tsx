@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback } from "react";
 import { Brain, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ interface PidAnalysisSectionProps {
 type QuickTab = "fft" | "step" | "tracking" | "motors";
 
 export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProps) {
+  const tr = useTranslations("fcPanels.pidAnalysisSection");
   const [expanded, setExpanded] = useState(false);
 
   const analysisMode = usePidAnalysisStore((s) => s.analysisMode);
@@ -54,7 +56,7 @@ export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProp
         className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50"
       >
         <Brain size={14} className="text-accent-primary" />
-        <h2 className="text-sm font-medium text-text-primary">AI Analysis &amp; Tuning</h2>
+        <h2 className="text-sm font-medium text-text-primary">{tr("aiAnalysisAmpTuning")}</h2>
         <span className="text-[10px] text-text-tertiary ml-auto">
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
@@ -165,7 +167,7 @@ export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProp
                                       disabled={safeIdx === 0}
                                       className="text-[9px] text-text-tertiary hover:text-text-primary disabled:opacity-30 cursor-pointer"
                                     >
-                                      Prev
+                                      {tr("prev")}
                                     </button>
                                     <span className="text-[9px] text-text-tertiary">
                                       {safeIdx + 1}/{events.length}
@@ -175,7 +177,7 @@ export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProp
                                       disabled={safeIdx >= events.length - 1}
                                       className="text-[9px] text-text-tertiary hover:text-text-primary disabled:opacity-30 cursor-pointer"
                                     >
-                                      Next
+                                      {tr("next")}
                                     </button>
                                   </div>
                                 )}

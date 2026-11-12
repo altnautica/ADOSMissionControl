@@ -202,6 +202,34 @@ describe("uploads while the vehicle flies its mission", () => {
     expect(uploadMission).toHaveBeenCalledTimes(1);
   });
 
+  it("tracks items sent during the upload and keeps a refusal's result code", async () => {
+    const seen: unknown[] = [];
+    const uploadMission = vi.fn(async (items: MissionItem[], onProgress?: (sent: number, total: number) => void) => {
+      seen.push(useMissionStore.getState().uploadProgress);
+      onProgress?.(1, items.length);
+      seen.push(useMissionStore.getState().uploadProgress);
+      return { success: false, resultCode: 4, message: "Mission rejected: type 4" };
+    });
+    const protocol = baseProtocol({ uploadMission });
+    selectProtocol(protocol);
+    report(DRONE, "none");
+
+    await expect(useMissionStore.getState().uploadMission(protocol)).resolves.toBe(false);
+    const total = uploadMission.mock.calls[0][0].length;
+    expect(seen).toEqual([{ sent: 0, total }, { sent: 1, total }]);
+    expect(useMissionStore.getState()).toMatchObject({ uploadState: "error", uploadErrorCode: 4 });
+  });
+
+  it("leaves no result code on a refusal made before anything was sent", async () => {
+    const { protocol } = missionProtocol();
+    selectProtocol(protocol);
+    report(DRONE, "active");
+    useMissionStore.setState({ uploadErrorCode: 4 });
+
+    await useMissionStore.getState().uploadMission(protocol);
+    expect(useMissionStore.getState()).toMatchObject({ uploadError: REFUSAL, uploadErrorCode: null });
+  });
+
   function selectTwo(selected: DroneProtocol, target: DroneProtocol): void {
     const d1 = { id: DRONE, name: "Drone 1", protocol: selected } as Partial<ManagedDrone> as ManagedDrone;
     const d2 = { id: OTHER, name: "Drone 2", protocol: target } as Partial<ManagedDrone> as ManagedDrone;

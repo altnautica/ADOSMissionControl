@@ -78,6 +78,7 @@ function SuggestionTable({
   parameters: ParameterSuggestion[];
   target: SuggestionTarget;
 }) {
+  const tm = useTranslations("fcPanels.pidAiRecommendations");
   const rows = parameters.map((p) => {
     const current = target.fcParams.get(p.param);
     const check = validateSuggestion(p.param, current, p.suggestedValue, target.vehicleType);
@@ -91,11 +92,11 @@ function SuggestionTable({
       <table className="w-full text-[10px] font-mono">
         <thead>
           <tr className="border-b border-border-default text-text-tertiary">
-            <th className="text-left py-1 pr-2">Param</th>
-            <th className="text-right py-1 px-2">Current</th>
-            <th className="text-right py-1 px-2">Suggested</th>
-            <th className="text-right py-1 px-2">Applies</th>
-            <th className="text-right py-1 pl-2">Delta</th>
+            <th className="text-left py-1 pr-2">{tm("param")}</th>
+            <th className="text-right py-1 px-2">{tm("current")}</th>
+            <th className="text-right py-1 px-2">{tm("suggested")}</th>
+            <th className="text-right py-1 px-2">{tm("applies")}</th>
+            <th className="text-right py-1 pl-2">{tm("delta")}</th>
           </tr>
         </thead>
         <tbody>
@@ -153,6 +154,7 @@ export function PidAiRecommendations({
   target,
   aiLoading,
 }: PidAiRecommendationsProps) {
+  const tm = useTranslations("fcPanels.pidAiRecommendations");
   const applyRecommendation = usePidAnalysisStore((s) => s.applyRecommendation);
   const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
   const { toast } = useToast();
@@ -170,7 +172,7 @@ export function PidAiRecommendations({
       <div className="space-y-3">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles size={14} className="text-accent-primary animate-pulse" />
-          <span className="text-xs text-text-secondary">Analyzing tune quality...</span>
+          <span className="text-xs text-text-secondary">{tm("analyzingTuneQuality")}</span>
         </div>
         <SkeletonCard />
         <SkeletonCard />
@@ -183,9 +185,9 @@ export function PidAiRecommendations({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <Sparkles size={20} className="text-text-tertiary mb-2" />
-        <p className="text-xs text-text-secondary">No recommendations yet</p>
+        <p className="text-xs text-text-secondary">{tm("noRecommendationsYet")}</p>
         <p className="text-[10px] text-text-tertiary mt-1">
-          Click &quot;Get AI Suggestions&quot; to analyze your tune
+          {tm("clickQuotGetAISuggestions")}
         </p>
       </div>
     );
@@ -263,7 +265,7 @@ export function PidAiRecommendations({
                   size="sm"
                   onClick={() => reportApply(applyRecommendation(rec.id, target))}
                 >
-                  Apply
+                  {tm("apply")}
                 </Button>
               </div>
             ))}

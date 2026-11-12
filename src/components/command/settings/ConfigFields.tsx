@@ -21,6 +21,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
 import { readConfigPath } from "./use-node-config";
 import { ApplyTextField } from "./ApplyTextField";
 
@@ -51,6 +52,7 @@ export function ConfigSelectField({
 }: BaseProps & { options: SelectOption[]; placeholder?: string }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const [pending, setPending] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -74,7 +76,7 @@ export function ConfigSelectField({
       // read-back and returns to interactive.
       setPending(null);
     } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+      toast(describeAgentError(err, t("applyFailed")), "error");
       setPending(null);
     } finally {
       setSaving(false);
@@ -127,6 +129,7 @@ export function ConfigToggleField({
 }: BaseProps & { confirm?: ToggleConfirm }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const [pending, setPending] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   // The value awaiting confirmation. Null while no dialog is open; the toggle
@@ -153,7 +156,7 @@ export function ConfigToggleField({
       // read-back and returns to interactive.
       setPending(null);
     } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+      toast(describeAgentError(err, t("applyFailed")), "error");
       setPending(null);
     } finally {
       setSaving(false);
@@ -213,6 +216,7 @@ export function ConfigTextField({
 }: BaseProps & { placeholder?: string }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const raw = readConfigPath(config, configKey);
   const current = typeof raw === "string" ? raw : raw != null ? String(raw) : "";
 
@@ -228,7 +232,7 @@ export function ConfigTextField({
           await setValue(configKey, value);
           toast(t("applied"), "success");
         } catch (err) {
-          toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+          toast(describeAgentError(err, t("applyFailed")), "error");
           throw err;
         }
       }}
@@ -254,6 +258,7 @@ export function ConfigSecretField({
 }: BaseProps & { placeholder?: string }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const inputId = useId();
   const raw = readConfigPath(config, configKey);
   const isSet = typeof raw === "string" && raw.length > 0;
@@ -269,7 +274,7 @@ export function ConfigSecretField({
       toast(t("applied"), "success");
       setDraft("");
     } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+      toast(describeAgentError(err, t("applyFailed")), "error");
     } finally {
       setSaving(false);
     }
@@ -341,6 +346,7 @@ export function ConfigIntField({
 }: BaseProps & { min: number; max: number; confirm?: WriteConfirm }) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const raw = readConfigPath(config, configKey);
   const current =
     typeof raw === "number" && Number.isFinite(raw) ? String(raw) : "";
@@ -361,7 +367,7 @@ export function ConfigIntField({
       toast(t("applied"), "success");
       setDraft(null);
     } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+      toast(describeAgentError(err, t("applyFailed")), "error");
     } finally {
       setSaving(false);
     }

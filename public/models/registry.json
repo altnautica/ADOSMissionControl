@@ -102,18 +102,6 @@
       ]
     },
     {
-      "id": "coco_yolov8n_v1",
-      "task": "detection",
-      "name": "COCO Object Detector (YOLOv8n)",
-      "description": "Generic 80-class COCO detector (person, vehicles, common objects) for Follow Me and general detection",
-      "license": "AGPL-3.0",
-      "classes": ["person", "bicycle", "car", "motorcycle", "bus", "truck", "boat", "backpack", "bottle", "chair", "and 70 more COCO classes"],
-      "variants": [
-        { "variant": "int8", "input_size": "640x640", "min_tops": 1.0, "runtime": "rknn", "board_match": "rk3588", "filename": "coco_yolov8n_640_int8.rknn", "size_bytes": 5242880, "sha256": "9714918d7be60bc903adda871197f3f830c8fbdf60e8358fd5206eea3473167e", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/coco_yolov8n_640_int8.rknn" },
-        { "variant": "fp16", "input_size": "640x640", "min_tops": 2.0, "runtime": "rknn", "board_match": "rk3588", "filename": "coco_yolov8n_640_fp16.rknn", "size_bytes": 8704000, "sha256": "2da05d61f396d368566f7920b5cded2693c3a296457897bd3eebf69988a097c6", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/coco_yolov8n_640_fp16.rknn" }
-      ]
-    },
-    {
       "id": "person_yolox_tiny_v1",
       "task": "detection",
       "name": "Person Detector (YOLOX-Tiny)",
@@ -122,19 +110,6 @@
       "classes": ["person"],
       "variants": [
         { "variant": "cpu_fp32_640", "input_size": "640x640", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_640.onnx", "size_bytes": 20344089, "sha256": "ec126ff2786d394e02730181e5a97ede16c173e0625b39cd18661d507e06da32", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_640.onnx" }
-      ]
-    },
-    {
-      "id": "reid_osnet_v1",
-      "task": "reid",
-      "benchmark_only": true,
-      "name": "Person Re-ID (OSNet x0.5)",
-      "description": "Appearance embedding that keeps a tracked subject's identity across an occlusion or a distractor crossing. Benchmark and explicit install only: the weights were trained on a research-use dataset, so the shipped default re-id is the model-free colour histogram",
-      "license": "MIT (code); weights trained on Market-1501, research-use terms",
-      "classes": [],
-      "variants": [
-        { "variant": "int8", "input_size": "128x256", "min_tops": 0.8, "runtime": "rknn", "board_match": "rk3588", "filename": "osnet_x0_5_reid_int8.rknn", "size_bytes": 3145728, "sha256": "31c7101c503d514019c91d7df436526d28a4a04b071adbd8c87882aaa4f4a637", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/osnet_x0_5_reid_int8.rknn" },
-        { "variant": "fp16", "input_size": "128x256", "min_tops": 1.5, "runtime": "rknn", "board_match": "rk3588", "filename": "osnet_x0_5_reid_fp16.rknn", "size_bytes": 3774873, "sha256": "a29f23f2659525965fbb3306fa170db0141d524a266479bc9acfe1ec21084784", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/osnet_x0_5_reid_fp16.rknn" }
       ]
     },
     {

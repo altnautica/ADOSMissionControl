@@ -42,13 +42,14 @@ export function PairingConfirm({
   onCopyInstall,
   onDiscoveredPair,
 }: Props) {
+  const tq = useTranslations("command.pairingConfirm");
   const t = useTranslations("command");
 
   return (
     <>
       {/* Hero code */}
       <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-1">
+        <div data-pairing-copy="code" className="flex items-center justify-center gap-1">
           {code.split("").map((char, i) => (
             <span
               key={i}
@@ -93,7 +94,10 @@ export function PairingConfirm({
         </div>
 
         <div className="flex items-start gap-2 p-3 bg-bg-primary border border-border-default rounded-lg">
-          <code className="flex-1 text-[11px] font-mono text-text-secondary leading-relaxed break-all select-all">
+          <code
+            data-pairing-copy="install"
+            className="flex-1 text-[11px] font-mono text-text-secondary leading-relaxed break-all select-all"
+          >
             {installCommand}
           </code>
           <button
@@ -122,7 +126,7 @@ export function PairingConfirm({
       <div className="flex flex-col items-center gap-2 py-2">
         <div className="flex items-center gap-2">
           <Check size={14} className="text-status-success" />
-          <p className="text-xs text-text-secondary">Code generated</p>
+          <p className="text-xs text-text-secondary">{tq("codeGenerated")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Loader2 size={14} className="animate-spin text-accent-primary" />

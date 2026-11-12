@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { EventTimeline } from "./EventTimeline";
@@ -25,6 +26,7 @@ import {
 type DiagTab = "timeline" | "rates" | "frames" | "queue" | "buffers" | "perf";
 
 export function DiagnosticsPanel() {
+  const tq = useTranslations("diagnostics.diagnosticsPanel");
   const [activeTab, setActiveTab] = useState<DiagTab>("timeline");
   const clear = useDiagnosticsStore((s) => s.clear);
   const protocol = useDroneManager(selectSelectedProtocol);
@@ -56,7 +58,7 @@ export function DiagnosticsPanel() {
       {/* Top bar with tabs + actions */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <Stethoscope size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Diagnostics</span>
+        <span className="text-xs font-semibold text-text-primary">{tq("diagnostics")}</span>
 
         {/* Tab toggles */}
         <div className="flex items-center gap-0.5 bg-bg-tertiary p-0.5 rounded ml-2">
@@ -89,7 +91,7 @@ export function DiagnosticsPanel() {
           className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"
         >
           <Trash2 size={10} />
-          Clear All
+          {tq("clearAll")}
         </button>
       </div>
 

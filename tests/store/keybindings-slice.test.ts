@@ -83,12 +83,21 @@ describe("keybindings slice", () => {
 
   it("a gamepad button lives in exactly one slot (last-write-wins)", () => {
     const { setSlotGamepadButton } = useSettingsStore.getState();
-    // Button 0 starts on slot 0; assign it to slot 4 -> slot 0 must clear.
+    // Every standard button belongs to the cockpit; a larger pad's extra
+    // button (18) is bindable. Put it on slot 0, then on slot 4 -> slot 0 clears.
+    setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 18);
+    setSlotGamepadButton(DEFAULT_LOADOUT_ID, 4, 18);
+    const slots = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
+    expect(slots.find((s) => s.index === 4)?.gamepadButton).toBe(18);
+    expect(slots.find((s) => s.index === 0)?.gamepadButton).toBe(null);
+    expect(slots.filter((s) => s.gamepadButton === 18)).toHaveLength(1);
+  });
+
+  it("never binds a button the controller spec owns", () => {
+    const { setSlotGamepadButton } = useSettingsStore.getState();
     setSlotGamepadButton(DEFAULT_LOADOUT_ID, 4, 0);
     const slots = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
-    expect(slots.find((s) => s.index === 4)?.gamepadButton).toBe(0);
-    expect(slots.find((s) => s.index === 0)?.gamepadButton).toBe(null);
-    expect(slots.filter((s) => s.gamepadButton === 0)).toHaveLength(1);
+    expect(slots.find((s) => s.index === 4)?.gamepadButton).toBe(null);
   });
 
   it("clearing a slot's skill (null) leaves other slots untouched", () => {
@@ -178,13 +187,13 @@ describe("keybindings slice", () => {
 
     it("never takes a key or button another slot holds", () => {
       emptyFirst();
-      useSettingsStore.getState().setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 0);
-      seed("shift+a", 0);
+      useSettingsStore.getState().setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 18);
+      seed("shift+a", 18);
       const arm = useSettingsStore
         .getState()
         .loadouts[DEFAULT_LOADOUT_ID].slots.find((slot) => slot.skillId === "arm");
       expect(arm?.key).toBe("shift+a");
-      expect(arm?.gamepadButton).toBe(0);
+      expect(arm?.gamepadButton).toBe(18);
       expect(slotOf()?.key).toBeNull();
       expect(slotOf()?.gamepadButton).toBeNull();
     });
@@ -196,11 +205,18 @@ describe("keybindings slice", () => {
       expect(slotOf()?.gamepadButton).toBeNull();
     });
 
-    it("binds an unreserved, unbound suggestion", () => {
+    it("binds an unreserved, unbound key suggestion", () => {
+      emptyFirst();
+      seed("g", null);
+      expect(slotOf()?.key).toBe("g");
+      expect(slotOf()?.gamepadButton).toBeNull();
+    });
+
+    it("drops a suggested standard button: the controller spec owns them all", () => {
       emptyFirst();
       seed("g", 6);
       expect(slotOf()?.key).toBe("g");
-      expect(slotOf()?.gamepadButton).toBe(6);
+      expect(slotOf()?.gamepadButton).toBeNull();
     });
 
     it("does not re-seed a skill the operator cleared", () => {

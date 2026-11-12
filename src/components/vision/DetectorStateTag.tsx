@@ -15,6 +15,7 @@
 import { useTranslations } from "next-intl";
 
 import type { DetectionDemandStatus } from "@/lib/agent/detection-demand";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 const COPY: Partial<
   Record<DetectionDemandStatus, "idle" | "rejected" | "unauthorized" | "noLink" | "unreachable">
@@ -38,6 +39,9 @@ export function DetectorStateTag({
   const t = useTranslations("hud.detector");
   const key = status ? COPY[status] : undefined;
   if (!show || !key) return null;
+  // Idle and unreachable have shared spec words; the pairing and link
+  // causes are this app's own.
+  const text = key === "idle" ? specString("detector.idle") : key === "unreachable" ? specString("detector.unavailable") : t(key);
   return (
     <span
       className="tgt-tag"
@@ -46,7 +50,7 @@ export function DetectorStateTag({
       data-status={status}
       style={{ left: 6, bottom: 6 }}
     >
-      {t(key)}
+      {text}
     </span>
   );
 }

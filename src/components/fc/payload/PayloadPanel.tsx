@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Grab } from "lucide-react";
 import { ParamFieldsPanel, type ParamSection } from "../shared/ParamFieldsPanel";
 
@@ -18,11 +19,12 @@ const SECTIONS: ParamSection[] = [
 ];
 
 export function PayloadPanel() {
+  const tr = useTranslations("fcPanels.payloadPanel");
   return (
     <ParamFieldsPanel
       panelId="payload"
-      title="Gripper / Payload"
-      subtitle="Servo or EPM gripper release for pick-and-drop payloads"
+      title={tr("gripperPayload")}
+      subtitle={tr("servoOrEPMGripperRelease")}
       icon={<Grab size={16} />}
       sectionIcon={<Grab size={14} />}
       sections={SECTIONS}

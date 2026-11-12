@@ -26,15 +26,10 @@ import {
   startManualControlStream,
   stopManualControlStream,
 } from "@/lib/input/gamepad-poller";
-import {
-  consumeImmersiveRequest,
-  onImmersiveRequest,
-} from "@/lib/cockpit/immersive-request";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
-import { useUiStore } from "@/stores/ui-store";
 
 export function useCockpitViewSetup(
   droneId: string,
@@ -67,15 +62,6 @@ export function useCockpitViewSetup(
   useEffect(() => {
     containerRef.current?.focus();
   }, [containerRef]);
-
-  // "Open cockpit" from the node header: go immersive once this tab shows.
-  useEffect(() => {
-    const honour = () => {
-      if (consumeImmersiveRequest()) useUiStore.getState().enterImmersiveMode();
-    };
-    honour();
-    return onImmersiveRequest(honour);
-  }, []);
 
   // Demo-mode synthetic detections: feed the vision-detections store so the
   // video overlay + follow-me journey light up with no agent attached.

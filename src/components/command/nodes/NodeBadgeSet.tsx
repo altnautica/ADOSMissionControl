@@ -31,7 +31,7 @@ import { fcFlavorLabel } from "@/lib/protocol/fc-firmware-label";
 
 type BadgeVariant = "success" | "warning" | "serious" | "error" | "info" | "neutral";
 
-interface NodeBadge {
+export interface NodeBadge {
   key: string;
   label: string;
   variant: BadgeVariant;
@@ -55,6 +55,7 @@ export interface NodeBadgeLabels {
   compute: string;
   fc: string;
   companion: string;
+  relayed: string;
 }
 
 /** Resolve the badge labels from a `nodeConsole` translator. */
@@ -69,6 +70,7 @@ export function nodeBadgeLabels(t: (key: string) => string): NodeBadgeLabels {
     compute: t("badge.compute"),
     fc: t("badge.fc"),
     companion: t("badge.companion"),
+    relayed: t("provenance.relayed"),
   };
 }
 
@@ -176,6 +178,24 @@ interface NodeBadgeSetProps {
   className?: string;
 }
 
+/**
+ * `nodeBadges` plus the reach provenance. A relayed-only node (reached solely
+ * through a ground node over WFB) leads with a "Relayed" badge so it reads
+ * distinctly from a directly-paired node. Suppressed unless the node is live,
+ * so a dead node never shows a fresh sub-metric (the liveness badge stands
+ * alone there).
+ */
+export function nodeBadgesWithProvenance(
+  node: FleetNodeEntry,
+  effProfile: EffProfile,
+  labels: NodeBadgeLabels,
+): NodeBadge[] {
+  const base = nodeBadges(node, effProfile, labels);
+  return node.isRelayed && droneLiveness(node) === "live"
+    ? [{ key: "relayed", label: labels.relayed, variant: "info" }, ...base]
+    : base;
+}
+
 export function NodeBadgeSet({
   node,
   effProfile,
@@ -183,22 +203,7 @@ export function NodeBadgeSet({
   className,
 }: NodeBadgeSetProps) {
   const t = useTranslations("nodeConsole");
-  const base = nodeBadges(node, effProfile, nodeBadgeLabels(t));
-  // A relayed-only node (reached solely through a ground node over WFB) leads
-  // with a "Relayed" badge so it reads distinctly from a directly-paired node.
-  // Suppressed when offline/stale so a dead node never shows a fresh sub-metric
-  // (the liveness badge stands alone there).
-  const badges =
-    node.isRelayed && droneLiveness(node) === "live"
-      ? [
-          {
-            key: "relayed",
-            label: t("provenance.relayed"),
-            variant: "info" as const,
-          },
-          ...base,
-        ]
-      : base;
+  const badges = nodeBadgesWithProvenance(node, effProfile, nodeBadgeLabels(t));
   if (badges.length === 0) return null;
   const shown = badges.slice(0, max);
   const overflow = badges.length - shown.length;
@@ -206,21 +211,13 @@ export function NodeBadgeSet({
   return (
     <div className={cn("flex items-center gap-1", className)}>
       {shown.map((b) => (
-        <Badge
-          key={b.key}
-          variant={b.variant}
-          className="gap-1 rounded normal-case tracking-normal"
-        >
+        <Badge key={b.key} variant={b.variant}>
           {b.dot && <StatusDot status={b.dot} size="xs" label={b.label} />}
           {b.companion && <Cpu size={9} aria-hidden />}
           {b.label}
         </Badge>
       ))}
-      {overflow > 0 && (
-        <Badge variant="neutral" className="rounded normal-case tracking-normal">
-          +{overflow}
-        </Badge>
-      )}
+      {overflow > 0 && <Badge variant="neutral">+{overflow}</Badge>}
     </div>
   );
 }

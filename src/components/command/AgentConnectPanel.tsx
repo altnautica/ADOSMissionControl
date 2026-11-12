@@ -19,6 +19,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { SignInModal } from "@/components/auth/SignInModal";
 import { Tabs, tabButtonId } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import { AddNodeForm } from "./disconnected/AddNodeForm";
 import { InstallAgentStrip } from "./disconnected/InstallAgentStrip";
 import { PairingPrompt } from "./pairing/PairingPrompt";
@@ -94,6 +95,19 @@ interface BaseProps extends AgentConnectPanelProps {
   requiresSignIn: boolean;
 }
 
+/** Select the text of a copy source in the pairing body, so the operator can
+ * copy it by hand. */
+function selectCopySource(source: "code" | "install"): void {
+  if (typeof document === "undefined") return;
+  const el = document.querySelector(`[data-pairing-copy="${source}"]`);
+  const selection = window.getSelection();
+  if (!el || !selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 function AgentConnectPanelBase({
   open,
   onPaired,
@@ -108,6 +122,7 @@ function AgentConnectPanelBase({
   const t = useTranslations("command");
   const tAuth = useTranslations("auth");
   const [signInOpen, setSignInOpen] = useState(false);
+  const { toast } = useToast();
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedInstall, setCopiedInstall] = useState(false);
   const [activeTab, setActiveTab] = useState<DialogTab>(initialTab);
@@ -141,27 +156,40 @@ function AgentConnectPanelBase({
 
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
 
+  // Copy to the clipboard, or, where the page has no clipboard (plain http on
+  // a LAN address) or the write is refused, say so and select the text so
+  // Ctrl+C works.
+  const copyOrSelect = useCallback(
+    (text: string, source: "code" | "install", onCopied: () => void) => {
+      const fail = () => {
+        toast(t("pairing.copyFailed"), "error");
+        selectCopySource(source);
+      };
+      const clipboard = typeof navigator !== "undefined" ? navigator.clipboard : undefined;
+      if (!clipboard?.writeText) {
+        fail();
+        return;
+      }
+      clipboard.writeText(text).then(onCopied, fail);
+    },
+    [t, toast],
+  );
+
   const handleCopyCode = useCallback(() => {
     if (!flow.preGenCode) return;
-    navigator.clipboard
-      .writeText(flow.preGenCode)
-      .then(() => {
-        setCopiedCode(true);
-        setTimeout(() => setCopiedCode(false), 2000);
-      })
-      .catch(() => {});
-  }, [flow.preGenCode]);
+    copyOrSelect(flow.preGenCode, "code", () => {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    });
+  }, [copyOrSelect, flow.preGenCode]);
 
   const handleCopyInstall = useCallback(() => {
     if (!flow.preGenCode) return;
-    navigator.clipboard
-      .writeText(buildInstallCommand(flow.preGenCode))
-      .then(() => {
-        setCopiedInstall(true);
-        setTimeout(() => setCopiedInstall(false), 2000);
-      })
-      .catch(() => {});
-  }, [flow.preGenCode]);
+    copyOrSelect(buildInstallCommand(flow.preGenCode), "install", () => {
+      setCopiedInstall(true);
+      setTimeout(() => setCopiedInstall(false), 2000);
+    });
+  }, [copyOrSelect, flow.preGenCode]);
 
   return (
     <>

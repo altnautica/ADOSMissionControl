@@ -18,17 +18,14 @@
  */
 
 import { useTranslations } from "next-intl";
-import { CornerDownRight, Wifi } from "lucide-react";
+import { CornerDownRight } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import { agentEffProfile, NODE_ACCENT_VAR, swatchVar, tintStyle } from "@/lib/nodes/node-profile";
+import { agentEffProfile } from "@/lib/nodes/node-profile";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
-import { NodeGlyph } from "@/components/command/nodes/node-glyph";
+import { NodeTile } from "@/components/command/nodes/NodeTile";
 import { NodeBadgeSet } from "@/components/command/nodes/NodeBadgeSet";
 import {
-  STATUS_BORDER,
-  nodeStatusLevel,
   nodeSubtitle,
   nodeSubtitleLabels,
   profileTypeKey,
@@ -47,7 +44,6 @@ export function NodeIdentityCell({
 }) {
   const t = useTranslations("nodeConsole");
   const effProfile = agentEffProfile(node.profile);
-  const status = nodeStatusLevel(node);
   const typeLabel = t(`type.${profileTypeKey(effProfile)}`);
 
   // One node's personalization edit must not re-render every other row, so the
@@ -56,10 +52,6 @@ export function NodeIdentityCell({
     (s) => s.byNode[node.deviceId],
   );
   const displayName = personalization?.label?.trim() || node.name;
-  const tileCssVar = personalization?.color
-    ? swatchVar(personalization.color)
-    : NODE_ACCENT_VAR[effProfile];
-  const { backgroundColor } = tintStyle(tileCssVar, { bg: 14 });
 
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -74,39 +66,7 @@ export function NodeIdentityCell({
           <CornerDownRight size={13} />
         </span>
       )}
-      <div className="relative shrink-0">
-        <div
-          className={cn(
-            "flex h-7 w-7 items-center justify-center rounded border-2",
-            STATUS_BORDER[status],
-          )}
-          style={{ backgroundColor }}
-          title={typeLabel}
-        >
-          {personalization?.icon ? (
-            <span
-              className="text-[10px] font-semibold leading-none"
-              style={{ color: `var(${tileCssVar})` }}
-            >
-              {personalization.icon}
-            </span>
-          ) : (
-            <NodeGlyph
-              profile={effProfile}
-              frameType={node.frameType}
-              size={14}
-            />
-          )}
-        </div>
-        {node.isLocal && (
-          <span
-            className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-bg-secondary text-accent-primary"
-            title="LAN"
-          >
-            <Wifi size={7} />
-          </span>
-        )}
-      </div>
+      <NodeTile node={node} title={typeLabel} />
 
       <div className="min-w-0">
         <button

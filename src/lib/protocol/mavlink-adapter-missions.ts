@@ -6,7 +6,7 @@
  * @module protocol/mavlink-adapter-missions
  */
 
-import type { Transport, CommandResult, MissionItem, FirmwareHandler, FenceElement, RallyPointItem } from './types'
+import type { Transport, CommandResult, MissionItem, FirmwareHandler, FenceElement, RallyPointItem, MissionUploadProgressCallback } from './types'
 import {
   encodeMissionCount, encodeMissionRequestList, encodeMissionClearAll,
   encodeMissionRequestInt,
@@ -14,6 +14,7 @@ import {
 } from './encoders'
 import { encodeFenceMissionItems, type FenceMissionItem } from './fence-mission-codec'
 import { createDeadline, createUploadDeadline, sendOpening, type TransferDeadline } from './mission-transfer-deadline'
+import { MISSION_TRANSFER_NOT_CONNECTED, MISSION_TRANSFER_STALLED } from './mission-result'
 
 /**
  * What every upload tracks: the items it sends and the highest seq the
@@ -29,6 +30,8 @@ export interface MissionUploadState extends TransferDeadline, UploadProgress {
   items: MissionItem[]
   resolve: (result: CommandResult) => void
   reject: (err: Error) => void
+  /** Told the number of items sent so far each time the vehicle asks for one. */
+  onProgress?: MissionUploadProgressCallback
 }
 
 /**
@@ -149,12 +152,12 @@ export function cancelMissionTransfers(ctx: MissionContext, reason: string): voi
   if (fenceDownload) { fenceDownload.stop(); fenceDownload.reject(err) }
 }
 
-export function uploadMission(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
-  return serialized(ctx, 0, () => startMissionUpload(ctx, items))
+export function uploadMission(ctx: MissionContext, items: MissionItem[], onProgress?: MissionUploadProgressCallback): Promise<CommandResult> {
+  return serialized(ctx, 0, () => startMissionUpload(ctx, items, onProgress))
 }
 
-async function startMissionUpload(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
-  if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
+async function startMissionUpload(ctx: MissionContext, items: MissionItem[], onProgress?: MissionUploadProgressCallback): Promise<CommandResult> {
+  if (!ctx.transport?.isConnected) return { success: false, resultCode: MISSION_TRANSFER_NOT_CONNECTED, message: 'Not connected' }
 
   const { promise, resolve, reject } = Promise.withResolvers<CommandResult>()
 
@@ -165,7 +168,7 @@ async function startMissionUpload(ctx: MissionContext, items: MissionItem[]): Pr
   const onIdle = () => {
     if (ctx.missionUpload !== state) return
     ctx.missionUpload = null
-    resolve({ success: false, resultCode: -1, message: 'Mission upload stalled: flight controller stopped requesting items' })
+    resolve({ success: false, resultCode: MISSION_TRANSFER_STALLED, message: 'Mission upload stalled: flight controller stopped requesting items' })
   }
   const sendCount = () => ctx.transport?.send(encodeMissionCount(ctx.targetSysId, ctx.targetCompId, items.length, ctx.sysId, ctx.compId))
   const onSendError = (err: Error) => {
@@ -175,7 +178,7 @@ async function startMissionUpload(ctx: MissionContext, items: MissionItem[]): Pr
   }
   const state: MissionUploadState = Object.assign(
     createUploadDeadline(onIdle, sendCount, () => ctx.missionUpload === state, onSendError),
-    { items, resolve, reject, highestRequested: -1 },
+    { items, resolve, reject, highestRequested: -1, onProgress },
   )
   ctx.missionUpload = state
   sendOpening(state, sendCount, onSendError)

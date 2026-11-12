@@ -8,6 +8,7 @@ import {
   type BridgeTokenValidatorOptions,
 } from "@/lib/plugins/bridge";
 import { isDemoMode } from "@/lib/utils";
+import { acquireAgentStateFeed } from "@/lib/plugins/agent-state-feed";
 import {
   agentStateOrigin,
   isReservedEventTopic,
@@ -17,7 +18,12 @@ import {
   pluginConfigKey,
   usePluginConfigCache,
 } from "@/lib/plugins/config-cache";
+import {
+  PLUGIN_CAMERAS_EVENT,
+  usePluginCameraNames,
+} from "@/lib/plugins/use-plugin-camera-names";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 
 import { useHostThemeVars } from "./host-theme-vars";
@@ -38,8 +44,8 @@ interface PluginIframeHostProps {
   /** Width/height controlled by the parent slot; iframe fills its box. */
   className?: string;
   /**
-   * Optional drone id the iframe is bound to: its config is read from and
-   * its agent-published state forwarded for this drone.
+   * Optional drone id the iframe is bound to: its config is read from, and
+   * its agent-published state and camera names forwarded for, this drone.
    */
   agentId?: string | null;
   /**
@@ -323,18 +329,24 @@ export function PluginIframeHost({
     };
   }, [knownConfig]);
 
-  // Forward this plugin's own agent-published state (republished on the bus
-  // by the state egress under the plugin's agent-state origin for this drone)
-  // as host events whose method is the topic, which is what the SDK's
-  // `ctx.events.subscribe(topic)` listens for. Only this plugin's own state on
-  // this drone reaches it, so no grant is needed; host-reserved namespaces are
+  // Forward this plugin's own agent-published state on this drone as host
+  // events whose method is the topic, which is what the SDK's
+  // `ctx.events.subscribe(topic)` listens for. The host holds the node's
+  // agent-state feed while the frame is mounted, so the state arrives however
+  // the node is reached (its fresh heartbeat slice when signed in, the same
+  // source the native HUD reads; else the node itself), each report once with
+  // the agent's report time on it. The latest report per topic is posted
+  // again when the frame document loads, so a report that arrived before the
+  // document was ready is not lost; it carries its own time, so the plugin
+  // does not take it for a new one. Only this plugin's own state on this
+  // drone reaches it, so no grant is needed; host-reserved namespaces are
   // never forwarded so a state topic cannot pose as a host push.
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe || !agentId) return;
     const origin = agentStateOrigin(pluginId, agentId);
-    return subscribePluginEvent("*", pluginId, (payload, topic, from) => {
-      if (from !== origin || isReservedEventTopic(topic)) return;
+    const latest = new Map<string, unknown>();
+    const post = (topic: string, payload: unknown) => {
       iframe.contentWindow?.postMessage(
         {
           id: "state-" + Date.now(),
@@ -346,8 +358,52 @@ export function PluginIframeHost({
         },
         "*",
       );
+    };
+    const off = subscribePluginEvent("*", pluginId, (payload, topic, from) => {
+      if (from !== origin || isReservedEventTopic(topic)) return;
+      latest.set(topic, payload);
+      post(topic, payload);
     });
+    const replay = () => {
+      for (const [topic, payload] of latest) post(topic, payload);
+    };
+    iframe.addEventListener("load", replay);
+    const release = acquireAgentStateFeed(pluginId, deviceIdFromNodeId(agentId) ?? agentId);
+    return () => {
+      off();
+      release();
+      iframe.removeEventListener("load", replay);
+    };
   }, [pluginId, agentId]);
+
+  // The node's camera display names, so a plugin that holds a camera by id
+  // can show the operator's name for it. Posted on load and on every change,
+  // like the config; nothing is sent while the roster is unknown.
+  const cameraNames = usePluginCameraNames(
+    agentId ? (deviceIdFromNodeId(agentId) ?? agentId) : null,
+  );
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !cameraNames) return;
+    const post = () => {
+      iframe.contentWindow?.postMessage(
+        {
+          id: "cameras-" + Date.now(),
+          type: "event",
+          method: PLUGIN_CAMERAS_EVENT,
+          capability: "",
+          args: cameraNames,
+          version: 1,
+        },
+        "*",
+      );
+    };
+    iframe.addEventListener("load", post);
+    post();
+    return () => {
+      iframe.removeEventListener("load", post);
+    };
+  }, [cameraNames]);
 
   // Stream the latest host event to the iframe (e.g. video-overlay host
   // props). Re-posts on every change and once on iframe load so an overlay

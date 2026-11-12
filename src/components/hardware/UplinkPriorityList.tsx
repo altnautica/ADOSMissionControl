@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { GripVertical } from "lucide-react";
@@ -43,6 +44,7 @@ export function UplinkPriorityList({
   labelFor,
   disabled,
 }: UplinkPriorityListProps) {
+  const tk = useTranslations("hardware.uplinkPriorityList");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
@@ -98,7 +100,7 @@ export function UplinkPriorityList({
   if (priority.length === 0) {
     return (
       <div className="rounded border border-dashed border-border-default/60 px-3 py-4 text-center text-xs text-text-tertiary">
-        No uplinks configured.
+        {tk("noUplinksConfigured")}
       </div>
     );
   }
@@ -141,7 +143,7 @@ export function UplinkPriorityList({
             </span>
             {isActive ? (
               <span className="rounded border border-status-success/40 bg-status-success/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-status-success">
-                Active
+                {tk("active")}
               </span>
             ) : null}
           </li>

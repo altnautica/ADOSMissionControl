@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Pencil, Trash2, MessageSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -16,6 +17,7 @@ interface ChangelogEntryProps {
 }
 
 export function ChangelogEntry({ entry, commentCount = 0, onEdit, onDelete }: ChangelogEntryProps) {
+  const tq = useTranslations("community.changelogEntry");
   const isAdmin = useIsAdmin();
   const locale = useSettingsStore((s) => s.locale);
   const displayTitle = entry.translations?.[locale]?.title ?? entry.title;
@@ -64,14 +66,14 @@ export function ChangelogEntry({ entry, commentCount = 0, onEdit, onDelete }: Ch
                 <button
                   onClick={() => onEdit(entry)}
                   className="text-text-tertiary hover:text-text-secondary transition-colors"
-                  title="Edit"
+                  title={tq("edit")}
                 >
                   <Pencil size={12} />
                 </button>
                 <button
                   onClick={() => onDelete(entry._id)}
                   className="text-text-tertiary hover:text-status-error transition-colors"
-                  title="Delete"
+                  title={tq("delete")}
                 >
                   <Trash2 size={12} />
                 </button>

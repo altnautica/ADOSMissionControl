@@ -2,11 +2,12 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Table, type Column } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { useHistoryStore } from "@/stores/history-store";
-import { formatDate, formatDuration } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { LinkUpPlaceholder } from "@/components/shared/link-up/LinkUpPlaceholder";
+import { FlightDuration, FlightStatusBadge } from "@/components/history/FlightStatus";
 import type { FlightRecord } from "@/lib/types";
 
 interface DroneFlightsTabProps {
@@ -15,14 +16,9 @@ interface DroneFlightsTabProps {
 
 type FlightRecordRow = FlightRecord & Record<string, unknown>;
 
-const statusVariant: Record<string, "success" | "warning" | "error"> = {
-  completed: "success",
-  aborted: "warning",
-  emergency: "error",
-};
-
 export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
   const t = useTranslations("droneDetail");
+  const router = useRouter();
 
   const columns: Column<FlightRecordRow>[] = useMemo(() => [
     {
@@ -43,7 +39,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
       width: "14%",
       render: (row) => (
         <span className="font-mono text-text-primary tabular-nums">
-          {formatDuration(row.duration)}
+          <FlightDuration record={row} />
         </span>
       ),
     },
@@ -75,9 +71,7 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
       sortable: true,
       width: "14%",
       render: (row) => (
-        <Badge variant={statusVariant[row.status] || "neutral"}>
-          {row.status}
-        </Badge>
+        <FlightStatusBadge status={row.status} />
       ),
     },
     {
@@ -114,6 +108,8 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
         columns={columns}
         data={flights as FlightRecordRow[]}
         rowKey={(row) => row.id}
+        // Opens the flight in Flight logs, with its detail panel open.
+        onRowClick={(row) => router.push(`/flight-logs?flight=${encodeURIComponent(row.id)}`)}
       />
     </div>
   );

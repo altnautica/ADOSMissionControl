@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { screen, cleanup } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../tests/helpers/intl-wrapper";
 import { CompassProgressDisplay, compassProgressEntries } from "../compass-display";
 
 afterEach(cleanup);

@@ -7,7 +7,7 @@
  */
 
 import type { TxMode } from "@/stores/input-store";
-import { isReservedGamepadButton } from "@/lib/skills/chord";
+import { isCockpitChordButton } from "@/lib/skills/chord";
 
 /**
  * Radial deadzone: the stick vector inside `dz` reads zero, outside it is
@@ -70,18 +70,23 @@ export function applyExpo(value: number, expo: number): number {
 }
 
 /**
+ * Buttons in the W3C standard mapping, PS (16) and touchpad (17) included.
+ * Every one reaches the input store; only the MANUAL_CONTROL mask stops at 16.
+ */
+const STANDARD_BUTTON_COUNT = 18;
+
+/**
  * Convert gamepad buttons to a boolean array for the input store.
  *
  * Each call returns its own array. Sharing one buffer would publish the same
  * reference on every frame, so a store subscriber comparing references would
  * never see a press, and a consumer holding a previous frame would find it
- * rewritten underneath. Sixteen booleans per frame is the same order as the
+ * rewritten underneath. Eighteen booleans per frame is the same order as the
  * axes array published alongside it.
  */
 export function buttonsToArray(buttons: readonly GamepadButton[]): boolean[] {
-  const out: boolean[] = new Array(16).fill(false);
-  const len = Math.min(buttons.length, 16);
-  for (let i = 0; i < len; i++) out[i] = buttons[i]?.pressed ?? false;
+  const out: boolean[] = new Array(Math.max(buttons.length, STANDARD_BUTTON_COUNT)).fill(false);
+  for (let i = 0; i < buttons.length; i++) out[i] = buttons[i]?.pressed ?? false;
   return out;
 }
 
@@ -92,12 +97,12 @@ export function getMappingForMode(mode: TxMode): GamepadMapping {
 
 /**
  * The MANUAL_CONTROL button bitmask for a button frame: the first 16 buttons,
- * minus the ones the cockpit reserves for its own controls.
+ * minus the cockpit's chord and menu buttons (`COCKPIT_GAMEPAD_BUTTON`).
  */
 export function manualControlButtonMask(buttons: readonly boolean[]): number {
   let bitmask = 0;
   for (let i = 0; i < Math.min(buttons.length, 16); i++) {
-    if (buttons[i] && !isReservedGamepadButton(i)) bitmask |= 1 << i;
+    if (buttons[i] && !isCockpitChordButton(i)) bitmask |= 1 << i;
   }
   return bitmask;
 }

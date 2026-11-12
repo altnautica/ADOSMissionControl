@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import type { PidAnalysisResult } from "@/lib/analysis/types";
@@ -38,12 +39,13 @@ function DeltaBadge({ before, after, label, lowerIsBetter = false }: { before: n
 }
 
 export function PidComparisonView({ before, current }: PidComparisonViewProps) {
+  const tm = useTranslations("fcPanels.pidComparisonView");
   if (!before) {
     return (
       <div className="border border-border-default bg-bg-secondary p-4 text-center">
-        <p className="text-xs text-text-secondary">No baseline saved yet</p>
+        <p className="text-xs text-text-secondary">{tm("noBaselineSavedYet")}</p>
         <p className="text-[10px] text-text-tertiary mt-1">
-          Save current analysis as baseline, then re-analyze after tuning changes
+          {tm("saveCurrentAnalysisAsBaseline")}
         </p>
       </div>
     );
@@ -52,42 +54,42 @@ export function PidComparisonView({ before, current }: PidComparisonViewProps) {
   return (
     <div className="border border-border-default bg-bg-secondary p-4 space-y-1">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-text-primary">Before vs After</span>
+        <span className="text-xs font-medium text-text-primary">{tm("beforeVsAfter")}</span>
         <div className="flex items-center gap-3 text-[9px] text-text-tertiary">
-          <span>Before</span>
-          <span>After</span>
+          <span>{tm("before")}</span>
+          <span>{tm("after")}</span>
         </div>
       </div>
 
       <DeltaBadge
         before={before.tuneScore}
         after={current.tuneScore}
-        label="Overall Score"
+        label={tm("overallScore")}
       />
       <DeltaBadge
         before={before.tracking.roll.score}
         after={current.tracking.roll.score}
-        label="Roll Tracking"
+        label={tm("rollTracking")}
       />
       <DeltaBadge
         before={before.tracking.pitch.score}
         after={current.tracking.pitch.score}
-        label="Pitch Tracking"
+        label={tm("pitchTracking")}
       />
       <DeltaBadge
         before={before.tracking.yaw.score}
         after={current.tracking.yaw.score}
-        label="Yaw Tracking"
+        label={tm("yawTracking")}
       />
       <DeltaBadge
         before={before.motors.healthScore}
         after={current.motors.healthScore}
-        label="Motor Health"
+        label={tm("motorHealth")}
       />
       <DeltaBadge
         before={before.issues.length}
         after={current.issues.length}
-        label="Issues (lower = better)"
+        label={tm("issuesLowerBetter")}
         lowerIsBetter
       />
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -15,6 +16,7 @@ import {
 import { DebugChannels } from "./debug-channels";
 
 export function DebugPanel() {
+  const tr = useTranslations("fcPanels.debugPanel");
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   // Every telemetry push bumps the version, however full the rings are; the
   // 1 Hz tick keeps the "Last Update" ages counting when messages stop.
@@ -81,31 +83,31 @@ export function DebugPanel() {
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <Bug size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Debug Values</span>
+        <span className="text-xs font-semibold text-text-primary">{tr("debugValues")}</span>
         <span className="text-[10px] text-text-tertiary font-mono">{values.size} value{values.size !== 1 ? "s" : ""}</span>
         <div className="flex-1" />
         <div className="flex items-center gap-0.5 bg-bg-tertiary p-0.5 rounded">
-          <button onClick={() => setView("table")} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer rounded transition-colors", view === "table" ? "bg-bg-secondary text-text-primary" : "text-text-tertiary hover:text-text-secondary")}><Table2 size={10} />Table</button>
-          <button onClick={() => setView("graph")} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer rounded transition-colors", view === "graph" ? "bg-bg-secondary text-text-primary" : "text-text-tertiary hover:text-text-secondary")}><BarChart3 size={10} />Graph</button>
+          <button onClick={() => setView("table")} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer rounded transition-colors", view === "table" ? "bg-bg-secondary text-text-primary" : "text-text-tertiary hover:text-text-secondary")}><Table2 size={10} />{tr("table")}</button>
+          <button onClick={() => setView("graph")} className={cn("flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer rounded transition-colors", view === "graph" ? "bg-bg-secondary text-text-primary" : "text-text-tertiary hover:text-text-secondary")}><BarChart3 size={10} />{tr("graph")}</button>
         </div>
-        <button onClick={() => exportCSV(values, channels.allHistory())} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Download size={10} />Export CSV</button>
-        <button onClick={clearAll} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Trash2 size={10} />Clear</button>
+        <button onClick={() => exportCSV(values, channels.allHistory())} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Download size={10} />{tr("exportCSV")}</button>
+        <button onClick={clearAll} disabled={values.size === 0} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-40 disabled:cursor-default"><Trash2 size={10} />{tr("clear")}</button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {values.size === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-6">
             <Bug size={24} className="text-text-tertiary" />
-            <span className="text-xs text-text-tertiary">No debug values received</span>
+            <span className="text-xs text-text-tertiary">{tr("noDebugValuesReceived")}</span>
             <span className="text-[10px] text-text-tertiary">{selectedDroneId ? "Waiting for NAMED_VALUE_FLOAT, NAMED_VALUE_INT, or DEBUG messages..." : "Connect a drone to see debug values"}</span>
           </div>
         ) : view === "table" ? (
           <div className="font-mono text-[10px]">
             <div className="flex items-center gap-0 px-4 py-1 border-b border-border-default bg-bg-tertiary text-text-tertiary sticky top-0 z-10">
-              <span className="w-[200px] shrink-0">Name</span>
-              <span className="w-[100px] shrink-0 text-right">Value</span>
-              <span className="w-[60px] shrink-0 text-center">Type</span>
-              <span className="w-[80px] shrink-0 text-right">Last Update</span>
+              <span className="w-[200px] shrink-0">{tr("name")}</span>
+              <span className="w-[100px] shrink-0 text-right">{tr("value")}</span>
+              <span className="w-[60px] shrink-0 text-center">{tr("type")}</span>
+              <span className="w-[80px] shrink-0 text-right">{tr("lastUpdate")}</span>
             </div>
             {sortedValues.map((dv) => {
               const ago = (now - dv.lastUpdate) / 1000;
@@ -135,7 +137,7 @@ export function DebugPanel() {
               </div>
             </div>
             {selectedGraphKeys.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-text-tertiary text-xs">Select values above to view graphs</div>
+              <div className="flex items-center justify-center py-12 text-text-tertiary text-xs">{tr("selectValuesAboveToView")}</div>
             ) : (
               <div className="space-y-3">
                 {selectedGraphKeys.map((key, idx) => {

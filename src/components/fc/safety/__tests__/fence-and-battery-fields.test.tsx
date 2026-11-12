@@ -55,7 +55,7 @@ function panelState() {
 vi.mock("@/hooks/use-panel-params", () => ({ usePanelParams: () => panelState() }));
 vi.mock("@/hooks/use-fc-panel-state", () => ({ useFcPanelState: () => panelState() }));
 vi.mock("@/hooks/use-param-panel-actions", () => ({
-  useParamPanelActions: () => ({ saving: false, save: vi.fn(), flash: vi.fn() }),
+  useParamPanelActions: () => ({ saving: false, flashing: false, save: vi.fn(), flash: vi.fn() }),
 }));
 
 const droneState = {
@@ -121,7 +121,7 @@ describe("PX4 geofence", () => {
     render(<GeofencePanel />);
 
     expect(screen.queryByRole("switch")).toBeNull();
-    expect(screen.getByText(/set in the Failsafe panel/)).toBeTruthy();
+    expect(screen.getByText("px4Note")).toBeTruthy();
     expect(setLocalValue).not.toHaveBeenCalled();
   });
 });

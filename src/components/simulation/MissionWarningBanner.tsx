@@ -2,12 +2,12 @@
 
 /**
  * @module MissionWarningBanner
- * @description Top-center mission-validation banner shown inside the 3D
- * simulation viewer. Surfaces mission errors/warnings with an "Edit Plan" jump
+ * @description Top mission-validation banner shown inside the 3D simulation
+ * viewer, centred in the space between the Map panel and the HUD. Names the
+ * count and the first issue ("+n more" for the rest), with an "Edit Plan" jump
  * and a dismiss control. Self-contained: it computes validation from the shared
  * mission waypoints (identical options to the Plan panel) so it can mount inside
- * the map-view container — centering over the map, not the whole page — without
- * threading validation state down from the page.
+ * the map-view container without threading validation state down from the page.
  * @license GPL-3.0-only
  */
 
@@ -22,6 +22,7 @@ import { MAP_OVERLAY_Z } from "@/lib/map-overlay-z";
 
 export function MissionWarningBanner({ waypoints }: { waypoints: Waypoint[] }) {
   const tSim = useTranslations("simulate");
+  const tIssue = useTranslations("planner.issue");
   const router = useRouter();
   const validationOptions = useValidationOptions();
   // Track which waypoints array the banner was dismissed for. When the mission
@@ -38,36 +39,47 @@ export function MissionWarningBanner({ waypoints }: { waypoints: Waypoint[] }) {
 
   if (!validation || dismissed) return null;
   const hasErrors = validation.errors.length > 0;
-  const hasWarnings = validation.warnings.length > 0;
-  if (!hasErrors && !hasWarnings) return null;
+  const issues = hasErrors ? validation.errors : validation.warnings;
+  if (issues.length === 0) return null;
+  const summary = hasErrors
+    ? tSim("missionHasErrors", { count: validation.errors.length })
+    : tSim("missionHasWarnings", { count: validation.warnings.length });
+  const first = tIssue(issues[0].text.key, issues[0].text.params);
+  const detail = issues.length > 1
+    ? `${first} ${tSim("moreIssues", { count: issues.length - 1 })}`
+    : first;
 
   return (
+    // A strip across the top that keeps clear of the Map panel (top-left) and
+    // the HUD (top-right), so the banner never covers either at narrow widths.
     <div
-      className="absolute top-4 left-1/2 -translate-x-1/2 max-w-md"
+      data-testid="mission-warning-banner"
+      className="absolute top-4 inset-x-0 flex justify-center pl-[19rem] pr-52 pointer-events-none"
       style={{ zIndex: MAP_OVERLAY_Z.popover }}
     >
       <div
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg border backdrop-blur-md text-xs font-mono ${
+        className={`pointer-events-auto flex min-w-0 max-w-md items-center gap-2 px-4 py-2 rounded-lg border backdrop-blur-md text-xs font-mono ${
           hasErrors
             ? "bg-status-error/15 border-status-error/30 text-status-error"
             : "bg-status-warning/15 border-status-warning/30 text-status-warning"
         }`}
       >
         <AlertTriangle size={14} className="shrink-0" />
-        <span className="flex-1">
-          {hasErrors
-            ? tSim("missionHasErrors", { count: validation.errors.length })
-            : tSim("missionHasWarnings", { count: validation.warnings.length })}
+        <span className="flex-1 min-w-0" title={detail}>
+          <span className="block">{summary}</span>
+          <span className="block truncate opacity-80">{detail}</span>
         </span>
         <button
           onClick={() => router.push("/plan")}
-          className="text-accent-primary hover:text-accent-primary/80 whitespace-nowrap cursor-pointer"
+          className="min-h-8 px-1 inline-flex items-center text-accent-primary hover:text-accent-primary/80 whitespace-nowrap cursor-pointer"
         >
           {tSim("editPlan")}
         </button>
         <button
           onClick={() => setDismissedFor(waypoints)}
-          className="text-text-tertiary hover:text-text-primary cursor-pointer"
+          aria-label={tSim("dismissWarning")}
+          title={tSim("dismissWarning")}
+          className="min-h-8 min-w-8 inline-flex items-center justify-center text-text-tertiary hover:text-text-primary cursor-pointer"
         >
           <X size={12} />
         </button>

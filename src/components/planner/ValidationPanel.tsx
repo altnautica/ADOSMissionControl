@@ -11,11 +11,8 @@ import { useTranslations } from "next-intl";
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import type { Waypoint } from "@/lib/types";
 import { useValidationOptions } from "@/hooks/use-validation-options";
-import {
-  validateMission,
-  type ValidationResult,
-  type ValidationIssue,
-} from "@/lib/validation/mission-validator";
+import { validateMission } from "@/lib/validation/mission-validator";
+import type { ValidationIssue, ValidationResult } from "@/lib/validation/issue-types";
 import { MissionAdvisories } from "./MissionAdvisories";
 
 interface ValidationPanelProps {
@@ -135,6 +132,7 @@ function IssueRow({
   issue: ValidationIssue;
   onClick: (issue: ValidationIssue) => void;
 }) {
+  const tIssue = useTranslations("planner.issue");
   const isError = issue.severity === "blocking";
 
   return (
@@ -155,7 +153,7 @@ function IssueRow({
           isError ? "text-status-error" : "text-status-warning"
         }`}
       >
-        {issue.message}
+        {tIssue(issue.text.key, issue.text.params)}
       </span>
     </button>
   );

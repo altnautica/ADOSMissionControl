@@ -59,6 +59,7 @@ const IDLE_HINTS: Record<string, string> = {
 };
 
 export function CliPanel() {
+  const tr = useTranslations("fcPanels.cliPanel");
   const t = useTranslations("telemetryStrip");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
@@ -183,7 +184,7 @@ export function CliPanel() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Terminal size={14} className="text-accent-primary" />
-          <h1 className="text-lg font-display font-semibold text-text-primary">FC Console</h1>
+          <h1 className="text-lg font-display font-semibold text-text-primary">{tr("fcConsole")}</h1>
           <span
             className={cn(
               "text-[10px] font-mono px-1.5 py-0.5",
@@ -195,10 +196,10 @@ export function CliPanel() {
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" icon={<Download size={12} />} onClick={exportLog} disabled={count === 0}>
-            Export
+            {tr("export")}
           </Button>
           <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={clearLog}>
-            Clear
+            {tr("clear")}
           </Button>
         </div>
       </div>
@@ -262,7 +263,7 @@ export function CliPanel() {
           />
         </div>
         <Button variant="secondary" size="md" type="submit" disabled={!connected}>
-          Send
+          {tr("send")}
         </Button>
       </form>
     </div>

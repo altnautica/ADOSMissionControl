@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Sailboat } from "lucide-react";
 import { ParamFieldsPanel, type ParamSection } from "../shared/ParamFieldsPanel";
 
@@ -30,11 +31,12 @@ const SECTIONS: ParamSection[] = [
 ];
 
 export function SailboatPanel() {
+  const tr = useTranslations("fcPanels.sailboatPanel");
   return (
     <ParamFieldsPanel
       panelId="sailboat"
-      title="Sailboat"
-      subtitle="Sail control and wind-vane setup for a sailing vehicle"
+      title={tr("sailboat")}
+      subtitle={tr("sailControlAndWindVane")}
       icon={<Sailboat size={16} />}
       sectionIcon={<Sailboat size={14} />}
       sections={SECTIONS}

@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Cpu, Save, HardDrive, RotateCw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
   SCR_ENABLE_VALUES,
   SCR_DEBUG_OPTS_BITS,
 } from "./scripts-constants";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const ENABLE_OPTIONS: SelectOption[] = [...SCR_ENABLE_VALUES.entries()].map(
   ([code, label]) => ({ value: String(code), label: `${code}: ${label}` }),
@@ -39,6 +41,7 @@ const PARAM_NAMES = [...SCR_PARAM_NAMES];
 const OPTIONAL_NAMES = [...SCR_OPTIONAL_PARAM_NAMES];
 
 export function ScrConfigCard() {
+  const tk = useTranslations("dashboard.scrConfigCard");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const [debugOpen, setDebugOpen] = useState(false);
@@ -62,7 +65,7 @@ export function ScrConfigCard() {
     refresh,
     setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } =
+  const { saving, save: handleSave, flashing, flash: handleFlash } =
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
@@ -80,12 +83,12 @@ export function ScrConfigCard() {
     try {
       const result = await protocol.reboot();
       if (result.success) {
-        toast("Reboot command sent to the flight controller", "info");
+        toast(tk("rebootCommandSentToThe"), "info");
       } else {
         toast(result.message || "The flight controller refused the reboot command", "error");
       }
     } catch {
-      toast("Failed to send reboot command", "error");
+      toast(tk("failedToSendRebootCommand"), "error");
     } finally {
       setRebooting(false);
     }
@@ -95,8 +98,8 @@ export function ScrConfigCard() {
     <ArmedWarningBanner>
       <div className="border border-border-default bg-bg-secondary p-4 space-y-4">
         <PanelHeader
-          title="Scripting Engine"
-          subtitle="Enable the onboard Lua VM and size its resources"
+          title={tk("scriptingEngine")}
+          subtitle={tk("enableTheOnboardLuaVM")}
           icon={<Cpu size={16} />}
           loading={loading}
           loadProgress={loadProgress}
@@ -109,7 +112,7 @@ export function ScrConfigCard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Select
-            label="Scripting"
+            label={tk("scripting")}
             options={ENABLE_OPTIONS}
             value={String(p("SCR_ENABLE"))}
             onChange={(v) => setLocalValue("SCR_ENABLE", Number(v) || 0)}
@@ -126,7 +129,7 @@ export function ScrConfigCard() {
             </Button>
           </div>
           <Input
-            label="Heap Size"
+            label={tk("heapSize")}
             type="number"
             step="1024"
             min="0"
@@ -135,7 +138,7 @@ export function ScrConfigCard() {
             onChange={(e) => setLocalValue("SCR_HEAP_SIZE", Number(e.target.value) || 0)}
           />
           <Input
-            label="VM Instruction Count"
+            label={tk("vmInstructionCount")}
             type="number"
             step="1000"
             min="0"
@@ -160,16 +163,16 @@ export function ScrConfigCard() {
             loading={saving}
             onClick={handleSave}
           >
-            Save to Flight Controller
+            <SaveBarLabel k="saveToFc" />
           </Button>
           {hasRamWrites && (
             <Button
               variant="secondary"
               size="md"
               icon={<HardDrive size={14} />}
-              onClick={handleFlash}
+              loading={flashing} onClick={handleFlash}
             >
-              Write to Flash
+              <SaveBarLabel k="writeToFlash" />
             </Button>
           )}
           <Button
@@ -180,10 +183,10 @@ export function ScrConfigCard() {
             loading={rebooting}
             onClick={handleReboot}
           >
-            Reboot FC
+            {tk("rebootFC")}
           </Button>
           {hasDirty && connected && (
-            <span className="text-[10px] text-status-warning">Unsaved changes</span>
+            <span className="text-[10px] text-status-warning"><SaveBarLabel k="unsavedChanges" /></span>
           )}
           {!scriptingOn && connected && hasLoaded && (
             <span className="text-[10px] text-status-warning">

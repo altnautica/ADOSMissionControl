@@ -126,24 +126,24 @@ export const DEMO_AGENTS: PairedDrone[] = [
 const DEMO_LAN_NODES: Array<Omit<LocalNode, "pairedAt" | "lastSeenAt">> = [
   {
     deviceId: DEMO_LAN_NODE_IDS[0],
-    name: "Foxtrot-06",
+    name: "Delta-04",
     hostname: "http://192.168.1.50:8080",
     apiKey: "demo",
     profile: "drone",
     board: "Reference Companion",
     version: AGENT_VERSION,
-    mdnsHost: "foxtrot-06.local",
+    mdnsHost: "delta-04.local",
     ipv4: "192.168.1.50",
   },
   {
     deviceId: DEMO_LAN_NODE_IDS[1],
-    name: "Mike-13",
+    name: "Golf-07",
     hostname: "http://192.168.1.51:8080",
     apiKey: "demo",
     profile: "drone",
     board: "Reference Companion",
     version: AGENT_VERSION,
-    mdnsHost: "mike-13.local",
+    mdnsHost: "golf-07.local",
     ipv4: "192.168.1.51",
   },
 ];
@@ -282,27 +282,10 @@ export function buildDemoStatus(
         rfUnverified: false,
         paired: true,
       },
-      // The WFB peers this ground node relays. romeo-15 + whiskey-23 are NOT
-      // otherwise paired, so each transitively enrolls as its own "linked via
-      // WFB through <GS>" node (romeo-15 fresh + strong = a verified funneled
-      // feed; whiskey-23 old + weak = an honest down relay). alpha-1 IS also
-      // cloud-paired, so it keeps its direct reach and shows the WFB path as a
-      // secondary provenance chip.
+      // The WFB peers this ground node relays. alpha-1 is also cloud-paired,
+      // so it keeps its direct reach and shows the WFB path as a secondary
+      // provenance chip (and a row on the ground station's carried-drones tab).
       linkedPeers: [
-        {
-          deviceId: "romeo-15",
-          role: "drone",
-          rssiDbm: -63,
-          channel: 149,
-          seenAtUnix: Math.floor(now / 1000),
-        },
-        {
-          deviceId: "whiskey-23",
-          role: "drone",
-          rssiDbm: -90,
-          channel: 149,
-          seenAtUnix: Math.floor((now - 180_000) / 1000),
-        },
         {
           deviceId: "alpha-1",
           role: "drone",

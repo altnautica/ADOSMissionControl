@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { useSensorHealth } from "@/hooks/use-sensor-health";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { SensorHealthGrid } from "@/components/indicators/SensorHealthGrid";
 import { EkfStatusBars } from "@/components/indicators/EkfStatusBars";
 import { VibrationGauges } from "@/components/indicators/VibrationGauges";
@@ -14,11 +13,6 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockStore } from "@/stores/clock-store";
 import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import { isFresh } from "@/lib/telemetry/freshness";
-import {
-  useVisionChannel,
-  usePrearmBufferStore,
-  type PrearmChannelState,
-} from "@/stores/prearm-buffer-store";
 import { decodeArmingFlags } from "@/lib/protocol/msp/inav-arming-flags";
 import { decodeBetaflightArmingFlags } from "@/lib/protocol/msp/betaflight-arming-flags";
 import {
@@ -26,11 +20,6 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronRight,
-  Check,
-  X,
-  AlertTriangle,
-  Eye,
-  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FcSection } from "@/components/fc/shared/FcSection";
@@ -38,7 +27,7 @@ import { FcSection } from "@/components/fc/shared/FcSection";
 // ── Component ────────────────────────────────────────────────
 
 export function PreArmPanel() {
-  const t = useTranslations("navigation.panel");
+  const tk = useTranslations("fcPanels.preArmPanel");
   const { healthyCount, presentCount: totalPresent } = useSensorHealth();
   const protocol = useDroneManager(selectSelectedProtocol);
   const firmwareType = protocol?.getVehicleInfo()?.firmwareType;
@@ -70,23 +59,6 @@ export function PreArmPanel() {
         ? decodeBetaflightArmingFlags(armingFlags, armingFlagCount ?? undefined)
         : decodeArmingFlags(armingFlags);
 
-  // Vision-navigation pre-arm channel. The drone-manager telemetry
-  // bridge fills this in once the vision-nav plugin's emitter ships
-  // (companion-state, EKF origin acks, navigation events). Until then
-  // the row stays in the "unknown" snapshot we initialize the store
-  // with, and the gate below keeps it hidden anyway.
-  const vision: PrearmChannelState = usePrearmBufferStore(useVisionChannel);
-
-  // Show the vision row only when the agent advertises a vision-navigation
-  // capability (optical flow or VIO). Drones without either supported
-  // never see the row. A future refinement can narrow this to the active
-  // EKF source set once that field is published, but the capability gate
-  // already keeps non-vision drones clean.
-  const navigation = useAgentCapabilitiesStore((s) => s.navigation);
-  const visionMode = Boolean(
-    navigation?.opticalFlowSupported || navigation?.vioSupported,
-  );
-
   const [showAllSensors, setShowAllSensors] = useState(false);
   const [showArmingBlockers, setShowArmingBlockers] = useState(true);
 
@@ -113,15 +85,15 @@ export function PreArmPanel() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-display font-semibold text-text-primary">Health Check</h1>
+            <h1 className="text-lg font-display font-semibold text-text-primary">{tk("healthCheck")}</h1>
             <p className="text-xs text-text-tertiary mt-0.5">
-              Sensor status, EKF, vibration, GPS, and pre-arm checks
+              {tk("sensorStatusEKFVibrationGPS")}
             </p>
           </div>
         </div>
 
         {/* Sensor Status */}
-        <FcSection icon={<Activity size={14} />} title="Sensor Status" description={`${healthyCount}/${totalPresent} sensors healthy`}>
+        <FcSection icon={<Activity size={14} />} title={tk("sensorStatus")} description={`${healthyCount}/${totalPresent} sensors healthy`}>
           <SensorHealthGrid showAll={showAllSensors} />
           <button
             onClick={() => setShowAllSensors(!showAllSensors)}
@@ -132,34 +104,24 @@ export function PreArmPanel() {
         </FcSection>
 
         {/* EKF Status */}
-        <FcSection icon={<Activity size={14} />} title="EKF Status" description="Extended Kalman Filter variance">
+        <FcSection icon={<Activity size={14} />} title={tk("ekfStatus")} description={tk("extendedKalmanFilterVariance")}>
           <EkfStatusBars />
         </FcSection>
 
         {/* Vibration */}
-        <FcSection icon={<Activity size={14} />} title="Vibration" description="Accelerometer vibration levels (m/s/s)">
+        <FcSection icon={<Activity size={14} />} title={tk("vibration")} description={tk("accelerometerVibrationLevelsMS")}>
           <VibrationGauges />
         </FcSection>
 
         {/* GPS */}
-        <FcSection icon={<Activity size={14} />} title="GPS" description="Position fix and satellite info">
+        <FcSection icon={<Activity size={14} />} title="GPS" description={tk("positionFixAndSatelliteInfo")}>
           <GpsSkyView />
         </FcSection>
 
         {/* Pre-Arm Checks */}
-        <FcSection icon={<ShieldCheck size={14} />} title="Pre-Arm Checks" description="Flight readiness verification">
+        <FcSection icon={<ShieldCheck size={14} />} title={tk("preArmChecks")} description={tk("flightReadinessVerification")}>
           <PreArmChecks />
         </FcSection>
-
-        {/* Vision navigation channel. Visible only when the EKF is on
-            a vision-bound source set (VIO or OF). The channel snapshot
-            is populated by the telemetry bridge from the vision-nav
-            plugin's companion-state and navigation events. */}
-        {visionMode && (
-          <FcSection icon={<Eye size={14} />} title={t("title")} description="Companion process and EKF origin">
-            <VisionChannelRow state={vision} />
-          </FcSection>
-        )}
 
         {/* MSP arming flags. Shown for Betaflight and iNav (each decoded with
             its own flag map). */}
@@ -201,7 +163,7 @@ export function PreArmPanel() {
               <div className="mt-3 space-y-2">
                 {decodedFlags.blockers.length > 0 && (
                   <div>
-                    <p className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Blockers</p>
+                    <p className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">{tk("blockers")}</p>
                     <ul className="space-y-0.5">
                       {decodedFlags.blockers.map((b) => (
                         <li key={b} className="flex items-center gap-1.5 text-[11px] text-status-error">
@@ -214,7 +176,7 @@ export function PreArmPanel() {
                 )}
                 {decodedFlags.notes.length > 0 && (
                   <div>
-                    <p className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Notes</p>
+                    <p className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">{tk("notes")}</p>
                     <ul className="space-y-0.5">
                       {decodedFlags.notes.map((n) => (
                         <li key={n} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
@@ -226,57 +188,12 @@ export function PreArmPanel() {
                   </div>
                 )}
                 {decodedFlags.blockers.length === 0 && decodedFlags.notes.length === 0 && (
-                  <p className="text-[11px] text-text-tertiary">No active flags.</p>
+                  <p className="text-[11px] text-text-tertiary">{tk("noActiveFlags")}</p>
                 )}
               </div>
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Sub-components ────────────────────────────────────────────
-
-function VisionChannelRow({ state }: { state: PrearmChannelState }) {
-  // Default copy for the "ready" snapshot — bridge may override via
-  // state.reason for status-specific messaging.
-  const fallbackCopy =
-    state.status === "ok"
-      ? "Vision navigation: ready"
-      : state.status === "unknown"
-        ? "Vision navigation: waiting for companion heartbeat"
-        : "Vision navigation: status pending";
-
-  const copy = state.reason ?? fallbackCopy;
-
-  const iconSize = 12;
-  const iconNode =
-    state.status === "ok" ? (
-      <Check size={iconSize} className="text-status-success shrink-0 mt-0.5" />
-    ) : state.status === "blocking" ? (
-      <X size={iconSize} className="text-status-error shrink-0 mt-0.5" />
-    ) : state.status === "warning" ? (
-      <AlertTriangle size={iconSize} className="text-status-warning shrink-0 mt-0.5" />
-    ) : (
-      <HelpCircle size={iconSize} className="text-text-tertiary shrink-0 mt-0.5" />
-    );
-
-  const textTone =
-    state.status === "blocking"
-      ? "text-status-error"
-      : state.status === "warning"
-        ? "text-status-warning"
-        : state.status === "ok"
-          ? "text-status-success"
-          : "text-text-tertiary";
-
-  return (
-    <div className="flex items-start gap-1.5 text-[11px]">
-      {iconNode}
-      <div className="flex-1">
-        <span className={cn("font-medium", textTone)}>{copy}</span>
       </div>
     </div>
   );

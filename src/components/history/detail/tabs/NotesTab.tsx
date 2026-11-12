@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ const SAVE_DELAY_MS = 600;
 type EditableField = "customName" | "notes" | "tags" | "favorite";
 
 function NotesTabInner({ record }: NotesTabProps) {
+  const tq = useTranslations("history.notesTab");
   const [customName, setCustomName] = useState(record.customName ?? "");
   const [notes, setNotes] = useState(record.notes ?? "");
   const [tagsText, setTagsText] = useState((record.tags ?? []).join(", "));
@@ -66,29 +68,29 @@ function NotesTabInner({ record }: NotesTabProps) {
     <div className="flex flex-col gap-3">
       {sealed && (
         <div className="rounded border border-status-success bg-status-success/10 px-3 py-2 text-[10px] text-text-secondary">
-          This record is sealed. Unseal from the panel header to edit the name, tags, or notes.
+          {tq("thisRecordIsSealedUnseal")}
         </div>
       )}
-      <Card title="Name & Tags" padding={true}>
+      <Card title={tq("nameTags")} padding={true}>
         <div className="flex flex-col gap-2">
           <Input
-            label="Custom name"
+            label={tq("customName")}
             value={customName}
             onChange={(e) => {
               setCustomName(e.target.value);
               markDirty("customName");
             }}
-            placeholder="Field A — North survey"
+            placeholder={tq("fieldANorthSurvey")}
             disabled={sealed}
           />
           <Input
-            label="Tags (comma separated)"
+            label={tq("tagsCommaSeparated")}
             value={tagsText}
             onChange={(e) => {
               setTagsText(e.target.value);
               markDirty("tags");
             }}
-            placeholder="survey, field-a, test"
+            placeholder={tq("surveyFieldATest")}
             disabled={sealed}
           />
           <div className="flex items-center gap-2 mt-1">
@@ -108,14 +110,14 @@ function NotesTabInner({ record }: NotesTabProps) {
         </div>
       </Card>
 
-      <Card title="Notes (markdown)" padding={true}>
+      <Card title={tq("notesMarkdown")} padding={true}>
         <textarea
           value={notes}
           onChange={(e) => {
             setNotes(e.target.value);
             markDirty("notes");
           }}
-          placeholder="Add observations, incidents, or context for this flight…"
+          placeholder={tq("addObservationsIncidentsOrContext")}
           rows={8}
           disabled={sealed}
           className="w-full bg-bg-tertiary border border-border-default text-xs text-text-primary p-2 font-mono resize-y focus:outline-none focus:border-accent-primary disabled:opacity-50 disabled:cursor-not-allowed"

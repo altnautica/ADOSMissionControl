@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 /**
  * @module MultiSeriesChart
  * @description Reusable inline SVG multi-series time-series chart.
@@ -63,6 +64,7 @@ export function MultiSeriesChart({
   fixedYMax?: number;
   centerLine?: number;
 }) {
+  const tk = useTranslations("shared.multiSeriesChart");
   // Find global time range across all series
   const allPoints = series.flatMap((s) => s.data);
   const valued = allPoints.flatMap((d) => (d.v === null ? [] : [d.v]));
@@ -73,7 +75,7 @@ export function MultiSeriesChart({
         style={{ width, height }}
       >
         <span className="text-[10px] text-text-tertiary">
-          Waiting for data...
+          {tk("waitingForData")}
         </span>
       </div>
     );

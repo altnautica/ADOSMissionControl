@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { downloadBlob } from "@/lib/download";
 
 export interface DebugValue {
@@ -37,10 +38,11 @@ export function MiniChart({
   width?: number;
   height?: number;
 }) {
+  const tr = useTranslations("fcPanels.debug-helpers");
   if (data.length < 2) {
     return (
       <div className="flex items-center justify-center bg-bg-tertiary/30 rounded" style={{ width, height }}>
-        <span className="text-[10px] text-text-tertiary">Waiting for data...</span>
+        <span className="text-[10px] text-text-tertiary">{tr("waitingForData")}</span>
       </div>
     );
   }

@@ -7,12 +7,20 @@
 
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
-import { DEMO_LAN_NODE_IDS, DEMO_MISSION_FOLDER_ID, isDemoPlanId } from "./demo-ids";
+import {
+  DEMO_LAN_NODE_IDS,
+  DEMO_MISSION_FOLDER_ID,
+  RETIRED_DEMO_LAN_NODE_IDS,
+  isDemoPlanId,
+} from "./demo-ids";
 
-/** Remove ONLY the demo LAN nodes by their fixed device ids. */
+/** Remove ONLY the demo LAN nodes (current and retired) by their fixed device
+ * ids. */
 export function clearDemoLanNodes(): void {
   const store = useLocalNodesStore.getState();
-  for (const deviceId of DEMO_LAN_NODE_IDS) store.removeNode(deviceId);
+  for (const deviceId of [...DEMO_LAN_NODE_IDS, ...RETIRED_DEMO_LAN_NODE_IDS]) {
+    store.removeNode(deviceId);
+  }
 }
 
 /** Remove the demo plans and their folder from the plan library, if present. */

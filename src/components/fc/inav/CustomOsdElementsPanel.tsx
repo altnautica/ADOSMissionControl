@@ -11,6 +11,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -52,6 +53,7 @@ function fromWire(el: INavCustomOsdElement): OsdElement {
 // ── Component ─────────────────────────────────────────────────
 
 export function CustomOsdElementsPanel() {
+  const tl = useTranslations("fcPanels.customOsdElementsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -129,7 +131,7 @@ export function CustomOsdElementsPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Custom OSD"
+          title={tl("customOSD")}
           subtitle={`${info?.maxElements ?? 0} custom text OSD elements, up to ${textLength} ASCII characters each.`}
           icon={<Type size={16} />}
           loading={loading}
@@ -144,7 +146,7 @@ export function CustomOsdElementsPanel() {
               onClick={handleReset}
               className="text-[11px] px-3 py-1 border border-border-default text-text-secondary rounded hover:bg-bg-tertiary"
             >
-              Reset
+              {tl("reset")}
             </button>
           )}
         </PanelHeader>
@@ -155,8 +157,8 @@ export function CustomOsdElementsPanel() {
               <thead>
                 <tr className="border-b border-border-default bg-bg-secondary">
                   <th className="px-3 py-2 text-left text-text-tertiary font-medium w-8">#</th>
-                  <th className="px-3 py-2 text-left text-text-tertiary font-medium w-20">Visible</th>
-                  <th className="px-3 py-2 text-left text-text-tertiary font-medium">Text</th>
+                  <th className="px-3 py-2 text-left text-text-tertiary font-medium w-20">{tl("visible")}</th>
+                  <th className="px-3 py-2 text-left text-text-tertiary font-medium">{tl("text")}</th>
                   <th className="px-3 py-2 text-left text-text-tertiary font-medium w-20"></th>
                 </tr>
               </thead>

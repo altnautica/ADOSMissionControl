@@ -16,7 +16,11 @@
  *
  * It works for any node profile. One poll runs per (node, plugin), however
  * many mounts hold it, and stops when the last lets go. A topic is published
- * only when its `ts_ms` moves, so a steady sidecar does not replay.
+ * only when its `ts_ms` moves, so a steady sidecar does not replay, and it
+ * goes out with that `ts_ms` on it ({@link agentStatePayload}) so a plugin
+ * ages each report from the drone's own report time. The heartbeat slice is
+ * the same source the native HUD reads (`use-nav-feed`), so a plugin tab and
+ * the HUD show the same report for a cloud-reached node.
  *
  * @license GPL-3.0-only
  */
@@ -26,7 +30,7 @@ import type { PluginStateResponse } from "@/lib/agent/plugin-client-types";
 import { isDemoMode } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePluginCloudStateStore } from "@/stores/plugin-cloud-state-store";
-import { agentStateOrigin, publishPluginEvent } from "./event-bus";
+import { agentStateOrigin, agentStatePayload, publishPluginEvent } from "./event-bus";
 import { pluginClientForReach, resolveNodeAgentReach } from "./node-agent-reach";
 
 /** Poll cadence, matching the local skill-state egress. */
@@ -72,7 +76,7 @@ async function tick(key: string, feed: Feed, pluginId: string, deviceId: string)
     for (const [topic, entry] of Object.entries(state)) {
       if (feed.published.get(topic) === entry.ts_ms) continue;
       feed.published.set(topic, entry.ts_ms);
-      publishPluginEvent(topic, entry.payload, origin);
+      publishPluginEvent(topic, agentStatePayload(entry.payload, entry.ts_ms), origin);
     }
   } finally {
     feed.inFlight = false;

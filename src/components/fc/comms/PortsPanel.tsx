@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -28,8 +29,12 @@ import {
   NUM_PORTS, HARDWARE_LABELS,
   PORT_PARAMS, PX4_PORTS, PX4_PORT_PARAMS, PX4_BAUD_OPTIONS,
 } from "./ports-constants";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 export function PortsPanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.portsPanel");
+  const tDrone = useTranslations("droneDetail");
   const protocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
@@ -63,7 +68,7 @@ export function PortsPanel() {
     () => Array.from({ length: NUM_PORTS }, (_, i) => i).filter((i) => params.has(`SERIAL${i}_PROTOCOL`)),
     [params],
   );
-  const { saving, save, flash: handleFlash } = useParamPanelActions(panelParams);
+  const { saving, save, flashing, flash: handleFlash } = useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!protocol;
@@ -98,9 +103,9 @@ export function PortsPanel() {
     return (
       <div className="flex-1 p-6">
         <div className="max-w-3xl space-y-4">
-          <h2 className="text-sm font-semibold text-text-primary">Serial Ports</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{tr("serialPorts")}</h2>
           <Card>
-            <p className="text-xs text-text-tertiary">Connect to a drone to configure serial ports.</p>
+            <p className="text-xs text-text-tertiary">{tr("connectToADroneTo")}</p>
           </Card>
         </div>
       </div>
@@ -113,8 +118,8 @@ export function PortsPanel() {
         {/* Header */}
         <div className="flex-shrink-0 border-b border-border-default bg-bg-secondary px-4 py-3 space-y-3">
           <PanelHeader
-            title="Serial Ports"
-            subtitle="Protocol and baud rate for each serial port"
+            title={tr("serialPorts")}
+            subtitle={tr("protocolAndBaudRateFor")}
             icon={<Usb size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -134,7 +139,7 @@ export function PortsPanel() {
               onClick={revertAll}
               disabled={!hasDirty}
             >
-              Revert
+              <SaveBarLabel k="revert" />
             </Button>
             <Button
               variant="primary"
@@ -144,16 +149,16 @@ export function PortsPanel() {
               disabled={!hasDirty}
               loading={saving}
             >
-              Save Changes
+              {tr("saveChanges")}
             </Button>
             {hasRamWrites && (
               <Button
                 variant="secondary"
                 size="sm"
                 icon={<HardDrive size={12} />}
-                onClick={handleFlash}
+                loading={flashing} onClick={handleFlash}
               >
-                Write to Flash
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
             {needsReboot && (
@@ -162,7 +167,7 @@ export function PortsPanel() {
                 size="sm"
                 onClick={handleReboot}
               >
-                Reboot FC
+                {tDrone("rebootFc")}
               </Button>
             )}
           </PanelHeader>
@@ -173,7 +178,7 @@ export function PortsPanel() {
           <div className="flex-shrink-0 px-4 py-2 bg-status-warning/10 border-b border-status-warning/30 flex items-center gap-2">
             <Info size={14} className="text-status-warning flex-shrink-0" />
             <span className="text-xs text-status-warning">
-              Serial port changes require a reboot to take effect.
+              {tr("serialPortChangesRequireA")}
             </span>
           </div>
         )}
@@ -184,17 +189,17 @@ export function PortsPanel() {
             {!hasLoaded && !loading ? (
               <div className="flex items-center justify-center py-16">
                 <span className="text-xs text-text-tertiary">
-                  Click &quot;Read from FC&quot; to load serial parameters.
+                  {tr("clickQuotReadFromFC")}
                 </span>
               </div>
             ) : loading && !hasLoaded ? (
               <div className="flex items-center justify-center py-16">
-                <span className="text-xs text-text-tertiary">Loading serial parameters...</span>
+                <span className="text-xs text-text-tertiary">{tr("loadingSerialParameters")}</span>
               </div>
             ) : isPx4 ? (
               <div className="space-y-3">
                 <p className="text-xs text-text-tertiary">
-                  PX4 auto-detects port protocols. Configure baud rates below.
+                  {tr("px4AutoDetectsPortProtocols")}
                 </p>
                 {PX4_PORTS.map((port) => (
                   <div key={port.baudParam} className="flex items-center gap-4 p-3 rounded-md bg-bg-tertiary">
@@ -202,7 +207,7 @@ export function PortsPanel() {
                     <Select
                       value={String(params.get(port.baudParam) ?? "0")}
                       onChange={(v) => setLocalValue(port.baudParam, Number(v))}
-                      options={PX4_BAUD_OPTIONS}
+                      options={ol(PX4_BAUD_OPTIONS)}
                       className="flex-1"
                     />
                   </div>
@@ -213,16 +218,16 @@ export function PortsPanel() {
                 {/* Table header */}
                 <div className="grid grid-cols-[60px_80px_1fr_1fr] gap-3 px-3 py-2">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                    Port
+                    {tr("port")}
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                    Label
+                    {tr("label")}
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                    Protocol
+                    {tr("protocol")}
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                    Baud Rate
+                    {tr("baudRate")}
                   </span>
                 </div>
 

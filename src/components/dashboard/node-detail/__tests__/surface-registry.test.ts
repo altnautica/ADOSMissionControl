@@ -45,7 +45,6 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
     const ids = resolveSurfaces(forProfile("drone"), []).map((s) => s.id);
     expect(ids).toEqual([
       "overview",
-      "flight",
       "cockpit",
       "map",
       "configure",
@@ -53,6 +52,13 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       "logs",
       "agent",
     ]);
+  });
+
+  it("labels the embedded cockpit as the Flight tab", () => {
+    const cockpit = resolveSurfaces(forProfile("drone"), []).find((s) => s.id === "cockpit");
+    expect(cockpit?.labelKey).toBe("dronePanel.flight");
+    const gs = resolveSurfaces(forProfile("ground-station"), []).find((s) => s.id === "cockpit");
+    expect(gs?.labelKey).toBe("dronePanel.flight");
   });
 
   it("shows the drone Map tab only when the node has a companion agent", () => {

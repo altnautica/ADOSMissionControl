@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -189,6 +190,7 @@ function SearchPolygonOverlay({
   vertices: [number, number][];
   onClear: () => void;
 }) {
+  const tk = useTranslations("history.fleetCoverageMapInner");
   const map = useMap();
   const polygonRef = useRef<L.Polygon | null>(null);
 
@@ -222,13 +224,13 @@ function SearchPolygonOverlay({
         style={{ marginTop: 8, marginRight: 8 }}
       >
         <span className="text-[10px] text-text-secondary font-mono">
-          Search polygon active
+          {tk("searchPolygonActive")}
         </span>
         <button
           onClick={onClear}
           className="text-[10px] text-accent-primary hover:underline"
         >
-          Clear
+          {tk("clear")}
         </button>
       </div>
     </MapControl>
@@ -267,6 +269,7 @@ export default function FleetCoverageMapInner({
   records,
   onPolygonFilter,
 }: FleetCoverageMapInnerProps) {
+  const tk = useTranslations("history.fleetCoverageMapInner");
   const [showHeat, setShowHeat] = useState(true);
   const [showPaths, setShowPaths] = useState(true);
   const [drawing, setDrawing] = useState(false);
@@ -357,7 +360,7 @@ export default function FleetCoverageMapInner({
               : "bg-bg-secondary border-border-default text-text-secondary"
           }`}
         >
-          Heatmap
+          {tk("heatmap")}
         </button>
         <button
           onClick={() => setShowPaths((v) => !v)}
@@ -367,7 +370,7 @@ export default function FleetCoverageMapInner({
               : "bg-bg-secondary border-border-default text-text-secondary"
           }`}
         >
-          Paths
+          {tk("paths")}
         </button>
         <button
           onClick={() => {

@@ -16,7 +16,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast, type FlashResultOptions } from "@/hooks/use-flash-commit-toast";
@@ -34,6 +34,8 @@ export interface PanelCommitMessages {
 export interface PanelCommit {
   /** True while a save is in flight. */
   saving: boolean;
+  /** True while a flash commit is in flight; a second `flash()` meanwhile is ignored. */
+  flashing: boolean;
   /** Write every dirty value to RAM; resolves to whether all writes landed. */
   save: () => Promise<boolean>;
   /** Commit RAM to flash and report the outcome. */
@@ -50,6 +52,8 @@ export function usePanelCommit(
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
+  const [flashing, setFlashing] = useState(false);
+  const flashingRef = useRef(false);
   const savedMessage = messages?.saved;
   const flashOptions = messages?.flash;
 
@@ -66,7 +70,15 @@ export function usePanelCommit(
   }, [saveAllToRam, savedMessage, t, toast]);
 
   const flash = useCallback(async () => {
-    showFlashResult(await commitToFlash(), flashOptions);
+    if (flashingRef.current) return;
+    flashingRef.current = true;
+    setFlashing(true);
+    try {
+      showFlashResult(await commitToFlash(), flashOptions);
+    } finally {
+      flashingRef.current = false;
+      setFlashing(false);
+    }
   }, [commitToFlash, flashOptions, showFlashResult]);
 
   const revert = useCallback(() => {
@@ -74,5 +86,5 @@ export function usePanelCommit(
     toast(t("reverted"), "info");
   }, [revertAll, t, toast]);
 
-  return { saving, save, flash, revert };
+  return { saving, flashing, save, flash, revert };
 }

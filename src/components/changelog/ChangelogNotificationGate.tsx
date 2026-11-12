@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
 import { ChangelogNotificationModal } from "./ChangelogNotificationModal";
@@ -21,8 +22,9 @@ function ChangelogNotificationInner() {
 }
 
 export function ChangelogNotificationGate() {
+  const tk = useTranslations("changelog.changelogNotificationGate");
   return (
-    <SilentErrorBoundary label="changelog-notification">
+    <SilentErrorBoundary label={tk("changelogNotification")}>
       <ChangelogNotificationInner />
     </SilentErrorBoundary>
   );

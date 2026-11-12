@@ -29,8 +29,10 @@ export function useAutoReconnect() {
   // Read through a ref so a locale change does not tear down (and cancel)
   // the running reconnect cycles.
   const stopLabelRef = useRef(t("stop"));
+  const tRef = useRef(t);
   useEffect(() => {
     stopLabelRef.current = t("stop");
+    tRef.current = t;
   }, [t]);
   const addDrone = useDroneManager((s) => s.addDrone);
   const settingsHydrated = useSettingsStore((s) => s._hasHydrated);
@@ -62,7 +64,7 @@ export function useAutoReconnect() {
       // An agent-attached FC is re-dialled by its agent bridge; only announce a
       // reconnect this manager is actually going to run.
       if (manager.startReconnect(droneId, droneName, meta)) {
-        toast(`${droneName} disconnected — reconnecting...`, "warning", {
+        toast(tRef.current("disconnectedReconnecting", { name: droneName }), "warning", {
           action: {
             label: stopLabelRef.current,
             onClick: () => useReconnectStore.getState().cancel(droneId),
@@ -71,16 +73,13 @@ export function useAutoReconnect() {
       } else if (meta.type === "ble") {
         // The browser only opens a Bluetooth device from an operator gesture,
         // so a BLE link cannot be re-dialled in the background.
-        toast(
-          `Bluetooth link to ${droneName} lost. Reconnect it from the Connect dialog.`,
-          "warning",
-        );
+        toast(tRef.current("bleLost", { name: droneName }), "warning");
       }
     });
 
     const unsubState = manager.onStateChange((entry: ReconnectEntry) => {
       if (entry.state === "connected") {
-        toast(`Reconnected to ${entry.droneName}`, "success");
+        toast(tRef.current("reconnected", { name: entry.droneName }), "success");
       }
     });
 
@@ -133,7 +132,7 @@ export function useAutoReconnect() {
             firmwareType: last.firmwareType,
           });
           opened = null; // owned by the drone manager from here on
-          toast(`Auto-connected to ${name}`, "success");
+          toast(tRef.current("autoConnected", { name }), "success");
         } else if (last.type === "serial") {
           // Only the port that carried this link, never whichever permitted
           // port is listed first; with no unique match there is nothing to
@@ -159,7 +158,7 @@ export function useAutoReconnect() {
             firmwareType: last.firmwareType,
           });
           opened = null; // owned by the drone manager from here on
-          toast(`Auto-connected to ${name}`, "success");
+          toast(tRef.current("autoConnected", { name }), "success");
         }
       } catch {
         // Best-effort: stay silent, but release whatever was opened.

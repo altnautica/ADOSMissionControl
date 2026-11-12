@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useRef, useLayoutEffect, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink } from "lucide-react";
@@ -25,6 +26,7 @@ export function ParamTooltip({
   docsLinkLabel?: string;
   children: React.ReactNode;
 }) {
+  const tr = useTranslations("fcPanels.paramTooltip");
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -128,7 +130,7 @@ export function ParamTooltip({
           <div className="text-text-tertiary mt-0.5">Step: {meta.increment}</div>
         )}
         {meta?.rebootRequired && (
-          <div className="text-status-warning mt-1">Reboot required after change</div>
+          <div className="text-status-warning mt-1">{tr("rebootRequiredAfterChange")}</div>
         )}
         {docUrl && (
           <a

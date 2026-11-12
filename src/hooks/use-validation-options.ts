@@ -33,7 +33,7 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import type { AltitudeFrame, PlannedHome, PlanVehicleProfile } from "@/lib/types";
 import type { DroneProtocol } from "@/lib/protocol/types";
-import type { ValidationOptions } from "@/lib/validation/mission-validator";
+import type { ValidationOptions } from "@/lib/validation/issue-types";
 import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan-profile";
 import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
 import { usePlanVehicleProfile } from "@/hooks/use-plan-profile";

@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { startFollowMe, stopFollowMe } from "@/lib/follow-me";
 import { activate } from "@/lib/skills";
-import { useSkillRegistry } from "@/lib/skills/registry";
+import { setSkillNotifier, useSkillRegistry } from "@/lib/skills/registry";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useGcsLocationStore } from "@/stores/gcs-location-store";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
@@ -108,7 +108,7 @@ describe("follow-me session", () => {
   it("refuses a second start with its reason", async () => {
     expect(await startFollowMe(DRONE)).toEqual({
       ok: false,
-      reason: "a follow-me session is already running",
+      reason: "Follow my device is already running",
     });
   });
 
@@ -227,4 +227,83 @@ describe("follow-me session", () => {
 
     useSkillRegistry.getState().unregister("rth");
   });
+
+  it("ends itself before an extension's motion skill on the same drone runs", async () => {
+    await tick("GUIDED");
+    let activeWhenSkillRan: boolean | null = null;
+    const orbit = motionSkill(() => {
+      activeWhenSkillRan = useFollowMeStore.getState().isActive;
+    });
+    useSkillRegistry.getState().register(orbit);
+    try {
+      await activate(orbit.id, skillCtx());
+      expect(activeWhenSkillRan).toBe(false);
+    } finally {
+      useSkillRegistry.getState().unregister(orbit.id);
+    }
+  });
+
+  it("refuses to start while a motion skill is active on that drone", async () => {
+    stopFollowMe();
+    const orbit = motionSkill(() => {});
+    useSkillRegistry.getState().register(orbit);
+    useSkillRegistry.setState((s) => {
+      const states = new Map(s.states);
+      states.set(DRONE, new Map([[orbit.id, { kind: "active" } as SkillState]]));
+      return { states };
+    });
+    try {
+      const result = await startFollowMe(DRONE);
+      expect(result).toEqual({ ok: false, reason: "a motion skill is active on this drone; stop it first" });
+      expect(useFollowMeStore.getState().isActive).toBe(false);
+    } finally {
+      useSkillRegistry.getState().unregister(orbit.id);
+      useSkillRegistry.setState({ states: new Map() });
+    }
+  });
+
+  it("names the feature Follow my device when it stops itself", async () => {
+    const notes: string[] = [];
+    setSkillNotifier((msg) => notes.push(msg));
+    try {
+      await tick("GUIDED");
+      useNodeRegistryStore.getState().updateFcTelemetry(DRONE, { armState: "disarmed" });
+      gcsFix();
+      await vi.advanceTimersByTimeAsync(250);
+      expect(notes).toContain("Follow my device stopped: the drone disarmed");
+    } finally {
+      setSkillNotifier(() => {});
+    }
+  });
 });
+
+function motionSkill(run: () => void): Skill {
+  return {
+    id: "ext.orbit",
+    label: "Orbit",
+    icon: "Orbit",
+    category: "flight",
+    source: "plugin",
+    toggle: false,
+    motion: true,
+    getState: () => ({ kind: "idle" }) as SkillState,
+    activate: async () => {
+      run();
+    },
+  } as Skill;
+}
+
+function skillCtx(): SkillContext {
+  return {
+    droneId: DRONE,
+    protocol: null,
+    armState: "armed",
+    flightMode: "GUIDED",
+    availableModes: [],
+    missionState: null,
+    supports: () => true,
+    checklistReady: true,
+    confirm: async () => true,
+    notify: () => {},
+  };
+}

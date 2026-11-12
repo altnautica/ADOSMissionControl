@@ -172,7 +172,7 @@ export function RightRail() {
       )}
       {open === "logs" && selectedDroneId && (
         <PanelFrame
-          title={tDash("flightLogs")}
+          title={tDash("messages")}
           closeLabel={tDash("collapseLogs")}
           onClose={close}
         >

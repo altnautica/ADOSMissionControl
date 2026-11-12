@@ -15,6 +15,7 @@
  * `signing/`. Modals (Export, Import) are imported as-is.
  */
 
+import { useTranslations } from "next-intl";
 import { Shield } from "lucide-react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -31,6 +32,7 @@ import { InboundSigningSection } from "./signing/InboundSigningSection";
 import { UnsignedRiskBanner } from "./signing/UnsignedRiskBanner";
 
 export function SigningPanel() {
+  const tr = useTranslations("fcPanels.signingPanel");
   const client = useAgentConnectionStore((s) => s.client);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const droneId = selectedDroneId ?? "";
@@ -47,7 +49,7 @@ export function SigningPanel() {
 
   let bodyNode;
   if (!droneId) {
-    bodyNode = <p className="text-sm text-text-tertiary">No drone selected.</p>;
+    bodyNode = <p className="text-sm text-text-tertiary">{tr("noDroneSelected")}</p>;
   } else if (!supported) {
     bodyNode = <SigningUnsupportedNotice firmware={firmware} reason={reason} />;
   } else if (!state?.hasBrowserKey) {
@@ -102,9 +104,9 @@ export function SigningPanel() {
         <div className="flex items-center gap-3">
           <Shield size={20} className="text-accent-primary" aria-hidden="true" />
           <div>
-            <h1 className="text-lg font-semibold text-text-primary">MAVLink signing</h1>
+            <h1 className="text-lg font-semibold text-text-primary">{tr("mavlinkSigning")}</h1>
             <p className="text-xs text-text-tertiary">
-              HMAC-SHA256 authentication of every command sent to the flight controller.
+              {tr("hmacSHA256AuthenticationOfEvery")}
             </p>
           </div>
         </div>
@@ -113,7 +115,7 @@ export function SigningPanel() {
             role="note"
             className="border border-status-warning/40 bg-status-warning/5 px-3 py-2 text-xs text-text-secondary"
           >
-            Private browsing detected. Signing keys enrolled in this window are scoped to the session. They will be lost when the window closes.
+            {tr("privateBrowsingDetectedSigningKeys")}
           </div>
         )}
         {droneId && (

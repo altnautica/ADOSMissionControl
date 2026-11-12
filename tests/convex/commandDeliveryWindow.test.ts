@@ -174,3 +174,36 @@ describe("ackCommand", () => {
     expect(row.result).toEqual(cancelled);
   });
 });
+
+describe("cancelCommand", () => {
+  const seeded = (status: string) => {
+    const ctx = makeCtx({ subject: "user-1|session-1" });
+    ctx.db.seed("cmd_drones", [{ deviceId: "dev-1", userId: "user-1" }]);
+    const [row] = ctx.db.seed("cmd_droneCommands", [
+      {
+        deviceId: "dev-1",
+        userId: "user-1",
+        command: "plugin.enable",
+        status,
+        createdAt: Date.now(),
+      },
+    ]);
+    return { ctx, id: row._id };
+  };
+
+  it("fails a row the node has not taken", async () => {
+    const { ctx, id } = seeded("pending");
+    const out = await invoke(commands.cancelCommand, ctx, { commandId: id });
+    expect(out).toEqual({ cancelled: true });
+    const row = ctx.db.rows("cmd_droneCommands")[0];
+    expect(row.status).toBe("failed");
+    expect(row.result).toEqual({ success: false, message: "cancelled by operator" });
+  });
+
+  it("leaves a row the node already took to its ack", async () => {
+    const { ctx, id } = seeded("delivering");
+    const out = await invoke(commands.cancelCommand, ctx, { commandId: id });
+    expect(out).toEqual({ cancelled: false });
+    expect(ctx.db.rows("cmd_droneCommands")[0].status).toBe("delivering");
+  });
+});

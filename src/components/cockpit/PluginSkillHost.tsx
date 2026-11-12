@@ -27,13 +27,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSkillRegistry } from "@/lib/skills";
 import { buildPluginSkill } from "@/lib/skills/plugin-skills";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
+import { usePluginSkillStrings } from "@/lib/skills/plugin-skill-strings";
+import { resolveNodeAgentReach } from "@/lib/plugins/node-agent-reach";
+import { loadPluginLocale } from "@/lib/plugins/plugin-locale";
+import { isDemoMode } from "@/lib/utils";
 import {
   installPluginConfigWriter,
   uninstallPluginConfigWriter,
@@ -148,6 +152,28 @@ export function PluginSkillHost({ droneId }: { droneId: string }) {
       );
     }
   }, [droneId, contributions]);
+
+  // Skill labels are keys into each extension's own locale bundle: read the
+  // bundle of every contributing extension once, then re-derive the bar so
+  // the labels show in the extension's words.
+  const lang = useLocale();
+  const pluginIds = [...new Set((contributions ?? []).map((c) => c.pluginId))].sort().join("|");
+  useEffect(() => {
+    if (!pluginDeviceId || !pluginIds || isDemoMode()) return;
+    const reach = resolveNodeAgentReach(pluginDeviceId);
+    if (!reach) return;
+    let alive = true;
+    for (const pluginId of pluginIds.split("|")) {
+      void loadPluginLocale(reach, pluginId, lang).then((bundle) => {
+        if (!alive) return;
+        usePluginSkillStrings.getState().set(pluginId, bundle);
+        useSkillRegistry.getState().recomputeSelected();
+      });
+    }
+    return () => {
+      alive = false;
+    };
+  }, [pluginDeviceId, pluginIds, lang]);
 
   // Host teardown drops the registrations without commanding any vehicle.
   useEffect(

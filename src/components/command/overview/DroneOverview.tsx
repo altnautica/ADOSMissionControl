@@ -41,6 +41,7 @@ import { StatTile } from "../shared/StatTile";
 import { Button } from "@/components/ui/button";
 import { openPairNode } from "@/components/shared/link-up/link-up-actions";
 import { NodeReachBlock } from "../shared/NodeReachBlock";
+import { useNodeDirectAgent } from "../settings/use-node-direct-agent";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
@@ -51,20 +52,25 @@ import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { requestGrant } from "@/stores/mqtt-control-grant-store";
 import { DroneLinksPanel } from "@/components/dashboard/drone-detail/DroneLinksPanel";
+import { CompactInfoCards } from "@/components/flight/CompactInfoCards";
+import { RcInputCard } from "@/components/command/shared/RcInputCard";
+import { StatusTextCard } from "@/components/command/shared/StatusTextCard";
 
 /**
  * The drone Status surface — the node HOME.
  *
- * Identity, reach, health, the companion band and the per-node actions. It
- * deliberately carries no live telemetry: attitude, GPS, battery, RC and the
- * FC message stream all live on Flight. The two surfaces used to answer the
- * same question from different sources with different freshness gating, so a
- * dead link produced "link silent / Roll --.-°" on one tile and a confident
- * "68% · 15.9V" on the next, and the frozen one looked the healthier.
+ * Identity, reach, health, the companion band, the per-node actions and the
+ * FC band, which carries the vehicle readouts, the FC status messages and the
+ * RC channel card. Live piloting (video, HUD, skills) is on the Flight tab.
  */
 export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
   const agentReachable = ctx.agentDeviceId !== null || ctx.relayReach !== null;
   const companionKnown = agentReachable || ctx.drone.agentIdentityKnown === true;
+  // The band reads the attached agent connection. It renders only when that
+  // connection is this node's; on another node's page (relayed, another LAN
+  // node) it would show the attached agent's status and restart it.
+  const directAgent = useNodeDirectAgent(surfaceNodeDeviceId(ctx));
+  const bandReachable = agentReachable && directAgent !== null;
   const profile = effectiveNodeProfile(ctx);
   // A WFB-linked drone reached only through a ground node names its reach hop
   // on the hero. Undefined for a directly-reached drone (no sub-badge).
@@ -87,19 +93,21 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
           the product, and its live video is the prime tile. A bare FC (no
           companion) skips this and shows only the FC console band + the
           add-a-computer CTA below. */}
-      {agentReachable && (
+      {bandReachable && (
         <CompanionBand droneId={ctx.droneId} />
       )}
 
       {/* A companion this node HAS but the GCS cannot reach. Rendering
           nothing here lost half the surface with no explanation, and the
           add-a-computer CTA was suppressed because the companion IS known. */}
-      {!agentReachable && companionKnown && (
+      {!bandReachable && companionKnown && (
         <OverviewGrid>
           <OverviewTile span="half">
             <CompanionOfflineNotice
               droneId={ctx.droneId}
-              reachedViaName={reachedViaName ?? undefined}
+              // The hop is named as not answering only when the node has no
+              // reach at all; a reached node lacks only this session's link.
+              reachedViaName={agentReachable ? undefined : (reachedViaName ?? undefined)}
             />
           </OverviewTile>
         </OverviewGrid>
@@ -120,14 +128,11 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
 }
 
 /**
- * The flight-controller band on the node home: the cached-parameter snapshot
- * and the one operator-actionable authority affordance.
- *
- * The live tiles that used to sit here (Flight Data, Battery, Sensors, RC,
- * FC status messages) are on Flight. Battery and GPS were already rendered
- * there by the telemetry readout and the info cards, from a different source
- * with different gating; sensors, RC and the message stream moved across
- * wholesale.
+ * The flight-controller band on the node home: the cached-parameter snapshot,
+ * the FC session's links, then the vehicle readouts (info cards), the FC
+ * status messages and, when this node has no CRSF lane of its own, the one RC
+ * channel card (so RC state has exactly one home either way). Live piloting
+ * is on the Flight tab.
  */
 function FcBand({ ctx }: { ctx: SurfaceContext }) {
   return (
@@ -139,6 +144,17 @@ function FcBand({ ctx }: { ctx: SurfaceContext }) {
       <OverviewTile span="half">
         <DroneLinksPanel droneId={ctx.droneId} />
       </OverviewTile>
+      <OverviewTile span="full">
+        <CompactInfoCards drone={ctx.drone} />
+      </OverviewTile>
+      <OverviewTile span="half">
+        <StatusTextCard />
+      </OverviewTile>
+      {ctx.crsfPresent !== "present" && (
+        <OverviewTile span="half">
+          <RcInputCard />
+        </OverviewTile>
+      )}
     </OverviewSection>
   );
 }

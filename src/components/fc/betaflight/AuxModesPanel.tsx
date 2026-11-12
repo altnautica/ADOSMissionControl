@@ -13,9 +13,11 @@ import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import type { MspModeBox, MspModeRange } from "@/lib/protocol/types";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ToggleRight, Save, Plus, Trash2, Radio } from "lucide-react";
+import { ToggleRight, Plus, Trash2, Radio } from "lucide-react";
 import { PwmRangeSlider, stepToPwm, pwmToStep } from "./PwmRangeSlider";
 import { FcSection } from "@/components/fc/shared/FcSection";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -32,6 +34,7 @@ const isConfigured = (r: MspModeRange) => r.rangeStart < r.rangeEnd || (r.linked
 // ── Component ─────────────────────────────────────────────────
 
 export function AuxModesPanel() {
+  const tr = useTranslations("fcPanels.auxModesPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.betaflight");
@@ -148,12 +151,12 @@ export function AuxModesPanel() {
     <ArmedWarningBanner>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl space-y-6">
-          <PanelHeader title="Auxiliary Modes" subtitle="Configure mode activation via AUX channel PWM ranges"
+          <PanelHeader title={tr("auxiliaryModes")} subtitle={tr("configureModeActivationViaAUX")}
             icon={<ToggleRight size={16} />} loading={loading} loadProgress={null} hasLoaded={hasLoaded}
             onRead={readFromFc} connected={connected} error={error} />
 
           {hasLoaded && latestRc && (
-            <FcSection icon={<Radio size={14} />} title="Live RC Channels" description="Current AUX channel PWM values">
+            <FcSection icon={<Radio size={14} />} title={tr("liveRCChannels")} description={tr("currentAUXChannelPWMValues")}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Array.from({ length: 8 }, (_, i) => {
                   const chIndex = i + 4;
@@ -192,7 +195,7 @@ export function AuxModesPanel() {
                           ) : (
                             <div className="flex items-center gap-3">
                               <div className="w-28">
-                                <Select label="Channel" options={AUX_CHANNEL_OPTIONS} value={String(range.auxChannel)}
+                                <Select label={tr("channel")} options={AUX_CHANNEL_OPTIONS} value={String(range.auxChannel)}
                                   onChange={(v) => updateRange(index, { auxChannel: Number(v) })} />
                               </div>
                               <div className="flex-1 space-y-1">
@@ -210,7 +213,7 @@ export function AuxModesPanel() {
                         </div>
                       ))}
                       <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => addRange(boxId)}
-                        disabled={ranges.length >= MAX_RANGES}>Add Range</Button>
+                        disabled={ranges.length >= MAX_RANGES}>{tr("addRange")}</Button>
                     </div>
                   </FcSection>
                 );
@@ -219,29 +222,30 @@ export function AuxModesPanel() {
           )}
 
           {hasLoaded && addModeOptions.length > 0 && (
-            <FcSection icon={<Plus size={14} />} title="Add Mode" description="Assign a new mode to an AUX channel">
+            <FcSection icon={<Plus size={14} />} title={tr("addMode")} description={tr("assignANewModeTo")}>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <Select label="Mode" options={addModeOptions} value={selectedAddMode} onChange={setAddModeId} searchable searchPlaceholder="Search modes..." />
+                  <Select label={tr("mode")} options={addModeOptions} value={selectedAddMode} onChange={setAddModeId} searchable searchPlaceholder="Search modes..." />
                 </div>
                 <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={() => addRange(Number(selectedAddMode))}
-                  disabled={ranges.length >= MAX_RANGES}>Add</Button>
+                  disabled={ranges.length >= MAX_RANGES}>{tr("add")}</Button>
               </div>
             </FcSection>
           )}
 
           {hasLoaded && allModes.active.length === 0 && (
-            <div className="text-center py-8 text-text-tertiary text-xs">No mode ranges configured. Add a mode above to get started.</div>
+            <div className="text-center py-8 text-text-tertiary text-xs">{tr("noModeRangesConfiguredAdd")}</div>
           )}
 
-          <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected || !protocolCanSave || isArmed} title={isArmed ? lockMessage : undefined} loading={saving} onClick={saveToFc}>
-              Save to Flight Controller
-            </Button>
-            {!protocolCanSave && connected && <span className="text-[10px] text-text-tertiary">This connection cannot write mode ranges</span>}
-            {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-            {isDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-          </div>
+          <PanelSaveBar
+            onSave={saveToFc}
+            saving={saving}
+            saveDisabled={!isDirty || !connected || !protocolCanSave || isArmed}
+            saveTitle={isArmed ? lockMessage : undefined}
+            hint={!protocolCanSave && connected && <span className="text-[10px] text-text-tertiary">{tr("thisConnectionCannotWriteMode")}</span>}
+            showConnectHint={!connected}
+            showUnsavedHint={isDirty && connected}
+          />
         </div>
       </div>
     </ArmedWarningBanner>

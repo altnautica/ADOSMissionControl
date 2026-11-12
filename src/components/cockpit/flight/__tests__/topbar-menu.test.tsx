@@ -63,7 +63,6 @@ describe("flight Menu order", () => {
       "controls",
       "extension_panels",
       "settings",
-      "exit",
     ]);
   });
 
@@ -80,7 +79,6 @@ describe("flight Menu order", () => {
       "extension_panels",
       "setup",
       "settings",
-      "exit",
     ]);
     const setup = screen.getByTestId("fs-menu-setup");
     expect(setup.getAttribute("href")).toBe("/config/aircraft-setup");
@@ -110,8 +108,9 @@ describe("flight Menu order", () => {
     expect(screen.getByTestId("fs-menu-modes").textContent).toBe("Flight modes");
     expect(screen.getByTestId("fs-menu-extensions").textContent).toBe("Extension panels");
     expect(screen.getByTestId("fs-menu-settings").textContent).toBe("Settings");
-    // Mission Control leaves the flight screen for the drone page's Overview.
-    expect(screen.getByTestId("fs-exit").textContent).toBe("Exit to Overview");
+    // The Flight tab's strip replaces Exit; full screen is the top-bar button.
+    expect(screen.queryByTestId("fs-exit")).toBeNull();
+    expect(screen.queryByTestId("fs-immersive")).toBeNull();
   });
 
   it("lists every layer flag as a checkbox in the Layers section", () => {

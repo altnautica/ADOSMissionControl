@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMixerStore } from "@/stores/mixer-store";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -46,6 +47,7 @@ interface ServoMixerTableProps {
 }
 
 export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) {
+  const tl = useTranslations("fcPanels.servoMixerTable");
   const servoRules = useMixerStore((s) => s.servoRules);
   const servoSlots = useMixerStore((s) => s.servoSlots);
   const setServoRule = useMixerStore((s) => s.setServoRule);
@@ -63,11 +65,11 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
             <thead>
               <tr className="text-text-tertiary border-b border-border-default">
                 <th className="text-left py-1 pr-2">#</th>
-                <th className="text-left py-1 pr-2">Target ch</th>
-                <th className="text-left py-1 pr-2">Input source</th>
-                <th className="text-left py-1 pr-2">Rate</th>
-                <th className="text-left py-1 pr-2">Speed</th>
-                <th className="text-left py-1 pr-2">Condition</th>
+                <th className="text-left py-1 pr-2">{tl("targetCh")}</th>
+                <th className="text-left py-1 pr-2">{tl("inputSource")}</th>
+                <th className="text-left py-1 pr-2">{tl("rate")}</th>
+                <th className="text-left py-1 pr-2">{tl("speed")}</th>
+                <th className="text-left py-1 pr-2">{tl("condition")}</th>
                 <th className="py-1" />
               </tr>
             </thead>
@@ -192,7 +194,7 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
             })
           }
         >
-          Add servo rule
+          {tl("addServoRule")}
         </Button>
       )}
     </div>

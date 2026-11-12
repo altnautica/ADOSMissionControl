@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { X } from "lucide-react";
@@ -35,6 +36,7 @@ export function FleetCoverageModal({
   onClose,
   onPolygonFilter,
 }: FleetCoverageModalProps) {
+  const tq = useTranslations("history.fleetCoverageModal");
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
   // Esc to close
@@ -62,7 +64,7 @@ export function FleetCoverageModal({
       <div className="flex items-center justify-between px-4 py-2 border-b border-border-default bg-bg-secondary shrink-0">
         <div className="flex items-center gap-3">
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">
-            Fleet Coverage
+            {tq("fleetCoverage")}
           </h3>
           <span className="text-[10px] font-mono text-text-tertiary">
             {recordsWithPaths.length} flights with paths · {records.length} total
@@ -76,7 +78,7 @@ export function FleetCoverageModal({
         <button
           onClick={onClose}
           className="text-text-tertiary hover:text-text-primary transition-colors p-1"
-          aria-label="Close"
+          aria-label={tq("close")}
         >
           <X size={14} />
         </button>

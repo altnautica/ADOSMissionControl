@@ -13,17 +13,37 @@ import { NextIntlClientProvider } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
 import enMessages from "../../../locales/en.json";
 
-const ACCENT_PRESETS: Record<string, { primary: string; hover: string }> = {
-  blue: { primary: "#3a82ff", hover: "#5b9aff" },
-  green: { primary: "#22c55e", hover: "#34d06d" },
-  amber: { primary: "#f59e0b", hover: "#f7b13a" },
-  red: { primary: "#ef4444", hover: "#f16363" },
-  lime: { primary: "#84cc16", hover: "#9bdf2a" },
-  purple: { primary: "#a855f7", hover: "#b975f9" },
-  pink: { primary: "#ec4899", hover: "#f06dae" },
-  cyan: { primary: "#06b6d4", hover: "#22d3ee" },
-  orange: { primary: "#f97316", hover: "#fb923c" },
+type AccentPair = { primary: string; hover: string };
+
+/** Dark-theme presets, plus a darker `light` pair per hue that keeps white
+ *  text on an accent fill at 4.5:1 or better on the light theme. */
+const ACCENT_PRESETS: Record<string, AccentPair & { light: AccentPair }> = {
+  blue: { primary: "#3a82ff", hover: "#5b9aff", light: { primary: "#2563eb", hover: "#1d4ed8" } },
+  green: { primary: "#22c55e", hover: "#34d06d", light: { primary: "#15803d", hover: "#166534" } },
+  amber: { primary: "#f59e0b", hover: "#f7b13a", light: { primary: "#b45309", hover: "#92400e" } },
+  red: { primary: "#ef4444", hover: "#f16363", light: { primary: "#dc2626", hover: "#b91c1c" } },
+  lime: { primary: "#84cc16", hover: "#9bdf2a", light: { primary: "#4d7c0f", hover: "#3f6212" } },
+  purple: { primary: "#a855f7", hover: "#b975f9", light: { primary: "#9333ea", hover: "#7e22ce" } },
+  pink: { primary: "#ec4899", hover: "#f06dae", light: { primary: "#be185d", hover: "#9d174d" } },
+  cyan: { primary: "#06b6d4", hover: "#22d3ee", light: { primary: "#0e7490", hover: "#155e75" } },
+  orange: { primary: "#f97316", hover: "#fb923c", light: { primary: "#c2410c", hover: "#9a3412" } },
 };
+
+/** The theme actually applied to the document, which a kiosk or another
+ *  surface may set directly on `<html data-theme>`. */
+function useAppliedTheme(fallback: string): string {
+  const [applied, setApplied] = useState(fallback);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const read = () => setApplied(root.getAttribute("data-theme") || fallback);
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, [fallback]);
+  return applied;
+}
 
 interface LocaleProviderProps {
   children: React.ReactNode;
@@ -114,21 +134,24 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
     }
   }, [themeMode]);
 
+  const appliedTheme = useAppliedTheme(themeMode || "dark");
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement.style;
     // Night vision always wins: the operator's accent is a bright hue that
     // would override the nvg theme's own accent (badges, chips, buttons) and
-    // break dark adaptation. Drop the override while nvg is active; the
-    // accent comes back when the theme changes.
-    if (themeMode === "nvg") {
+    // break dark adaptation. Keyed on the theme applied to the document, so
+    // nvg set directly on `<html>` drops the override too.
+    if (appliedTheme === "nvg") {
       for (const name of ACCENT_VARS) root.removeProperty(name);
       return;
     }
     const preset = ACCENT_PRESETS[accentColor] || ACCENT_PRESETS.blue;
-    root.setProperty("--alt-accent-primary", preset.primary);
-    root.setProperty("--alt-accent-primary-hover", preset.hover);
-  }, [accentColor, themeMode]);
+    const pair = appliedTheme === "light" ? preset.light : preset;
+    root.setProperty("--alt-accent-primary", pair.primary);
+    root.setProperty("--alt-accent-primary-hover", pair.hover);
+  }, [accentColor, appliedTheme]);
 
   /* UTC is deterministic across server + client render boundaries, which
    * avoids the next-intl ENVIRONMENT_FALLBACK hydration crash. Times

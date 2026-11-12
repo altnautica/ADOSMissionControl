@@ -86,6 +86,7 @@ function Indicator({
 }
 
 export function RadioNetworkHealthPanel({ nodeDeviceId }: { nodeDeviceId: string | null }) {
+  const tq = useTranslations("command.radioNetworkHealthPanel");
   const t = useTranslations("hardware.radio");
   const radio = useAgentCapabilitiesStore((s) => s.radio);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
@@ -180,7 +181,7 @@ export function RadioNetworkHealthPanel({ nodeDeviceId }: { nodeDeviceId: string
       <div className="mb-3 flex items-center gap-2">
         <Radio size={16} className="text-accent-primary" />
         <h2 className="text-lg font-medium text-text-primary">
-          Radio / Network health
+          {tq("radioNetworkHealth")}
         </h2>
         <div className="flex-1" />
         <button
@@ -188,52 +189,52 @@ export function RadioNetworkHealthPanel({ nodeDeviceId }: { nodeDeviceId: string
           className="flex items-center gap-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"
         >
           <RefreshCw size={11} className={loading ? "animate-spin" : undefined} />
-          Refresh
+          {tq("refresh")}
         </button>
       </div>
 
       {/* Live indicators */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Indicator
-          label="Operating region"
+          label={tq("operatingRegion")}
           value={region.value}
           tone={region.unrestricted ? "warning" : "success"}
         />
-        <Indicator label="Channel / lock" value={channel.value} tone={channel.tone} />
+        <Indicator label={tq("channelLock")} value={channel.value} tone={channel.tone} />
         <Indicator
-          label="Onboard WiFi"
+          label={tq("onboardWiFi")}
           value={!available ? "—" : wifiReassocRecent ? "Re-associating" : "Stable"}
           tone={!available ? "muted" : wifiReassocRecent ? "warning" : "success"}
         />
         <Indicator
-          label="RF link"
+          label={tq("rfLink")}
           value={rfLink.value}
           tone={rfLink.tone}
           title={rfLink.title}
         />
         {linkDiag != null ? (
           <Indicator
-            label="Link diagnosis"
+            label={tq("linkDiagnosis")}
             value={DIAG_LABEL[linkDiag] ?? linkDiag}
             tone={linkDiagTone(linkDiag)}
           />
         ) : null}
         {packetsAll != null ? (
           <Indicator
-            label="Packets seen"
+            label={tq("packetsSeen")}
             value={String(packetsAll)}
             tone="muted"
           />
         ) : null}
         {decryptErrors != null ? (
           <Indicator
-            label="Decrypt errors"
+            label={tq("decryptErrors")}
             value={String(decryptErrors)}
             tone={decryptErrors > 0 ? "warning" : "muted"}
           />
         ) : null}
         <Indicator
-          label="PHY status"
+          label={tq("phyStatus")}
           value={
             phyMuted ? "Muted (no RF)" : txActive ? "Transmitting" : "Idle"
           }
@@ -252,23 +253,23 @@ export function RadioNetworkHealthPanel({ nodeDeviceId }: { nodeDeviceId: string
             usb.state === "degraded" ? t("adapterUsbDegradedHint") : undefined
           }
         />
-        <Indicator label="Radio stack" value={stack.value} tone={stack.tone} />
+        <Indicator label={tq("radioStack")} value={stack.value} tone={stack.tone} />
         {mgmt.value ? (
           <Indicator
-            label="Management link"
+            label={tq("managementLink")}
             value={mgmt.value}
             tone={mgmt.tone}
           />
         ) : null}
         {reachback.value ? (
           <Indicator
-            label="Reach-back"
+            label={tq("reachBack")}
             value={reachback.value}
             tone={reachback.tone}
           />
         ) : null}
         {rehome.value ? (
-          <Indicator label="USB rehome" value={rehome.value} tone={rehome.tone} />
+          <Indicator label={tq("usbRehome")} value={rehome.value} tone={rehome.tone} />
         ) : null}
       </div>
 
@@ -300,7 +301,7 @@ export function RadioNetworkHealthPanel({ nodeDeviceId }: { nodeDeviceId: string
       <div className="mt-4">
         <div className="mb-1.5 flex items-baseline gap-2">
           <span className="text-xs font-medium text-text-primary">
-            Recent activity
+            {tq("recentActivity")}
           </span>
           <span className="font-mono text-[10px] text-text-tertiary">
             {recentEvents.length} {recentEvents.length === 1 ? "event" : "events"}

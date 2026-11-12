@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ function Pending({ value }: { value: number | null | undefined }) {
 }
 
 export function CompassPreflightChecks({ compassParams, setCompassParams }: CompassPreflightChecksProps) {
+  const tm = useTranslations("fcPanels.compassPreflightChecks");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
 
@@ -41,7 +43,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4">
-      <h3 className="text-xs font-medium text-text-primary mb-2">Compass Pre-flight Checks</h3>
+      <h3 className="text-xs font-medium text-text-primary mb-2">{tm("compassPreFlightChecks")}</h3>
       <div className="space-y-1.5">
         {/* COMPASS_USE */}
         <div className="flex items-center justify-between text-[10px]">
@@ -49,7 +51,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
           {typeof COMPASS_USE !== "number" ? (
             <Pending value={COMPASS_USE} />
           ) : COMPASS_USE === 1 ? (
-            <span className="text-status-success font-mono">Enabled</span>
+            <span className="text-status-success font-mono">{tm("enabled")}</span>
           ) : (
             <span className="text-status-error font-mono">Disabled — enable COMPASS_USE first</span>
           )}
@@ -79,7 +81,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
                 className="text-[9px] text-accent-primary hover:underline"
                 onClick={() => writeParam("COMPASS_AUTO_ROT", 3)}
               >
-                Fix
+                {tm("fix")}
               </button>
             </span>
           )}

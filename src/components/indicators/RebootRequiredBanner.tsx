@@ -36,6 +36,7 @@ export function RebootRequiredBanner({
   rebootParams: string[];
   className?: string;
 }) {
+  const tk = useTranslations("indicators.rebootRequiredBanner");
   const t = useTranslations("fcShared");
   const paramsKey = rebootParams.join(",");
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
@@ -115,7 +116,7 @@ export function RebootRequiredBanner({
         </Button>
         <button
           onClick={() => setDismissedKey(paramsKey)}
-          aria-label="Dismiss"
+          aria-label={tk("dismiss")}
           className="text-text-tertiary hover:text-text-primary"
         >
           <X size={12} />
@@ -131,9 +132,9 @@ export function RebootRequiredBanner({
         open={confirmOpen}
         onConfirm={() => { void handleReboot(); }}
         onCancel={() => setConfirmOpen(false)}
-        title="Reboot flight controller"
-        message="The flight controller restarts and the link drops until it is back. Continue?"
-        confirmLabel="Reboot"
+        title={tk("rebootFlightController")}
+        message={tk("theFlightControllerRestartsAnd")}
+        confirmLabel={tk("reboot")}
         variant="danger"
       />
     </div>

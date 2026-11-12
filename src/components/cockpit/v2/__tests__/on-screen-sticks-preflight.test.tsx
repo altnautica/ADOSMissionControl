@@ -23,6 +23,7 @@ import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
 import { useOnScreenSticksShown } from "@/lib/cockpit/on-screen-sticks-shown";
 import { preflightItems, type PreflightInputs } from "@/lib/cockpit/preflight";
+import { specText } from "@/lib/hud/spec-text";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
 import { usePilotLinkStore } from "@/lib/input/pilot-stream";
 import { usePadStatusStore } from "@/lib/input/pad-status";
@@ -43,10 +44,9 @@ function controllerItems() {
   const inputs: PreflightInputs = {
     readiness: [],
     prearm: [],
+    checks: [],
     live: true,
     nav: null,
-    battery: null,
-    batteryLowPct: 25,
     controlMode: "ados",
     controller: { connected: false, name: null },
     onScreenSticks,
@@ -94,7 +94,7 @@ describe("on-screen sticks in the pre-flight checklist", () => {
     renderSticks("medium");
     expect(screen.queryByTestId("on-screen-stick-right")).toBeNull();
     const { item, auto } = controllerItems();
-    expect(item).toEqual({ id: "controller", label: OPTIONAL, state: "warn" });
+    expect(item).toEqual({ id: "controller", label: specText("controls.no_controller"), state: "warn" });
     expect(auto.status).toBe("fail");
   });
 

@@ -2,9 +2,10 @@
  * @license GPL-3.0-only
  *
  * The flight screen's shell: the built-in flight column (Take off / Land,
- * RTH, Pause) stays on screen with the optional skill layer off, and the
- * page underneath the full-viewport flight screen leaves the tab order while
- * it is up, with the overlays above it (confirm sheets, toasts) left usable.
+ * RTH, Pause) stays on screen with the optional skill layer off. Embedded in
+ * the Flight tab the page around it stays usable; in full screen the page
+ * underneath leaves the tab order while it is up, with the overlays above it
+ * (confirm sheets, toasts) left usable.
  */
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -13,11 +14,18 @@ import { cleanup, screen } from "@testing-library/react";
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { CockpitView } from "@/components/cockpit/CockpitView";
 import { useCockpitStore } from "@/stores/cockpit-store";
+import { useUiStore } from "@/stores/ui-store";
 
 afterEach(() => {
   cleanup();
   useCockpitStore.getState().setEnabled(true);
+  useUiStore.setState({ immersiveMode: false });
 });
+
+/** Full screen without the browser's own fullscreen request. */
+function fullScreen(): void {
+  useUiStore.setState({ immersiveMode: true });
+}
 
 describe("flight screen shell", () => {
   it("keeps Pause, RTH and Take off on screen with the skill layer off", () => {
@@ -29,7 +37,20 @@ describe("flight screen shell", () => {
     expect(col.querySelector("[aria-label='Take off']")).not.toBeNull();
   });
 
-  it("makes the hidden page inert while it is up, and restores it on exit", () => {
+  it("leaves the page around the embedded Flight tab usable", () => {
+    const header = document.createElement("header");
+    header.innerHTML = "<button>Fly another drone</button>";
+    document.body.append(header);
+    renderWithIntl(<CockpitView droneId="shell-drone" />);
+    const frame = screen.getByTestId("flight-screen");
+    expect(header.hasAttribute("inert")).toBe(false);
+    expect(frame.hasAttribute("data-immersive")).toBe(false);
+    expect(frame.className).not.toContain("fixed");
+    header.remove();
+  });
+
+  it("makes the hidden page inert in full screen, and restores it on exit", () => {
+    fullScreen();
     const header = document.createElement("header");
     header.innerHTML = "<button>Fly another drone</button>";
     const toast = document.createElement("div");
@@ -53,6 +74,7 @@ describe("flight screen shell", () => {
   });
 
   it("makes a banner that mounts mid-flight inert too, and restores it on exit", async () => {
+    fullScreen();
     const { unmount } = renderWithIntl(<CockpitView droneId="shell-drone" />);
     const frame = screen.getByTestId("flight-screen");
     const column = frame.parentElement as HTMLElement;

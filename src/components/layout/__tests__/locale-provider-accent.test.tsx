@@ -53,4 +53,23 @@ describe("LocaleProvider accent override", () => {
     });
     expect(rootStyle().getPropertyValue("--alt-accent-primary")).toBe("#ec4899");
   });
+
+  it("drops the override when nvg is applied directly on the document", async () => {
+    render(<LocaleProvider>{null}</LocaleProvider>);
+    expect(rootStyle().getPropertyValue("--alt-accent-primary")).toBe("#f97316");
+    await act(async () => {
+      document.documentElement.setAttribute("data-theme", "nvg");
+      await Promise.resolve();
+    });
+    expect(rootStyle().getPropertyValue("--alt-accent-primary")).toBe("");
+  });
+
+  it("uses the darker accent pair on the light theme", async () => {
+    render(<LocaleProvider>{null}</LocaleProvider>);
+    await act(async () => {
+      useSettingsStore.setState({ themeMode: "light" });
+    });
+    expect(rootStyle().getPropertyValue("--alt-accent-primary")).toBe("#c2410c");
+    expect(rootStyle().getPropertyValue("--alt-accent-primary-hover")).toBe("#9a3412");
+  });
 });

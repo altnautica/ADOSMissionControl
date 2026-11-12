@@ -8,6 +8,8 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
+import messages from "../../../../../locales/en.json";
 import { useDroneStore } from "@/stores/drone-store";
 import { CalibrationRebootBanner } from "../CalibrationRebootBanner";
 
@@ -22,7 +24,7 @@ describe("CalibrationRebootBanner", () => {
     vi.useFakeTimers();
     let t = 1_000_000;
     act(() => useDroneStore.setState({ lastHeartbeat: t }));
-    render(<CalibrationRebootBanner label="Compass calibration saved" onReboot={() => undefined} />);
+    render(<CalibrationRebootBanner label="Compass calibration saved" onReboot={() => undefined} />, { wrapper: IntlWrapper });
     expect(screen.getByText("Reboot Required")).toBeTruthy();
 
     // The FC reboots: heartbeats stop for 6 s, then resume at 1 Hz.
@@ -43,7 +45,7 @@ describe("CalibrationRebootBanner", () => {
     vi.useFakeTimers();
     let t = 1_000_000;
     act(() => useDroneStore.setState({ lastHeartbeat: t }));
-    render(<CalibrationRebootBanner label="Compass calibration saved" onReboot={() => undefined} />);
+    render(<CalibrationRebootBanner label="Compass calibration saved" onReboot={() => undefined} />, { wrapper: IntlWrapper });
     for (let i = 0; i < 6; i++) {
       act(() => {
         vi.advanceTimersByTime(1000);
@@ -52,5 +54,12 @@ describe("CalibrationRebootBanner", () => {
       });
     }
     expect(screen.getByText("Reboot Required")).toBeTruthy();
+  });
+
+  it("names the flight controller in full on the reboot button", () => {
+    act(() => useDroneStore.setState({ lastHeartbeat: 1_000_000 }));
+    render(<CalibrationRebootBanner label="Compass calibration saved" onReboot={() => undefined} />, { wrapper: IntlWrapper });
+    expect(screen.getByRole("button", { name: messages.droneDetail.rebootFc })).toBeTruthy();
+    expect(screen.queryByText("Reboot FC")).toBeNull();
   });
 });

@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../../tests/helpers/intl-wrapper";
 import { enrollSigningKey } from "@/lib/agent/agent-client/extras";
 import { SigningDisabledSection } from "../SigningDisabledSection";
 import { UnsignedRiskBanner, UNSIGNED_RISK_COPY } from "../UnsignedRiskBanner";

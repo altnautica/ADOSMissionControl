@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ScrollText, Search } from "lucide-react";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -30,6 +31,7 @@ const SEVERITY_LABEL = [
 ];
 
 export function Px4EventsFeed() {
+  const tq = useTranslations("droneDetail.px4EventsFeed");
   const events = usePx4EventsStore((s) => s.events);
   const [query, setQuery] = useState("");
 
@@ -47,7 +49,7 @@ export function Px4EventsFeed() {
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-default flex-shrink-0">
         <ScrollText className="h-3.5 w-3.5 text-text-tertiary" />
         <span className="text-xs font-medium text-text-secondary">
-          Flight Controller Events
+          {tq("flightControllerEvents")}
         </span>
         <span className="text-[10px] text-text-tertiary tabular-nums">
           {events.length}
@@ -57,7 +59,7 @@ export function Px4EventsFeed() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search events"
+            placeholder={tq("searchEvents")}
             className="h-7 w-48 pl-7 text-xs"
           />
         </div>

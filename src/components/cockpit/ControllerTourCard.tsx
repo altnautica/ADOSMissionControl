@@ -40,12 +40,14 @@ const FRESH_TICK_MS = 500;
 /** Whether the drone is flying: a fresh pilot's `armed && !landed`, else
  *  (no pilot, or its newest frame is stale) the heartbeat's armed state. */
 export function tourAirborne(
-  pilot: { armed: boolean; landed: boolean } | null,
+  pilot: { armed: boolean | null; landed: boolean | null } | null,
   receivedAt: number | null,
   heartbeatArmed: boolean,
   now: number,
 ): boolean {
-  return pilot && pilotFresh(receivedAt, now) ? pilot.armed && !pilot.landed : heartbeatArmed;
+  // An unknown arm or landed state counts as airborne: the tour never covers
+  // the video of a vehicle that may be flying.
+  return pilot && pilotFresh(receivedAt, now) ? pilot.armed !== false && pilot.landed !== true : heartbeatArmed;
 }
 
 type Focus = "skip" | "next";

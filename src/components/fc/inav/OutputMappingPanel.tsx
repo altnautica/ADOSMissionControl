@@ -8,6 +8,8 @@
 
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -22,6 +24,8 @@ import { TIMER_OUTPUT_MODE_OPTIONS, timerUsageLabel } from "./inav-output-mappin
 // ── Component ─────────────────────────────────────────────────
 
 export function OutputMappingPanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.outputMappingPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -81,8 +85,8 @@ export function OutputMappingPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Output Mapping"
-          subtitle="Timer groups and output type assignments"
+          title={tr("outputMapping")}
+          subtitle={tr("timerGroupsAndOutputType")}
           icon={<Cpu size={16} />}
           loading={loading}
           loadProgress={null}
@@ -101,14 +105,14 @@ export function OutputMappingPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
@@ -116,14 +120,14 @@ export function OutputMappingPanel() {
           <div className="space-y-4">
             {timerModes.length > 0 && (
               <div className="border border-border-default rounded p-3 space-y-2">
-                <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Timer output modes</p>
+                <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">{tr("timerOutputModes")}</p>
                 {timerModes.map((entry) => (
                   <div key={entry.timerId} className="flex items-center gap-3">
                     <span className="text-[10px] font-mono text-text-tertiary w-16">Timer {entry.timerId}</span>
                     <div className="flex-1">
                       <Select
                         label=""
-                        options={TIMER_OUTPUT_MODE_OPTIONS}
+                        options={ol(TIMER_OUTPUT_MODE_OPTIONS)}
                         value={String(entry.mode)}
                         onChange={(v) => updateTimerMode(entry.timerId, parseInt(v))}
                       />
@@ -135,7 +139,7 @@ export function OutputMappingPanel() {
 
             {mapping.length > 0 && (
               <div className="border border-border-default rounded p-3 space-y-1">
-                <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Output assignments (read-only)</p>
+                <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">{tr("outputAssignmentsReadOnly")}</p>
                 <div className="grid grid-cols-3 gap-1 mt-2">
                   {mapping.map((entry, i) => (
                     <div key={i} className="flex items-center gap-1 text-[10px] font-mono">

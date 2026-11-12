@@ -18,6 +18,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, ClipboardCopy, Bug } from "lucide-react";
 import { useState } from "react";
 
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function SigningDebugSection({ droneId }: Props) {
+  const tr = useTranslations("fcPanels.signingDebugSection");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const state = useSigningStore((s) => s.drones[droneId]);
@@ -57,18 +59,18 @@ export function SigningDebugSection({ droneId }: Props) {
           <ChevronRight size={14} aria-hidden="true" />
         )}
         <Bug size={12} aria-hidden="true" />
-        <span className="font-medium">Debug</span>
+        <span className="font-medium">{tr("debug")}</span>
       </summary>
       {open && (
         <div className="mt-3 space-y-2">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs text-text-secondary">
-            <dt className="text-text-tertiary">Key fingerprint</dt>
+            <dt className="text-text-tertiary">{tr("keyFingerprint")}</dt>
             <dd className="font-mono">{state?.keyId ?? "—"}</dd>
-            <dt className="text-text-tertiary">Has browser key</dt>
+            <dt className="text-text-tertiary">{tr("hasBrowserKey")}</dt>
             <dd>{state?.hasBrowserKey ? "yes" : "no"}</dd>
-            <dt className="text-text-tertiary">Enrollment state</dt>
+            <dt className="text-text-tertiary">{tr("enrollmentState")}</dt>
             <dd>{state?.enrollmentState ?? "—"}</dd>
-            <dt className="text-text-tertiary">Previous key kept</dt>
+            <dt className="text-text-tertiary">{tr("previousKeyKept")}</dt>
             <dd className="font-mono">{state?.previousKeyId ?? "—"}</dd>
           </dl>
           <button

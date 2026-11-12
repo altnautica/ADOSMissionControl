@@ -153,22 +153,28 @@ export function useSimClock(
             ? (((-CesiumMath.toDegrees(hdg)) % 360) + 360) % 360
             : 0;
 
-          // Get terrain height for AGL computation
-          const cache = terrainCache.current;
-          const dLon = Math.abs(carto.longitude - cache.lon);
-          const dLat = Math.abs(carto.latitude - cache.lat);
-          if (dLon > CACHE_THRESHOLD_RAD || dLat > CACHE_THRESHOLD_RAD) {
-            const h = viewer.scene.globe.getHeight(carto);
-            if (h !== undefined) {
-              cache.lon = carto.longitude;
-              cache.lat = carto.latitude;
-              cache.height = h;
+          // Height above ground comes from the path's own terrain samples. The
+          // rendered globe is not asked: until fine tiles load, its coarse tiles
+          // sit kilometres under the real ground, which read as an altitude of
+          // tens of kilometres at the start of a mountain mission.
+          const sampledAgl = s.sampledAgl.getValue(clock.currentTime);
+          const altAgl = typeof sampledAgl === "number" ? sampledAgl : carto.height;
+
+          // The follow camera in relative mode still lifts the drone onto the
+          // rendered terrain, so keep its ground cache current.
+          if (!absoluteRef.current) {
+            const cache = terrainCache.current;
+            const dLon = Math.abs(carto.longitude - cache.lon);
+            const dLat = Math.abs(carto.latitude - cache.lat);
+            if (dLon > CACHE_THRESHOLD_RAD || dLat > CACHE_THRESHOLD_RAD) {
+              const h = viewer.scene.globe.getHeight(carto);
+              if (h !== undefined) {
+                cache.lon = carto.longitude;
+                cache.lat = carto.latitude;
+                cache.height = h;
+              }
             }
           }
-
-          const altAgl = absoluteRef.current
-            ? carto.height - cache.height
-            : carto.height; // AGL mode: position height IS the AGL value
 
           // Derive speed + waypoint index from flight plan segments
           const fp = flightPlanRef.current;

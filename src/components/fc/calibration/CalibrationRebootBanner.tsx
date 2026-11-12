@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ export function CalibrationRebootBanner({
   label: string;
   onReboot: () => void;
 }) {
+  const tr = useTranslations("fcPanels.calibrationRebootBanner");
+  const tDrone = useTranslations("droneDetail");
   const [dismissed, setDismissed] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
   const [rebootDetected, setRebootDetected] = useState(false);
@@ -48,13 +51,13 @@ export function CalibrationRebootBanner({
       style={fadingOut ? { animation: "fade-out-down 0.4s ease-out forwards" } : undefined}
     >
       <div>
-        <p className="text-sm font-medium text-status-warning">Reboot Required</p>
+        <p className="text-sm font-medium text-status-warning">{tr("rebootRequired")}</p>
         <p className="text-xs text-text-secondary mt-0.5">
           {label}. Reboot the flight controller to apply.
         </p>
       </div>
       <Button variant="primary" size="sm" onClick={onReboot}>
-        Reboot FC
+        {tDrone("rebootFc")}
       </Button>
     </div>
   );

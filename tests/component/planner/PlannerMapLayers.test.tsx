@@ -159,21 +159,21 @@ describe("PlannedHomeLayer", () => {
     useMissionStore.setState({ waypoints: [{ id: "g", lat: 36.06, lon: -112.14, alt: 0, command: "TAKEOFF" }] });
     useTelemetryStore.getState().pushHomePosition({ timestamp: Date.now(), lat: 12.9716, lon: 77.5946, alt: 900 });
     renderWithIntl(<PlannedHomeLayer />);
-    expect(rendered("marker").filter((m) => m.props.title === "Vehicle home")).toHaveLength(0);
+    expect(rendered("marker").filter((m) => m.props.title === "Drone home")).toHaveLength(0);
   });
 
   it("draws no ghost within 30 m of the planned home", () => {
     useMissionStore.setState({ plannedHome: HOME });
     useTelemetryStore.getState().pushHomePosition({ timestamp: Date.now(), lat: 12.97015, lon: 77.59015, alt: 900 });
     renderWithIntl(<PlannedHomeLayer />);
-    expect(rendered("marker").filter((m) => m.props.title === "Vehicle home")).toHaveLength(0);
+    expect(rendered("marker").filter((m) => m.props.title === "Drone home")).toHaveLength(0);
   });
 
   it("offers a vehicle home 200 m away as the planned home", () => {
     useMissionStore.setState({ plannedHome: HOME });
     useTelemetryStore.getState().pushHomePosition({ timestamp: Date.now(), lat: 12.972, lon: 77.5901, alt: 905 });
     renderWithIntl(<PlannedHomeLayer />);
-    const ghost = rendered("marker").find((m) => m.props.title === "Vehicle home")!;
+    const ghost = rendered("marker").find((m) => m.props.title === "Drone home")!;
     expect(ghost).toBeDefined();
     fire(ghost.props, "click", { target: { getElement: () => ghost.el } });
     fireEvent.click(screen.getByRole("button", { name: "Use as planned home" }));
@@ -187,7 +187,7 @@ describe("TerrainClashLayer", () => {
       valid: false,
       warnings: [],
       errors: [{
-        severity: "blocking", code: "LEG_TERRAIN_CLEARANCE", message: "",
+        severity: "blocking", code: "LEG_TERRAIN_CLEARANCE", message: "", text: { key: "homeNotSet" },
         waypointIndex: 1, waypointId: "b", leg: { toWaypointId: "c", clearanceM: -12.2, alongM: 140 },
       }],
     };

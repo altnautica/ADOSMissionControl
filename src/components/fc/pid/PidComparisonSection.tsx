@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
  * without an ArduCopter AUTOTUNE mode.
  */
 export function AutotuneSection({ connected }: { connected: boolean }) {
+  const tm = useTranslations("fcPanels.pidComparisonSection");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const flightMode = useDroneStore((s) => s.flightMode);
   const autotuneActive = connected && flightMode === "AUTOTUNE";
@@ -71,7 +73,7 @@ export function AutotuneSection({ connected }: { connected: boolean }) {
         className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50"
       >
         <Play size={14} className="text-accent-primary" />
-        <h2 className="text-sm font-medium text-text-primary">Autotune</h2>
+        <h2 className="text-sm font-medium text-text-primary">{tm("autotune")}</h2>
         <span className="text-[10px] text-text-tertiary ml-auto">{showAutotune ? "\u25BE" : "\u25B8"}</span>
       </button>
       {showAutotune && (
@@ -112,6 +114,7 @@ export function AutotuneSection({ connected }: { connected: boolean }) {
 // ── Live PID Response Graph ──────────────────────────────────
 
 export function LivePidResponseGraph({ connected }: { connected: boolean }) {
+  const tm = useTranslations("fcPanels.pidComparisonSection");
   const attitudeRing = useTelemetryStore((s) => s.attitude);
   const [tick, setTick] = useState(0);
 
@@ -135,7 +138,7 @@ export function LivePidResponseGraph({ connected }: { connected: boolean }) {
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 size={14} className="text-accent-primary" />
-        <h2 className="text-sm font-medium text-text-primary">Live Attitude Response</h2>
+        <h2 className="text-sm font-medium text-text-primary">{tm("liveAttitudeResponse")}</h2>
         <span className="text-[10px] text-text-tertiary ml-auto">
           {recentAttitude.length > 0 ? `${recentAttitude.length} pts, 15s window` : "No data"}
         </span>
@@ -149,9 +152,9 @@ export function LivePidResponseGraph({ connected }: { connected: boolean }) {
         </div>
       ) : (
         <div className="space-y-1.5">
-          <PidResponseChart data={recentAttitude.map((a) => a.roll)} label="Roll" color={AXIS_COLORS.roll} />
-          <PidResponseChart data={recentAttitude.map((a) => a.pitch)} label="Pitch" color={AXIS_COLORS.pitch} />
-          <PidResponseChart data={recentAttitude.map((a) => a.yaw)} label="Yaw" color={AXIS_COLORS.yaw} />
+          <PidResponseChart data={recentAttitude.map((a) => a.roll)} label={tm("roll")} color={AXIS_COLORS.roll} />
+          <PidResponseChart data={recentAttitude.map((a) => a.pitch)} label={tm("pitch")} color={AXIS_COLORS.pitch} />
+          <PidResponseChart data={recentAttitude.map((a) => a.yaw)} label={tm("yaw")} color={AXIS_COLORS.yaw} />
         </div>
       )}
     </div>
@@ -165,6 +168,7 @@ export function PidSnapshotComparison({
 }: {
   params: Map<string, number>;
 }) {
+  const tm = useTranslations("fcPanels.pidComparisonSection");
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const [snapshot, setSnapshot] = useState<Map<string, number> | null>(null);
@@ -177,9 +181,9 @@ export function PidSnapshotComparison({
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-center gap-2 mb-3">
         <Copy size={14} className="text-accent-primary" />
-        <h2 className="text-sm font-medium text-text-primary">Before / After</h2>
+        <h2 className="text-sm font-medium text-text-primary">{tm("beforeAfter")}</h2>
         <Button variant="ghost" size="sm" onClick={snapshotCurrent} className="ml-auto">
-          Snapshot Current
+          {tm("snapshotCurrent")}
         </Button>
       </div>
       {!snapshot ? (
@@ -191,10 +195,10 @@ export function PidSnapshotComparison({
           <table className="w-full text-[10px] font-mono">
             <thead>
               <tr className="border-b border-border-default text-text-tertiary">
-                <th className="text-left py-1 pr-3">Param</th>
-                <th className="text-right py-1 px-2">Before</th>
-                <th className="text-right py-1 px-2">Current</th>
-                <th className="text-right py-1 pl-2">Delta</th>
+                <th className="text-left py-1 pr-3">{tm("param")}</th>
+                <th className="text-right py-1 px-2">{tm("before")}</th>
+                <th className="text-right py-1 px-2">{tm("current")}</th>
+                <th className="text-right py-1 pl-2">{tm("delta")}</th>
               </tr>
             </thead>
             <tbody>
@@ -225,7 +229,7 @@ export function PidSnapshotComparison({
             </tbody>
           </table>
           {Array.from(snapshot.entries()).every(([name]) => (params.get(name) ?? 0) === (snapshot.get(name) ?? 0)) && (
-            <p className="text-[10px] text-text-tertiary text-center py-2">No changes from snapshot</p>
+            <p className="text-[10px] text-text-tertiary text-center py-2">{tm("noChangesFromSnapshot")}</p>
           )}
         </div>
       )}
@@ -244,12 +248,13 @@ export function Px4GainMultipliers({
   setLocalValue: (name: string, value: number) => void;
   hasLoaded: boolean;
 }) {
+  const tm = useTranslations("fcPanels.pidComparisonSection");
   if (!hasLoaded) return null;
 
   return (
     <section className="border-t border-border-strong pt-4 mt-4">
-      <h3 className="text-sm font-medium text-text-secondary mb-3">PX4 Gain Multipliers</h3>
-      <p className="text-xs text-text-tertiary mb-3">Overall rate controller gain scaling. Default 1.0. Reduce to dampen response.</p>
+      <h3 className="text-sm font-medium text-text-secondary mb-3">{tm("px4GainMultipliers")}</h3>
+      <p className="text-xs text-text-tertiary mb-3">{tm("overallRateControllerGainScaling")}</p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {["MC_ROLLRATE_K", "MC_PITCHRATE_K", "MC_YAWRATE_K"].map((param) => (
           <div key={param}>

@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -32,6 +33,7 @@ const HEADING_MIN = -360;
 const HEADING_MAX = 360;
 
 export function FwApproachPanel() {
+  const tm = useTranslations("fcPanels.fwApproachPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -109,12 +111,12 @@ export function FwApproachPanel() {
       <div className="max-w-2xl space-y-4">
         {isMultirotor && (
           <p className="text-[11px] text-text-tertiary border border-border-default rounded px-3 py-2 bg-bg-secondary">
-            This panel applies to fixed-wing and tricopter platforms. The connected flight controller is configured as a multirotor.
+            {tm("thisPanelAppliesToFixed")}
           </p>
         )}
         <PanelHeader
-          title="FW Approach"
-          subtitle="Fixed-wing landing approach configuration, one slot per approach the flight controller holds."
+          title={tm("fwApproach")}
+          subtitle={tm("fixedWingLandingApproachConfiguration")}
           icon={<Plane size={16} />}
           loading={loading}
           loadProgress={null}
@@ -144,10 +146,10 @@ export function FwApproachPanel() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <NumInput label="Approach alt (cm)" value={slot.approachAlt} onChange={(v) => updateSlot(idx, "approachAlt", v)} />
-                  <NumInput label="Land alt (cm)" value={slot.landAlt} onChange={(v) => updateSlot(idx, "landAlt", v)} />
+                  <NumInput label={tm("approachAltCm")} value={slot.approachAlt} onChange={(v) => updateSlot(idx, "approachAlt", v)} />
+                  <NumInput label={tm("landAltCm")} value={slot.landAlt} onChange={(v) => updateSlot(idx, "landAlt", v)} />
                   <div className="flex flex-col gap-1">
-                    <span className="text-[11px] text-text-secondary">Approach direction</span>
+                    <span className="text-[11px] text-text-secondary">{tm("approachDirection")}</span>
                     <Select
                       label=""
                       options={DIRECTION_OPTIONS}
@@ -155,10 +157,10 @@ export function FwApproachPanel() {
                       onChange={(v) => updateSlot(idx, "approachDirection", parseInt(v, 10))}
                     />
                   </div>
-                  <NumInput label="Land heading 1 (deg, 0 = off)" value={slot.landHeading1} min={HEADING_MIN} max={HEADING_MAX} onChange={(v) => updateSlot(idx, "landHeading1", v)} />
-                  <NumInput label="Land heading 2 (deg, 0 = off)" value={slot.landHeading2} min={HEADING_MIN} max={HEADING_MAX} onChange={(v) => updateSlot(idx, "landHeading2", v)} />
+                  <NumInput label={tm("landHeading1Deg0")} value={slot.landHeading1} min={HEADING_MIN} max={HEADING_MAX} onChange={(v) => updateSlot(idx, "landHeading1", v)} />
+                  <NumInput label={tm("landHeading2Deg0")} value={slot.landHeading2} min={HEADING_MIN} max={HEADING_MAX} onChange={(v) => updateSlot(idx, "landHeading2", v)} />
                   <div className="flex flex-col gap-1">
-                    <span className="text-[11px] text-text-secondary">Altitude reference</span>
+                    <span className="text-[11px] text-text-secondary">{tm("altitudeReference")}</span>
                     <button
                       onClick={() => updateSlot(idx, "isSeaLevelRef", !slot.isSeaLevelRef)}
                       className={`text-[11px] px-3 py-1 rounded border ${

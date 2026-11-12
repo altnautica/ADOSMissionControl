@@ -45,7 +45,9 @@ export function LocalDroneBridge() {
         nodeId,
         {
           deviceId: node.deviceId,
-          name: node.name || `Agent ${node.deviceId.slice(0, 8)}`,
+          // No name: leave the known one; the fleet projection supplies the
+          // placeholder, so a nameless source never overwrites a real name.
+          name: node.name || undefined,
           profile: node.profile,
           role: node.role ?? null,
           // A LAN-paired node is reached over the LAN; its posture is local

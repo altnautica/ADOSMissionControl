@@ -12,6 +12,7 @@
  */
 
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 import viewsSpec from "@/lib/cockpit-spec/views.json";
 import type { LayerStackView } from "@/lib/cockpit/layers/layer-spec";
@@ -111,15 +112,32 @@ interface CockpitViewState {
   setSplit: (droneId: string, ratio: number) => void;
 }
 
-export const useCockpitViewStore = create<CockpitViewState>()((set) => ({
-  byDrone: {},
-  splitByDrone: {},
-  setView: (droneId, view) => set((s) => ({ byDrone: { ...s.byDrone, [droneId]: view } })),
-  cycleView: (droneId) =>
-    set((s) => ({ byDrone: { ...s.byDrone, [droneId]: nextView(s.byDrone[droneId] ?? DEFAULT_VIEW) } })),
-  setSplit: (droneId, ratio) =>
-    set((s) => ({ splitByDrone: { ...s.splitByDrone, [droneId]: clampSplit(ratio) } })),
-}));
+/** The view and the Split divider per vehicle persist across reloads. */
+export const useCockpitViewStore = create<CockpitViewState>()(
+  persist(
+    (set) => ({
+      byDrone: {},
+      splitByDrone: {},
+      setView: (droneId, view) => set((s) => ({ byDrone: { ...s.byDrone, [droneId]: view } })),
+      cycleView: (droneId) =>
+        set((s) => ({ byDrone: { ...s.byDrone, [droneId]: nextView(s.byDrone[droneId] ?? DEFAULT_VIEW) } })),
+      setSplit: (droneId, ratio) =>
+        set((s) => ({ splitByDrone: { ...s.splitByDrone, [droneId]: clampSplit(ratio) } })),
+    }),
+    {
+      name: "altcmd:cockpit-views",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (s) => ({ byDrone: s.byDrone, splitByDrone: s.splitByDrone }),
+      // A stored ratio is clamped again: the spec range may have changed.
+      merge: (stored, current) => {
+        const p = (stored ?? {}) as Partial<Pick<CockpitViewState, "byDrone" | "splitByDrone">>;
+        const split: Record<string, number> = {};
+        for (const [id, r] of Object.entries(p.splitByDrone ?? {})) split[id] = clampSplit(r);
+        return { ...current, byDrone: { ...(p.byDrone ?? {}) }, splitByDrone: split };
+      },
+    },
+  ),
+);
 
 /** The drone's Split divider position. */
 export function useSplitRatio(droneId: string): number {

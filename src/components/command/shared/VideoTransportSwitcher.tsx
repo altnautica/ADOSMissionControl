@@ -22,6 +22,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -112,6 +113,7 @@ function pillDotColor(
 const DROPDOWN_OPTIONS: TransportMode[] = ["auto", "lan-whep", "p2p-mqtt", "off"];
 
 export function VideoTransportSwitcher(props: Props) {
+  const tq = useTranslations("command.videoTransportSwitcher");
   const {
     activeTransport,
     cascadeState,
@@ -232,8 +234,8 @@ export function VideoTransportSwitcher(props: Props) {
           "hover:bg-scrim/80 transition-colors select-none cursor-pointer",
           "focus:outline-none focus:ring-1 focus:ring-accent-primary",
         )}
-        title="Switch video transport"
-        aria-label="Video transport switcher"
+        title={tq("switchVideoTransport")}
+        aria-label={tq("videoTransportSwitcher")}
         aria-expanded={open}
       >
         <span
@@ -244,7 +246,7 @@ export function VideoTransportSwitcher(props: Props) {
         />
         <span>{pillLabel}</span>
         {showLatency && (
-          <span title="Network round-trip + Chrome playout buffer. Click the chip in the bottom strip for a full breakdown.">
+          <span title={tq("networkRoundTripChromePlayout")}>
             · {latencyMs}ms link
           </span>
         )}
@@ -286,6 +288,7 @@ interface DropdownProps {
 }
 
 function DropdownPanel(props: DropdownProps) {
+  const tk = useTranslations("command.videoTransportSwitcher");
   const {
     mode,
     activeTransport,
@@ -314,7 +317,7 @@ function DropdownPanel(props: DropdownProps) {
       role="menu"
     >
       <Option
-        label="Auto (best of LAN, P2P)"
+        label={tk("autoBestOfLANP2P")}
         selected={mode === "auto"}
         active={mode === "auto"}
         available
@@ -323,7 +326,7 @@ function DropdownPanel(props: DropdownProps) {
       />
       <Divider />
       <Option
-        label="LAN Direct"
+        label={tk("lanDirect")}
         selected={mode === "lan-whep"}
         active={activeTransport === "lan-whep"}
         available={hasLanWhep}
@@ -343,7 +346,7 @@ function DropdownPanel(props: DropdownProps) {
         onClick={() => hasPairedAgent && onSelect("p2p-mqtt")}
       />
       <Option
-        label="Off"
+        label={tk("off")}
         selected={mode === "off"}
         active={mode === "off"}
         available
@@ -358,7 +361,7 @@ function DropdownPanel(props: DropdownProps) {
           <div className="px-2 py-1.5 text-status-serious text-[10px] leading-tight">
             <div className="font-semibold mb-0.5">⚠ Agent video stopped</div>
             <div className="text-text-tertiary">
-              The agent&apos;s video service is not running. Check
+              {tk("theAgentAposSVideo")}
               <code className="px-1">ados-video</code> on the SBC.
             </div>
           </div>
@@ -374,7 +377,7 @@ function DropdownPanel(props: DropdownProps) {
               onClick={onRetry}
               className="mt-1 px-2 py-0.5 rounded bg-on-media/10 hover:bg-on-media/20 text-text-primary text-[10px] transition-colors"
             >
-              Retry
+              {tk("retry")}
             </button>
           </div>
         </>

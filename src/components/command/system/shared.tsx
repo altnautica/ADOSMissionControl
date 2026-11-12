@@ -8,6 +8,7 @@
  * @module components/command/system/shared
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Loader2, Cpu, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -131,6 +132,7 @@ const DEFAULT_CATEGORY = {
 } as const;
 
 export function DeviceCard({ device }: { device: PeripheralInfo }) {
+  const tq = useTranslations("command.shared");
   const cat = CATEGORY_CONFIG[device.category] ?? {
     ...DEFAULT_CATEGORY,
     label: device.category || DEFAULT_CATEGORY.label,
@@ -165,17 +167,17 @@ export function DeviceCard({ device }: { device: PeripheralInfo }) {
       <div className="space-y-0.5 text-[11px]">
         {device.address && device.address !== device.bus && (
           <div className="flex justify-between">
-            <span className="text-text-tertiary">Address</span>
+            <span className="text-text-tertiary">{tq("address")}</span>
             <span className="text-text-secondary font-mono">{device.address}</span>
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-text-tertiary">Bus</span>
+          <span className="text-text-tertiary">{tq("bus")}</span>
           <span className="text-text-secondary font-mono">{device.bus}</span>
         </div>
         {device.last_reading && (
           <div className="flex justify-between">
-            <span className="text-text-tertiary">Capabilities</span>
+            <span className="text-text-tertiary">{tq("capabilities")}</span>
             <span className="text-text-secondary font-mono">{device.last_reading}</span>
           </div>
         )}

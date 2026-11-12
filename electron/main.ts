@@ -1,4 +1,7 @@
 import { app, dialog, session } from "electron";
+import fs from "fs";
+import path from "path";
+import { startupFailureBox } from "./desktop-dialogs";
 import { setupPermissions } from "./permissions";
 import { startServer, stopServer } from "./server";
 import { applyNavigationPolicy, createMainWindow } from "./window";
@@ -97,12 +100,20 @@ app.whenReady().then(async () => {
     // existed, so `window-all-closed` never fires and every FAILED launch
     // leaked another server holding the port.
     await stopServer().catch(() => undefined);
-    const message = err?.stack || err?.message || String(err);
+    const details = err?.stack || err?.message || String(err);
+    // The stack goes to a file the operator can attach, not into the box.
+    let logFile: string | null = null;
     try {
-      dialog.showErrorBox(
-        "Altnautica Command failed to start",
-        `The embedded server did not start.\n\n${message}\n\nPlease report this with the log file.`,
-      );
+      const dir = app.getPath("logs");
+      fs.mkdirSync(dir, { recursive: true });
+      logFile = path.join(dir, "startup-error.log");
+      fs.writeFileSync(logFile, `${new Date().toISOString()}\n${details}\n`);
+    } catch {
+      logFile = null;
+    }
+    try {
+      const box = startupFailureBox(err?.message || String(err), logFile);
+      dialog.showErrorBox(box.title, box.content);
     } catch {
       // dialog may be unavailable in some environments; fall through to quit
     }

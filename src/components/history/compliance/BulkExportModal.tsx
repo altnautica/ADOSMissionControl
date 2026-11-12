@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { X, FileText, FileJson, FileType, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -40,6 +41,7 @@ const FORMAT_OPTIONS: { value: Format; label: string }[] = [
 ];
 
 export function BulkExportModal({ open, records, onClose }: BulkExportModalProps) {
+  const tq = useTranslations("history.bulkExportModal");
   const operator = useOperatorProfileStore((s) => s.profile);
   const aircraftIndex = useAircraftRegistryStore((s) => s.aircraft);
 
@@ -103,12 +105,12 @@ export function BulkExportModal({ open, records, onClose }: BulkExportModalProps
       <div className="w-[480px] max-w-[90vw] max-h-[85vh] overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">
-            Bulk Compliance Export
+            {tq("bulkComplianceExport")}
           </h3>
           <button
             onClick={onClose}
             className="text-text-tertiary hover:text-text-primary transition-colors p-1"
-            aria-label="Close"
+            aria-label={tq("close")}
           >
             <X size={14} />
           </button>
@@ -116,13 +118,13 @@ export function BulkExportModal({ open, records, onClose }: BulkExportModalProps
 
         <div className="p-4 flex flex-col gap-3">
           <p className="text-[11px] text-text-secondary">
-            Exporting <span className="text-text-primary font-mono">{records.length}</span> selected
+            {tq("exporting")} <span className="text-text-primary font-mono">{records.length}</span> selected
             flight{records.length === 1 ? "" : "s"}.
           </p>
 
-          <Card title="Jurisdiction" padding={true}>
+          <Card title={tq("jurisdiction")} padding={true}>
             <Select
-              label="Regulator"
+              label={tq("regulator")}
               value={jurisdiction}
               onChange={(v) => setJurisdiction(v as JurisdictionCode)}
               options={jurisdictionOptions}
@@ -130,16 +132,16 @@ export function BulkExportModal({ open, records, onClose }: BulkExportModalProps
             />
           </Card>
 
-          <Card title="Format" padding={true}>
+          <Card title={tq("format")} padding={true}>
             <Select
-              label="Output"
+              label={tq("output")}
               value={format}
               onChange={(v) => setFormat(v as Format)}
               options={FORMAT_OPTIONS}
             />
           </Card>
 
-          <Card title="Validation" padding={true}>
+          <Card title={tq("validation")} padding={true}>
             <div className="flex items-center gap-2 mb-2">
               <Badge
                 variant={
@@ -176,7 +178,7 @@ export function BulkExportModal({ open, records, onClose }: BulkExportModalProps
 
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={onClose}>
-              Cancel
+              {tq("cancel")}
             </Button>
             <Button
               variant="primary"

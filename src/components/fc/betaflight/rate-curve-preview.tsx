@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { CHART_GRID } from "../chart-theme";
 
@@ -113,6 +114,7 @@ export interface CurveData {
 }
 
 export function RateCurvePreview({ ratesType, curves }: { ratesType: number; curves: CurveData[] }) {
+  const tr = useTranslations("fcPanels.rate-curve-preview");
   const maxRate = useMemo(() => {
     let max = 0;
     for (const c of curves) {
@@ -130,7 +132,7 @@ export function RateCurvePreview({ ratesType, curves }: { ratesType: number; cur
       <svg width={CURVE_W} height={CURVE_H} className="block">
         <line x1={CURVE_PAD} y1={CURVE_H - CURVE_PAD} x2={CURVE_W - CURVE_PAD} y2={CURVE_H - CURVE_PAD} stroke={CHART_GRID} strokeWidth={1} />
         <line x1={CURVE_PAD} y1={CURVE_PAD} x2={CURVE_PAD} y2={CURVE_H - CURVE_PAD} stroke={CHART_GRID} strokeWidth={1} />
-        <text x={CURVE_W / 2} y={CURVE_H - 4} textAnchor="middle" className="text-[8px] fill-text-tertiary">Stick %</text>
+        <text x={CURVE_W / 2} y={CURVE_H - 4} textAnchor="middle" className="text-[8px] fill-text-tertiary">{tr("stick")}</text>
         <text x={8} y={CURVE_H / 2} textAnchor="middle" className="text-[8px] fill-text-tertiary" transform={`rotate(-90, 8, ${CURVE_H / 2})`}>deg/s</text>
         {[0.25, 0.5, 0.75].map((frac) => (
           <line key={`h-${frac}`} x1={CURVE_PAD} y1={CURVE_H - CURVE_PAD - plotH * frac} x2={CURVE_W - CURVE_PAD} y2={CURVE_H - CURVE_PAD - plotH * frac} stroke={CHART_GRID} strokeWidth={0.5} strokeDasharray="2,3" />

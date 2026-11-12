@@ -1,7 +1,8 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import { useState, useMemo, useLayoutEffect } from "react";
-import { Button } from "@/components/ui/button";
+
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
@@ -11,7 +12,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { SlidersHorizontal, Save, RotateCcw, HardDrive, Zap, Filter } from "lucide-react";
+import { SlidersHorizontal, Zap, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PX4_PARAM_MAP } from "@/lib/protocol/firmware/px4-params";
 import { PidAxisRow, PidParamRow } from "./PidAxisRow";
@@ -31,7 +32,11 @@ import { AutotuneSection, LivePidResponseGraph, PidSnapshotComparison, Px4GainMu
 import { AgentSetupStep } from "../calibration/AgentSetupStep";
 import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 export function PidTuningPanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.pidTuningPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDrone = useDroneManager(selectSelectedDrone);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -77,12 +82,12 @@ export function PidTuningPanel() {
       .filter((a) => a.params.length > 0);
   }, [vehicleType, available]);
   const secondaryParams = useMemo(
-    () => (vehicleType === "rover" ? ROVER_NAV_PARAMS
-      : vehicleType === "plane" ? PLANE_ACRO_PARAMS
-      : COPTER_ACRO_PARAMS).filter(available),
-    [vehicleType, available],
+    () => (vehicleType === "rover" ? ol(ROVER_NAV_PARAMS)
+      : vehicleType === "plane" ? ol(PLANE_ACRO_PARAMS)
+      : ol(COPTER_ACRO_PARAMS)).filter(available),
+    [vehicleType, available, ol],
   );
-  const filterParams = useMemo(() => FILTER_PARAMS.filter(available), [available]);
+  const filterParams = useMemo(() => ol(FILTER_PARAMS).filter(available), [available, ol]);
 
   const paramNames = useMemo(() => [
     ...axes.flatMap((a) => a.params.map((p) => p.param)),
@@ -109,7 +114,7 @@ export function PidTuningPanel() {
     setLocalValue,
   }), [vehicleType, params, dirtyParams, setLocalValue]);
 
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   function applyPreset(preset: PidPreset) {
     for (const [param, value] of Object.entries(preset.values)) {
@@ -142,7 +147,7 @@ export function PidTuningPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-6">
-        <PanelHeader title="PID Tuning" subtitle={subtitle} icon={<SlidersHorizontal size={16} />}
+        <PanelHeader title={tr("pidTuning")} subtitle={subtitle} icon={<SlidersHorizontal size={16} />}
           loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -175,7 +180,7 @@ export function PidTuningPanel() {
           <div className="border border-border-default bg-bg-secondary p-4">
             <div className="flex items-center gap-2 mb-3">
               <Zap size={14} className="text-accent-primary" />
-              <h2 className="text-sm font-medium text-text-primary">Preset Profiles</h2>
+              <h2 className="text-sm font-medium text-text-primary">{tr("presetProfiles")}</h2>
             </div>
             <div className="flex gap-2">
               {COPTER_PRESETS.map((preset) => (
@@ -193,12 +198,12 @@ export function PidTuningPanel() {
           <div className="border border-border-default bg-bg-secondary">
             <button onClick={() => setShowFilters((f) => !f)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
               <Filter size={14} className="text-accent-primary" />
-              <h2 className="text-sm font-medium text-text-primary">Filter Settings</h2>
+              <h2 className="text-sm font-medium text-text-primary">{tr("filterSettings")}</h2>
               <span className="text-[10px] text-text-tertiary ml-auto">{showFilters ? "\u25BE" : "\u25B8"}</span>
             </button>
             {showFilters && (
               <div className="px-4 pb-4 space-y-3">
-                <p className="text-[10px] text-text-tertiary">INS gyro/accel low-pass filters and harmonic notch filter</p>
+                <p className="text-[10px] text-text-tertiary">{tr("insGyroAccelLowPass")}</p>
                 {filterParams.map((fp) => paramRow(fp, "grid-cols-[180px_1fr_80px]"))}
               </div>
             )}
@@ -219,13 +224,18 @@ export function PidTuningPanel() {
 
         {isPx4 && <Px4GainMultipliers params={params} setLocalValue={setLocalValue} hasLoaded={hasLoaded} />}
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Plane, Save, RotateCcw, HardDrive, ArrowLeftRight, ShieldAlert } from "lucide-react";
+import { Plane, ArrowLeftRight, ShieldAlert } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -16,6 +16,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field { param: string; label: string; kind: "enum" | "number"; min?: number; max?: number; step?: number }
 
@@ -56,6 +58,7 @@ const STANDARD: Field[] = [
 const ALL_FIELDS = [...CORE, ...QUADCHUTE, ...TILTROTOR, ...STANDARD];
 
 export function Px4VtolPanel() {
+  const tr = useTranslations("fcPanels.px4VtolPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -74,7 +77,7 @@ export function Px4VtolPanel() {
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: Field) => {
     const value = params.get(f.param) ?? 0;
@@ -108,12 +111,12 @@ export function Px4VtolPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="VTOL Transition" subtitle="PX4 VTOL type, transition timing, quad-chute, and airframe-specific tilt/thrust"
+        <PanelHeader title={tr("vtolTransition")} subtitle={tr("px4VTOLTypeTransitionTiming")}
           icon={<ArrowLeftRight size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
         <div className="border border-border-default bg-bg-secondary p-4">
-          <div className="flex items-center gap-2 mb-3"><ArrowLeftRight size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">Transition</h2></div>
+          <div className="flex items-center gap-2 mb-3"><ArrowLeftRight size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">{tr("transition")}</h2></div>
           <div className="space-y-3">{CORE.map(renderField)}</div>
         </div>
 
@@ -121,13 +124,18 @@ export function Px4VtolPanel() {
         {collapsible("Tiltrotor", <Plane size={14} className="text-accent-primary" />, showTilt, () => setShowTilt((v) => !v), TILTROTOR)}
         {collapsible("Standard VTOL (pusher)", <Plane size={14} className="text-accent-primary" />, showStd, () => setShowStd((v) => !v), STANDARD)}
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

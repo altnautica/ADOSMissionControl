@@ -12,6 +12,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { locales, localeNames } from "@/i18n";
 
 export function LanguageSection() {
+  const tk = useTranslations("configUi.languageSection");
   const t = useTranslations("settings");
   const locale = useSettingsStore((s) => s.locale);
   const setLocale = useSettingsStore((s) => s.setLocale);
@@ -54,7 +55,7 @@ export function LanguageSection() {
           rel="noopener noreferrer"
           className="text-accent-primary hover:underline"
         >
-          GitHub
+          {tk("github")}
         </a>
       </p>
     </div>

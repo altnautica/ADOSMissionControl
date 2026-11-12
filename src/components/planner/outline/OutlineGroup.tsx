@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlannerStore } from "@/stores/planner-store";
+import { HIT_AREA_48 } from "@/components/planner/hit-area";
 
 interface OutlineGroupProps {
   /** Stable key for the persisted open state. */
@@ -41,7 +42,7 @@ export function OutlineGroup({ id, title, meta, active, onSelect, onAdd, addLabe
     <section className="border-t border-border-default py-1.5 first:border-t-0" data-outline-group={id}>
       <div
         className={cn(
-          "group/header flex h-7 items-center gap-0.5 pl-1 pr-2 transition-colors",
+          "group/header flex h-8 items-center gap-0.5 pl-1 pr-1 transition-colors",
           active ? "bg-accent-primary/10" : "hover:bg-bg-tertiary",
         )}
       >
@@ -51,7 +52,7 @@ export function OutlineGroup({ id, title, meta, active, onSelect, onAdd, addLabe
           aria-expanded={open}
           aria-controls={contentId}
           aria-label={open ? t("collapse", { group: title }) : t("expand", { group: title })}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-tertiary hover:text-text-primary cursor-pointer focus-ring"
+          className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-tertiary hover:text-text-primary cursor-pointer focus-ring", HIT_AREA_48)}
         >
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -79,7 +80,7 @@ export function OutlineGroup({ id, title, meta, active, onSelect, onAdd, addLabe
             onClick={onAdd}
             aria-label={addLabel}
             title={addLabel}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-tertiary hover:text-text-primary cursor-pointer focus-ring"
+            className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-tertiary hover:text-text-primary cursor-pointer focus-ring", HIT_AREA_48)}
           >
             <Plus size={12} />
           </button>

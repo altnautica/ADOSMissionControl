@@ -1,8 +1,8 @@
 /**
  * @module mock/swarm-beacons
  * @description The demo swarm bus: a synthetic `GET /api/swarm/neighbors`
- * payload for `npm run demo`, so the Swarm tab renders a believable 14-slot
- * fleet with no agent attached.
+ * payload for `npm run demo`, so the Swarm tab renders a believable fleet,
+ * one slot per companion demo drone, with no agent attached.
  *
  * This is demo infrastructure, not a stub: it is loaded only when
  * isDemoMode() is true and produces complete, well-formed data.
@@ -39,7 +39,6 @@ import {
   CFG_BY_DEVICE_ID,
   DISARMED_SLOT,
   EMERGENCY_SLOT,
-  FLEET_SLOTS,
   NO_GPS_SLOT,
   OFFLINE_SLOT,
   WEAK_RSSI_BY_SLOT,
@@ -272,7 +271,7 @@ export function demoSwarmNeighborsPayload(nowMs: number): Record<string, unknown
       beacons_slot_conflict: 0,
       neighbors_now: BEACON_SLOTS.length,
     },
-    slots: FLEET_SLOTS.map((s) => ({ slot: s.slot, device_id: s.deviceId })),
+    slots: BEACON_SLOTS.map((s) => ({ slot: s.slot, device_id: s.deviceId })),
     radio: { open: true, iface: "wlan1" },
   };
 }

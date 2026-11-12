@@ -1,10 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { Activity } from "lucide-react";
 
 export function MessageRatePanel() {
+  const tq = useTranslations("diagnostics.messageRatePanel");
   const messageRates = useDiagnosticsStore((s) => s.messageRates);
   const updateRates = useDiagnosticsStore((s) => s.updateRates);
 
@@ -30,7 +32,7 @@ export function MessageRatePanel() {
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <Activity size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Message Rates</span>
+        <span className="text-xs font-semibold text-text-primary">{tq("messageRates")}</span>
         <span className="text-[10px] text-text-tertiary font-mono">
           {sorted.length} type{sorted.length !== 1 ? "s" : ""}
         </span>
@@ -47,19 +49,19 @@ export function MessageRatePanel() {
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-6">
             <Activity size={24} className="text-text-tertiary" />
-            <span className="text-xs text-text-tertiary">No message traffic</span>
+            <span className="text-xs text-text-tertiary">{tq("noMessageTraffic")}</span>
             <span className="text-[10px] text-text-tertiary">
-              Connect a drone to see per-message-type rates
+              {tq("connectADroneToSee")}
             </span>
           </div>
         ) : (
           <div className="font-mono text-[10px]">
             {/* Table header */}
             <div className="flex items-center gap-0 px-4 py-1 border-b border-border-default bg-bg-tertiary text-text-tertiary sticky top-0 z-10">
-              <span className="w-[200px] shrink-0">Message Name</span>
+              <span className="w-[200px] shrink-0">{tq("messageName")}</span>
               <span className="w-[60px] shrink-0 text-right">ID</span>
-              <span className="w-[80px] shrink-0 text-right">Rate (Hz)</span>
-              <span className="flex-1 pl-4">Bar</span>
+              <span className="w-[80px] shrink-0 text-right">{tq("rateHz")}</span>
+              <span className="flex-1 pl-4">{tq("bar")}</span>
             </div>
 
             {sorted.map((entry) => {

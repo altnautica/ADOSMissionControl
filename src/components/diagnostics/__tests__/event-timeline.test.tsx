@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { screen, act } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../tests/helpers/intl-wrapper";
 
 import { EventTimeline } from "../EventTimeline";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";

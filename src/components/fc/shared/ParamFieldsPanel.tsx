@@ -12,8 +12,7 @@
  */
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Save, RotateCcw, HardDrive } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -29,6 +28,8 @@ import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 export interface ParamField {
   param: string;
@@ -100,7 +101,7 @@ export function ParamFieldsPanel({
     params, loading, error, dirtyParams, hasRamWrites, loadProgress, hasLoaded,
     refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: allParams, optionalParams: allParams, panelId, autoLoad: true });
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -194,13 +195,18 @@ export function ParamFieldsPanel({
             ),
           )}
 
-          <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-            <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-            {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-            {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-            {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-          </div>
+          <PanelSaveBar
+            onSave={handleSave}
+            saving={saving}
+            saveDisabled={!hasDirty || !connected}
+            onRevert={handleRevert}
+            revertDisabled={!hasDirty}
+            showFlash={hasRamWrites}
+            onFlash={handleFlash}
+            flashing={flashing}
+            showConnectHint={!connected}
+            showUnsavedHint={hasDirty && connected}
+          />
         </div>
       </div>
 

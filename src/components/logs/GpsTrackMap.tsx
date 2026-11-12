@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo, useEffect, useRef } from "react";
 import { useTrailStore } from "@/stores/trail-store";
 import { MapPin } from "lucide-react";
@@ -55,6 +56,7 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
 }
 
 export function GpsTrackMap() {
+  const tk = useTranslations("logs.gpsTrackMap");
   const ring = useTrailStore((s) => s._ring);
   const trailVersion = useTrailStore((s) => s._version);
 
@@ -90,7 +92,7 @@ export function GpsTrackMap() {
       <div className="flex items-center gap-2 mb-2">
         <MapPin size={12} className="text-accent-primary" />
         <span className="text-xs font-semibold text-text-primary">
-          GPS Track
+          {tk("gpsTrack")}
         </span>
         <span className="text-[9px] font-mono text-text-tertiary ml-auto">
           {positions.length} pts
@@ -106,7 +108,7 @@ export function GpsTrackMap() {
           style={{ height: 200 }}
         >
           <span className="text-[10px] text-text-tertiary">
-            Waiting for GPS data...
+            {tk("waitingForGPSData")}
           </span>
         </div>
       ) : (

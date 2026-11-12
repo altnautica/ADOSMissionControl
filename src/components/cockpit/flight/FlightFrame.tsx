@@ -2,9 +2,11 @@
 
 /**
  * @module cockpit/flight/FlightFrame
- * @description The flight screen's frame: the cockpit root element, fixed
- * over the whole viewport (the fleet list, the app header and the drone
- * page's tabs stay mounted underneath, made `inert` while it is up), with the grid measured from the
+ * @description The flight screen's frame: the cockpit root element. It sits
+ * embedded in the drone's Flight tab by default; in full screen (the top
+ * bar's Full screen button, `immersiveMode`) it is fixed over the whole
+ * viewport and the fleet list, the app header and the drone page's tabs,
+ * still mounted underneath, are made `inert`. The grid is measured from the
  * container's own size and published to every zone. The grid lives here, not
  * in the cockpit root, so a follow-state tick re-renders only the frame and
  * the zones that read it, never the video.
@@ -39,6 +41,7 @@ import { flightGrid, rectStyle } from "./flight-grid";
 import { inertShellAround } from "./inert-shell";
 import { toastAnchor } from "./flight-sheet";
 import { SplitContext } from "./SplitDivider";
+import { useUiStore } from "@/stores/ui-store";
 
 export function FlightFrame({
   droneId,
@@ -58,6 +61,7 @@ export function FlightFrame({
   children: ReactNode;
 }) {
   const { following } = useFollowingMode(droneId);
+  const immersive = useUiStore((s) => s.immersiveMode);
   // The Vision view's side panel: 340 px, at most 40 % of the width.
   const panelW = sidePanel ? Math.round(Math.min(340, size.width * 0.4)) : 0;
   // The Split divider per vehicle, kept in the view store; a drag previews
@@ -98,28 +102,38 @@ export function FlightFrame({
     setClassDefault(layoutSpec.classes[grid.cls].default_layer_level as LayerLevel);
   }, [grid.cls, setClassDefault]);
 
-  // The page underneath leaves the tab order and the accessibility tree.
+  // In full screen the page underneath leaves the tab order and the
+  // accessibility tree; embedded, the shell stays usable beside the tab.
   useEffect(() => {
     const frame = containerRef.current;
-    return frame ? inertShellAround(frame) : undefined;
-  }, [containerRef]);
+    return frame && immersive ? inertShellAround(frame) : undefined;
+  }, [containerRef, immersive]);
 
   // Toasts on the flight screen sit above the bottom row, clear of the
-  // card, the skills chip and STOP (the toast host reads these).
+  // card, the skills chip and STOP (the toast host reads these). The anchor
+  // is in viewport terms, so the embedded frame's own offset is added.
   useEffect(() => {
     const html = document.documentElement;
-    const a = toastAnchor(grid);
+    const place = () => {
+      const a = toastAnchor(grid);
+      const rect = containerRef.current?.getBoundingClientRect();
+      const left = (rect?.left ?? 0) + a.left;
+      const bottom = (rect ? window.innerHeight - rect.bottom : 0) + a.bottom;
+      html.style.setProperty("--fs-toast-bottom", `${bottom}px`);
+      html.style.setProperty("--fs-toast-left", `${left}px`);
+      html.style.setProperty("--fs-toast-w", `${a.width}px`);
+    };
     html.dataset.flightScreen = "";
-    html.style.setProperty("--fs-toast-bottom", `${a.bottom}px`);
-    html.style.setProperty("--fs-toast-left", `${a.left}px`);
-    html.style.setProperty("--fs-toast-w", `${a.width}px`);
+    place();
+    window.addEventListener("resize", place);
     return () => {
+      window.removeEventListener("resize", place);
       delete html.dataset.flightScreen;
       html.style.removeProperty("--fs-toast-bottom");
       html.style.removeProperty("--fs-toast-left");
       html.style.removeProperty("--fs-toast-w");
     };
-  }, [grid]);
+  }, [grid, containerRef, immersive]);
 
   const centre = grid.zones.center;
   const bar = grid.zones.top_bar;
@@ -146,8 +160,11 @@ export function FlightFrame({
           data-grid={grid.cls}
           data-view={view}
           data-testid="flight-screen"
+          data-immersive={immersive || undefined}
           style={style}
-          className="ados-cockpit flight-screen fixed inset-0 z-40 overflow-hidden bg-media outline-none"
+          className={`ados-cockpit flight-screen overflow-hidden bg-media outline-none ${
+            immersive ? "fixed inset-0 z-40" : "relative h-full w-full"
+          }`}
         >
           {children}
         </div>

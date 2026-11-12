@@ -9,6 +9,7 @@
  * @module fc/firmware/ParamRestoreDialog
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ interface ParamRestoreDialogProps {
 export function ParamRestoreDialog({
   open, sourceLabel, targetLabel, entries, protocol, onClose, onApplied,
 }: ParamRestoreDialogProps) {
+  const tl = useTranslations("fcPanels.paramRestoreDialog");
   const { toast } = useToast();
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const [diffs, setDiffs] = useState<ParamDiff[] | null>(null);
@@ -105,7 +107,7 @@ export function ParamRestoreDialog({
       closeBlocked={writing}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} disabled={writing}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={writing}>{tl("cancel")}</Button>
           <Button
             variant="danger"
             onClick={() => void apply()}
@@ -122,19 +124,19 @@ export function ParamRestoreDialog({
           Values from {sourceLabel} that differ from what {targetLabel} holds now. Unchanged and read-only parameters are skipped.
         </p>
         {isHardBlocked && <p className="text-status-error" role="alert">{hardBlockMessage}</p>}
-        {!protocol && <p className="text-status-warning">Connect the flight controller to compare and restore.</p>}
+        {!protocol && <p className="text-status-warning">{tl("connectTheFlightControllerTo")}</p>}
         {loadError && <p className="text-status-error" role="alert">Could not read the current parameters: {loadError}</p>}
-        {protocol && !diffs && !loadError && <p className="text-text-tertiary">Reading current parameters…</p>}
-        {diffs && diffs.length === 0 && <p className="text-text-tertiary">Nothing to restore: every value already matches.</p>}
+        {protocol && !diffs && !loadError && <p className="text-text-tertiary">{tl("readingCurrentParameters")}</p>}
+        {diffs && diffs.length === 0 && <p className="text-text-tertiary">{tl("nothingToRestoreEveryValue")}</p>}
         {diffs && diffs.length > 0 && (
           <div className="max-h-[50vh] overflow-y-auto border border-border-default">
             <table className="w-full font-mono">
               <thead className="bg-bg-tertiary text-text-tertiary text-[10px] uppercase">
                 <tr>
                   <th className="w-6" />
-                  <th className="text-left px-2 py-1">Name</th>
-                  <th className="text-right px-2 py-1">Now</th>
-                  <th className="text-right px-2 py-1">Restore</th>
+                  <th className="text-left px-2 py-1">{tl("name")}</th>
+                  <th className="text-right px-2 py-1">{tl("now")}</th>
+                  <th className="text-right px-2 py-1">{tl("restore")}</th>
                 </tr>
               </thead>
               <tbody>

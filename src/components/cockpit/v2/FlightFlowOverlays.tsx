@@ -68,6 +68,10 @@ export function countdownColor(banner: keyof typeof SEVERITY): string {
   return tokens.chrome[`severity_${SEVERITY[banner]}`];
 }
 
+/** Words on a countdown banner: black, which reads at 4.5:1 or better on the
+ *  spec's warning and critical fills where white does not (3.8:1 on red). */
+export const COUNTDOWN_TEXT = "#000000";
+
 /** The banner's args with the spec's sub-keys resolved (`source: "rc"` →
  * "RC switch", `cause: "rc_or_failsafe"` → "RC switch or failsafe") and the
  * profile in the chip's upper case. */
@@ -218,8 +222,8 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
           role="alert"
           data-testid="low-battery-rth"
           data-severity={SEVERITY.low_battery_rth}
-          className="pointer-events-auto flex w-[min(720px,100%)] items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: countdownColor("low_battery_rth") }}
+          className="pointer-events-auto flex w-[min(720px,100%)] items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm font-semibold"
+          style={{ background: countdownColor("low_battery_rth"), color: COUNTDOWN_TEXT }}
         >
           <span className="flex flex-col">
             <span>{specString("flow.low_battery.title", { in_s: Math.ceil(rth) })}</span>
@@ -241,8 +245,8 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
           role="alert"
           data-testid="link-loss-countdown"
           data-severity={SEVERITY.link_loss}
-          className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: countdownColor("link_loss") }}
+          className="rounded-lg px-4 py-2 text-sm font-semibold"
+          style={{ background: countdownColor("link_loss"), color: COUNTDOWN_TEXT }}
         >
           {linkLossLine({ linkLossInS: linkLoss, linkLossAction: pilot?.linkLossAction ?? null })}
         </div>

@@ -111,6 +111,9 @@ function mapTelemetry(raw: Record<string, unknown>): CommandTelemetrySnapshot {
     snapshot.gps = { fix_type: gpsFix, satellites };
   }
 
+  const homeDistance = numberOrUndefined(raw.home_distance);
+  if (homeDistance !== undefined) snapshot.home_distance = homeDistance;
+
   return snapshot;
 }
 

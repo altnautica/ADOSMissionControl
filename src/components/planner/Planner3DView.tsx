@@ -18,6 +18,7 @@ import { useConvexAvailable } from "@/hooks/use-convex-available";
 import CesiumScene from "@/components/simulation/CesiumScene";
 import { ConvexCesiumToken } from "@/components/simulation/ConvexCesiumToken";
 import { useResolvedMissionPath } from "@/components/simulation/use-resolved-mission-path";
+import { ViewerFailedCard } from "@/components/simulation/ViewerFailedCard";
 import { FlightPathEntity } from "@/components/simulation/FlightPathEntity";
 import { WaypointEntities } from "@/components/simulation/WaypointEntities";
 import { GcsEntity } from "@/components/simulation/GcsEntity";
@@ -76,11 +77,19 @@ export function Planner3DView({
 
   const handleViewerReady = useCallback((v: CesiumViewer) => setViewer(v), []);
   const handleViewerError = useCallback((e: Error) => setViewerError(e.message), []);
+  // Bumped by Retry: a new key remounts the Cesium scene from scratch.
+  const [sceneAttempt, setSceneAttempt] = useState(0);
+  const handleRetry = useCallback(() => {
+    setViewer(null);
+    setViewerError(null);
+    setSceneAttempt((n) => n + 1);
+  }, []);
 
   return (
     <div className="absolute inset-0">
       {convexAvailable && <ConvexCesiumToken onToken={handleCesiumToken} />}
       <CesiumScene
+        key={sceneAttempt}
         cesiumToken={effectiveCesiumToken}
         onReady={handleViewerReady}
         onError={handleViewerError}
@@ -124,11 +133,11 @@ export function Planner3DView({
       )}
 
       {viewerError && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-bg-primary/80 backdrop-blur-md rounded-lg px-6 py-4 border border-status-error/30 text-center max-w-sm">
-            <p className="text-sm text-status-error">{t("viewFailed", { message: viewerError })}</p>
-          </div>
-        </div>
+        <ViewerFailedCard
+          message={viewerError}
+          onRetry={handleRetry}
+          fallback={{ label: t("switchTo2d"), onClick: () => usePlannerStore.getState().setMapView("2d") }}
+        />
       )}
     </div>
   );

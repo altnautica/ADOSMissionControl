@@ -16,7 +16,7 @@ import {
   FC_ITEM_COUNT_LIMITS,
   missionItemCount,
 } from "./fc-item-count";
-import type { ValidationIssue } from "./mission-validator";
+import type { ValidationIssue } from "./issue-types";
 
 /** Fence items PX4's dataman stores. */
 export const PX4_MAX_FENCE_ITEMS = 64;
@@ -79,6 +79,17 @@ export function noLandMessage(profile: PlanVehicleProfile | undefined): string {
   return "Last waypoint is not LAND or RTL. The drone may hover at the final waypoint.";
 }
 
+/** The translation key of {@link noLandMessage}'s text. */
+export function noLandText(profile: PlanVehicleProfile | undefined): { key: string } {
+  if (profile?.autopilot === "ardupilot") {
+    if (profile.vehicleClass === "plane" || profile.vehicleClass === "vtol") return { key: "noLandArduPlane" };
+    if (profile.vehicleClass === "rover") return { key: "noLandRover" };
+    return { key: "noLandArduCopter" };
+  }
+  if (profile?.autopilot === "px4") return { key: "noLandPx4" };
+  return { key: "noLandGeneric" };
+}
+
 /** Inputs for {@link autopilotIssues}. */
 export interface AutopilotRuleInput {
   waypoints: readonly Waypoint[];
@@ -118,6 +129,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         severity: "blocking",
         code: "TERRAIN_FRAME_UNSUPPORTED",
         message: `WP${i + 1}: PX4 has no terrain altitude frame. Use Above home, or Follow terrain on patterns`,
+        text: { key: "wpPX4HasNoTerrainAltitude", params: { v0: i + 1 } },
         waypointIndex: i,
         waypointId: waypoints[i].id,
       });
@@ -130,6 +142,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         severity: "blocking",
         code: "TERRAIN_DATA_SOURCE",
         message: "Terrain-frame waypoints need terrain data on the vehicle, but TERRAIN_ENABLE is 0: the vehicle would switch to RTL",
+        text: { key: "terrainFrameWaypointsNeedTerrainData" },
         ...at,
       });
     } else {
@@ -137,6 +150,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         severity: "advisory",
         code: "TERRAIN_DATA_SOURCE",
         message: "Needs terrain data on the vehicle (TERRAIN_ENABLE and SD card or GCS terrain)",
+        text: { key: "needsTerrainDataOnTheVehicle" },
         ...at,
       });
     }
@@ -154,6 +168,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         message:
           "The vehicle has RTL_AUTOLAND = 0, so ArduPlane refuses to arm with a DO_LAND_START in the mission. " +
           "Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only",
+        text: { key: "landStartNeedsAutoland" },
         waypointIndex: i,
         waypointId: waypoints[i].id,
       });
@@ -167,6 +182,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         severity: "blocking",
         code: "FENCE_TOO_MANY_ITEMS",
         message: `Geofence uploads ${input.fenceItemCount} items; PX4 stores at most ${PX4_MAX_FENCE_ITEMS}`,
+        text: { key: "geofenceUploadsItemsPX4StoresAt", params: { v0: input.fenceItemCount, v1: PX4_MAX_FENCE_ITEMS } },
       });
     }
     if (input.rallyCount > PX4_MAX_RALLY_POINTS) {
@@ -174,6 +190,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         severity: "blocking",
         code: "RALLY_TOO_MANY_POINTS",
         message: `${input.rallyCount} rally points; PX4 stores at most ${PX4_MAX_RALLY_POINTS}`,
+        text: { key: "rallyPointsPX4StoresAtMost", params: { v0: input.rallyCount, v1: PX4_MAX_RALLY_POINTS } },
       });
     }
   } else {
@@ -186,12 +203,14 @@ export function autopilotIssues(input: AutopilotRuleInput): {
         severity: "blocking",
         code: "ITEM_COUNT_EXCEEDED",
         message: `Mission uploads ${count} items including home; ArduPilot boards hold ${classes}`,
+        text: { key: "missionUploadsItemsIncludingHomeArduPilot", params: { v0: count, v1: classes } },
       });
     } else if (count > ARDUPILOT_SMALL_BOARD_ITEMS) {
       warnings.push({
         severity: "advisory",
         code: "ITEM_COUNT_STORAGE",
         message: `Mission uploads ${count} items including home. ArduPilot boards hold ${classes}: check your board`,
+        text: { key: "missionUploadsItemsIncludingHomeArduPilot2", params: { v0: count, v1: classes } },
       });
     }
 
@@ -206,6 +225,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
           severity: "advisory",
           code: "LOITER_TURNS_ROUNDED",
           message: `WP${i + 1}: ${turns} turns is rounded down to ${Math.floor(turns)} turns`,
+          text: { key: "wpTurnsIsRoundedDownTo", params: { v0: i + 1, v1: turns, v2: Math.floor(turns) } },
           ...at,
         });
       }
@@ -215,6 +235,7 @@ export function autopilotIssues(input: AutopilotRuleInput): {
           severity: "advisory",
           code: "LOITER_RADIUS_COARSE",
           message: `WP${i + 1}: a ${Math.round(radius)}m loiter radius is stored in 10 m steps`,
+          text: { key: "wpAMLoiterRadiusIs", params: { v0: i + 1, v1: Math.round(radius) } },
           ...at,
         });
       }

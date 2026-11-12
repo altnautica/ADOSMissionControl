@@ -15,6 +15,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Plug, RefreshCw } from "lucide-react";
 import { Select } from "@/components/ui/select";
@@ -64,6 +65,7 @@ export interface FcSourcePickerProps {
 }
 
 export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
+  const tq = useTranslations("command.fcSourcePicker");
   const storeClient = useAgentConnectionStore((s) => s.client);
   const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
@@ -233,7 +235,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
       <div className="border border-border-default rounded-lg p-4 space-y-2">
         <div className="flex items-center gap-2">
           <Plug size={14} className="text-text-tertiary" />
-          <h3 className="text-sm font-medium text-text-primary">FC source</h3>
+          <h3 className="text-sm font-medium text-text-primary">{tq("fcSource")}</h3>
         </div>
         {status?.fc_source && (
           <p className="text-xs text-text-secondary">
@@ -270,13 +272,13 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Plug size={14} className="text-text-tertiary" />
-          <h3 className="text-sm font-medium text-text-primary">FC source</h3>
+          <h3 className="text-sm font-medium text-text-primary">{tq("fcSource")}</h3>
         </div>
         <button
           type="button"
           onClick={() => void loadPorts()}
           className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-          title="Rescan serial ports"
+          title={tq("rescanSerialPorts")}
           disabled={loadingPorts}
         >
           <RefreshCw
@@ -287,7 +289,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
       </div>
 
       <Select
-        label="Source"
+        label={tq("source")}
         options={SOURCE_OPTIONS}
         value={source}
         onChange={(v) => {
@@ -299,7 +301,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
       {source === "serial" && (
         <div className="grid grid-cols-2 gap-2">
           <Select
-            label="Port"
+            label={tq("port")}
             options={portOptions}
             value={serialPort}
             onChange={(v) => {
@@ -315,7 +317,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
             }
           />
           <Select
-            label="Baud"
+            label={tq("baud")}
             options={BAUD_OPTIONS}
             value={baud}
             onChange={(v) => {
@@ -337,7 +339,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
           title={!client ? NO_WRITE_PATH : undefined}
           onClick={() => void apply()}
         >
-          Apply
+          {tq("apply")}
         </Button>
         {/* Live validation: drives off the gated mavlink_alive / heartbeat_age_s
             so the operator sees the link prove itself, not just an "applied". */}
@@ -357,7 +359,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
           // reads active, not "waiting for MAVLink…".
           <span className="flex items-center gap-1.5 text-xs text-status-success">
             <CheckCircle2 size={12} />
-            MSP link active
+            {tq("mspLinkActive")}
           </span>
         ) : link.mavlinkAlive ? (
           <span className="flex items-center gap-1.5 text-xs text-status-success">
@@ -385,7 +387,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
             onClick={() => void loadPorts()}
             className="underline hover:text-text-primary"
           >
-            Retry
+            {tq("retry")}
           </button>
         </p>
       )}

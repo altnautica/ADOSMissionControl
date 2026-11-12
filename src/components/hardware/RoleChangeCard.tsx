@@ -41,6 +41,7 @@ const ROLES: GroundStationRole[] = ["direct", "relay", "receiver"];
 const SWITCHING_TIMEOUT_MS = 20_000;
 
 export function RoleChangeCard({ nodeDeviceId, variant = "switch" }: RoleChangeCardProps) {
+  const tq = useTranslations("hardware.roleChangeCard");
   const t = useTranslations("hardware.role");
   const { toast } = useToast();
   const direct = useNodeDirectAgent(nodeDeviceId);
@@ -136,7 +137,7 @@ export function RoleChangeCard({ nodeDeviceId, variant = "switch" }: RoleChangeC
     <div
       className="rounded-sm border border-border-default bg-bg-secondary p-4"
       role="region"
-      aria-label="Change deployment role"
+      aria-label={tq("changeDeploymentRole")}
     >
       {showingEmpty ? (
         <>
@@ -175,7 +176,7 @@ export function RoleChangeCard({ nodeDeviceId, variant = "switch" }: RoleChangeC
             role="status"
             aria-live="polite"
           >
-            Transitioning services...
+            {tq("transitioningServices")}
           </span>
         ) : null}
       </div>

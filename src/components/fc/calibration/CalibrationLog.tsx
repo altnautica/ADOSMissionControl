@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRef, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export function CalibrationLog({
   logEntries: CalibrationLogEntry[];
   onClear: () => void;
 }) {
+  const tr = useTranslations("fcPanels.calibrationLog");
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,20 +28,20 @@ export function CalibrationLog({
     <div className="xl:sticky xl:top-6 xl:self-start">
       <div className="border border-border-default bg-bg-secondary">
         <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
-          <h3 className="text-xs font-medium text-text-primary">Calibration Log</h3>
+          <h3 className="text-xs font-medium text-text-primary">{tr("calibrationLog")}</h3>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClear}
             className="h-5 w-5 p-0"
-            title="Clear log"
+            title={tr("clearLog")}
           >
             <Trash2 size={12} />
           </Button>
         </div>
         <div ref={logContainerRef} className="h-[400px] overflow-y-auto overscroll-contain p-2 font-mono text-[10px] space-y-0.5">
           {logEntries.length === 0 ? (
-            <p className="text-text-tertiary italic">No calibration messages yet</p>
+            <p className="text-text-tertiary italic">{tr("noCalibrationMessagesYet")}</p>
           ) : (
             logEntries.map((entry, i) => (
               <div key={i} className="flex gap-2">

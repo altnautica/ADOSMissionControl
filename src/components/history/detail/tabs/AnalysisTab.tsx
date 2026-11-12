@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ const severityVariant: Record<FlightFlag["severity"], "success" | "warning" | "e
 };
 
 export function AnalysisTab({ record }: AnalysisTabProps) {
+  const tq = useTranslations("history.analysisTab");
   const reanalysis = useReanalysis(record);
   const flags = record.flags ?? [];
   const health = record.health ?? {};
@@ -33,28 +35,28 @@ export function AnalysisTab({ record }: AnalysisTabProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <Card title="Health Summary" padding={true}>
+      <Card title={tq("healthSummary")} padding={true}>
         {hasHealth ? (
           <div className="grid grid-cols-2 gap-3">
             {health.avgSatellites !== undefined && (
-              <DataValue label="Avg Sats" value={health.avgSatellites} />
+              <DataValue label={tq("avgSats")} value={health.avgSatellites} />
             )}
             {health.avgHdop !== undefined && (
-              <DataValue label="Avg HDOP" value={health.avgHdop} />
+              <DataValue label={tq("avgHDOP")} value={health.avgHdop} />
             )}
             {health.maxVibrationRms !== undefined && (
-              <DataValue label="Max Vib RMS" value={health.maxVibrationRms} unit="m/s²" />
+              <DataValue label={tq("maxVibRMS")} value={health.maxVibrationRms} unit="m/s²" />
             )}
             {health.batteryHealthPct !== undefined && (
-              <DataValue label="Battery Used" value={health.batteryHealthPct} unit="%" />
+              <DataValue label={tq("batteryUsed")} value={health.batteryHealthPct} unit="%" />
             )}
           </div>
         ) : (
-          <p className="text-[10px] text-text-tertiary">No health stats yet.</p>
+          <p className="text-[10px] text-text-tertiary">{tq("noHealthStatsYet")}</p>
         )}
       </Card>
 
-      <Card title="Flags" padding={true}>
+      <Card title={tq("flags")} padding={true}>
         {flags.length === 0 ? (
           <p className="text-[10px] text-text-tertiary">No anomaly flags. ✓</p>
         ) : (
@@ -90,7 +92,7 @@ export function AnalysisTab({ record }: AnalysisTabProps) {
           </Button>
           {reanalysis.recordingMissing && (
             <p className="text-[10px] text-text-tertiary">
-              The telemetry recording for this flight is no longer stored, so it cannot be re-analyzed.
+              {tq("theTelemetryRecordingForThis")}
             </p>
           )}
         </>

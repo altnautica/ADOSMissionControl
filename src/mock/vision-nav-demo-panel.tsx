@@ -1,9 +1,11 @@
 /**
  * @module mock/vision-nav-demo-panel
  * @description The demo rendition of the Vision Navigation extension's node
- * tab: the header with the companion pill, then the Mode, Sensors,
- * Estimator, Flow health and Pre-arm cards, laid out and labelled as the
- * extension's own GCS panel renders them, fed by the demo health snapshot.
+ * tab: the header with the Replay tour link and the companion pill, the
+ * first-run tour, the fallback banner, then the Mode, Navigation feed,
+ * Sensors, Estimator, Telemetry trends, Flow health, Pre-arm and ArduPilot
+ * parameter cards, laid out and labelled as the extension's own GCS panel
+ * renders them, fed by the demo health snapshot.
  * Copy resolves through the host's plugin i18n with the extension's English
  * fallbacks, exactly as the extension resolves it. Mounted by
  * `DEMO_VISION_NAV_MODULE` inside the inline plugin host.
@@ -17,12 +19,14 @@ import { createRoot } from "react-dom/client";
 import type { InlineHostApi } from "@/lib/plugins/inline-host-types";
 import {
   getMockVisionNavHealth,
+  getMockVisionNavState,
   VISION_NAV_REFRESH_MS,
   type VisionNavCheckSeverity,
+  type VisionNavExtnavHealth,
   type VisionNavHealth,
+  type VisionNavState,
 } from "./mock-vision-nav";
-
-type Translate = (key: string, fallback: string) => string;
+import { TelemetryCharts, TourOrchestrator, type Translate } from "./vision-nav-demo-tour";
 
 const OK = "var(--vn-ok, #34d399)";
 const WARN = "var(--vn-warn, #f59e0b)";
@@ -64,12 +68,47 @@ const MODES: ReadonlyArray<{ id: string; label: string; needs: string }> = [
   { id: "off", label: "Off", needs: "No hardware required." },
   { id: "optical_flow", label: "Optical Flow", needs: "Downward USB or CSI camera and a rangefinder." },
   { id: "optical_flow_degraded", label: "Optical Flow (degraded)", needs: "Downward camera. No rangefinder required." },
+  { id: "external_nav", label: "External Navigation", needs: "A plugin publishing the shared pose topic, and an EKF origin." },
 ];
 const ENGINE_LABELS: Record<string, string> = {
   off: "—",
   optical_flow: "Lucas-Kanade",
   optical_flow_degraded: "Lucas-Kanade (degraded)",
+  external_nav: "External pose (ODOMETRY)",
 };
+/** Symbol plus word for each tracking health, so colour is never the only cue. */
+const EXTNAV_HEALTH: Record<VisionNavExtnavHealth, { symbol: string; word: string; color: string }> = {
+  good: { symbol: "●", word: "Good", color: OK },
+  degraded: { symbol: "◐", word: "Degraded", color: WARN },
+  lost: { symbol: "✕", word: "Lost", color: ERROR },
+};
+/** GPS_FIX_TYPE words. */
+const FIX_WORDS = ["No GPS", "No fix", "2D fix", "3D fix", "DGPS", "RTK float", "RTK fixed"];
+/** The ArduPilot parameter groups the extension's read-only card lists. */
+const ARDUPILOT_PARAMS: ReadonlyArray<{ title: string; rows: ReadonlyArray<[string, string]> }> = [
+  { title: "Sensor drivers", rows: [["FLOW_TYPE", "Optical flow sensor backend (5 = MAVLink)."]] },
+  {
+    title: "EKF source sets",
+    rows: [
+      ["EK3_SRC1_POSXY", "Source set 1 horizontal position."],
+      ["EK3_SRC1_VELXY", "Source set 1 horizontal velocity."],
+      ["EK3_SRC2_POSXY", "Source set 2 horizontal position."],
+      ["EK3_SRC2_VELXY", "Source set 2 horizontal velocity."],
+      ["EK3_SRC3_POSXY", "Source set 3 horizontal position."],
+      ["EK3_SRC3_VELXY", "Source set 3 horizontal velocity."],
+      ["EK3_SRC_OPTIONS", "Source-set switching options bitmask."],
+    ],
+  },
+  {
+    title: "Flow tuning",
+    rows: [
+      ["EK3_FLOW_DELAY", "Optical flow measurement delay (ms)."],
+      ["EK3_FLOW_QUAL_MIN", "Minimum flow quality (0-255)."],
+      ["FLOW_HEIGHT_MIN", "Minimum AGL for flow fusion (m)."],
+      ["FLOW_HEIGHT_MAX", "Maximum AGL for flow fusion (m)."],
+    ],
+  },
+];
 const CHECK_TITLES: Record<string, string> = {
   companion_active: "Companion process active",
   flow_quality: "Optical flow quality",
@@ -132,9 +171,85 @@ function syncTone(offset: number | null, tr: Translate): { color: string; label:
   return { color: ERROR, label: tr("navigation.syncBand.red", "Sync >30 ms") };
 }
 
+/** The extension's fallback banner: hidden while the estimator is healthy;
+ * on a degraded or failed estimator it names the first likely cause and a
+ * next action, in the extension's order. */
+function FallbackBanner({ health, tr }: { health: VisionNavHealth; tr: Translate }) {
+  const state = health.estimatorState;
+  if (state !== "degraded" && state !== "failed") return null;
+  const failed = state === "failed";
+  const drift = health.cameraImuSyncOffsetMs !== null && Math.abs(health.cameraImuSyncOffsetMs) > 30;
+  const lowQuality = health.flowQuality !== null && health.flowQuality < 50;
+  const reason =
+    health.flowScaleSource === "static"
+      ? tr("navigation.fallback.reasonStaticScale", "No live altitude source; the flow scale is a fixed 1.5 m estimate.")
+      : lowQuality
+        ? tr("navigation.fallback.reasonLowQuality", "Optical-flow quality dropped below the safe gate.")
+        : drift
+          ? tr("navigation.fallback.reasonSyncDrift", "Camera-IMU time sync drifted beyond 30 ms.")
+          : health.flowScaleSource === null
+            ? tr("navigation.fallback.reasonNoScale", "No altitude or depth source is healthy for OF scaling.")
+            : tr("navigation.fallback.reasonGeneric", "Estimator inputs are below the safe operating envelope.");
+  const suggestion =
+    health.flowScaleSource === null || health.flowScaleSource === "static"
+      ? tr("navigation.fallback.suggestionLand", "Land, or switch the flight controller back to GPS with your RC source-set switch.")
+      : drift
+        ? tr("navigation.fallback.suggestionRecalibrate", "Re-run the camera-IMU calibration before the next flight.")
+        : lowQuality
+          ? tr("navigation.fallback.suggestionSlowYaw", "Slow yaw rate and fly over a more textured surface.")
+          : tr("navigation.fallback.suggestionWatch", "Watch closely and prepare to hand back to manual.");
+  const tone = failed ? ERROR : WARN;
+  return (
+    <section role="alert" data-testid={`vn-fallback-banner-${state}`} style={{ display: "flex", gap: "0.75rem", padding: "0.625rem 0.875rem", borderRadius: "0.5rem", border: `1px solid ${tone}` }}>
+      <span aria-hidden style={{ color: tone, fontWeight: 700 }}>{failed ? "✕" : "!"}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+        <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>
+          {failed ? tr("navigation.fallback.failedTitle", "Vision estimator failed") : tr("navigation.fallback.degradedTitle", "Vision estimator degraded")}
+        </span>
+        <span style={label}>{reason} {suggestion}</span>
+      </div>
+    </section>
+  );
+}
+
+/** The extension's Navigation feed card, read from `nav.state` and the
+ * `navigation.poseAgeMs` field. */
+function NavStateCard({ state, poseAgeMs, tr }: { state: VisionNavState; poseAgeMs: number | null; tr: Translate }) {
+  const health = state.extnav_health ? EXTNAV_HEALTH[state.extnav_health] : null;
+  const rows: ReadonlyArray<{ id: string; key: string; fallback: string; text: string; color?: string }> = [
+    { id: "active-set", key: "activeSet", fallback: "EKF source set", text: state.active_set === null ? "—" : `${state.active_set}` },
+    {
+      id: "extnav-health",
+      key: "extnavHealth",
+      fallback: "External nav",
+      text: health && state.extnav_health ? `${health.symbol} ${tr(`navigation.navState.health.${state.extnav_health}`, health.word)}` : "—",
+      color: health?.color,
+    },
+    { id: "odom-rate", key: "odomRate", fallback: "ODOMETRY rate", text: num(state.odom_rate_hz, 1, " Hz") },
+    { id: "pose-age", key: "poseAge", fallback: "Pose age", text: poseAgeMs === null ? "—" : `${Math.round(poseAgeMs)} ms` },
+    { id: "reset-counter", key: "resetCounter", fallback: "Pose resets", text: state.last_reset_counter === null ? "—" : `${state.last_reset_counter}` },
+    { id: "obstacle-rate", key: "obstacleRate", fallback: "Obstacle feed", text: num(state.obstacle_rate_hz, 1, " Hz") },
+    { id: "min-obstacle", key: "minObstacle", fallback: "Nearest obstacle", text: num(state.min_obstacle_m, 2, " m") },
+    { id: "gps-fix", key: "gpsFix", fallback: "GPS", text: FIX_WORDS[state.gps_fix] ?? `Fix ${state.gps_fix}` },
+  ];
+  return (
+    <section style={card} data-testid="vn-nav-state">
+      <h3 style={heading}>{tr("navigation.navState.title", "Navigation feed")}</h3>
+      {rows.map((r) => (
+        <div style={spread} key={r.id}>
+          <span style={label}>{tr(`navigation.navState.${r.key}`, r.fallback)}</span>
+          <span style={r.color ? { ...value, color: r.color } : value} data-testid={`vn-nav-${r.id}`}>{r.text}</span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
   const [health, setHealth] = useState(getMockVisionNavHealth);
+  const navState = getMockVisionNavState();
   const [themeVars, setThemeVars] = useState<Record<string, string>>({});
+  const [tourReplay, setTourReplay] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => setHealth(getMockVisionNavHealth()), VISION_NAV_REFRESH_MS);
     const offTheme = host.ctx.theme.onChange(setThemeVars);
@@ -158,15 +273,29 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
   return (
     <div
       data-testid="vn-navigation-tab"
-      style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0.875rem", background: "var(--vn-bg, #0A0A0A)", color: "var(--vn-text, #EDEDED)", minHeight: "100%", boxSizing: "border-box", ...(themeVars as CSSProperties) }}
+      style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0.875rem", background: "var(--vn-bg, #0A0A0A)", color: "var(--vn-text, #EDEDED)", minHeight: "100%", boxSizing: "border-box", ...(themeVars as CSSProperties) }}
     >
       <header style={spread}>
         <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>{tr("navigation.tabTitle", "Vision Nav")}</h2>
-        <span data-testid="vn-companion-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0.75rem", borderRadius: 9999, border: `1px solid ${BORDER}`, fontSize: "0.8125rem" }}>
-          <span aria-hidden style={{ width: 8, height: 8, borderRadius: 9999, background: companion.color }} />
-          Companion: {companion.label}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <button
+            type="button"
+            onClick={() => setTourReplay(true)}
+            data-testid="vn-tour-replay"
+            style={{ background: "transparent", border: "none", color: "var(--vn-text-muted, #94a3b8)", fontSize: "0.7rem", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+          >
+            {tr("navigation.tour.replay", "Replay tour")}
+          </button>
+          <span data-testid="vn-companion-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0.75rem", borderRadius: 9999, border: `1px solid ${BORDER}`, fontSize: "0.8125rem" }}>
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 9999, background: companion.color }} />
+            Companion: {companion.label}
+          </span>
+        </div>
       </header>
+
+      <TourOrchestrator replay={tourReplay} onClose={() => setTourReplay(false)} tr={tr} />
+
+      <FallbackBanner health={health} tr={tr} />
 
       <section style={card} data-testid="vn-mode-card">
         <header style={spread}>
@@ -188,6 +317,8 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
           })}
         </div>
       </section>
+
+      <NavStateCard state={navState} poseAgeMs={health.poseAgeMs} tr={tr} />
 
       <section style={card} data-testid="vn-sensors-card">
         <h3 style={heading}>{tr("navigation.sensorsCard.title", "Sensors")}</h3>
@@ -223,6 +354,8 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
         </div>
       </section>
 
+      <TelemetryCharts health={health} tr={tr} />
+
       <section style={card} data-testid="vn-flow-health">
         <h3 style={heading}>Flow health</h3>
         <div>
@@ -253,6 +386,24 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section style={card} data-testid="vn-ardupilot-params">
+        <h3 style={heading}>ArduPilot vision parameters</h3>
+        <p style={{ ...label, margin: 0 }}>Read-only summary. Edit in Mission Control&apos;s parameter editor.</p>
+        {ARDUPILOT_PARAMS.map((group) => (
+          <div key={group.title}>
+            <p style={{ ...label, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 0.375rem 0" }}>{group.title}</p>
+            <dl style={{ display: "grid", gridTemplateColumns: "max-content 1fr", columnGap: "0.875rem", rowGap: "0.25rem", fontSize: "0.8125rem", margin: 0 }}>
+              {group.rows.map(([id, description]) => (
+                <div key={id} style={{ display: "contents" }}>
+                  <dt style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{id}</dt>
+                  <dd style={{ ...label, margin: 0 }}>{description}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
       </section>
     </div>
   );

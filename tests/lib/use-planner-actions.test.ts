@@ -484,6 +484,6 @@ describe("resume upload", () => {
     const { handleUpload, toast } = buildActions("select", { uploadMission });
     await handleUpload();
     expect(uploadMission).toHaveBeenCalledWith(undefined, undefined);
-    expect(toast).toHaveBeenCalledWith("Mission uploaded to FC", "success");
+    expect(toast).toHaveBeenCalledWith("Mission uploaded to drone", "success");
   });
 });

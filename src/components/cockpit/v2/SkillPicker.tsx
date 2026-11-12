@@ -29,6 +29,9 @@ import { onPickerCommand, usePickerStore } from "@/lib/cockpit/picker-commands";
 import { specString } from "@/lib/cockpit/spec-strings";
 import tokens from "@/lib/cockpit-spec/tokens.json";
 import { useDronePluginParameters } from "@/hooks/use-drone-plugin-contributions";
+import { SkillTweakPanel, stepValue } from "./SkillTweakPanel";
+
+export { paramLabel } from "./SkillTweakPanel";
 
 export const PICKER_TABS = ["behavior", "camera", "navigation", "utility"] as const;
 export type PickerTab = (typeof PICKER_TABS)[number];
@@ -171,9 +174,10 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
   // Controller commands (D-pad focus, Cross GO, Circle Stop, D-pad ↑/↓ on
   // the focused skill's first numeric parameter). Read through a ref so the
   // subscription is made once.
-  const latest = useRef({ open, tab, skills, sel, active, activeMotion, go, stop, droneId });
+  const manifest = useDronePluginParameters(deviceIdFromNodeId(droneId) ?? droneId);
+  const latest = useRef({ open, tab, skills, sel, active, activeMotion, go, stop, droneId, manifest, notify });
   useEffect(() => {
-    latest.current = { open, tab, skills, sel, active, activeMotion, go, stop, droneId };
+    latest.current = { open, tab, skills, sel, active, activeMotion, go, stop, droneId, manifest, notify };
   });
   useEffect(
     () =>
@@ -198,14 +202,23 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
           const deviceId = deviceIdFromNodeId(L.droneId) ?? L.droneId;
           const pluginId = L.sel.pluginId ?? "";
           const values = usePluginConfigCache.getState().values[pluginConfigKey(deviceId, pluginId)];
-          const key = (L.sel.params ?? []).find((k) => typeof values?.[k] === "number");
-          if (!key) return;
-          const value = (values?.[key] as number) + (cmd === "param_up" ? 1 : -1);
-          usePluginConfigCache.getState().record(deviceId, pluginId, key, value);
-          void writePluginConfigValue({ droneId: deviceId, pluginId, key, value });
+          // The first numeric parameter by its manifest schema, stepped and
+          // kept inside its bounds; recorded once the agent accepts it.
+          const params = L.manifest.find((p) => p.pluginId === pluginId)?.parameters ?? [];
+          const param = params.find(
+            (p) => (L.sel?.params ?? []).includes(p.key) && (p.schema.type === "number" || p.schema.type === "integer"),
+          );
+          if (!param) return;
+          const cur = values?.[param.key];
+          const base = typeof cur === "number" ? cur : Number(param.schema.default ?? param.schema.minimum ?? 0);
+          const value = stepValue(param, base, cmd === "param_up" ? 1 : -1);
+          void writePluginConfigValue({ droneId: deviceId, pluginId, key: param.key, value }).then((ok) => {
+            if (ok) usePluginConfigCache.getState().record(deviceId, pluginId, param.key, value);
+            else L.notify?.(t("plugins.parameters.agentUnreachable"));
+          });
         }
       }),
-    [setOpen],
+    [setOpen, t],
   );
   useEffect(() => {
     usePickerStore.getState().setOpen(open);
@@ -232,7 +245,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
                 aria-selected={tab === k}
                 onClick={() => setTab(k)}
                 className={cn(
-                  "min-h-12 flex-1 rounded px-2 text-xs font-semibold",
+                  "min-h-12 flex-1 rounded-[var(--fs-radius-sm)] px-2 text-xs font-semibold",
                   tab === k ? "bg-accent-primary/25 text-text-primary" : "text-text-secondary",
                 )}
               >
@@ -263,7 +276,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
                     title={st.kind === "disabled" ? st.reason : undefined}
                     data-stale={seen !== null || st.linkLost === true ? "true" : undefined}
                     className={cn(
-                      "flex min-h-12 items-center justify-between rounded-md border px-3 text-left text-sm",
+                      "flex min-h-12 items-center justify-between rounded-[var(--fs-radius-sm)] border px-3 text-left text-sm",
                       selected === s.id ? "border-accent-primary" : "border-border-default",
                       (seen !== null || st.linkLost) && "opacity-60",
                       "disabled:opacity-40",
@@ -288,13 +301,14 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
             </section>
           ))}
           {sel && (
-            <TweakPanel
+            <SkillTweakPanel
               droneId={droneId}
               skill={sel}
               active={stateOf(sel.id).kind === "active"}
               starting={pending?.id === sel.id && pending.want}
               onGo={() => void go(sel)}
               onStop={() => void stop(sel)}
+              notify={notify}
             />
           )}
         </div>
@@ -305,109 +319,12 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
         data-testid="skill-picker-chip"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="glass-pill flex min-h-12 items-center gap-2 px-4 text-xs font-semibold text-text-primary"
+        className="glass-pill flex min-h-12 items-center gap-2 rounded-[var(--fs-radius-sm)] px-4 text-[length:var(--fs-chip-px)] font-semibold text-text-primary"
         style={active ? { boxShadow: `inset 0 0 0 2px ${SKILL_COLOR}` } : undefined}
       >
-        <Sparkles size={14} aria-hidden />
+        <Sparkles className="h-[var(--fs-icon)] w-[var(--fs-icon)]" aria-hidden />
         {active ? skillDisplayLabel(active, t) : specString("skill.picker.title")}
       </button>
-    </div>
-  );
-}
-
-/** The Tweak row label: the manifest parameter's `ui.label`, else its key. */
-export function paramLabel(
-  params: readonly { key: string; ui?: { label?: string } }[] | undefined,
-  key: string,
-): string {
-  const label = params?.find((p) => p.key === key)?.ui?.label;
-  return label ? label : key;
-}
-
-function TweakPanel({
-  droneId,
-  skill,
-  active,
-  starting,
-  onGo,
-  onStop,
-}: {
-  droneId: string;
-  skill: Skill;
-  active: boolean;
-  starting: boolean;
-  onGo: () => void;
-  onStop: () => void;
-}) {
-  const deviceId = deviceIdFromNodeId(droneId) ?? droneId;
-  const pluginId = skill.pluginId ?? "";
-  const values = usePluginConfigCache((s) => s.values[pluginConfigKey(deviceId, pluginId)]);
-  const manifestParams = useDronePluginParameters(deviceId).find((p) => p.pluginId === pluginId)?.parameters;
-
-  const write = (key: string, value: unknown) => {
-    usePluginConfigCache.getState().record(deviceId, pluginId, key, value);
-    void writePluginConfigValue({ droneId: deviceId, pluginId, key, value });
-  };
-
-  return (
-    <div className="flex flex-col gap-2 border-t border-border-default pt-2" data-testid="tweak-panel">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">{specString("skill.tweak")}</h4>
-      {(skill.params ?? []).map((key) => {
-        const v = values?.[key];
-        const numeric = typeof v === "number";
-        const label = paramLabel(manifestParams, key);
-        return (
-          <label key={key} className="flex items-center justify-between gap-2 text-xs" data-param={key}>
-            <span className="text-text-secondary">{label}</span>
-            {numeric ? (
-              <span className="flex items-center gap-1">
-                <button
-                  type="button"
-                  aria-label={`${label} −`}
-                  className="min-h-12 min-w-12 rounded border"
-                  onClick={() => write(key, v - 1)}
-                >
-                  −
-                </button>
-                <span className="w-10 text-center tabular-nums">{v}</span>
-                <button
-                  type="button"
-                  aria-label={`${label} +`}
-                  className="min-h-12 min-w-12 rounded border"
-                  onClick={() => write(key, v + 1)}
-                >
-                  +
-                </button>
-              </span>
-            ) : (
-              <input
-                aria-label={label}
-                className="min-h-12 w-28 rounded border bg-transparent px-2 py-1"
-                defaultValue={v === undefined ? "" : String(v)}
-                onBlur={(e) => write(key, e.target.value)}
-              />
-            )}
-          </label>
-        );
-      })}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onGo}
-          disabled={active || starting}
-          className="min-h-12 flex-1 rounded-md bg-accent-primary text-sm font-bold text-white disabled:opacity-40"
-        >
-          {specString(starting ? "skill.starting" : "skill.go")}
-        </button>
-        <button
-          type="button"
-          onClick={onStop}
-          disabled={!active}
-          className="min-h-12 flex-1 rounded-md border text-sm font-bold disabled:opacity-40"
-        >
-          {specString("skill.stop")}
-        </button>
-      </div>
     </div>
   );
 }

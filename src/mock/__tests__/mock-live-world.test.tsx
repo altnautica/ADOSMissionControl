@@ -74,19 +74,20 @@ describe("DEMO_LIVE_WORLD_MODULE", () => {
     root = null;
   });
 
-  it("renders demo-labelled occupancy and point-cloud surfaces, and unmounts", async () => {
+  it("renders the world-model page's demo-labelled occupancy and point-cloud surfaces, and unmounts", async () => {
     root = document.createElement("div");
     document.body.append(root);
     const host = {
       ctx: { i18n: { t: (key: string) => key } },
       node: { deviceId: "alpha-1", profile: "drone" },
+      plugin: { panelId: "world-model" },
     } as unknown as InlineHostApi;
     let dispose: (() => void) | null = null;
     await act(async () => {
       dispose = await DEMO_LIVE_WORLD_MODULE.mount(root!, host);
     });
     const text = root.textContent ?? "";
-    expect(text).toContain("Live World");
+    expect(text).toContain("World Model");
     expect(text).toContain("Demo data");
     expect(text).toContain("Occupancy (demo)");
     expect(text).toContain("Point cloud (demo)");

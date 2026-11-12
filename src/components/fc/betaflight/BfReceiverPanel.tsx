@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { Radio, Upload } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -53,6 +54,7 @@ function NumField({ label, value, disabled, onChange, min = 0, max = 2500 }: {
 }
 
 export function BfReceiverPanel() {
+  const tm = useTranslations("fcPanels.bfReceiverPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
@@ -121,8 +123,8 @@ export function BfReceiverPanel() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
       <PanelHeader
-        title="Receiver"
-        subtitle="Betaflight RC input, receiver config, and channel map"
+        title={tm("receiver")}
+        subtitle={tm("betaflightRCInputReceiverConfig")}
         icon={<Radio size={16} />}
         loading={loading}
         loadProgress={null}
@@ -138,16 +140,16 @@ export function BfReceiverPanel() {
             title={isArmed ? lockMessage : undefined}
             onClick={write}
           >
-            Write to FC
+            {tm("writeToFC")}
           </Button>
         )}
       </PanelHeader>
 
       {/* Live channels */}
       <div className="space-y-1">
-        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Live channels</h3>
+        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tm("liveChannels")}</h3>
         {channels.length === 0 ? (
-          <p className="text-[11px] text-text-tertiary">No live RC data. Check the transmitter and the link.</p>
+          <p className="text-[11px] text-text-tertiary">{tm("noLiveRCDataCheck")}</p>
         ) : (
           channels.slice(0, 18).map((v, i) => (
             <RcChannelBar key={i} index={i} value={v} min={1000} max={2000} trim={cfg?.midrc ?? 1500} dz={0} />
@@ -158,20 +160,20 @@ export function BfReceiverPanel() {
       {hasLoaded && cfg && (
         <>
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Configuration</h3>
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tm("configuration")}</h3>
             <div className="w-56">
-              <span className="text-[10px] text-text-tertiary font-mono">Serial RX provider</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tm("serialRXProvider")}</span>
               <Select options={PROVIDER_OPTIONS} value={String(cfg.serialrxProvider)} onChange={(v) => updateCfg({ serialrxProvider: parseInt(v) })} disabled={disabled} searchable />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-2xl">
-              <NumField label="Valid pulse min (µs)" value={cfg.rxMinUsec} min={PULSE_LIMIT_MIN} max={PULSE_LIMIT_MAX} disabled={disabled} onChange={(v) => updateCfg({ rxMinUsec: v })} />
-              <NumField label="Stick center (µs)" value={cfg.midrc} disabled={disabled} onChange={(v) => updateCfg({ midrc: v })} />
-              <NumField label="Valid pulse max (µs)" value={cfg.rxMaxUsec} min={PULSE_LIMIT_MIN} max={PULSE_LIMIT_MAX} disabled={disabled} onChange={(v) => updateCfg({ rxMaxUsec: v })} />
-              <NumField label="Min check (µs)" value={cfg.mincheck} disabled={disabled} onChange={(v) => updateCfg({ mincheck: v })} />
-              <NumField label="Max check (µs)" value={cfg.maxcheck} disabled={disabled} onChange={(v) => updateCfg({ maxcheck: v })} />
-              <NumField label="Spektrum sat bind" value={cfg.spektrumSatBind} disabled={disabled} onChange={(v) => updateCfg({ spektrumSatBind: v })} />
-              <NumField label="FPV cam angle (°)" value={cfg.fpvCamAngle} disabled={disabled} onChange={(v) => updateCfg({ fpvCamAngle: v })} />
-              <NumField label="Air-mode threshold (%)" value={cfg.airModeThresholdPct} disabled={disabled} onChange={(v) => updateCfg({ airModeThresholdPct: v })} />
+              <NumField label={tm("validPulseMinS")} value={cfg.rxMinUsec} min={PULSE_LIMIT_MIN} max={PULSE_LIMIT_MAX} disabled={disabled} onChange={(v) => updateCfg({ rxMinUsec: v })} />
+              <NumField label={tm("stickCenterS")} value={cfg.midrc} disabled={disabled} onChange={(v) => updateCfg({ midrc: v })} />
+              <NumField label={tm("validPulseMaxS")} value={cfg.rxMaxUsec} min={PULSE_LIMIT_MIN} max={PULSE_LIMIT_MAX} disabled={disabled} onChange={(v) => updateCfg({ rxMaxUsec: v })} />
+              <NumField label={tm("minCheckS")} value={cfg.mincheck} disabled={disabled} onChange={(v) => updateCfg({ mincheck: v })} />
+              <NumField label={tm("maxCheckS")} value={cfg.maxcheck} disabled={disabled} onChange={(v) => updateCfg({ maxcheck: v })} />
+              <NumField label={tm("spektrumSatBind")} value={cfg.spektrumSatBind} disabled={disabled} onChange={(v) => updateCfg({ spektrumSatBind: v })} />
+              <NumField label={tm("fpvCamAngle")} value={cfg.fpvCamAngle} disabled={disabled} onChange={(v) => updateCfg({ fpvCamAngle: v })} />
+              <NumField label={tm("airModeThreshold")} value={cfg.airModeThresholdPct} disabled={disabled} onChange={(v) => updateCfg({ airModeThresholdPct: v })} />
             </div>
             <p className={narrowPulseWindow ? "text-[11px] text-status-warning max-w-2xl" : "text-[11px] text-text-tertiary max-w-2xl"}>
               Pulses outside the valid pulse window are treated as signal loss and can trigger failsafe or block arming.
@@ -179,33 +181,33 @@ export function BfReceiverPanel() {
               {narrowPulseWindow ? `; this window is narrower than the ${DEFAULT_RX_MIN_USEC}–${DEFAULT_RX_MAX_USEC} µs default` : ""}.
             </p>
             <div className="w-56">
-              <span className="text-[10px] text-text-tertiary font-mono">USB HID type</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tm("usbHIDType")}</span>
               <Select options={USB_HID_OPTIONS} value={String(cfg.usbCdcHidType)} onChange={(v) => updateCfg({ usbCdcHidType: parseInt(v) })} disabled={disabled} />
             </div>
           </div>
           {!dirty && bootProvider !== null && cfg.serialrxProvider !== bootProvider && (
             <p className="text-[11px] text-status-warning max-w-2xl">
-              Saved. The flight controller switches to the new serial RX provider when it next reboots.
+              {tm("savedTheFlightControllerSwitches")}
             </p>
           )}
 
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">RC Smoothing</h3>
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tm("rcSmoothing")}</h3>
             <div className="w-56">
-              <span className="text-[10px] text-text-tertiary font-mono">RC smoothing</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tm("rcSmoothing2")}</span>
               <Select options={ONOFF_OPTIONS} value={String(cfg.rcSmoothing)} onChange={(v) => updateCfg({ rcSmoothing: parseInt(v) })} disabled={disabled} />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-2xl">
-              <NumField label="Setpoint cutoff (Hz, 0=auto)" value={cfg.rcSmoothingSetpointCutoff} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingSetpointCutoff: v })} />
-              <NumField label="Throttle cutoff (Hz, 0=auto)" value={cfg.rcSmoothingThrottleCutoff} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingThrottleCutoff: v })} />
-              <NumField label="Auto factor RPY" value={cfg.rcSmoothingAutoFactorRpy} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingAutoFactorRpy: v })} />
-              <NumField label="Auto factor throttle" value={cfg.rcSmoothingAutoFactorThrottle} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingAutoFactorThrottle: v })} />
+              <NumField label={tm("setpointCutoffHz0Auto")} value={cfg.rcSmoothingSetpointCutoff} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingSetpointCutoff: v })} />
+              <NumField label={tm("throttleCutoffHz0Auto")} value={cfg.rcSmoothingThrottleCutoff} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingThrottleCutoff: v })} />
+              <NumField label={tm("autoFactorRPY")} value={cfg.rcSmoothingAutoFactorRpy} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingAutoFactorRpy: v })} />
+              <NumField label={tm("autoFactorThrottle")} value={cfg.rcSmoothingAutoFactorThrottle} disabled={disabled} onChange={(v) => updateCfg({ rcSmoothingAutoFactorThrottle: v })} />
             </div>
           </div>
 
           {rxMap.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Channel map</h3>
+              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tm("channelMap")}</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-2xl">
                 {rxMap.map((ch, i) => (
                   <label key={i} className="flex flex-col gap-1">

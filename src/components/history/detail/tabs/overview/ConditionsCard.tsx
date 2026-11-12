@@ -6,6 +6,7 @@
  * @module components/history/detail/tabs/overview/ConditionsCard
  */
 
+import { useTranslations } from "next-intl";
 import { Sun, Moon, Sparkles, Cloud } from "lucide-react";
 import type { SunMoonSnapshot, WeatherSnapshot } from "@/lib/types";
 import { Row } from "./shared";
@@ -57,6 +58,7 @@ export function ConditionsCard({
 }
 
 function SunMoonSection({ sunMoon }: { sunMoon: SunMoonSnapshot }) {
+  const tq = useTranslations("history.conditionsCard");
   const phaseKey = PHASE_LABEL_KEYS[sunMoon.daylightPhase];
   const phaseColor =
     sunMoon.daylightPhase === "day"
@@ -76,17 +78,17 @@ function SunMoonSection({ sunMoon }: { sunMoon: SunMoonSnapshot }) {
         {sunMoon.inGoldenHour && (
           <span className="inline-flex items-center gap-1 text-status-warning">
             <Sparkles size={12} />
-            Golden hour
+            {tq("goldenHour")}
           </span>
         )}
       </div>
 
       {/* Sun row */}
       <div className="flex flex-col gap-0.5">
-        <Row label="Sunrise" value={fmtHhMm(sunMoon.sunriseIso)} mono />
-        <Row label="Sunset" value={fmtHhMm(sunMoon.sunsetIso)} mono />
+        <Row label={tq("sunrise")} value={fmtHhMm(sunMoon.sunriseIso)} mono />
+        <Row label={tq("sunset")} value={fmtHhMm(sunMoon.sunsetIso)} mono />
         <Row
-          label="Sun"
+          label={tq("sun")}
           value={`${sunMoon.sunAltitudeDeg.toFixed(1)}° alt · ${sunMoon.sunAzimuthDeg.toFixed(0)}° az`}
           mono
         />
@@ -94,14 +96,14 @@ function SunMoonSection({ sunMoon }: { sunMoon: SunMoonSnapshot }) {
 
       {/* Moon row */}
       <div className="flex flex-col gap-0.5 border-t border-border-default pt-2 mt-1">
-        <Row label="Moon phase" value={sunMoon.moonPhaseLabel} />
+        <Row label={tq("moonPhase")} value={sunMoon.moonPhaseLabel} />
         <Row
-          label="Illumination"
+          label={tq("illumination")}
           value={`${Math.round(sunMoon.moonIllumination * 100)}%`}
           mono
         />
         <Row
-          label="Moon"
+          label={tq("moon")}
           value={`${sunMoon.moonAltitudeDeg.toFixed(1)}° alt · ${sunMoon.moonAzimuthDeg.toFixed(0)}° az`}
           mono
         />
@@ -124,6 +126,7 @@ export function formatWind(weather: Pick<WeatherSnapshot, "windDirDeg" | "windKt
 }
 
 function WeatherSection({ weather }: { weather: WeatherSnapshot }) {
+  const tq = useTranslations("history.conditionsCard");
   const categoryColor: Record<string, string> = {
     VFR: "text-status-success",
     MVFR: "text-accent-primary",
@@ -159,21 +162,21 @@ function WeatherSection({ weather }: { weather: WeatherSnapshot }) {
 
       <div className="flex flex-col gap-0.5">
         {weather.tempC !== undefined && (
-          <Row label="Temp / Dew" value={`${weather.tempC.toFixed(0)}°C / ${weather.dewPointC?.toFixed(0) ?? "—"}°C`} mono />
+          <Row label={tq("tempDew")} value={`${weather.tempC.toFixed(0)}°C / ${weather.dewPointC?.toFixed(0) ?? "—"}°C`} mono />
         )}
         <Row
-          label="Wind"
+          label={tq("wind")}
           value={windText}
           mono
         />
         {weather.visibilityMi !== undefined && (
-          <Row label="Visibility" value={`${weather.visibilityMi} mi`} mono />
+          <Row label={tq("visibility")} value={`${weather.visibilityMi} mi`} mono />
         )}
         {weather.ceilingFtAgl !== undefined && (
-          <Row label="Ceiling" value={`${weather.ceilingFtAgl} ft`} mono />
+          <Row label={tq("ceiling")} value={`${weather.ceilingFtAgl} ft`} mono />
         )}
         {weather.altimeterHpa !== undefined && (
-          <Row label="Altimeter" value={`${weather.altimeterHpa.toFixed(0)} hPa`} mono />
+          <Row label={tq("altimeter")} value={`${weather.altimeterHpa.toFixed(0)} hPa`} mono />
         )}
       </div>
 

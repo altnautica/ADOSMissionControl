@@ -9,12 +9,14 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { AlertTriangle, Plug, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFreshness } from "@/lib/agent/freshness";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 export function StaleBanner() {
+  const tq = useTranslations("command.staleBanner");
   const freshness = useFreshness();
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
@@ -54,10 +56,10 @@ export function StaleBanner() {
               ? "bg-status-error/20 hover:bg-status-error/30"
               : "bg-status-warning/20 hover:bg-status-warning/30"
           )}
-          title="Re-subscribe to cloud heartbeats"
+          title={tq("reSubscribeToCloudHeartbeats")}
         >
           <Plug size={12} />
-          Reconnect
+          {tq("reconnect")}
         </button>
       )}
     </div>

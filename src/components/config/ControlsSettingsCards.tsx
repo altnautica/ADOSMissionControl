@@ -27,6 +27,7 @@ import { useTranslations } from "next-intl";
 const LIGHTBAR_STATES = Object.keys(ds4Spec.lightbar.states) as (keyof typeof ds4Spec.lightbar.states)[];
 
 export function CalibrationCard() {
+  const tk = useTranslations("configUi.controlsSettingsCards");
   const gamepadId = useInputStore((s) => s.gamepadId);
   const deadzone = useInputStore((s) => s.deadzone);
   const setDeadzone = useInputStore((s) => s.setDeadzone);
@@ -51,11 +52,11 @@ export function CalibrationCard() {
       <div className="mt-2 flex items-center gap-2">
         {rec ? (
           <button type="button" onClick={finish} className="min-h-12 rounded bg-accent-primary/25 px-3 text-xs font-semibold text-accent-primary">
-            Done (sticks released)
+            {tk("doneSticksReleased")}
           </button>
         ) : (
           <button type="button" disabled={!gamepadId} onClick={() => setRec({ min: [], max: [] })} className="min-h-12 rounded border px-3 text-xs disabled:opacity-40">
-            Start
+            {tk("start")}
           </button>
         )}
         <label className="ml-auto flex items-center gap-2 text-xs">

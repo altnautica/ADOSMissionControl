@@ -33,9 +33,13 @@ vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
 // The iframe slot pulls in Convex; stub it to a marker that lists exactly the
 // contributions the body hands it (the ones that would mount as iframes).
 vi.mock("@/components/plugins/PluginSlot", () => ({
-  PluginSlot: (props: { contributions?: Array<{ pluginId: string; panelId: string }> }) => (
+  PluginSlot: (props: {
+    contributions?: Array<{ pluginId: string; panelId: string }>;
+    className?: string;
+  }) => (
     <div
       data-testid="plugin-slot"
+      data-class={props.className}
       data-mounted={(props.contributions ?? []).map((c) => c.pluginId).join(",")}
       data-panels={(props.contributions ?? []).map((c) => c.panelId).join(",")}
     />
@@ -100,6 +104,16 @@ describe("DroneDetailTabBody", () => {
     expect(panel.getAttribute("data-count")).toBe("1");
     // The iframe slot still mounts so a hybrid plugin's iframe renders below.
     expect(screen.getByTestId("plugin-slot")).toBeTruthy();
+  });
+
+  it("gives a hybrid plugin's iframe a readable height below its parameters", () => {
+    const c = contribution({ parameters: [PARAM] });
+    contributionsRef.value = [c];
+    slotRef.value = [{ pluginId: c.pluginId, panelId: c.panelId, pluginInstallId: c.installId }];
+    render(<DroneDetailTabBody agentId="drone-1" activeTabId={pluginTabId(c)} />);
+    const cls = screen.getByTestId("plugin-slot").getAttribute("data-class") ?? "";
+    expect(cls.split(/\s+/)).toEqual(expect.arrayContaining(["flex-1", "min-h-[480px]"]));
+    slotRef.value = [];
   });
 
   it("renders just the panel for a params-only plugin (slot mounts nothing)", () => {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import { CalibrationWizard } from "./CalibrationWizard";
 import { CalibrationRebootBanner } from "./CalibrationRebootBanner";
 import { RcCalibrationWizard } from "./RcCalibrationWizard";
@@ -12,6 +14,7 @@ import {
 } from "./calibration-types";
 import type { CalibrationState } from "./calibration-types";
 import { AgentSetupStep } from "./AgentSetupStep";
+import { setupText } from "@/lib/fc-setup/strings";
 import type { FcSetupController } from "@/lib/fc-setup/use-fc-setup";
 
 interface Props {
@@ -40,14 +43,16 @@ export function ArduPilotCalibrations({
   startCalibration, cancelCalibration,
   setLevel, setAirspeed, setBaro, setEsc, setCompassmot,
 }: Props) {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.arduPilotCalibrations");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
 
   return (
     <>
       <AgentSetupStep setup={setup} wizard="ground" step="level"><CalibrationWizard
-        title="Level Calibration"
-        description="Set the reference level horizon for the flight controller."
-        steps={LEVEL_STEPS}
+        title={setupText("setup.level.title")}
+        description={tr("setTheReferenceLevelHorizon")}
+        steps={ol(LEVEL_STEPS)}
         currentStep={level.currentStep}
         status={level.status}
         progress={level.progress}
@@ -58,13 +63,13 @@ export function ArduPilotCalibrations({
       /></AgentSetupStep>
 
       {level.needsReboot && level.status === "success" && (
-        <CalibrationRebootBanner label="Level calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label={tr("levelCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       <AgentSetupStep setup={setup} wizard="ground" step="airspeed"><CalibrationWizard
-        title="Airspeed Calibration"
-        description="ArduPlane only — cover the pitot tube opening before starting."
-        steps={AIRSPEED_STEPS}
+        title={tr("airspeedCalibration")}
+        description={tr("arduplaneOnlyCoverThePitot")}
+        steps={ol(AIRSPEED_STEPS)}
         currentStep={airspeed.currentStep}
         status={airspeed.status}
         progress={airspeed.progress}
@@ -75,9 +80,9 @@ export function ArduPilotCalibrations({
       /></AgentSetupStep>
 
       <CalibrationWizard
-        title="Barometer Calibration"
-        description="Resets ground pressure reference. Keep vehicle still during calibration."
-        steps={BARO_STEPS}
+        title={tr("barometerCalibration")}
+        description={tr("resetsGroundPressureReferenceKeep")}
+        steps={ol(BARO_STEPS)}
         currentStep={baro.currentStep}
         status={baro.status}
         progress={baro.progress}
@@ -91,9 +96,9 @@ export function ArduPilotCalibrations({
       {connected && baroPressure && (
         <div className="border border-border-default bg-bg-secondary px-4 py-2.5 -mt-4">
           <div className="flex items-center gap-4 text-[10px] font-mono">
-            <span className="text-text-secondary">Pressure</span>
+            <span className="text-text-secondary">{tr("pressure")}</span>
             <span className="text-text-primary">{baroPressure.pressAbs.toFixed(2)} hPa</span>
-            <span className="text-text-secondary">Temp</span>
+            <span className="text-text-secondary">{tr("temp")}</span>
             <span className="text-text-primary">{baroPressure.temperature.toFixed(1)} °C</span>
           </div>
         </div>
@@ -105,9 +110,9 @@ export function ArduPilotCalibrations({
       <ServoCalibrationSection />
 
       <CalibrationWizard
-        title="ESC Calibration"
-        description="Set ESC throttle endpoints. REMOVE ALL PROPELLERS before starting."
-        steps={ESC_CAL_STEPS}
+        title={tr("escCalibration")}
+        description={tr("setESCThrottleEndpointsREMOVE")}
+        steps={ol(ESC_CAL_STEPS)}
         currentStep={esc.currentStep}
         status={esc.status}
         progress={esc.progress}
@@ -125,13 +130,13 @@ export function ArduPilotCalibrations({
       />
 
       {esc.needsReboot && esc.status === "success" && (
-        <CalibrationRebootBanner label="ESC calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label={tr("escCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       <CalibrationWizard
-        title="CompassMot (Motor Interference)"
-        description="Measures magnetic interference from motors/ESCs at various throttle levels. Compensates compass readings."
-        steps={COMPASSMOT_STEPS}
+        title={tr("compassmotMotorInterference")}
+        description={tr("measuresMagneticInterferenceFromMotors")}
+        steps={ol(COMPASSMOT_STEPS)}
         currentStep={compassmot.currentStep}
         status={compassmot.status}
         progress={compassmot.progress}
@@ -148,7 +153,7 @@ export function ArduPilotCalibrations({
       />
 
       {compassmot.needsReboot && compassmot.status === "success" && (
-        <CalibrationRebootBanner label="CompassMot calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label={tr("compassmotCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
     </>
   );

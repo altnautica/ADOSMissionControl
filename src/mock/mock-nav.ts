@@ -56,20 +56,31 @@ const NAV_MODE: Record<1 | 2 | 3, string> = {
 /** The `nav.state` frame for `tSec` into the cycle. */
 export function demoNavState(tSec: number, activeSet: 1 | 2 | 3, minObstacleM: number | null): NavState {
   const health = extnavHealthAt(tSec);
+  const odomRateHz = health === "good" ? 30 : 18;
   return {
     mode: NAV_MODE[activeSet],
     activeSet,
     extnavHealth: health,
-    odomRateHz: health === "good" ? 30 : 18,
+    odomRateHz,
     lastResetCounter: Math.floor(tSec / 32),
     obstacleRateHz: 10,
     minObstacleM,
     gpsFix: null,
+    // The newest external pose is about one odometry period old; no pose
+    // feeds the other sources.
+    poseAgeMs: activeSet === 1 ? Math.round(1000 / odomRateHz) : null,
   };
 }
 
 const UPLOAD_TOTAL_BYTES = 48 * 1024 * 1024;
 const UPLOAD_PERIOD_S = 90;
+
+/** The mapping extension's plugin RAM cap on a drone, MB. */
+const DRONE_PLUGIN_RAM_CAP_MB = 768;
+
+/** The live mapping memory budget: 80 % of the drone cap, the extension's
+ * default (614 MB). */
+export const DEMO_MAP_MEMORY_BUDGET_MB = Math.floor(DRONE_PLUGIN_RAM_CAP_MB * 0.8);
 
 /** The `map_status` frame `tSec` into the stream with `tiles` revealed. */
 export function demoMapStatus(tSec: number, tiles: number): MapStatus {
@@ -78,7 +89,7 @@ export function demoMapStatus(tSec: number, tiles: number): MapStatus {
     sessionId: "demo-session",
     placement: "hybrid",
     memoryUsedMb: Math.round(180 + Math.min(420, tSec * 2.5)),
-    memoryBudgetMb: 1024,
+    memoryBudgetMb: DEMO_MAP_MEMORY_BUDGET_MB,
     voxelM: 0.1,
     keyframesDropped: Math.floor(tSec / 75),
     sweepPoints: Math.round(tSec * 1800),

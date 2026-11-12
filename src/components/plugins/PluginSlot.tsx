@@ -212,6 +212,7 @@ function ContributionBody({
       />
     );
   }
+  if (c.frame) return <BundleLoadNotice name={c.title ?? c.pluginId} state={c.frame} />;
   return (
     <PluginIframeHost
       pluginId={c.pluginId}
@@ -229,6 +230,40 @@ function ContributionBody({
   );
 }
 
+/** A bundle that is not mounted yet: a loading line, or an error card with a
+ * retry. Shared by inline modules and iframes, so both read the same. */
+function BundleLoadNotice({
+  name,
+  state,
+}: {
+  name: string;
+  state: { status: "loading" } | { status: "error"; message: string; retry: () => void };
+}) {
+  const t = useTranslations("plugins");
+  if (state.status === "loading") {
+    return (
+      <div role="status" className="m-3 text-xs text-text-tertiary">
+        {t("inlineLoading", { name })}
+      </div>
+    );
+  }
+  return (
+    <div
+      role="alert"
+      className="m-3 flex items-center justify-between gap-3 rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-xs text-text-primary"
+    >
+      <span>{t("inlineLoadFailed", { name, reason: state.message })}</span>
+      <button
+        type="button"
+        onClick={state.retry}
+        className="shrink-0 rounded border border-accent-primary/30 px-2 py-0.5 text-accent-primary hover:bg-accent-primary/10"
+      >
+        {t("inlineRetry")}
+      </button>
+    </div>
+  );
+}
+
 /** An inline contribution by load state: a loading line, an error card with a
  * retry (never an iframe fallback), or the mounted module. */
 function InlineContribution({
@@ -240,32 +275,9 @@ function InlineContribution({
   tokenValidator,
   token,
 }: MountProps & Pick<React.ComponentProps<typeof PluginIframeHost>, "tokenValidator" | "token">) {
-  const t = useTranslations("plugins");
-  const name = c.title ?? c.pluginId;
   const state = c.inline ?? { status: "loading" as const };
-  if (state.status === "loading") {
-    return (
-      <div role="status" className="m-3 text-xs text-text-tertiary">
-        {t("inlineLoading", { name })}
-      </div>
-    );
-  }
-  if (state.status === "error") {
-    return (
-      <div
-        role="alert"
-        className="m-3 flex items-center justify-between gap-3 rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-xs text-text-primary"
-      >
-        <span>{t("inlineLoadFailed", { name, reason: state.message })}</span>
-        <button
-          type="button"
-          onClick={state.retry}
-          className="shrink-0 rounded border border-accent-primary/30 px-2 py-0.5 text-accent-primary hover:bg-accent-primary/10"
-        >
-          {t("inlineRetry")}
-        </button>
-      </div>
-    );
+  if (state.status !== "ready") {
+    return <BundleLoadNotice name={c.title ?? c.pluginId} state={state} />;
   }
   return (
     <InlinePluginHost

@@ -1,9 +1,11 @@
 /**
  * @module launch-request-store
- * @description A point picked on a map for the cockpit Launch sheet: a
+ * @description A launch asked for from outside the cockpit Launch sheet: a
  * long-press or right-click on the ground offers "Launch here", which stores
- * the point and the sheet opens with it prefilled as the go-to. One global
- * slot, keyed to the drone it was picked for; the sheet takes it with
+ * the point and the sheet opens with it prefilled as the go-to; the planner's
+ * "Fly this mission" stores a mission request, and the sheet opens with
+ * "start the mission" chosen. One global
+ * slot, keyed to the drone it was made for; the sheet takes it with
  * `consume`, so a request is applied once. A request older than
  * {@link LAUNCH_REQUEST_TTL_MS} is dropped, never applied: the operator has
  * moved on, and a later visit to the cockpit must not open Launch with it.
@@ -13,13 +15,16 @@
 
 import { create } from "zustand";
 
-/** How long a picked point waits for the cockpit to take it (ms). */
+/** How long a request waits for the cockpit to take it (ms). */
 export const LAUNCH_REQUEST_TTL_MS = 5000;
 
 export interface LaunchRequest {
   droneId: string;
-  lat: number;
-  lon: number;
+  /** "mission": start the uploaded mission after take-off, with no point. */
+  after?: "mission";
+  /** The picked point, for a go-to request. */
+  lat?: number;
+  lon?: number;
   /** Metres north of the EKF origin, when the origin is known. */
   north?: number;
   /** Metres east of the EKF origin, when the origin is known. */

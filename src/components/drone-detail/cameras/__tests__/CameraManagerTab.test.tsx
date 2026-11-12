@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 
 import messages from "../../../../../locales/en.json";
 import { CameraManagerTab } from "../CameraManagerTab";
@@ -37,6 +37,8 @@ const client = {
 
 // The attached connection: which node's agent the store currently holds.
 const attached = { nodeDeviceId: "dev-1" };
+// The node's arm state as the fleet reports it.
+const fleet = { armState: "disarmed" };
 
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
@@ -58,7 +60,7 @@ vi.mock("@/stores/agent-capabilities-store", () => ({
 }));
 vi.mock("@/stores/node-registry/use-fleet-drones", () => ({
   useFleetDrones: (sel: (drones: unknown[]) => unknown) =>
-    sel([{ id: "d1", cloudDeviceId: "dev-1" }]),
+    sel([{ id: "d1", cloudDeviceId: "dev-1", armState: fleet.armState }]),
 }));
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -86,6 +88,7 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     client.setCameraRoster.mockReset().mockResolvedValue(undefined);
     useCameraManagerStore.setState({ byDrone: {} });
     attached.nodeDeviceId = "dev-1";
+    fleet.armState = "disarmed";
   });
 
   afterEach(() => {
@@ -117,5 +120,62 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     await flush();
     expect(client.getCameraRoster).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /add/i })).toBeDisabled();
+  });
+
+  it("says the node is unreachable instead of reporting no cameras", async () => {
+    attached.nodeDeviceId = "dev-other";
+    render(wrap(<CameraManagerTab droneId="d1" />));
+    await flush();
+    expect(screen.getByText(messages.cameras.unavailable)).toBeTruthy();
+    expect(screen.queryByText(messages.cameras.empty)).toBeNull();
+  });
+});
+
+describe("CameraManagerTab · writes that restart video", () => {
+  beforeEach(() => {
+    client.getCameraRoster.mockReset().mockResolvedValue([{ ...camera }]);
+    client.setCameraRoster.mockReset().mockResolvedValue(undefined);
+    useCameraManagerStore.setState({ byDrone: {} });
+    attached.nodeDeviceId = "dev-1";
+    fleet.armState = "disarmed";
+  });
+
+  it("asks before removing a camera and writes only on confirm", async () => {
+    render(wrap(<CameraManagerTab droneId="d1" />));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: messages.cameras.card.remove }));
+    await flush();
+    expect(client.setCameraRoster).not.toHaveBeenCalled();
+    expect(screen.getByText(messages.cameras.confirm.removeMessage.replace("{name}", "Belly cam"))).toBeTruthy();
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: messages.cameras.confirm.removeAction }),
+    );
+    await flush();
+    expect(client.setCameraRoster).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancelling a removal writes nothing", async () => {
+    render(wrap(<CameraManagerTab droneId="d1" />));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: messages.cameras.card.remove }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    await flush();
+    expect(client.setCameraRoster).not.toHaveBeenCalled();
+  });
+
+  it("holds a toggle for confirmation while the drone is armed", async () => {
+    fleet.armState = "armed";
+    render(wrap(<CameraManagerTab droneId="d1" />));
+    await flush();
+    fireEvent.click(screen.getByRole("switch"));
+    await flush();
+    expect(client.setCameraRoster).not.toHaveBeenCalled();
+    expect(screen.getByText(messages.cameras.confirm.armedMessage)).toBeTruthy();
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: messages.cameras.confirm.armedAction }),
+    );
+    await flush();
+    expect(client.setCameraRoster).toHaveBeenCalledTimes(1);
   });
 });

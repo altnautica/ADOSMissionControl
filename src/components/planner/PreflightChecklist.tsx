@@ -1,8 +1,9 @@
 /**
  * @module PreflightChecklist
- * @description Pre-flight checklist for the mission planner. Renders the
- * default checklist grouped by category with a per-item toggle and a running
- * progress count. The operator ticks items off before sending a mission.
+ * @description Mission prep checklist for the mission planner (shown as
+ * "Mission prep checklist"; it is not the flight screen's pre-flight gate).
+ * Renders the default checklist grouped by category with a per-item toggle and
+ * a running progress count. The operator ticks items off before uploading.
  *
  * Ticks live in `usePreflightChecklistStore` (session-only, not persisted) so
  * they survive the dock collapsing or switching tabs. All checklist logic lives

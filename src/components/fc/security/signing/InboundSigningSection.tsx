@@ -13,12 +13,14 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useSigningStore } from "@/stores/signing-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
 export function InboundSigningSection() {
+  const tl = useTranslations("fcPanels.inboundSigningSection");
   const protocol = useDroneManager(selectSelectedProtocol);
   const counters = useSigningStore((s) => s.linkCounters);
   const enforce = useSettingsStore((s) => s.enforceInboundSigning);
@@ -28,21 +30,21 @@ export function InboundSigningSection() {
   return (
     <FcSection>
       <div>
-        <h2 className="text-sm font-semibold text-text-primary">Inbound verification</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{tl("inboundVerification")}</h2>
         <p className="text-xs text-text-tertiary">
           Signatures on frames received from the vehicle, checked against this browser&apos;s key.
         </p>
       </div>
       {links.length === 0 ? (
-        <p className="text-xs text-text-tertiary">No MAVLink link is open for this drone.</p>
+        <p className="text-xs text-text-tertiary">{tl("noMAVLinkLinkIsOpen")}</p>
       ) : (
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-text-tertiary">
-              <th className="font-normal py-1">Link</th>
-              <th className="font-normal py-1 text-right">Verified</th>
-              <th className="font-normal py-1 text-right">Failed</th>
-              <th className="font-normal py-1 text-right">Unsigned</th>
+              <th className="font-normal py-1">{tl("link")}</th>
+              <th className="font-normal py-1 text-right">{tl("verified")}</th>
+              <th className="font-normal py-1 text-right">{tl("failed")}</th>
+              <th className="font-normal py-1 text-right">{tl("unsigned")}</th>
             </tr>
           </thead>
           <tbody className="font-mono text-text-secondary">

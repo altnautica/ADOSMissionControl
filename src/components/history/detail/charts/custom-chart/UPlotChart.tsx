@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
@@ -24,6 +25,7 @@ export interface UPlotChartProps {
 }
 
 export function UPlotChart({ frames, traces }: UPlotChartProps) {
+  const tk = useTranslations("history.uPlotChart");
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
 
@@ -110,7 +112,7 @@ export function UPlotChart({ frames, traces }: UPlotChartProps) {
   if (times.length === 0) {
     return (
       <div className="h-[220px] flex items-center justify-center text-[10px] text-text-tertiary">
-        No data for selected traces.
+        {tk("noDataForSelectedTraces")}
       </div>
     );
   }

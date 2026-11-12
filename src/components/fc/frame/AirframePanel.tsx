@@ -14,12 +14,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Box, Save, HardDrive, AlertTriangle, Search } from "lucide-react";
 import { PX4_AIRFRAMES } from "./px4-airframes";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const CATEGORIES = [...new Set(PX4_AIRFRAMES.map(a => a.category))];
 
 const AIRFRAME_PARAMS = ["SYS_AUTOSTART", "SYS_AUTOCONFIG"];
 
 export function AirframePanel() {
+  const tr = useTranslations("fcPanels.airframePanel");
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const t = useTranslations("fcToasts.frame");
@@ -80,8 +82,8 @@ export function AirframePanel() {
       <div className="max-w-3xl space-y-6">
         <PanelHeader
           icon={<Box size={16} />}
-          title="Airframe Selection"
-          subtitle="PX4 airframe configuration (SYS_AUTOSTART)"
+          title={tr("airframeSelection")}
+          subtitle={tr("px4AirframeConfigurationSYSAUTOSTART")}
           loading={loading}
           loadProgress={loadProgress}
           hasLoaded={hasLoaded}
@@ -93,7 +95,7 @@ export function AirframePanel() {
         {/* Current airframe */}
         {hasLoaded && (
           <div className="p-4 rounded-lg bg-bg-tertiary border border-border-default">
-            <div className="text-xs text-text-tertiary mb-1">Current Airframe</div>
+            <div className="text-xs text-text-tertiary mb-1">{tr("currentAirframe")}</div>
             <div className="text-sm font-medium text-text-primary">
               {currentEntry ? `${currentEntry.name} (${currentEntry.id})` : `Custom (${currentAirframe})`}
             </div>
@@ -107,7 +109,7 @@ export function AirframePanel() {
         {hasDirty && (
           <div className="flex items-center gap-2 px-3 py-2 bg-status-warning/10 rounded-md text-xs text-status-warning">
             <AlertTriangle size={14} className="shrink-0" />
-            <span>Changing airframe requires a reboot. All parameters will reset to airframe defaults.</span>
+            <span>{tr("changingAirframeRequiresAReboot")}</span>
           </div>
         )}
 
@@ -118,7 +120,7 @@ export function AirframePanel() {
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-2.5 top-2.5 text-text-tertiary" />
                 <Input
-                  placeholder="Search airframes..."
+                  placeholder={tr("searchAirframes")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 text-xs pl-8"
@@ -154,12 +156,12 @@ export function AirframePanel() {
               ))}
             </div>
             {filteredAirframes.length === 0 && (
-              <p className="text-xs text-text-tertiary text-center py-4">No airframes match your search.</p>
+              <p className="text-xs text-text-tertiary text-center py-4">{tr("noAirframesMatchYourSearch")}</p>
             )}
 
             {/* Custom ID input */}
             <div className="p-3 rounded-md bg-bg-tertiary border border-border-default">
-              <label className="text-xs text-text-secondary mb-2 block">Custom Airframe ID</label>
+              <label className="text-xs text-text-secondary mb-2 block">{tr("customAirframeID")}</label>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -180,7 +182,7 @@ export function AirframePanel() {
               <Save size={14} className="mr-1" /> {saving ? "Saving..." : "Save"}
             </Button>
             <Button size="sm" variant="secondary" disabled={!hasRamWrites} onClick={handleFlash}>
-              <HardDrive size={14} className="mr-1" /> Write to Flash
+              <HardDrive size={14} className="mr-1" /> <SaveBarLabel k="writeToFlash" />
             </Button>
           </div>
         )}

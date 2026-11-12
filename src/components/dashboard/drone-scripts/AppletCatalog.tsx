@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { BookOpen, Plus, Code2, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { APPLET_CATALOG, type AppletCatalogEntry } from "./applet-catalog";
 import { SCRIPTS_DIR } from "./scripts-constants";
 
 export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
+  const tq = useTranslations("dashboard.appletCatalog");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -87,11 +89,10 @@ export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
     <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
       <div className="flex items-center gap-2">
         <BookOpen size={14} className="text-accent-primary" />
-        <h2 className="text-sm font-medium text-text-primary">Starter Scripts</h2>
+        <h2 className="text-sm font-medium text-text-primary">{tq("starterScripts")}</h2>
       </div>
       <p className="text-[10px] text-text-tertiary">
-        Minimal examples to upload, run, and adapt. Each runs on the flight
-        controller after a reboot.
+        {tq("minimalExamplesToUploadRun")}
       </p>
 
       <ul className="space-y-2">
@@ -169,7 +170,7 @@ export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
 
       {!supportsFtp && (
         <p className="text-[10px] text-status-warning">
-          Connect over a transport that supports file transfer to add scripts.
+          {tq("connectOverATransportThat")}
         </p>
       )}
     </div>

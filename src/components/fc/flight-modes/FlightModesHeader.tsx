@@ -1,7 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Save, HardDrive } from "lucide-react";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 interface FlightModesHeaderProps {
   isDirty: boolean;
@@ -26,10 +28,11 @@ export function FlightModesHeader({
   onSave,
   onCommit,
 }: FlightModesHeaderProps) {
+  const tr = useTranslations("fcPanels.flightModesHeader");
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <h2 className="text-sm font-semibold text-text-primary">Flight Modes</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{tr("flightModes")}</h2>
         {isDirty && (
           <span className="flex items-center gap-1 text-[10px] text-status-warning">
             <span className="w-1.5 h-1.5 rounded-full bg-status-warning" />
@@ -45,7 +48,7 @@ export function FlightModesHeader({
           loading={loading}
           onClick={onRead}
         >
-          Read
+          {tr("read")}
         </Button>
         <Button
           variant="primary"
@@ -64,7 +67,7 @@ export function FlightModesHeader({
             icon={<HardDrive size={12} />}
             onClick={onCommit}
           >
-            Write to Flash
+            <SaveBarLabel k="writeToFlash" />
           </Button>
         )}
       </div>

@@ -12,7 +12,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Camera, Save, HardDrive, Aperture, Ruler, Calculator, Timer } from "lucide-react";
+import { Camera, Save, Aperture, Ruler, Calculator, Timer } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
@@ -21,7 +21,10 @@ import {
 import { withCurrent as withCurrentOption } from "../frame/enum-options";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 export function CameraPanel() {
+  const tr = useTranslations("fcPanels.cameraPanel");
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, getProtocol,
@@ -29,7 +32,7 @@ export function CameraPanel() {
   } = useFcPanelState({ paramNames: CAMERA_PARAMS, optionalParams: OPTIONAL_CAMERA_PARAMS, panelId: "camera" });
   const { toast } = useToast();
   const t = useTranslations("fcToasts.gimbal");
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const { label: pl } = useParamLabel();
@@ -126,8 +129,8 @@ export function CameraPanel() {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Camera"
-            subtitle="Camera trigger, servo settings, distance-based capture"
+            title={tr("camera")}
+            subtitle={tr("cameraTriggerServoSettingsDistance")}
             icon={<Camera size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -144,7 +147,7 @@ export function CameraPanel() {
           )}
 
           {/* Camera Type */}
-          <FcSection icon={<Camera size={14} />} title="Camera Configuration" description="Camera type and trigger method">
+          <FcSection icon={<Camera size={14} />} title={tr("cameraConfiguration")} description={tr("cameraTypeAndTriggerMethod")}>
             <Select
               label={lbl(isPx4 ? "CAM1_TYPE — Trigger Mode" : "CAM1_TYPE — Camera Type")}
               options={typeOptions}
@@ -155,10 +158,10 @@ export function CameraPanel() {
 
           {/* Servo Trigger Settings */}
           {camEnabled && showServo && (
-            <FcSection icon={<Aperture size={14} />} title="Servo Trigger" description="PWM values for servo-based shutter">
+            <FcSection icon={<Aperture size={14} />} title={tr("servoTrigger")} description={tr("pwmValuesForServoBased")}>
               {params.has("CAM1_SERVO_OFF") && (
                 <Input
-                  label={lbl("CAM1_SERVO_OFF — Servo Off PWM")}
+                  label={lbl(`CAM1_SERVO_OFF — ${tr("servoOffPWM")}`)}
                   type="number"
                   step="10"
                   min="500"
@@ -170,7 +173,7 @@ export function CameraPanel() {
               )}
               {params.has("CAM1_SERVO_ON") && (
                 <Input
-                  label={lbl("CAM1_SERVO_ON — Servo On PWM")}
+                  label={lbl(`CAM1_SERVO_ON — ${tr("servoOnPWM")}`)}
                   type="number"
                   step="10"
                   min="500"
@@ -184,7 +187,7 @@ export function CameraPanel() {
                 // ArduPilot holds the shutter for CAM1_DURATION seconds; PX4's
                 // TRIG_ACT_TIME is in milliseconds.
                 <Input
-                  label={lbl("CAM1_DURATION — Pulse Duration")}
+                  label={lbl(`CAM1_DURATION — ${tr("pulseDuration")}`)}
                   type="number"
                   step={isPx4 ? "1" : "0.1"}
                   min="0"
@@ -198,9 +201,9 @@ export function CameraPanel() {
 
           {/* Distance Trigger */}
           {camEnabled && params.has("CAM1_TRIGG_DIST") && (
-            <FcSection icon={<Ruler size={14} />} title="Distance Trigger" description="Automatic capture at distance intervals">
+            <FcSection icon={<Ruler size={14} />} title={tr("distanceTrigger")} description={tr("automaticCaptureAtDistanceIntervals")}>
               <Input
-                label={lbl("CAM1_TRIGG_DIST — Trigger Distance")}
+                label={lbl(`CAM1_TRIGG_DIST — ${tr("triggerDistance")}`)}
                 type="number"
                 step="0.5"
                 min="0"
@@ -208,16 +211,16 @@ export function CameraPanel() {
                 value={p("CAM1_TRIGG_DIST")}
                 onChange={(e) => set("CAM1_TRIGG_DIST", e.target.value)}
               />
-              <p className="text-[10px] text-text-tertiary">Set to 0 to disable distance-based triggering</p>
+              <p className="text-[10px] text-text-tertiary">{tr("setTo0ToDisable")}</p>
             </FcSection>
           )}
 
           {/* Survey Helper */}
           {camEnabled && (
-            <FcSection icon={<Calculator size={14} />} title="Survey Helper" description="Calculate trigger distance from survey parameters">
+            <FcSection icon={<Calculator size={14} />} title={tr("surveyHelper")} description={tr("calculateTriggerDistanceFromSurvey")}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[10px] text-text-tertiary block mb-1">Altitude</label>
+                  <label className="text-[10px] text-text-tertiary block mb-1">{tr("altitude")}</label>
                   <input
                     type="number"
                     value={surveyAlt}
@@ -227,7 +230,7 @@ export function CameraPanel() {
                   <span className="text-[9px] text-text-tertiary">m</span>
                 </div>
                 <div>
-                  <label className="text-[10px] text-text-tertiary block mb-1">Camera FOV</label>
+                  <label className="text-[10px] text-text-tertiary block mb-1">{tr("cameraFOV")}</label>
                   <input
                     type="number"
                     value={surveyFov}
@@ -237,7 +240,7 @@ export function CameraPanel() {
                   <span className="text-[9px] text-text-tertiary">°</span>
                 </div>
                 <div>
-                  <label className="text-[10px] text-text-tertiary block mb-1">Overlap</label>
+                  <label className="text-[10px] text-text-tertiary block mb-1">{tr("overlap")}</label>
                   <input
                     type="number"
                     value={surveyOverlap}
@@ -249,10 +252,10 @@ export function CameraPanel() {
               </div>
               {calculatedTriggerDist > 0 && (
                 <div className="flex items-center gap-2 mt-2 p-2 bg-bg-tertiary/50 rounded">
-                  <span className="text-xs text-text-secondary">Calculated distance:</span>
+                  <span className="text-xs text-text-secondary">{tr("calculatedDistance")}</span>
                   <span className="text-sm font-mono text-accent-primary">{calculatedTriggerDist.toFixed(1)} m</span>
                   <Button size="sm" variant="ghost" onClick={applyCalculatedDistance} className="ml-auto">
-                    Apply
+                    {tr("apply")}
                   </Button>
                 </div>
               )}
@@ -261,10 +264,10 @@ export function CameraPanel() {
 
           {/* Manual Trigger */}
           {camEnabled && connected && (
-            <FcSection icon={<Camera size={14} />} title="Manual Trigger" description="Trigger camera manually">
+            <FcSection icon={<Camera size={14} />} title={tr("manualTrigger")} description={tr("triggerCameraManually")}>
               <div className="flex items-center gap-3">
                 <Button size="sm" onClick={handleTrigger}>
-                  <Aperture size={12} className="mr-1" /> Trigger Camera
+                  <Aperture size={12} className="mr-1" /> {tr("triggerCamera")}
                 </Button>
                 <span className="text-xs font-mono text-text-tertiary">
                   Images: {imageCount}
@@ -275,10 +278,10 @@ export function CameraPanel() {
 
           {/* Interval Trigger */}
           {camEnabled && connected && (
-            <FcSection icon={<Timer size={14} />} title="Interval Trigger" description="Trigger camera at a fixed time interval">
+            <FcSection icon={<Timer size={14} />} title={tr("intervalTrigger")} description={tr("triggerCameraAtAFixed")}>
               <div className="flex items-center gap-3">
                 <Input
-                  label="Interval"
+                  label={tr("interval")}
                   type="number"
                   step="1"
                   min="1"
@@ -304,34 +307,16 @@ export function CameraPanel() {
           )}
 
           {/* Save */}
-          <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<Save size={14} />}
-              disabled={!hasDirty || !connected}
-              loading={saving}
-              onClick={handleSave}
-            >
-              Save to Flight Controller
-            </Button>
-            {hasRamWrites && (
-              <Button
-                variant="secondary"
-                size="lg"
-                icon={<HardDrive size={14} />}
-                onClick={handleFlash}
-              >
-                Write to Flash
-              </Button>
-            )}
-            {!connected && (
-              <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>
-            )}
-            {hasDirty && connected && (
-              <span className="text-[10px] text-status-warning">Unsaved changes</span>
-            )}
-          </div>
+          <PanelSaveBar
+            onSave={handleSave}
+            saving={saving}
+            saveDisabled={!hasDirty || !connected}
+            showFlash={hasRamWrites}
+            onFlash={handleFlash}
+            flashing={flashing}
+            showConnectHint={!connected}
+            showUnsavedHint={hasDirty && connected}
+          />
         </div>
       </div>
     </ArmedWarningBanner>

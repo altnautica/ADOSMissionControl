@@ -48,6 +48,7 @@ interface AgentStatusCardProps {
 }
 
 export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
+  const tq = useTranslations("command.agentStatusCard");
   const t = useTranslations("agent");
   const isWorkstation =
     profile === "workstation" ||
@@ -195,7 +196,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
                   ? "text-status-warning"
                   : "text-status-error",
             )}
-            title="Control-plane round-trip time to the agent"
+            title={tq("controlPlaneRoundTripTime")}
           >
             {controlRttMs} ms
           </span>
@@ -250,7 +251,7 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
               "text-xs",
               link.mavlinkAlive ? "text-text-tertiary" : "text-status-warning",
             )}
-            title="Time since the last decoded MAVLink HEARTBEAT"
+            title={tq("timeSinceTheLastDecoded")}
           >
             {link.mavlinkAlive
               ? `MAVLink ${heartbeatAgeLabel(link.heartbeatAgeS)}`

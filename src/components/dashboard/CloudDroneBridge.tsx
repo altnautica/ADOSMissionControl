@@ -187,7 +187,9 @@ export function CloudDroneBridge() {
         nodeId,
         {
           deviceId,
-          name: drone.name || `Agent ${deviceId.slice(0, 8)}`,
+          // No name: leave the known one; the fleet projection supplies the
+          // placeholder, so a nameless source never overwrites a real name.
+          name: drone.name || undefined,
           profile,
           role,
           cloudPosture,

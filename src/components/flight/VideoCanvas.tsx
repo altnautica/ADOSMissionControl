@@ -329,7 +329,7 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
                 onClick={() => { setConfigUrl(""); setShowConfig(true); }}
                 className="pointer-events-auto mt-2 px-3 py-1.5 text-[10px] font-mono text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
               >
-                {t("configure")}
+                {specString("cockpit.video.configure")}
               </button>
             )}
           </div>

@@ -17,6 +17,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Lock } from "lucide-react";
 
@@ -115,6 +116,7 @@ function ControllerDrawing({
   selected: string | null;
   onSelect: (control: string) => void;
 }) {
+  const tq = useTranslations("configUi.controlsSettings");
   const art = (generic ? genericArt : ds4Art) as unknown as Art;
   const hotspots = (generic ? genericHotspots : ds4Hotspots).hotspots as unknown as Record<string, Hotspot>;
   const buttons = useInputStore((s) => s.buttons);
@@ -148,7 +150,7 @@ function ControllerDrawing({
       className="w-full max-w-[1040px] text-text-primary"
       data-testid="controller-drawing"
       role="img"
-      aria-label="Controller"
+      aria-label={tq("controller")}
     >
       {art.paths.map((p) => (
         <path
@@ -222,6 +224,7 @@ function ControllerDrawing({
 }
 
 function ActionPicker({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const tq = useTranslations("configUi.controlsSettings");
   const registry = useSkillRegistry((s) => s.skills);
   const skills = useMemo(() => [...registry.values()].filter((s) => s.source === "plugin"), [registry]);
   return (
@@ -230,12 +233,12 @@ function ActionPicker({ value, onChange, disabled }: { value: string; onChange: 
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
       className="min-h-12 w-full rounded border border-border-default bg-bg-secondary px-2 text-xs"
-      aria-label="Action"
+      aria-label={tq("action")}
     >
       {Object.keys(GROUP_LABEL).map((g) =>
         g === "none" ? (
           <option key="none" value="none">
-            None
+            {tq("none")}
           </option>
         ) : g === "skills" ? (
           <optgroup key={g} label={GROUP_LABEL[g]}>
@@ -270,6 +273,7 @@ function ControlSheet({
   setDraft: (next: Ds4Binding[]) => void;
   onClose: () => void;
 }) {
+  const tq = useTranslations("configUi.controlsSettings");
   const rows = draft.map((b, i) => ({ b, i })).filter(({ b }) => b.control === control);
   const setRow = (i: number, patch: Partial<Ds4Binding>) =>
     setDraft(draft.map((b, j) => (j === i ? stopHoldRow({ ...b, ...patch }) : b)));
@@ -288,7 +292,7 @@ function ControlSheet({
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-semibold">{control}</h3>
         <button type="button" onClick={onClose} className="min-h-12 min-w-12 rounded px-2 text-xs hover:bg-white/10">
-          Close
+          {tq("close")}
         </button>
       </div>
       <div className="flex flex-col gap-3">
@@ -307,7 +311,7 @@ function ControlSheet({
                   value={b.control}
                   onChange={(e) => setRow(i, { control: e.target.value })}
                   className="min-h-12 flex-1 rounded border border-border-default bg-bg-secondary px-2"
-                  aria-label="Move to control"
+                  aria-label={tq("moveToControl")}
                   title={specString("controls.locked")}
                 >
                   {DS4_CONTROLS.filter((c) => !c.startsWith("stick") && c !== "lightbar").map((c) => (
@@ -338,6 +342,7 @@ function ControlSheet({
 }
 
 export function ControlsSettings() {
+  const tq = useTranslations("configUi.controlsSettings");
   const saved = useControlsStore((s) => s.bindings);
   const setBindings = useControlsStore((s) => s.setBindings);
   const resetBindings = useControlsStore((s) => s.reset);
@@ -404,7 +409,7 @@ export function ControlsSettings() {
           {pad.connected ? (shortPadName(pad.name) ?? "Controller") : specString("controls.press_any_button")}
         </span>
         {pad.needsCalibration && <span className="text-xs text-status-warning">{specString("controls.not_standard")}</span>}
-        <div className="ml-auto flex items-center gap-1" role="group" aria-label="Stick mode">
+        <div className="ml-auto flex items-center gap-1" role="group" aria-label={tq("stickMode")}>
           {([1, 2] as const).map((m) => (
             <button
               key={m}

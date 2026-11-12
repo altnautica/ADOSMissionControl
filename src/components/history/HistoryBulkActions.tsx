@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Download, Star, StarOff, Trash2, X, FileType, GitCompare, Layers, Map, ArchiveRestore } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { useHistoryStore } from "@/stores/history-store";
 import { BulkExportModal } from "./compliance/BulkExportModal";
@@ -43,6 +44,8 @@ export function HistoryBulkActions({
   const [compareOpen, setCompareOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [fleetMapOpen, setFleetMapOpen] = useState(false);
+  // Which destructive action is waiting on its confirmation, if any.
+  const [pendingConfirm, setPendingConfirm] = useState<"trash" | "purge" | null>(null);
 
   if (selectedIds.size === 0) return null;
 
@@ -62,9 +65,7 @@ export function HistoryBulkActions({
     void store.persistToIDB();
   };
 
-  const handleDelete = () => {
-    const msg = t("moveToTrashConfirm", { count: selectedIds.size });
-    if (typeof window !== "undefined" && !window.confirm(msg)) return;
+  const moveToTrash = () => {
     const store = useHistoryStore.getState();
     for (const id of selectedIds) {
       store.removeRecord(id);
@@ -82,9 +83,7 @@ export function HistoryBulkActions({
     onClearSelection();
   };
 
-  const handleDeletePermanently = () => {
-    const msg = t("deletePermanentlyConfirm", { count: selectedIds.size });
-    if (typeof window !== "undefined" && !window.confirm(msg)) return;
+  const deletePermanently = () => {
     const store = useHistoryStore.getState();
     for (const id of selectedIds) {
       store.permanentlyDelete(id);
@@ -181,7 +180,7 @@ export function HistoryBulkActions({
               variant="ghost"
               size="sm"
               icon={<Trash2 size={14} />}
-              onClick={handleDeletePermanently}
+              onClick={() => setPendingConfirm("purge")}
               title={t("deletePermanently")}
             >
               {t("deletePermanently")}
@@ -192,7 +191,7 @@ export function HistoryBulkActions({
             variant="ghost"
             size="sm"
             icon={<Trash2 size={14} />}
-            onClick={handleDelete}
+            onClick={() => setPendingConfirm("trash")}
             title={t("delete")}
           >
             {t("delete")}
@@ -236,6 +235,24 @@ export function HistoryBulkActions({
         onPolygonFilter={(ids) => {
           if (ids.size > 0) onSelect(ids);
         }}
+      />
+
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        variant="danger"
+        title={pendingConfirm === "purge" ? t("deletePermanently") : t("moveToTrashTitle")}
+        message={
+          pendingConfirm === "purge"
+            ? t("deletePermanentlyConfirm", { count: selectedIds.size })
+            : t("moveToTrashConfirm", { count: selectedIds.size })
+        }
+        confirmLabel={pendingConfirm === "purge" ? t("deletePermanently") : t("moveToTrashTitle")}
+        onConfirm={() => {
+          if (pendingConfirm === "purge") deletePermanently();
+          else moveToTrash();
+          setPendingConfirm(null);
+        }}
+        onCancel={() => setPendingConfirm(null)}
       />
     </>
   );

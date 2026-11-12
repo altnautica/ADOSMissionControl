@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -17,6 +18,7 @@ import {
 import { XYZ_COLORS } from "../chart-theme";
 
 export function SensorGraphPanel() {
+  const tm = useTranslations("fcPanels.sensorGraphPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { firmwareType } = useFirmwareCapabilities();
@@ -99,7 +101,7 @@ export function SensorGraphPanel() {
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <Activity size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Sensor Graphs</span>
+        <span className="text-xs font-semibold text-text-primary">{tm("sensorGraphs")}</span>
         <div className="flex-1" />
         <div className="flex items-center gap-0.5 bg-bg-tertiary p-0.5 rounded">
           {SOURCE_TABS.map(({ key, label }) => (
@@ -118,15 +120,15 @@ export function SensorGraphPanel() {
 
       <div className="flex-1 overflow-y-auto p-4">
         {!selectedDroneId ? (
-          <EmptyState message="Connect a drone to view sensor data" />
+          <EmptyState message={tm("connectADroneToView")} />
         ) : source === "vibration" ? (
           <div className="max-w-lg space-y-4">
-            <SectionHeader title="Vibration" subtitle="IMU vibration levels (m/s/s)" />
+            <SectionHeader title={tm("vibration")} subtitle={tm("imuVibrationLevelsMS")} />
             <VibrationGauges />
           </div>
         ) : source === "ekf" ? (
           <div className="max-w-lg space-y-4">
-            <SectionHeader title="EKF Status" subtitle="Extended Kalman Filter variance" />
+            <SectionHeader title={tm("ekfStatus")} subtitle={tm("extendedKalmanFilterVariance")} />
             {firmwareType === 'px4' && <span className="text-[10px] text-text-tertiary ml-2">(via ESTIMATOR_STATUS)</span>}
             <EkfStatusBars />
           </div>
@@ -134,7 +136,7 @@ export function SensorGraphPanel() {
           <EmptyState message={source === "mag" ? "Waiting for SCALED_IMU magnetometer data..." : `Waiting for SCALED_IMU ${source} data...`} />
         ) : source === "gyro" ? (
           <div className="space-y-4">
-            <SectionHeader title="Gyroscope" subtitle="Angular rate (deg/s)" />
+            <SectionHeader title={tm("gyroscope")} subtitle={tm("angularRateDegS")} />
             {hasImuData ? (
               <div className="space-y-2">
                 <WaveformChart data={extractAxis("xgyro")} label="X" unit="deg/s" color={XYZ_COLORS.x} />
@@ -152,7 +154,7 @@ export function SensorGraphPanel() {
           </div>
         ) : source === "accel" ? (
           <div className="space-y-4">
-            <SectionHeader title="Accelerometer" subtitle="Linear acceleration (m/s\u00b2)" />
+            <SectionHeader title={tm("accelerometer")} subtitle={tm("linearAccelerationMSU00b2")} />
             <div className="space-y-2">
               <WaveformChart data={extractAxis("xacc")} label="X" unit="m/s\u00b2" color={XYZ_COLORS.x} />
               <WaveformChart data={extractAxis("yacc")} label="Y" unit="m/s\u00b2" color={XYZ_COLORS.y} />
@@ -161,7 +163,7 @@ export function SensorGraphPanel() {
           </div>
         ) : source === "mag" ? (
           <div className="space-y-4">
-            <SectionHeader title="Magnetometer" subtitle="Magnetic field (mGauss)" />
+            <SectionHeader title={tm("magnetometer")} subtitle={tm("magneticFieldMGauss")} />
             <div className="space-y-2">
               <WaveformChart data={extractAxis("xmag")} label="X" unit="mG" color={XYZ_COLORS.x} />
               <WaveformChart data={extractAxis("ymag")} label="Y" unit="mG" color={XYZ_COLORS.y} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import type {
   BetaflightTarget, BetaflightRelease,
@@ -67,6 +68,7 @@ export function FirmwareBetaflightSection({
   bfBuildRetrying, bfBuildTimedOut,
   onCloudBuild, onCheckBuildAgain, onToggleOption, onRetry,
 }: Props) {
+  const tm = useTranslations("fcPanels.firmwareBetaflightSection");
   const targetGroups = useMemo(() => buildBetaflightSelectGroups(bfTargets), [bfTargets])
 
   return (
@@ -75,11 +77,11 @@ export function FirmwareBetaflightSection({
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold text-text-primary flex items-center gap-2">
             <HardDrive size={14} />
-            Target Board
+            {tm("targetBoard")}
           </h2>
           {bfLoading && (
             <span className="text-[10px] text-text-tertiary flex items-center gap-1">
-              <RefreshCw size={10} className="animate-spin" /> Loading targets...
+              <RefreshCw size={10} className="animate-spin" /> {tm("loadingTargets")}
             </span>
           )}
         </div>
@@ -87,7 +89,7 @@ export function FirmwareBetaflightSection({
         {bfError && (
           <div className="text-[10px] text-status-error flex items-center justify-between">
             <span>{bfError}</span>
-            <button onClick={onRetry} className="underline cursor-pointer">Retry</button>
+            <button onClick={onRetry} className="underline cursor-pointer">{tm("retry")}</button>
           </div>
         )}
 
@@ -95,7 +97,7 @@ export function FirmwareBetaflightSection({
           value={selectedBfTarget}
           onChange={setSelectedBfTarget}
           disabled={bfLoading || bfTargets.length === 0}
-          placeholder="Loading targets..."
+          placeholder={tm("loadingTargets")}
           searchable
           options={targetGroups.length > 0 ? targetGroups : bfTargets.map((t) => ({
             value: t.target, label: t.target,
@@ -108,10 +110,10 @@ export function FirmwareBetaflightSection({
       <div className="bg-bg-secondary border border-border-default p-4 space-y-3">
         <h2 className="text-xs font-semibold text-text-primary flex items-center gap-2">
           <Zap size={14} />
-          Firmware Version
+          {tm("firmwareVersion")}
         </h2>
         <Select
-          label="Release"
+          label={tm("release")}
           value={selectedBfRelease}
           onChange={setSelectedBfRelease}
           disabled={bfReleases.length === 0}
@@ -123,20 +125,20 @@ export function FirmwareBetaflightSection({
           <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
             <input type="checkbox" checked={bfCustomBuild} onChange={(e) => setBfCustomBuild(e.target.checked)} className="accent-accent-primary" />
             <Wrench size={12} />
-            Custom Cloud Build
+            {tm("customCloudBuild")}
           </label>
           <p className="text-[10px] text-text-tertiary mt-1 ml-6">
-            Build firmware with specific features enabled (radio protocol, telemetry, etc.)
+            {tm("buildFirmwareWithSpecificFeatures")}
           </p>
         </div>
 
         {bfCustomBuild && bfBuildOptions && (
           <div className="space-y-3 pl-2 border-l-2 border-accent-primary/30">
-            <BuildOptionGroup label="Radio Protocol" options={bfBuildOptions.radioProtocols} selected={bfSelectedOptions} onToggle={onToggleOption} />
-            <BuildOptionGroup label="Telemetry Protocol" options={bfBuildOptions.telemetryProtocols} selected={bfSelectedOptions} onToggle={onToggleOption} />
-            <BuildOptionGroup label="Motor Protocol" options={bfBuildOptions.motorProtocols} selected={bfSelectedOptions} onToggle={onToggleOption} />
-            <BuildOptionGroup label="OSD Options" options={bfBuildOptions.osdOptions} selected={bfSelectedOptions} onToggle={onToggleOption} />
-            <BuildOptionGroup label="Other Options" options={bfBuildOptions.otherOptions} selected={bfSelectedOptions} onToggle={onToggleOption} />
+            <BuildOptionGroup label={tm("radioProtocol")} options={bfBuildOptions.radioProtocols} selected={bfSelectedOptions} onToggle={onToggleOption} />
+            <BuildOptionGroup label={tm("telemetryProtocol")} options={bfBuildOptions.telemetryProtocols} selected={bfSelectedOptions} onToggle={onToggleOption} />
+            <BuildOptionGroup label={tm("motorProtocol")} options={bfBuildOptions.motorProtocols} selected={bfSelectedOptions} onToggle={onToggleOption} />
+            <BuildOptionGroup label={tm("osdOptions")} options={bfBuildOptions.osdOptions} selected={bfSelectedOptions} onToggle={onToggleOption} />
+            <BuildOptionGroup label={tm("otherOptions")} options={bfBuildOptions.otherOptions} selected={bfSelectedOptions} onToggle={onToggleOption} />
 
             {bfSelectedOptions.length > 0 && (
               <p className="text-[10px] text-text-tertiary">Selected: {bfSelectedOptions.join(", ")}</p>
@@ -159,7 +161,7 @@ export function FirmwareBetaflightSection({
               }`}>
                 <p className="font-semibold">Build: {bfBuildStatus.status}</p>
                 {bfBuildStatus.progress !== undefined && <p>Progress: {bfBuildStatus.progress}%</p>}
-                {bfBuildRetrying && <p>Status check failed, retrying...</p>}
+                {bfBuildRetrying && <p>{tm("statusCheckFailedRetrying")}</p>}
                 {bfBuildStatus.status === "success" && bfBuildStatus.file && (
                   <p className="font-mono mt-1">{bfBuildStatus.file}</p>
                 )}
@@ -170,19 +172,19 @@ export function FirmwareBetaflightSection({
                     className="mt-1.5 flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold border border-status-error/40 text-status-error hover:bg-status-error/10 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
                   >
                     <RefreshCw size={10} />
-                    Retry Build
+                    {tm("retryBuild")}
                   </button>
                 )}
                 {bfBuildTimedOut && (
                   <div className="mt-1.5">
-                    <p>The build is still running. Status checks stopped after 5 minutes.</p>
+                    <p>{tm("theBuildIsStillRunning")}</p>
                     <button
                       onClick={onCheckBuildAgain}
                       disabled={bfBuildPolling}
                       className="mt-1 flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold border border-border-default text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
                     >
                       <RefreshCw size={10} />
-                      Check again
+                      {tm("checkAgain")}
                     </button>
                   </div>
                 )}

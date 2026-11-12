@@ -6,6 +6,7 @@
  * @module components/history/detail/tabs/overview/WindCard
  */
 
+import { useTranslations } from "next-intl";
 import { Wind } from "lucide-react";
 import type { WindEstimate } from "@/lib/types";
 import { Row } from "./shared";
@@ -21,21 +22,22 @@ function compassLabel(deg: number): string {
 }
 
 export function WindCard({ wind, hasMetar }: { wind: WindEstimate; hasMetar: boolean }) {
+  const tq = useTranslations("history.windCard");
   return (
     <div className="flex flex-col gap-1 mt-2 border-t border-border-default pt-2">
       <div className="flex items-center gap-1.5 text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1">
         <Wind size={11} className="text-accent-primary" />
-        Wind (estimated from FC)
+        {tq("windEstimatedFromFC")}
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-        <Row label="Speed" value={`${wind.speedMs.toFixed(1)} m/s`} mono />
-        <Row label="From" value={`${wind.fromDirDeg}° (${compassLabel(wind.fromDirDeg)})`} mono />
-        <Row label="Samples" value={wind.sampleCount.toString()} mono />
-        <Row label="Method" value={wind.method === "vfr_diff" ? "Ground track − airspeed" : "FC estimate"} />
+        <Row label={tq("speed")} value={`${wind.speedMs.toFixed(1)} m/s`} mono />
+        <Row label={tq("from")} value={`${wind.fromDirDeg}° (${compassLabel(wind.fromDirDeg)})`} mono />
+        <Row label={tq("samples")} value={wind.sampleCount.toString()} mono />
+        <Row label={tq("method")} value={wind.method === "vfr_diff" ? "Ground track − airspeed" : "FC estimate"} />
       </div>
       {hasMetar && (
         <span className="text-[9px] text-text-tertiary mt-0.5">
-          METAR wind shown above is from the nearest station. This estimate is derived from the flight controller.
+          {tq("metarWindShownAboveIs")}
         </span>
       )}
     </div>

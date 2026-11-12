@@ -10,6 +10,7 @@ import {
   SampledPositionProperty,
   SampledProperty,
   LinearApproximation,
+  Cartographic,
   Cartesian3,
   Math as CesiumMath,
 } from "cesium";
@@ -19,6 +20,8 @@ import type { FlightPlan, SimPoint } from "@/lib/simulation-utils";
 export interface SampledProperties {
   sampledPosition: SampledPositionProperty;
   sampledHeading: SampledProperty;
+  /** Height above the ground under the drone (m), sampled with the position. */
+  sampledAgl: SampledProperty;
   startJulian: JulianDate;
 }
 
@@ -50,6 +53,12 @@ function cumulativeDistances(positions: Cartesian3[]): number[] {
  * terrain-following sub-samples between them, with travel time distributed by
  * distance so the drone follows the contour instead of cutting through hills.
  *
+ * `sampledAgl` carries the height above ground at every position sample. With
+ * `groundHeights` (the sampled terrain under each of `allPositions`) a resolved
+ * position's AGL is its height over that ground; any other leg end carries its
+ * planned altitude. The HUD reads it instead of asking the rendered globe,
+ * whose coarse first tiles sit kilometres below the real ground.
+ *
  * Returns null if there are no waypoints or segments.
  */
 export function buildSampledProperties(
@@ -59,12 +68,14 @@ export function buildSampledProperties(
   allPositions?: Cartesian3[],
   waypointIndices?: number[],
   homeHeight = 0,
+  groundHeights?: number[],
 ): SampledProperties | null {
   if (waypoints.length === 0 || flightPlan.segments.length === 0) return null;
 
   const startJulian = JulianDate.fromDate(new Date(0)); // Arbitrary epoch
   const sampledPosition = new SampledPositionProperty();
   const sampledHeading = new SampledProperty(Number);
+  const sampledAgl = new SampledProperty(Number);
 
   // Linear interpolation — drone flies in straight lines between samples
   sampledPosition.setInterpolationOptions({
@@ -75,15 +86,34 @@ export function buildSampledProperties(
     interpolationAlgorithm: LinearApproximation,
     interpolationDegree: 1,
   });
+  sampledAgl.setInterpolationOptions({
+    interpolationAlgorithm: LinearApproximation,
+    interpolationDegree: 1,
+  });
 
   const isItemPoint = (point: SimPoint, index: number) => {
     const wp = waypoints[index];
     return point.lat === wp.lat && point.lon === wp.lon && point.alt === wp.alt;
   };
-  const positionOf = (point: SimPoint, index: number): Cartesian3 =>
-    isItemPoint(point, index)
-      ? waypointPositions?.[index] ?? Cartesian3.fromDegrees(point.lon, point.lat, point.alt)
-      : Cartesian3.fromDegrees(point.lon, point.lat, point.alt + homeHeight);
+  /** Height of `pos` above the ground at path sample `pathIndex`, when both are known. */
+  const aglAtPathIndex = (pos: Cartesian3, pathIndex: number | undefined): number | undefined => {
+    const ground = pathIndex === undefined ? undefined : groundHeights?.[pathIndex];
+    return ground === undefined ? undefined : Cartographic.fromCartesian(pos).height - ground;
+  };
+  const sampleOf = (point: SimPoint, index: number): { pos: Cartesian3; agl: number } => {
+    if (isItemPoint(point, index)) {
+      const resolved = waypointPositions?.[index];
+      if (resolved) {
+        return { pos: resolved, agl: aglAtPathIndex(resolved, waypointIndices?.[index]) ?? point.alt };
+      }
+      return { pos: Cartesian3.fromDegrees(point.lon, point.lat, point.alt), agl: point.alt };
+    }
+    return { pos: Cartesian3.fromDegrees(point.lon, point.lat, point.alt + homeHeight), agl: point.alt };
+  };
+  const addPosition = (time: JulianDate, sample: { pos: Cartesian3; agl: number }) => {
+    sampledPosition.addSample(JulianDate.clone(time), sample.pos);
+    sampledAgl.addSample(JulianDate.clone(time), sample.agl);
+  };
 
   let t = JulianDate.clone(startJulian);
   const { segments } = flightPlan;
@@ -91,10 +121,10 @@ export function buildSampledProperties(
   for (let k = 0; k < segments.length; k++) {
     const seg = segments[k];
     const hdgRad = -CesiumMath.toRadians(seg.heading);
-    const fromPos = positionOf(seg.from, seg.fromIndex);
+    const from = sampleOf(seg.from, seg.fromIndex);
 
     if (k === 0) {
-      sampledPosition.addSample(JulianDate.clone(t), fromPos);
+      addPosition(t, from);
     }
     sampledHeading.addSample(JulianDate.clone(t), hdgRad);
 
@@ -102,22 +132,20 @@ export function buildSampledProperties(
       // Duplicate position at departure = drone holds in place
       t = JulianDate.addSeconds(t, seg.holdTime, _scratch);
       t = JulianDate.clone(t);
-      sampledPosition.addSample(JulianDate.clone(t), fromPos);
+      addPosition(t, from);
       sampledHeading.addSample(JulianDate.clone(t), hdgRad);
     }
 
     const travelTime = seg.duration - seg.holdTime;
-    const toPos = positionOf(seg.to, seg.toIndex);
+    const to = sampleOf(seg.to, seg.toIndex);
     if (travelTime > 0) {
       const adjacentItems =
         seg.toIndex === seg.fromIndex + 1 &&
         isItemPoint(seg.from, seg.fromIndex) &&
         isItemPoint(seg.to, seg.toIndex);
       if (allPositions && waypointIndices && adjacentItems) {
-        const segPositions = allPositions.slice(
-          waypointIndices[seg.fromIndex],
-          waypointIndices[seg.toIndex] + 1,
-        );
+        const startIndex = waypointIndices[seg.fromIndex];
+        const segPositions = allPositions.slice(startIndex, waypointIndices[seg.toIndex] + 1);
         if (segPositions.length > 2) {
           // Distribute travel time proportionally by distance
           const cumDists = cumulativeDistances(segPositions);
@@ -126,7 +154,10 @@ export function buildSampledProperties(
           for (let j = 1; j < segPositions.length - 1; j++) {
             const frac = totalDist > 0 ? cumDists[j] / totalDist : j / (segPositions.length - 1);
             const intermediateT = JulianDate.addSeconds(t, travelTime * frac, _scratch);
-            sampledPosition.addSample(JulianDate.clone(intermediateT), segPositions[j]);
+            const pos = segPositions[j];
+            const agl =
+              aglAtPathIndex(pos, startIndex + j) ?? from.agl + (to.agl - from.agl) * frac;
+            addPosition(intermediateT, { pos, agl });
             sampledHeading.addSample(JulianDate.clone(intermediateT), hdgRad);
           }
         }
@@ -137,7 +168,7 @@ export function buildSampledProperties(
       t = JulianDate.addSeconds(t, travelTime, _scratch);
       t = JulianDate.clone(t);
     }
-    sampledPosition.addSample(JulianDate.clone(t), toPos);
+    addPosition(t, to);
   }
 
   // The final item's hold, as the flight plan counts it
@@ -146,9 +177,9 @@ export function buildSampledProperties(
   if (finalHold > 0) {
     t = JulianDate.addSeconds(t, finalHold, _scratch);
     t = JulianDate.clone(t);
-    sampledPosition.addSample(JulianDate.clone(t), positionOf(last.to, last.toIndex));
+    addPosition(t, sampleOf(last.to, last.toIndex));
     sampledHeading.addSample(JulianDate.clone(t), -CesiumMath.toRadians(last.heading));
   }
 
-  return { sampledPosition, sampledHeading, startJulian };
+  return { sampledPosition, sampledHeading, sampledAgl, startJulian };
 }

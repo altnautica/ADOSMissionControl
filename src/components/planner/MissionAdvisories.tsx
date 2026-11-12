@@ -133,7 +133,7 @@ export function MissionAdvisories({
     rows.push({
       key: `soft-${warning.waypointIndex}`,
       level: "warn",
-      message: warning.message,
+      message: t(`issue.${warning.text.key}`, warning.text.params),
       waypointIndex: warning.waypointIndex,
     });
   }

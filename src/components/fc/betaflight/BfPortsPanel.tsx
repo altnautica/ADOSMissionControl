@@ -10,6 +10,8 @@
 
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { Cable, Upload } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -32,6 +34,8 @@ const BAUD_FIELDS: ReadonlyArray<{ key: keyof MspSerialPort; label: string }> = 
 ];
 
 export function BfPortsPanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.bfPortsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
@@ -98,14 +102,14 @@ export function BfPortsPanel() {
   useUnsavedGuard(dirty);
   const disabled = loading || isArmed;
   const serialFunctions = extended
-    ? [...BF_SERIAL_FUNCTIONS, ...BF_SERIAL_FUNCTIONS_EXTENDED]
-    : BF_SERIAL_FUNCTIONS;
+    ? [...ol(BF_SERIAL_FUNCTIONS), ...ol(BF_SERIAL_FUNCTIONS_EXTENDED)]
+    : ol(BF_SERIAL_FUNCTIONS);
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <PanelHeader
-        title="Ports"
-        subtitle="Betaflight per-UART function and baud configuration"
+        title={tr("ports")}
+        subtitle={tr("betaflightPerUARTFunctionAnd")}
         icon={<Cable size={16} />}
         loading={loading}
         loadProgress={null}
@@ -121,16 +125,16 @@ export function BfPortsPanel() {
             title={isArmed ? lockMessage : undefined}
             onClick={write}
           >
-            Write to FC
+            {tr("writeToFC")}
           </Button>
         )}
       </PanelHeader>
 
       {dirty && (
-        <p className="text-[10px] font-mono text-status-warning py-1">Unsaved changes : use Write to FC to save them to the flight controller.</p>
+        <p className="text-[10px] font-mono text-status-warning py-1">{tr("unsavedChangesUseWriteTo")}</p>
       )}
       {!dirty && needsReboot && (
-        <p className="text-[10px] font-mono text-status-warning py-1">Saved. The flight controller applies port changes when it next reboots.</p>
+        <p className="text-[10px] font-mono text-status-warning py-1">{tr("savedTheFlightControllerApplies")}</p>
       )}
 
       {hasLoaded && (

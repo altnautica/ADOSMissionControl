@@ -261,6 +261,9 @@ export const createKeybindingsActions: SettingsSliceFactory<
     set((state) => {
       const loadout = state.loadouts[loadoutId];
       if (!loadout) return {};
+      // A button the controller spec binds would fire alongside the
+      // cockpit's own action: never bound to a skill.
+      if (button !== null && isReservedGamepadButton(button)) return {};
       const slots = loadout.slots.map((slot) => {
         // A button lives in exactly one slot: last-write-wins clears it
         // from any other slot before assigning.

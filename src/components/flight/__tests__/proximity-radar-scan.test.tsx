@@ -54,6 +54,7 @@ const NAV: NavState = {
   obstacleRateHz: 10,
   minObstacleM: null,
   gpsFix: 0,
+  poseAgeMs: null,
 };
 
 function renderRadar(size?: number) {
@@ -109,11 +110,11 @@ describe("ProximityRadar companion view", () => {
     expect(container.textContent).toContain(specString("radar.header", { hz: 10 }));
   });
 
-  it("shows SCAN — without a nav rate and CLEAR when nothing is near", () => {
+  it("shows Scan — without a nav rate and Clear when nothing is near", () => {
     useNavStreamStore.getState().setScan(DRONE, scanWith({}));
     const { container } = renderRadar(140);
     expect(container.textContent).toContain(specString("radar.scan_none"));
-    expect(container.textContent).toContain("CLEAR");
+    expect(container.textContent).toContain("Clear");
     expect(container.textContent).toContain(specString("radar.scale_auto", { m: 12 }));
   });
 

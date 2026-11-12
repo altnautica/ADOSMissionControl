@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { X } from "lucide-react";
@@ -35,6 +36,7 @@ interface OverlayModalProps {
 }
 
 export function OverlayModal({ open, records, onClose }: OverlayModalProps) {
+  const tq = useTranslations("history.overlayModal");
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -57,13 +59,13 @@ export function OverlayModal({ open, records, onClose }: OverlayModalProps) {
             </h3>
             <Legend records={records} />
           </div>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary p-1" aria-label="Close">
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary p-1" aria-label={tq("close")}>
             <X size={14} />
           </button>
         </div>
 
         <div className="p-4 flex flex-col gap-3">
-          <Card title="Map" padding={true}>
+          <Card title={tq("map")} padding={true}>
             <OverlayMapInner records={records} />
           </Card>
           <OverlayStatsTable records={records} />
@@ -94,6 +96,7 @@ function Legend({ records }: { records: FlightRecord[] }) {
 const NO_VALUE = "—";
 
 function OverlayStatsTable({ records }: { records: FlightRecord[] }) {
+  const tq = useTranslations("history.overlayModal");
   const metrics = useMemo(() => [
     { label: "Duration", unit: "", fmt: (r: FlightRecord) => formatDuration(Math.round(r.duration)) },
     { label: "Distance", unit: "km", fmt: (r: FlightRecord) => (r.distance !== undefined ? (r.distance / 1000).toFixed(2) : NO_VALUE) },
@@ -104,12 +107,12 @@ function OverlayStatsTable({ records }: { records: FlightRecord[] }) {
   ], []);
 
   return (
-    <Card title="Stats" padding={true}>
+    <Card title={tq("stats")} padding={true}>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border-default">
-              <th className="text-left py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">Metric</th>
+              <th className="text-left py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">{tq("metric")}</th>
               {records.map((r, i) => (
                 <th key={r.id} className="text-right py-1.5 px-2 text-[10px] uppercase font-semibold" style={{ color: COLORS[i % COLORS.length] }}>
                   {String.fromCharCode(65 + i)}

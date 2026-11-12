@@ -58,9 +58,8 @@ describe("useDronePluginContributions", () => {
     const { result } = renderHook(() =>
       useDronePluginContributions("alpha-1"),
     );
-    // alpha-1 has the vision-nav plugin enabled.
-    expect(result.current.length).toBeGreaterThan(0);
-    expect(result.current[0].pluginId).toBe("com.altnautica.vision-nav");
+    // alpha-1 runs vision-nav among its extensions.
+    expect(result.current.map((c) => c.pluginId)).toContain("com.altnautica.vision-nav");
   });
 
   it("surfaces a demo plugin's declarative parameters on its tab", () => {
@@ -89,21 +88,29 @@ describe("useDronePluginContributions", () => {
   });
 
   it("sorts by manifest order ascending, then pluginId", () => {
-    // charlie-3 has FLIR Lepton thermal (order 70). delta-4 has
-    // gimbal v2 (order 50). Validate the sort by checking drone-2 alone
-    // first (one tab), then verifying drone-3 reports its tab.
+    // alpha-1 runs the optical pod (order 55), vision-nav (60) and
+    // follow-me (70); charlie-3 the thermal camera, delta-4 the gimbal.
+    const { result: r1 } = renderHook(() =>
+      useDronePluginContributions("alpha-1"),
+    );
+    expect(r1.current.map((c) => c.pluginId)).toEqual([
+      "com.altnautica.siyi-pod",
+      "com.altnautica.vision-nav",
+      "com.altnautica.follow-me",
+    ]);
+
     const { result: r2 } = renderHook(() =>
       useDronePluginContributions("charlie-3"),
     );
     expect(r2.current.map((c) => c.pluginId)).toEqual([
-      "com.flir.thermal",
+      "com.altnautica.thermal-flir-lepton-usb",
     ]);
 
     const { result: r3 } = renderHook(() =>
       useDronePluginContributions("delta-4"),
     );
     expect(r3.current.map((c) => c.pluginId)).toEqual([
-      "com.altnautica.gimbal-v2",
+      "com.altnautica.mavlink-gimbal-v2",
     ]);
   });
 

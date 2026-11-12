@@ -96,6 +96,7 @@ const INSTALL_STATUS_LABEL: Record<InstallStatus, string> = {
 const CLOUD_SCAN_TIMEOUT_MS = 20_000;
 
 export function HardwareStatusPanel() {
+  const tq = useTranslations("command.hardwareStatusPanel");
   const t = useTranslations("agent");
   const tStrip = useTranslations("telemetryStrip");
   const connected = useAgentConnectionStore((s) => s.connected);
@@ -197,7 +198,7 @@ export function HardwareStatusPanel() {
 
   return (
     <CollapsibleSection
-      title="Hardware"
+      title={tq("hardware")}
       icon={Cpu}
       defaultOpen={true}
       badge={peripherals.length > 0 ? peripherals.length : undefined}
@@ -250,7 +251,7 @@ export function HardwareStatusPanel() {
                         content={
                           <div className="space-y-1">
                             <p className="text-xs font-semibold text-text-primary">
-                              Failed steps
+                              {tq("failedSteps")}
                             </p>
                             <ul className="text-xs text-text-secondary list-disc pl-4 space-y-0.5">
                               {status.failed_steps.map((step) => (
@@ -330,7 +331,7 @@ export function HardwareStatusPanel() {
                     ? "text-text-tertiary"
                     : "text-status-warning"
                 }
-                title="Time since the last decoded MAVLink HEARTBEAT"
+                title={tq("timeSinceTheLastDecoded")}
               >
                 {link.mavlinkAlive
                   ? `MAVLink ${heartbeatAgeLabel(link.heartbeatAgeS)}`
@@ -363,7 +364,7 @@ export function HardwareStatusPanel() {
           <div className="flex items-center gap-2">
             <HardDrive size={14} className="text-text-tertiary" />
             <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              Peripherals
+              {tq("peripherals")}
             </h4>
             <span className="text-[10px] text-text-tertiary bg-bg-primary px-1.5 py-0.5 rounded">
               {peripherals.length}
@@ -386,12 +387,12 @@ export function HardwareStatusPanel() {
         <div className="text-center py-8">
           {scanFailed ? (
             <p className="text-sm text-status-warning">
-              The hardware scan did not complete. Scan again to retry.
+              {tq("theHardwareScanDidNot")}
             </p>
           ) : (
             <>
-              <p className="text-sm text-text-tertiary">No peripherals detected</p>
-              <p className="text-xs text-text-tertiary mt-1">Click Scan Now to discover connected hardware</p>
+              <p className="text-sm text-text-tertiary">{tq("noPeripheralsDetected")}</p>
+              <p className="text-xs text-text-tertiary mt-1">{tq("clickScanNowToDiscover")}</p>
             </>
           )}
         </div>

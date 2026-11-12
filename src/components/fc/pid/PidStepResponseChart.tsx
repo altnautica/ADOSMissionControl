@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import {
   LineChart,
@@ -20,6 +21,7 @@ interface PidStepResponseChartProps {
 }
 
 export function PidStepResponseChart({ event, color = AXIS_COLORS.roll }: PidStepResponseChartProps) {
+  const tk = useTranslations("fcPanels.pidStepResponseChart");
   const chartData = useMemo(() => {
     const startUs = event.startTimeUs;
     const maxLen = Math.max(event.desired.length, event.actual.length);
@@ -49,7 +51,7 @@ export function PidStepResponseChart({ event, color = AXIS_COLORS.roll }: PidSte
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[180px] text-[10px] text-text-tertiary">
-        No step response data
+        {tk("noStepResponseData")}
       </div>
     );
   }

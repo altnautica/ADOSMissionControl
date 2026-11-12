@@ -26,6 +26,8 @@ import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useCameraManagerStore } from "@/stores/camera-manager-store";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type {
   CameraLegInput,
   RosterCamera,
@@ -59,10 +61,16 @@ const GROUPS: ReadonlyArray<{
 export function CameraManagerTab({ droneId }: { droneId: string }) {
   const t = useTranslations("cameras");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   // The node's own agent identity: a node page never borrows the attached
   // connection of another node.
   const nodeDeviceId = useFleetDrones(
     (drones) => drones.find((d) => d.id === droneId)?.cloudDeviceId ?? null,
+  );
+  // Every roster write restarts the video pipeline; while armed each one asks
+  // first so the operator does not lose video by surprise.
+  const armed = useFleetDrones(
+    (drones) => drones.find((d) => d.id === droneId)?.armState === "armed",
   );
   const direct = useNodeDirectAgent(nodeDeviceId);
   const client = direct?.client ?? null;
@@ -89,6 +97,10 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
 
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // A roster write held for the operator's confirmation.
+  const [pending, setPending] = useState<
+    { kind: "remove"; name: string; apply: () => void } | { kind: "armed"; apply: () => void } | null
+  >(null);
 
   // Monotonic load token: a late-resolving earlier read must not clobber a
   // newer one. Only the most recently issued load applies its result.
@@ -107,9 +119,9 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
       setRoster(droneId, r);
     } catch (err) {
       if (loadTokenRef.current !== token) return;
-      fail(droneId, err instanceof Error ? err.message : t("errorTitle"));
+      fail(droneId, describeAgentError(err, t("errorTitle")));
     }
-  }, [client, droneId, beginLoad, setRoster, fail, t]);
+  }, [client, droneId, beginLoad, setRoster, fail, t, describeAgentError]);
 
   useEffect(() => {
     void load();
@@ -145,43 +157,60 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
           void load();
         }, RESTART_MS);
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("saveError"), "error");
+        toast(describeAgentError(err, t("saveError")), "error");
         void load();
       } finally {
         setSaving(droneId, false);
       }
     },
-    [client, droneId, setSaving, setRestartPending, load, toast, t],
+    [client, droneId, setSaving, setRestartPending, load, toast, t, describeAgentError],
+  );
+
+  /** Runs a roster write now, or holds it for confirmation while armed. */
+  const guarded = useCallback(
+    (apply: () => void) => {
+      if (armed) setPending({ kind: "armed", apply });
+      else apply();
+    },
+    [armed],
   );
 
   const onToggle = useCallback(
-    (id: string, enabled: boolean) => {
-      patchCamera(droneId, id, { enabled });
-      void persist(legsWithToggle(roster, id, enabled));
-    },
-    [droneId, patchCamera, persist, roster],
+    (id: string, enabled: boolean) =>
+      guarded(() => {
+        patchCamera(droneId, id, { enabled });
+        void persist(legsWithToggle(roster, id, enabled));
+      }),
+    [droneId, guarded, patchCamera, persist, roster],
   );
 
   const onRemove = useCallback(
-    (id: string) => void persist(legsWithRemove(roster, id)),
+    (id: string) =>
+      setPending({
+        kind: "remove",
+        name: roster.find((c) => c.id === id)?.name ?? id,
+        apply: () => void persist(legsWithRemove(roster, id)),
+      }),
     [persist, roster],
   );
 
   const onSaveEdit = useCallback(
     (id: string, patch: CameraPatch) => {
       setEditing(null);
-      patchCamera(droneId, id, patch);
-      void persist(legsWithEdit(roster, id, patch));
+      guarded(() => {
+        patchCamera(droneId, id, patch);
+        void persist(legsWithEdit(roster, id, patch));
+      });
     },
-    [droneId, patchCamera, persist, roster],
+    [droneId, guarded, patchCamera, persist, roster],
   );
 
   const onAdd = useCallback(
     (leg: CameraLegInput) => {
       setAdding(false);
-      void persist(legsWithAdd(roster, leg));
+      guarded(() => void persist(legsWithAdd(roster, leg)));
     },
-    [persist, roster],
+    [guarded, persist, roster],
   );
 
   // Best-effort live preview: match a leg to an addressable WHEP stream. Only on
@@ -287,7 +316,13 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
           </div>
         ) : null}
 
-        {loading && roster.length === 0 ? (
+        {!client && !cloudMode ? (
+          // No path to this node's agent: nothing was read, so "no cameras"
+          // would be a false report.
+          <p className="rounded border border-border-default bg-bg-tertiary/40 px-3 py-2 text-xs text-text-secondary">
+            {t("unavailable")}
+          </p>
+        ) : loading && roster.length === 0 ? (
           <p className="text-xs text-text-tertiary">{t("loading")}</p>
         ) : !loading && roster.length === 0 && !error ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border-default p-8 text-center">
@@ -344,6 +379,25 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
           onAdd={onAdd}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={pending !== null}
+        variant="danger"
+        title={pending?.kind === "remove" ? t("confirm.removeTitle") : t("confirm.armedTitle")}
+        message={
+          pending?.kind === "remove"
+            ? t("confirm.removeMessage", { name: pending.name }) +
+              (armed ? ` ${t("confirm.armedMessage")}` : "")
+            : t("confirm.armedMessage")
+        }
+        confirmLabel={pending?.kind === "remove" ? t("confirm.removeAction") : t("confirm.armedAction")}
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          const p = pending;
+          setPending(null);
+          p?.apply();
+        }}
+      />
     </div>
   );
 }

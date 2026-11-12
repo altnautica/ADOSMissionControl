@@ -2,10 +2,10 @@
 
 /**
  * @module nodes/NodeRow
- * @description One profile-aware expanded sidebar row (~48-52px) rendering any
+ * @description One profile-aware expanded sidebar row (52 px) rendering any
  * node — drone, flight-controller, ground-station, workstation, or visor — from the
- * same merged node view-model. Type is the glyph (on a profile-tint tile);
- * health is an independent ring around that tile; the two are never conflated.
+ * same merged node view-model. Type is the glyph on an outlined tile; health is
+ * an independent dot at the tile's corner; the two are never conflated.
  * A workstation row cannot render a flight badge by construction. Rendered by
  * the dashboard fleet sidebar (DroneListPanel) for every node profile, and by
  * the collapsed rail (NodeRail).
@@ -14,7 +14,7 @@
 
 import { memo } from "react";
 import { useClockTick } from "@/lib/agent/freshness";
-import { MoreHorizontal, Plane, Wifi } from "lucide-react";
+import { MoreHorizontal, Plane } from "lucide-react";
 import { openFlightScreen } from "@/components/cockpit/flight/open-flight-screen";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
@@ -22,21 +22,14 @@ import {
   type EffProfile,
   agentEffProfile,
   groundRoleKey,
-  NODE_ACCENT_VAR,
-  swatchVar,
-  tintStyle,
 } from "@/lib/nodes/node-profile";
-import { NodeGlyph } from "./node-glyph";
+import { NodeTile } from "./NodeTile";
+import { NodeMetaLine } from "./NodeMetaLine";
 import { NodeStatusHoverCard } from "./NodeStatusHoverCard";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { StatusLevel } from "@/lib/status-level";
-import { StatusDot } from "@/components/ui/status-dot";
-import { Badge } from "@/components/ui/badge";
 import { droneLiveness } from "../fleet/types";
-import { NodeBadgeSet } from "./NodeBadgeSet";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
-import { resolveFeatureDot } from "@/lib/nodes/node-feature-dots";
-import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { useTranslations } from "next-intl";
 
 /** Health only, from the verified lastSeen freshness signal (never a
@@ -57,26 +50,6 @@ export function profileTypeKey(
       ? "groundStation"
       : p; // "drone" | "workstation" | "visor" | "unknown"
 }
-
-/**
- * The type-tile border carries health (the "ring"); the glyph carries type.
- * Exported as the ONE ring vocabulary: every surface that rings a node tile
- * (sidebar row, collapsed rail, board identity cell) reads this map, so a
- * changed token cannot leave one surface ringing an old colour for the same
- * health state — `Record<StatusLevel, string>` only catches a missing member,
- * never a diverged value.
- */
-export const STATUS_BORDER: Record<StatusLevel, string> = {
-  // Healthy/live reads NEUTRAL (colour is reserved for attention states) so a
-  // fleet of live nodes isn't a wall of green rings; the tile-colour channel
-  // (personalization wash + selected pill) is separate.
-  good: "border-border-default",
-  warning: "border-status-warning",
-  serious: "border-status-serious",
-  critical: "border-status-error",
-  idle: "border-accent-primary",
-  offline: "border-text-tertiary/40",
-};
 
 /**
  * The resolved `nodeConsole.*` strings `nodeSubtitle` needs. Passed in rather
@@ -157,22 +130,6 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
     (s) => s.byNode[node.deviceId],
   );
   const displayName = personalization?.label?.trim() || node.name;
-  // The tile wash + accent take the operator's swatch when set, else the profile
-  // accent. Only the wash is used on the tile — the border stays the health
-  // ring, so an error still reads red on any tile colour (no fabricated reading).
-  const tileCssVar = personalization?.color
-    ? swatchVar(personalization.color)
-    : NODE_ACCENT_VAR[effProfile];
-  const { backgroundColor } = tintStyle(tileCssVar, { bg: 14 });
-  const accentColor = `var(${tileCssVar})`;
-  const featureDots = personalization?.dots ?? [];
-
-  // Command authority is its own badge, NEVER folded into `status` above: the
-  // ring is health-only by contract and shared with two other surfaces, and a
-  // live node this browser cannot publish FC frames to is healthy and
-  // uncommandable at the same time. Grading the row on liveness alone is what
-  // left that state invisible.
-  const authority = useNodeControlAuthorityNotice(node._id);
 
   const row = (
     <div
@@ -199,54 +156,20 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
         onContext(node._id, e.clientX, e.clientY);
       }}
       className={cn(
-        "group relative flex min-h-[48px] cursor-pointer items-center gap-2 rounded pl-3 pr-1 py-1.5 transition-colors",
+        "group relative flex h-[52px] cursor-pointer items-center gap-2.5 rounded-[4px] px-2 transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
         selected
-          ? "bg-accent-primary/20 ring-1 ring-inset ring-accent-primary/40"
-          : "hover:bg-bg-tertiary",
+          ? "bg-white/[0.04] ring-1 ring-inset ring-accent-primary/50"
+          : "hover:bg-white/[0.03]",
       )}
     >
-      {/* Selection is shown by the row's highlighted background alone (no left
-          accent pill), so it never competes with the health ring. */}
+      <NodeTile node={node} title={typeLabel} />
 
-      {/* Type tile (glyph or operator initials) + health ring (border). */}
-      <div className="relative shrink-0">
-        <div
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded border-2",
-            STATUS_BORDER[status],
-            status === "serious" && "animate-pulse",
-          )}
-          style={{ backgroundColor }}
-          title={t(`type.${profileTypeKey(effProfile)}`)}
-        >
-          {personalization?.icon ? (
-            <span
-              className="text-[11px] font-semibold leading-none"
-              style={{ color: accentColor }}
-            >
-              {personalization.icon}
-            </span>
-          ) : (
-            <NodeGlyph profile={effProfile} frameType={node.frameType} size={15} />
-          )}
-        </div>
-        {node.isLocal && (
-          <span
-            className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-bg-secondary text-accent-primary"
-            title={t("badge.lan")}
-          >
-            <Wifi size={8} />
-          </span>
-        )}
-      </div>
-
-      {/* Two-line body: the name owns its own full-width line (line 1) so the
-          flavor / status badges below (line 2) can never truncate it. */}
+      {/* Two lines: the name owns line 1 with the actions; line 2 is the
+          one-line meta summary, which never wraps or steals the name's width. */}
       <div className="min-w-0 flex-1">
-        {/* Line 1: name + overflow action */}
         <div className="flex items-center gap-1.5">
-          <p className="min-w-0 flex-1 truncate text-xs font-medium text-text-primary">
+          <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
             {displayName}
           </p>
           {effProfile === "drone" && (
@@ -257,16 +180,21 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
                 openFlightScreen(node._id);
               }}
               onKeyDown={(e) => e.stopPropagation()}
-              title={tFly("flyTitle")}
+              title={tFly("fly")}
               aria-label={`${tFly("fly")}: ${displayName}`}
               data-testid="fly-button-row"
-              className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-accent-primary px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-accent-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-1"
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
+                selected
+                  ? "border-transparent bg-accent-primary text-accent-foreground"
+                  : "border-border-default text-text-secondary hover:border-accent-primary hover:text-accent-primary",
+              )}
             >
-              <Plane size={12} aria-hidden="true" />
-              {tFly("fly")}
+              <Plane size={14} aria-hidden="true" />
             </button>
           )}
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -274,55 +202,12 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
             }}
             title={t("actions.menu")}
             aria-label={t("actions.nodeActions")}
-            className="shrink-0 p-0.5 text-text-tertiary opacity-60 transition-all hover:text-text-primary group-hover:opacity-100"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] text-text-tertiary opacity-0 transition-opacity hover:text-text-primary focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
           >
             <MoreHorizontal size={14} />
           </button>
         </div>
-        {/* Line 2: firmware·airframe / role / tier badges + opt-in signal
-            dots, wrapping so they never steal width from the name. */}
-        <div className="mt-1 flex flex-wrap items-center gap-1">
-          {featureDots.length > 0 && (
-            <div className="flex items-center gap-0.5" aria-label={t("signalDots")}>
-              {featureDots.slice(0, 4).map((dot) => {
-                const resolved = resolveFeatureDot(dot.signal, node);
-                return (
-                  <StatusDot
-                    key={dot.signal}
-                    status={resolved.level}
-                    shape={resolved.known ? "dot" : "ring"}
-                    size="xs"
-                    label={t("signalTooltip", {
-                      signal: t(resolved.labelKey),
-                      state: t(resolved.stateKey),
-                    })}
-                  />
-                );
-              })}
-            </div>
-          )}
-          {personalization?.badge && (
-            <Badge variant="neutral" className="rounded normal-case tracking-normal">
-              {personalization.badge}
-            </Badge>
-          )}
-          {authority.show && (
-            <Badge
-              variant={authority.level === "warning" ? "warning" : "neutral"}
-              className="gap-1 rounded normal-case tracking-normal"
-            >
-              {/* The dot carries the full sentence as its aria-label and
-                  title, so the reason survives the short badge text. */}
-              <StatusDot
-                status={authority.level}
-                size="xs"
-                label={authority.detail}
-              />
-              {authority.label}
-            </Badge>
-          )}
-          <NodeBadgeSet node={node} effProfile={effProfile} max={3} />
-        </div>
+        <NodeMetaLine node={node} effProfile={effProfile} />
       </div>
     </div>
   );

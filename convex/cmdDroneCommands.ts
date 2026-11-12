@@ -207,6 +207,31 @@ export const ackCommand = internalMutation({
 });
 
 /**
+ * Cancel a command the node has not taken yet (called from GCS).
+ *
+ * Only a `pending` row can be cancelled: once the node has claimed it
+ * (`delivering`) it may already be running, and its ack decides the outcome.
+ * Returns whether the row was cancelled.
+ */
+export const cancelCommand = mutation({
+  args: { commandId: v.id("cmd_droneCommands") },
+  handler: async (ctx, { commandId }) => {
+    const command = await requireOwnedCommand(ctx, commandId);
+    if (command.status !== "pending") return { cancelled: false };
+    await ctx.db.patch(commandId, {
+      status: "failed",
+      result: { success: false, message: "cancelled by operator" },
+      completedAt: Date.now(),
+    });
+    await settleInstallJobFromAck(ctx, command, {
+      status: "failed",
+      result: { success: false, message: "cancelled by operator" },
+    });
+    return { cancelled: true };
+  },
+});
+
+/**
  * Get status of a specific command.
  */
 export const getCommandStatus = query({

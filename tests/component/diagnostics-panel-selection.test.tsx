@@ -6,7 +6,8 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/intl-wrapper";
 import { selectTestProtocol } from "../helpers/selected-drone";
 import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
 

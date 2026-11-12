@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Activity, Upload } from "lucide-react";
@@ -39,6 +40,7 @@ const readRateDynamics = (p: DroneProtocol) => readSettingGroup(p.settings!, FIE
 const writeRateDynamics = (p: DroneProtocol, g: SettingGroup<RateDynamicsKey>) => writeSettingGroup(p.settings!, FIELDS, g);
 
 export function RateDynamicsPanel() {
+  const tr = useTranslations("fcPanels.rateDynamicsPanel");
   const {
     values: group, setValues, loading, error, hasLoaded, dirty,
     connected, isArmed, lockMessage, read, write,
@@ -59,8 +61,8 @@ export function RateDynamicsPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Rate Dynamics"
-          subtitle="Stick-response curve shaping, within the ranges the flight controller reports."
+          title={tr("rateDynamics")}
+          subtitle={tr("stickResponseCurveShapingWithin")}
           icon={<Activity size={16} />}
           loading={loading}
           loadProgress={null}
@@ -79,7 +81,7 @@ export function RateDynamicsPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={write}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
@@ -88,7 +90,7 @@ export function RateDynamicsPanel() {
           <div className="border border-border-default rounded p-4 space-y-3">
             {dirty && (
               <p className="text-[10px] font-mono text-status-warning">
-                Unsaved changes : use Write to FC to persist.
+                {tr("unsavedChangesUseWriteTo")}
               </p>
             )}
             {FIELDS.map((f) => {

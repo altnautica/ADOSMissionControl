@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function PidAnalysisWizard({ target, connected }: Props) {
+  const tr = useTranslations("fcPanels.pidAnalysisWizard");
   const wizardStep = usePidAnalysisStore((s) => s.wizardStep);
   const setWizardStep = usePidAnalysisStore((s) => s.setWizardStep);
   const analysisResult = usePidAnalysisStore((s) => s.analysisResult);
@@ -143,12 +145,12 @@ export function PidAnalysisWizard({ target, connected }: Props) {
             <div className="space-y-3">
               {stepEvents.length === 0 ? (
                 <div className="text-[10px] text-text-tertiary text-center py-6">
-                  No step response events detected in this log.
+                  {tr("noStepResponseEventsDetected")}
                 </div>
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-text-tertiary">Event:</span>
+                    <span className="text-[10px] text-text-tertiary">{tr("event")}</span>
                     <Select
                       value={String(selectedStepEvent)}
                       onChange={(v) => setSelectedStepEvent(Number(v))}
@@ -207,7 +209,7 @@ export function PidAnalysisWizard({ target, connected }: Props) {
           {/* SITL warning */}
           <div className="flex items-center gap-2 p-2 bg-status-warning/10 border border-status-warning/20 text-[10px] text-status-warning">
             <AlertTriangle size={12} />
-            <span>Test these settings in SITL or in a safe environment before flying.</span>
+            <span>{tr("testTheseSettingsInSITL")}</span>
           </div>
 
           <PidComparisonView
@@ -222,16 +224,15 @@ export function PidAnalysisWizard({ target, connected }: Props) {
               icon={<Save size={12} />}
               onClick={saveAsComparison}
             >
-              Save as Baseline
+              {tr("saveAsBaseline")}
             </Button>
             <span className="text-[10px] text-text-tertiary">
-              Save current analysis, then re-analyze after tuning to compare.
+              {tr("saveCurrentAnalysisThenRe")}
             </span>
           </div>
 
           <p className="text-[10px] text-text-tertiary">
-            Applied values appear in the PID sliders above as unsaved changes.
-            Use &quot;Save to Flight Controller&quot; to write them.
+            {tr("appliedValuesAppearInThe")}
           </p>
         </div>
       )}
@@ -245,7 +246,7 @@ export function PidAnalysisWizard({ target, connected }: Props) {
           disabled={!canGoBack}
           onClick={handleBack}
         >
-          Back
+          {tr("back")}
         </Button>
         <Button
           variant="primary"
@@ -253,7 +254,7 @@ export function PidAnalysisWizard({ target, connected }: Props) {
           disabled={!canGoNext}
           onClick={handleNext}
         >
-          Next
+          {tr("next")}
           <ChevronRight size={12} />
         </Button>
       </div>

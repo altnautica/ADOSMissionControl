@@ -16,7 +16,7 @@ export function subscribeCompassCalibration(
   protocol: DroneProtocol,
   setter: React.Dispatch<React.SetStateAction<CalibrationState>>,
   calType: string,
-  toast: (msg: string, status?: "success" | "warning" | "error" | "info") => void,
+  notify: (calType: string, ok: boolean) => void,
   isPx4 = false,
 ) {
   // Stall detection (ArduPilot MAG_CAL path only). ArduPilot streams MAG_CAL_PROGRESS

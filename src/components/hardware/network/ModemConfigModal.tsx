@@ -43,6 +43,7 @@ export function ModemConfigModal({
   onClose,
   onSave,
 }: Props) {
+  const tk = useTranslations("hardware.modemConfigModal");
   const t = useTranslations("hardware.connectionRisk");
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Turning the modem off can cut the only uplink: confirm before saving.
@@ -53,15 +54,15 @@ export function ModemConfigModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Configure 4G Modem"
+      title={tk("configure4GModem")}
       className="max-w-md"
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {tk("cancel")}
           </Button>
           <Button variant="primary" onClick={save} loading={saving}>
-            Save
+            {tk("save")}
           </Button>
         </>
       }
@@ -71,7 +72,7 @@ export function ModemConfigModal({
           label="APN"
           value={apnDraft}
           onChange={(e) => setApnDraft(e.target.value)}
-          placeholder="internet"
+          placeholder={tk("internet")}
           spellCheck={false}
           autoComplete="off"
         />
@@ -97,7 +98,7 @@ export function ModemConfigModal({
         </div>
 
         <Toggle
-          label="Modem enabled"
+          label={tk("modemEnabled")}
           checked={modemEnabledDraft}
           onChange={setModemEnabledDraft}
         />

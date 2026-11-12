@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -57,6 +58,7 @@ const DEFAULT_CFG: INavBatteryConfig = {
 // ── Component ─────────────────────────────────────────────────
 
 export function BatteryProfilePanel() {
+  const tr = useTranslations("fcPanels.batteryProfilePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -134,8 +136,8 @@ export function BatteryProfilePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Battery Profiles"
-          subtitle="Voltage thresholds, capacity, and current sensor settings"
+          title={tr("batteryProfiles")}
+          subtitle={tr("voltageThresholdsCapacityAndCurrent")}
           icon={<BatteryCharging size={16} />}
           loading={loading}
           loadProgress={null}
@@ -154,21 +156,21 @@ export function BatteryProfilePanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
         {hasLoaded && (
           <div className="space-y-4">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-text-tertiary font-mono">Active profile</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tr("activeProfile")}</span>
               <Select
                 label=""
                 options={PROFILE_OPTIONS}
@@ -179,7 +181,7 @@ export function BatteryProfilePanel() {
             </div>
 
             <div className="border border-border-default rounded p-3 space-y-3">
-              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Cell voltages (0.01 V)</p>
+              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">{tr("cellVoltages001V")}</p>
               <div className="grid grid-cols-3 gap-2">
                 {(["cellMin", "cellMax", "cellWarning"] as const).map((key) => (
                   <label key={key} className="flex flex-col gap-1">
@@ -198,7 +200,7 @@ export function BatteryProfilePanel() {
             </div>
 
             <div className="border border-border-default rounded p-3 space-y-3">
-              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Capacity</p>
+              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">{tr("capacity")}</p>
               <div className="grid grid-cols-2 gap-2">
                 {(["capacityMah", "capacityWarningMah", "capacityCriticalMah"] as const).map((key) => (
                   <label key={key} className="flex flex-col gap-1">
@@ -214,7 +216,7 @@ export function BatteryProfilePanel() {
                   </label>
                 ))}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-text-tertiary font-mono">Capacity unit</span>
+                  <span className="text-[10px] text-text-tertiary font-mono">{tr("capacityUnit")}</span>
                   <Select
                     label=""
                     options={CAPACITY_UNIT_OPTIONS}
@@ -226,10 +228,10 @@ export function BatteryProfilePanel() {
             </div>
 
             <div className="border border-border-default rounded p-3 space-y-3">
-              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Current sensor</p>
+              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">{tr("currentSensor")}</p>
               <div className="grid grid-cols-2 gap-2">
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-text-tertiary font-mono">Scale (mV/A x10)</span>
+                  <span className="text-[10px] text-text-tertiary font-mono">{tr("scaleMVAX10")}</span>
                   <input
                     type="number"
                     value={cfg.currentScale}
@@ -238,7 +240,7 @@ export function BatteryProfilePanel() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-text-tertiary font-mono">Offset (mA)</span>
+                  <span className="text-[10px] text-text-tertiary font-mono">{tr("offsetMA")}</span>
                   <input
                     type="number"
                     value={cfg.currentOffset}
@@ -247,7 +249,7 @@ export function BatteryProfilePanel() {
                   />
                 </label>
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-text-tertiary font-mono">Voltage source</span>
+                  <span className="text-[10px] text-text-tertiary font-mono">{tr("voltageSource")}</span>
                   <Select
                     label=""
                     options={VOLTAGE_SOURCE_OPTIONS}

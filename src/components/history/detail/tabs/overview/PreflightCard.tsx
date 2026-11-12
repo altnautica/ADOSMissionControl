@@ -6,10 +6,12 @@
  * @module components/history/detail/tabs/overview/PreflightCard
  */
 
+import { useTranslations } from "next-intl";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import type { PreflightSnapshot } from "@/lib/types";
 
 export function PreflightCard({ preflight }: { preflight: PreflightSnapshot }) {
+  const tq = useTranslations("history.preflightCard");
   const items = preflight.checklistItems ?? [];
   const passed = items.filter((i) => i.status === "pass").length;
   const skipped = items.filter((i) => i.status === "skipped").length;
@@ -23,14 +25,14 @@ export function PreflightCard({ preflight }: { preflight: PreflightSnapshot }) {
         {preflight.checklistComplete ? (
           <span className="inline-flex items-center gap-1 text-status-success">
             <CheckCircle2 size={12} />
-            Checklist complete
+            {tq("checklistComplete")}
           </span>
         ) : items.length === 0 ? (
-          <span className="text-text-tertiary">No checklist captured</span>
+          <span className="text-text-tertiary">{tq("noChecklistCaptured")}</span>
         ) : (
           <span className="inline-flex items-center gap-1 text-status-warning">
             <AlertTriangle size={12} />
-            Checklist incomplete
+            {tq("checklistIncomplete")}
           </span>
         )}
         {items.length > 0 && (
@@ -58,7 +60,7 @@ export function PreflightCard({ preflight }: { preflight: PreflightSnapshot }) {
       {/* Prearm STATUSTEXT failures (ArduPilot only) */}
       {preflight.prearmFailures && preflight.prearmFailures.length > 0 && (
         <div className="flex flex-col gap-0.5 mt-1">
-          <span className="text-[10px] uppercase tracking-wider text-text-tertiary">FC prearm warnings</span>
+          <span className="text-[10px] uppercase tracking-wider text-text-tertiary">{tq("fcPrearmWarnings")}</span>
           {preflight.prearmFailures.map((line, i) => (
             <span
               key={`${line}-${i}`}

@@ -42,14 +42,16 @@ describe("flight-state chip in the top bar", () => {
     expect(wrap.style.minWidth).toMatch(/^0(px)?$/);
 
     const text = screen.getByTestId("flight-state-chip-text");
-    expect(text.style.textOverflow).toBe("ellipsis");
-    expect(text.style.whiteSpace).toBe("nowrap");
-    expect(text.style.overflow).toBe("hidden");
+    expect(text.className).toBe("fs-chip-text");
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const textRule = css.match(/\.ados-cockpit \.fs-chip-text \{([^}]*)\}/)?.[1] ?? "";
+    expect(textRule).toContain("text-overflow: ellipsis");
+    expect(textRule).toContain("overflow: hidden");
 
     const button = wrap.querySelector("button")!;
     const title = button.getAttribute("title")!;
     expect(title.startsWith(text.textContent!)).toBe(true);
-    expect(title).toContain("ADOS PILOT");
+    expect(title).toContain("ADOS Pilot");
     expect(button.getAttribute("aria-label")).toBe(specString("chip.aria", { text: title }));
   });
 
@@ -60,27 +62,41 @@ describe("flight-state chip in the top bar", () => {
     expect(wrap.getAttribute("data-face")).toBe("compact");
     expect(wrap.style.maxWidth).toBe("224px");
     expect(wrap.querySelector(".fs-chip-sub")).toBeNull();
-    expect(wrap.querySelector("button")!.getAttribute("title")).toContain("ADOS PILOT");
+    expect(wrap.querySelector("button")!.getAttribute("title")).toContain("ADOS Pilot");
   });
 
   it("shows the secondary line on the full face", () => {
     pin();
     renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
-    expect(screen.getByTestId("flight-state-chip").querySelector(".fs-chip-sub")?.textContent).toContain("ADOS PILOT");
+    expect(screen.getByTestId("flight-state-chip").querySelector(".fs-chip-sub")?.textContent).toContain("ADOS Pilot");
   });
 
-  it("puts the state on line 1 and the secondary facts on line 2, joined by ' · ', in the spec's casing", () => {
+  it("puts the state and then the secondary facts on one line, joined by ' · ', in the spec's casing", () => {
     pin();
     renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
     const text = screen.getByTestId("flight-state-chip-text").textContent!;
     const title = screen.getByTestId("flight-state-chip").querySelector("button")!.getAttribute("title")!;
-    expect(screen.getByTestId("flight-state-chip-sub").textContent).toBe(title.slice(text.length + " · ".length));
+    expect(screen.getByTestId("flight-state-chip-sub").textContent).toBe(title.slice(text.length));
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
     // Every rule for exactly this selector, joined.
     const rule = (sel: string) =>
       [...css.matchAll(new RegExp(`\\.ados-cockpit ${sel} \\{([^}]*)\\}`, "g"))].map((m) => m[1]).join(";");
-    expect(rule("\\.fs-chip")).toContain("flex-direction: column");
+    expect(rule("\\.fs-chip")).toContain("flex-direction: row");
     expect(rule("\\.fs-chip-sub")).not.toContain("text-transform");
+    expect(rule("\\.fs-chip-sub")).toContain("var(--fs-text-dim)");
+  });
+
+  it("draws the state colour as a dot and an outline, the words in the chrome text colour", () => {
+    pin();
+    renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
+    expect(screen.getByTestId("flight-state-chip-dot").className).toBe("fs-dot");
+    expect(screen.getByTestId("flight-state-chip-text").getAttribute("style")).toBeNull();
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const chip = [...css.matchAll(/\.ados-cockpit \.fs-chip \{([^}]*)\}/g)].map((m) => m[1]).join(";");
+    expect(chip).toContain("background: transparent");
+    expect(chip).toContain("color-mix(in srgb, var(--chip-color) 60%, transparent)");
+    expect(chip).toContain("height: var(--fs-control)");
+    expect(chip).not.toContain("inset 3px");
   });
 
   it("labels its take-control button from the spec", () => {

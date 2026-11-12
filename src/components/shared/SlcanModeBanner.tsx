@@ -18,6 +18,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Loader2, ShieldAlert, X } from "lucide-react";
 import {
@@ -30,6 +31,7 @@ function selectSnapshot(s: SlcanModeSnapshot): SlcanModeSnapshot {
 }
 
 export function SlcanModeBanner(): React.ReactElement | null {
+  const tk = useTranslations("shared.slcanModeBanner");
   const snapshot = useSlcanModeStore(selectSnapshot);
   const reset = useSlcanModeStore((s) => s.reset);
   const [resuming, setResuming] = useState(false);
@@ -52,7 +54,7 @@ export function SlcanModeBanner(): React.ReactElement | null {
           className="px-2 py-0.5 text-[10px] border border-status-error/40 hover:bg-status-error/20 cursor-pointer flex items-center gap-1"
         >
           <X size={10} />
-          Dismiss
+          {tk("dismiss")}
         </button>
       </div>
     );
@@ -98,7 +100,7 @@ export function SlcanModeBanner(): React.ReactElement | null {
           </button>
         ) : (
           <span className="text-[10px] text-text-tertiary">
-            Resume MAVLink when the flash completes.
+            {tk("resumeMAVLinkWhenTheFlash")}
           </span>
         )}
       </div>

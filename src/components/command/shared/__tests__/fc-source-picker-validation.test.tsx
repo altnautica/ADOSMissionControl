@@ -82,7 +82,7 @@ describe("FcSourcePicker validation line", () => {
 
     // The form is seeded from the status (serial, /dev/ttyAMA0); apply it.
     await act(async () => {
-      fireEvent.click(screen.getByText("Apply"));
+      fireEvent.click(screen.getByText("apply"));
     });
     expect(setMavlinkSource).toHaveBeenCalled();
     expect(screen.queryByText(/MAVLink validated/)).toBeNull();

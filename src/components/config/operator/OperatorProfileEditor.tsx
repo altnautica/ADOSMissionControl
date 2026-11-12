@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -21,6 +22,8 @@ import { listJurisdictions } from "@/lib/compliance/jurisdictions";
 const JURISDICTION_OPTIONS = listJurisdictions().map((j) => ({ value: j.code, label: j.displayName }));
 
 export function OperatorProfileEditor() {
+  const tk = useTranslations("configUi.operatorProfileEditor");
+  const t = useTranslations("operatorRegistry.profile");
   const profile = useOperatorProfileStore((s) => s.profile);
   const updateProfile = useOperatorProfileStore((s) => s.updateProfile);
 
@@ -41,50 +44,50 @@ export function OperatorProfileEditor() {
 
   return (
     <div className="flex flex-col gap-3" onBlur={commit}>
-      <Card title="Pilot" padding={true}>
+      <Card title={t("pilot")} padding={true}>
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="First name"
+            label={t("firstName")}
             value={draft.pilotFirstName ?? ""}
             onChange={(e) => set("pilotFirstName", e.target.value)}
           />
           <Input
-            label="Last name"
+            label={t("lastName")}
             value={draft.pilotLastName ?? ""}
             onChange={(e) => set("pilotLastName", e.target.value)}
           />
           <Input
-            label="Date of birth"
+            label={t("dateOfBirth")}
             type="date"
             value={draft.pilotDob ?? ""}
             onChange={(e) => set("pilotDob", e.target.value)}
           />
           <Input
-            label="License number"
+            label={t("licenseNumber")}
             value={draft.pilotLicenseNumber ?? ""}
             onChange={(e) => set("pilotLicenseNumber", e.target.value)}
-            placeholder="e.g. RPL-12345"
+            placeholder={t("licenseNumberPlaceholder")}
           />
           <Input
-            label="License issuer"
+            label={t("licenseIssuer")}
             value={draft.pilotLicenseIssuer ?? ""}
             onChange={(e) => set("pilotLicenseIssuer", e.target.value)}
             placeholder="DGCA / FAA / EASA / CAA UK"
           />
           <Input
-            label="License class"
+            label={t("licenseClass")}
             value={draft.pilotLicenseClass ?? ""}
             onChange={(e) => set("pilotLicenseClass", e.target.value)}
-            placeholder="Small / Part 107 / A2 / STS-01"
+            placeholder={tk("smallPart107A2STS")}
           />
           <Input
-            label="License expiry"
+            label={t("licenseExpiry")}
             type="date"
             value={draft.pilotLicenseExpiry ?? ""}
             onChange={(e) => set("pilotLicenseExpiry", e.target.value)}
           />
           <Input
-            label="Prior PIC hours"
+            label={t("priorPicHours")}
             type="number"
             value={draft.pilotTotalHoursPriorPic?.toString() ?? ""}
             onChange={(e) => set("pilotTotalHoursPriorPic", e.target.value ? Number(e.target.value) : undefined)}
@@ -96,39 +99,39 @@ export function OperatorProfileEditor() {
             onChange={(e) => set("pilotArn", e.target.value)}
           />
           <Input
-            label="FAA TRUST id"
+            label={t("faaTrustId")}
             value={draft.pilotTrustId ?? ""}
             onChange={(e) => set("pilotTrustId", e.target.value)}
           />
         </div>
       </Card>
 
-      <Card title="Organisation" padding={true}>
+      <Card title={t("organisation")} padding={true}>
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="Operator name"
+            label={t("operatorName")}
             value={draft.operatorName ?? ""}
             onChange={(e) => set("operatorName", e.target.value)}
           />
           <Input
-            label="Operator certificate number"
+            label={t("operatorCertNumber")}
             value={draft.operatorCertNumber ?? ""}
             onChange={(e) => set("operatorCertNumber", e.target.value)}
-            placeholder="ReOC / OA / LUC / Part 107 Waiver"
+            placeholder={tk("reocOALUCPart107")}
           />
           <Input
-            label="Certificate issuer"
+            label={t("certIssuer")}
             value={draft.operatorCertIssuer ?? ""}
             onChange={(e) => set("operatorCertIssuer", e.target.value)}
           />
           <Input
-            label="Certificate expiry"
+            label={t("certExpiry")}
             type="date"
             value={draft.operatorCertExpiry ?? ""}
             onChange={(e) => set("operatorCertExpiry", e.target.value)}
           />
           <Input
-            label="Address"
+            label={t("address")}
             value={draft.operatorAddress ?? ""}
             onChange={(e) => set("operatorAddress", e.target.value)}
             className="col-span-2"
@@ -136,26 +139,26 @@ export function OperatorProfileEditor() {
         </div>
       </Card>
 
-      <Card title="Insurance" padding={true}>
+      <Card title={t("insurance")} padding={true}>
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="Insurer"
+            label={t("insurer")}
             value={draft.insurerName ?? ""}
             onChange={(e) => set("insurerName", e.target.value)}
           />
           <Input
-            label="Policy number"
+            label={t("policyNumber")}
             value={draft.insurancePolicyNumber ?? ""}
             onChange={(e) => set("insurancePolicyNumber", e.target.value)}
           />
           <Input
-            label="Policy expiry"
+            label={t("policyExpiry")}
             type="date"
             value={draft.insuranceExpiry ?? ""}
             onChange={(e) => set("insuranceExpiry", e.target.value)}
           />
           <Input
-            label="Coverage amount"
+            label={t("coverageAmount")}
             value={draft.insuranceCoverageAmount ?? ""}
             onChange={(e) => set("insuranceCoverageAmount", e.target.value)}
             placeholder="USD 1,000,000"
@@ -163,16 +166,16 @@ export function OperatorProfileEditor() {
         </div>
       </Card>
 
-      <Card title="Defaults" padding={true}>
+      <Card title={t("defaults")} padding={true}>
         <div className="grid grid-cols-2 gap-3">
           <Select
-            label="Default jurisdiction"
+            label={t("defaultJurisdiction")}
             value={draft.defaultJurisdiction ?? ""}
             onChange={(v) => {
               set("defaultJurisdiction", v || undefined);
               updateProfile({ defaultJurisdiction: v || undefined });
             }}
-            placeholder="Not set"
+            placeholder={t("notSet")}
             options={JURISDICTION_OPTIONS}
           />
         </div>

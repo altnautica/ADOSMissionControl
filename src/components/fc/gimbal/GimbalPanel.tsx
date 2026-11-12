@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -15,7 +16,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Move3D, Save, HardDrive, Crosshair, RotateCcw, MapPin, Settings2 } from "lucide-react";
+import { Move3D, Crosshair, RotateCcw, MapPin, Settings2 } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { withCurrent } from "../frame/enum-options";
@@ -27,6 +28,8 @@ import {
 } from "./gimbal-constants";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 const AXIS_LIMITS = [
   { axis: "Pitch", min: "MNT1_PITCH_MIN", max: "MNT1_PITCH_MAX" },
   { axis: "Roll", min: "MNT1_ROLL_MIN", max: "MNT1_ROLL_MAX" },
@@ -34,15 +37,17 @@ const AXIS_LIMITS = [
 ] as const;
 
 const RC_INPUTS = [
-  { param: "MNT1_RC_IN_TILT", label: "Tilt (Pitch) Input" },
-  { param: "MNT1_RC_IN_ROLL", label: "Roll Input" },
-  { param: "MNT1_RC_IN_PAN", label: "Pan (Yaw) Input" },
+  { param: "MNT1_RC_IN_TILT", labelKey: "rcTilt" },
+  { param: "MNT1_RC_IN_ROLL", labelKey: "rcRoll" },
+  { param: "MNT1_RC_IN_PAN", labelKey: "rcPan" },
 ] as const;
 
 export function GimbalPanel() {
+  const ol = useOptionLabels();
   const protocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.gimbal");
+  const g = useTranslations("fcGimbal");
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const { label: pl } = useParamLabel();
@@ -65,7 +70,7 @@ export function GimbalPanel() {
     loadProgress, hasLoaded,
     refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: GIMBAL_PARAMS, optionalParams: OPTIONAL_GIMBAL_PARAMS, panelId: "gimbal" });
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = protocol !== null;
@@ -125,108 +130,112 @@ export function GimbalPanel() {
     <ArmedWarningBanner>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
-          <PanelHeader title="Gimbal" subtitle="Mount type, axis limits, RC rate, and manual control" icon={<Move3D size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
+          <PanelHeader title={g("title")} subtitle={g("subtitle")} icon={<Move3D size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
-          {isPx4 && <p className="text-xs text-text-tertiary mb-3">PX4 uses MNT_MODE_IN for gimbal input and MNT_MAN_* for AUX control inputs.</p>}
+          {isPx4 && <p className="text-xs text-text-tertiary mb-3">{g("px4Note")}</p>}
 
           {params.has("MNT1_TYPE") && (
-            <FcSection icon={<Move3D size={14} />} title="Gimbal Configuration" description="Mount type and default behavior">
+            <FcSection icon={<Move3D size={14} />} title={g("configTitle")} description={g("configDesc")}>
               <Select
-                label={lbl(isPx4 ? "MNT1_TYPE — Input Mode" : "MNT1_TYPE — Mount Type")}
-                options={withCurrent(isPx4 ? PX4_MNT_MODE_IN_OPTIONS : MNT_TYPE_OPTIONS, mountType)}
+                label={lbl(`MNT1_TYPE — ${isPx4 ? g("inputMode") : g("mountType")}`)}
+                options={withCurrent(isPx4 ? PX4_MNT_MODE_IN_OPTIONS : ol(MNT_TYPE_OPTIONS), mountType)}
                 value={p("MNT1_TYPE")}
                 onChange={(v) => set("MNT1_TYPE", v)}
               />
               {mountEnabled && params.has("MNT1_DEFLT_MODE") && (
-                <Select label={lbl("MNT1_DEFLT_MODE — Default Mode")} options={withCurrent(MNT_MODE_OPTIONS, params.get("MNT1_DEFLT_MODE"))} value={p("MNT1_DEFLT_MODE")} onChange={(v) => set("MNT1_DEFLT_MODE", v)} />
+                <Select label={lbl(`MNT1_DEFLT_MODE — ${g("defaultMode")}`)} options={withCurrent(ol(MNT_MODE_OPTIONS), params.get("MNT1_DEFLT_MODE"))} value={p("MNT1_DEFLT_MODE")} onChange={(v) => set("MNT1_DEFLT_MODE", v)} />
               )}
             </FcSection>
           )}
 
           {mountEnabled && AXIS_LIMITS.some(({ min, max }) => params.has(min) || params.has(max)) && (
-            <FcSection icon={<Move3D size={14} />} title="Axis Limits" description="Min/max angles for each axis">
+            <FcSection icon={<Move3D size={14} />} title={g("axisTitle")} description={g("axisDesc")}>
               <div className="space-y-4">
                 {AXIS_LIMITS.filter(({ min, max }) => params.has(min) || params.has(max)).map(({ axis, min, max }) => (
                   <div key={axis}>
-                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{axis}</span>
+                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{g(`axis.${axis}`)}</span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                      {params.has(min) && <Input label="Min" type="number" step="1" unit="°" value={p(min)} onChange={(e) => set(min, e.target.value)} />}
-                      {params.has(max) && <Input label="Max" type="number" step="1" unit="°" value={p(max)} onChange={(e) => set(max, e.target.value)} />}
+                      {params.has(min) && <Input label={g("min")} type="number" step="1" unit="°" value={p(min)} onChange={(e) => set(min, e.target.value)} />}
+                      {params.has(max) && <Input label={g("max")} type="number" step="1" unit="°" value={p(max)} onChange={(e) => set(max, e.target.value)} />}
                     </div>
                   </div>
                 ))}
                 {params.has("MNT1_RC_RATE") && (
-                  <Input label={lbl("MNT1_RC_RATE — RC Rate")} type="number" step="1" min="0" unit="deg/s" value={p("MNT1_RC_RATE")} onChange={(e) => set("MNT1_RC_RATE", e.target.value)} />
+                  <Input label={lbl(`MNT1_RC_RATE — ${g("rcRate")}`)} type="number" step="1" min="0" unit="deg/s" value={p("MNT1_RC_RATE")} onChange={(e) => set("MNT1_RC_RATE", e.target.value)} />
                 )}
               </div>
             </FcSection>
           )}
 
           {mountEnabled && (hasRcInputs || !isPx4) && (
-            <FcSection icon={<Move3D size={14} />} title="RC Input" description="Map RC channels to gimbal axis control">
+            <FcSection icon={<Move3D size={14} />} title={g("rcTitle")} description={g("rcDesc")}>
               <div className="space-y-3">
-                {RC_INPUTS.filter(({ param }) => params.has(param)).map(({ param, label }) => (
-                  <Select key={param} label={lbl(`${param} — ${label}`)} options={withCurrent(rcInputOptions, params.get(param))} value={p(param)} onChange={(v) => set(param, v)} />
+                {RC_INPUTS.filter(({ param }) => params.has(param)).map(({ param, labelKey }) => (
+                  <Select key={param} label={lbl(`${param} — ${g(labelKey)}`)} options={withCurrent(rcInputOptions, params.get(param))} value={p(param)} onChange={(v) => set(param, v)} />
                 ))}
                 {!isPx4 && !hasRcInputs && (
-                  <p className="text-[10px] text-text-tertiary">Assign the gimbal axes to RC channels on the Receiver panel: RCx_OPTION 212 (Mount1 Roll), 213 (Mount1 Pitch), 214 (Mount1 Yaw).</p>
+                  <p className="text-[10px] text-text-tertiary">{g("rcAssignHint")}</p>
                 )}
               </div>
             </FcSection>
           )}
 
           {mountEnabled && latestGimbal && (
-            <FcSection icon={<Crosshair size={14} />} title="Live Status" description="Current gimbal orientation">
+            <FcSection icon={<Crosshair size={14} />} title={g("liveTitle")} description={g("liveDesc")}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <LiveStat label="Pitch" value={latestGimbal.pitch.toFixed(1)} unit="°" />
-                <LiveStat label="Roll" value={latestGimbal.roll.toFixed(1)} unit="°" />
-                <LiveStat label="Yaw" value={latestGimbal.yaw.toFixed(1)} unit="°" />
+                <LiveStat label={g("axis.Pitch")} value={latestGimbal.pitch.toFixed(1)} unit="°" />
+                <LiveStat label={g("axis.Roll")} value={latestGimbal.roll.toFixed(1)} unit="°" />
+                <LiveStat label={g("axis.Yaw")} value={latestGimbal.yaw.toFixed(1)} unit="°" />
               </div>
             </FcSection>
           )}
 
           {mountEnabled && connected && (
-            <FcSection icon={<Settings2 size={14} />} title="Mount Mode" description="Send DO_MOUNT_CONFIGURE command to change active mode">
+            <FcSection icon={<Settings2 size={14} />} title={g("mountModeTitle")} description={g("mountModeDesc")}>
               <div className="flex items-end gap-3">
-                <div className="flex-1"><Select label="Active Mode" options={[...MNT_MODE_OPTIONS]} value={liveMode} onChange={setLiveMode} /></div>
-                <Button size="sm" onClick={handleSetMountMode} loading={modeSending}><Settings2 size={12} className="mr-1" /> Set Mode</Button>
+                <div className="flex-1"><Select label={g("activeMode")} options={[...ol(MNT_MODE_OPTIONS)]} value={liveMode} onChange={setLiveMode} /></div>
+                <Button size="sm" onClick={handleSetMountMode} loading={modeSending}><Settings2 size={12} className="mr-1" /> {g("setMode")}</Button>
               </div>
             </FcSection>
           )}
 
           {mountEnabled && connected && (
-            <FcSection icon={<Move3D size={14} />} title="Manual Control" description="Aim the gimbal; the angle is sent when you release the slider">
+            <FcSection icon={<Move3D size={14} />} title={g("manualTitle")} description={g("manualDesc")}>
               <div className="space-y-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1"><span className="text-xs text-text-secondary">Pitch</span><span className="text-xs font-mono text-text-tertiary">{manualPitch}°</span></div>
-                  <input type="range" aria-label="Gimbal pitch" min={pitchMin} max={pitchMax} value={manualPitch} onChange={(e) => setManualPitch(Number(e.target.value))} onPointerUp={() => void sendAngle(manualPitch, manualYaw)} onKeyUp={() => void sendAngle(manualPitch, manualYaw)} className="w-full h-1.5 bg-bg-tertiary rounded-full appearance-none cursor-pointer accent-accent-primary" />
+                  <div className="flex items-center justify-between mb-1"><span className="text-xs text-text-secondary">{g("axis.Pitch")}</span><span className="text-xs font-mono text-text-tertiary">{manualPitch}°</span></div>
+                  <input type="range" aria-label={g("pitchAria")} min={pitchMin} max={pitchMax} value={manualPitch} onChange={(e) => setManualPitch(Number(e.target.value))} onPointerUp={() => void sendAngle(manualPitch, manualYaw)} onKeyUp={() => void sendAngle(manualPitch, manualYaw)} className="w-full h-1.5 bg-bg-tertiary rounded-full appearance-none cursor-pointer accent-accent-primary" />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-1"><span className="text-xs text-text-secondary">Yaw</span><span className="text-xs font-mono text-text-tertiary">{manualYaw}°</span></div>
-                  <input type="range" aria-label="Gimbal yaw" min={yawMin} max={yawMax} value={manualYaw} onChange={(e) => setManualYaw(Number(e.target.value))} onPointerUp={() => void sendAngle(manualPitch, manualYaw)} onKeyUp={() => void sendAngle(manualPitch, manualYaw)} className="w-full h-1.5 bg-bg-tertiary rounded-full appearance-none cursor-pointer accent-accent-primary" />
+                  <div className="flex items-center justify-between mb-1"><span className="text-xs text-text-secondary">{g("axis.Yaw")}</span><span className="text-xs font-mono text-text-tertiary">{manualYaw}°</span></div>
+                  <input type="range" aria-label={g("yawAria")} min={yawMin} max={yawMax} value={manualYaw} onChange={(e) => setManualYaw(Number(e.target.value))} onPointerUp={() => void sendAngle(manualPitch, manualYaw)} onKeyUp={() => void sendAngle(manualPitch, manualYaw)} className="w-full h-1.5 bg-bg-tertiary rounded-full appearance-none cursor-pointer accent-accent-primary" />
                 </div>
-                <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={handleCenter}><RotateCcw size={12} className="mr-1" /> Center</Button></div>
+                <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={handleCenter}><RotateCcw size={12} className="mr-1" /> {g("center")}</Button></div>
               </div>
             </FcSection>
           )}
 
           {mountEnabled && connected && (
-            <FcSection icon={<MapPin size={14} />} title="Set ROI" description="Point gimbal at a GPS location">
+            <FcSection icon={<MapPin size={14} />} title={g("roiTitle")} description={g("roiDesc")}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <Input label="Latitude" type="number" step="0.000001" value={roiLat} onChange={(e) => setRoiLat(e.target.value)} placeholder="-33.8688" />
-                <Input label="Longitude" type="number" step="0.000001" value={roiLon} onChange={(e) => setRoiLon(e.target.value)} placeholder="151.2093" />
-                <Input label="Altitude" type="number" step="1" unit="m" value={roiAlt} onChange={(e) => setRoiAlt(e.target.value)} />
+                <Input label={g("latitude")} type="number" step="0.000001" value={roiLat} onChange={(e) => setRoiLat(e.target.value)} placeholder="-33.8688" />
+                <Input label={g("longitude")} type="number" step="0.000001" value={roiLon} onChange={(e) => setRoiLon(e.target.value)} placeholder="151.2093" />
+                <Input label={g("altitude")} type="number" step="1" unit="m" value={roiAlt} onChange={(e) => setRoiAlt(e.target.value)} />
               </div>
-              <Button size="sm" onClick={handleSetROI} loading={roiSending}><MapPin size={12} className="mr-1" /> Set ROI</Button>
+              <Button size="sm" onClick={handleSetROI} loading={roiSending}><MapPin size={12} className="mr-1" /> {g("setRoi")}</Button>
             </FcSection>
           )}
 
-          <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-            {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-            {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-            {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-          </div>
+          <PanelSaveBar
+            onSave={handleSave}
+            saving={saving}
+            saveDisabled={!hasDirty || !connected}
+            showFlash={hasRamWrites}
+            onFlash={handleFlash}
+            flashing={flashing}
+            showConnectHint={!connected}
+            showUnsavedHint={hasDirty && connected}
+          />
         </div>
       </div>
     </ArmedWarningBanner>

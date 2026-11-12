@@ -15,6 +15,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PairingDialog } from "@/components/command/PairingDialog";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
+import { usePairDialogStore } from "@/stores/pair-dialog-store";
 
 const STORAGE_KEY = "ados.pair.deep_link";
 
@@ -105,20 +107,28 @@ export default function PairDeepLinkPage() {
     router.push("/");
   }
 
+  // A build without a cloud backend cannot claim a code. Hand the code (or
+  // the host, when the link carries one) to the shell's own pairing dialog,
+  // whose Add-a-drone field takes it and probes the node, instead of opening
+  // an empty form over it.
+  const convexAvailable = useConvexAvailable();
+  const handOffToShell = !convexAvailable && !!effectiveCode;
+  const handedOffRef = useRef(false);
+  useEffect(() => {
+    if (!handOffToShell || !effectiveCode || handedOffRef.current) return;
+    handedOffRef.current = true;
+    writeStored(null);
+    usePairDialogStore.getState().openDialog("add", effectiveHost ?? effectiveCode);
+    router.replace("/");
+  }, [effectiveCode, effectiveHost, handOffToShell, router]);
+
+  if (handOffToShell) return null;
+
+  // No usable code: open the manual pairing body rather than a dead end.
   if (!effectiveCode) {
     return (
       <main className="flex h-full items-center justify-center bg-bg-primary text-text-primary">
-        <div className="max-w-md rounded-md border border-border-default bg-bg-secondary p-6">
-          <h1 className="text-base font-semibold">{t("pairNewNode")}</h1>
-          <p className="mt-2 text-sm text-text-secondary">{t("pairLink.missingCode")}</p>
-          <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="mt-4 rounded-sm border border-border-strong bg-bg-tertiary px-3 py-2 text-sm hover:bg-bg-tertiary"
-          >
-            {t("pairLink.backToDashboard")}
-          </button>
-        </div>
+        <PairingDialog open={open} onClose={handleClose} onPaired={handlePaired} />
       </main>
     );
   }

@@ -11,11 +11,8 @@
 
 import { useMemo } from "react";
 import { useValidationOptions } from "@/hooks/use-validation-options";
-import {
-  validateMission,
-  type ValidationOptions,
-  type ValidationResult,
-} from "@/lib/validation/mission-validator";
+import { validateMission } from "@/lib/validation/mission-validator";
+import type { ValidationOptions, ValidationResult } from "@/lib/validation/issue-types";
 import type { Waypoint } from "@/lib/types";
 
 /**

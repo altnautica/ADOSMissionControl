@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface CalibrationDiffTableProps {
@@ -9,6 +10,7 @@ interface CalibrationDiffTableProps {
 }
 
 export function CalibrationDiffTable({ calDiff, calDiffType, onDismiss }: CalibrationDiffTableProps) {
+  const tl = useTranslations("fcPanels.calibrationDiffTable");
   if (!calDiff || calDiff.length === 0 || !calDiffType) return null;
 
   return (
@@ -19,24 +21,24 @@ export function CalibrationDiffTable({ calDiff, calDiffType, onDismiss }: Calibr
             {calDiffType.charAt(0).toUpperCase() + calDiffType.slice(1)} Calibration Changes
           </h3>
           <p className="text-[10px] text-text-tertiary mt-0.5">
-            Parameters changed during calibration
+            {tl("parametersChangedDuringCalibration")}
           </p>
         </div>
         <button
           className="text-[10px] text-text-tertiary hover:text-text-secondary"
           onClick={onDismiss}
         >
-          Dismiss
+          {tl("dismiss")}
         </button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[10px] font-mono">
           <thead>
             <tr className="text-text-tertiary">
-              <th className="text-left px-1 py-0.5">Parameter</th>
-              <th className="text-right px-1 py-0.5">Before</th>
-              <th className="text-right px-1 py-0.5">After</th>
-              <th className="text-right px-1 py-0.5">Change</th>
+              <th className="text-left px-1 py-0.5">{tl("parameter")}</th>
+              <th className="text-right px-1 py-0.5">{tl("before")}</th>
+              <th className="text-right px-1 py-0.5">{tl("after")}</th>
+              <th className="text-right px-1 py-0.5">{tl("change")}</th>
             </tr>
           </thead>
           <tbody>

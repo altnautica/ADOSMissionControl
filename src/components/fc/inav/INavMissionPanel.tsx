@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMissionStore } from "@/stores/mission-store";
@@ -41,6 +42,7 @@ function actionLabel(command: string): string {
 // ── Component ─────────────────────────────────────────────────
 
 export function INavMissionPanel() {
+  const tr = useTranslations("fcPanels.iNavMissionPanel");
   const router = useRouter();
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const waypoints = useMissionStore((s) => s.waypoints);
@@ -105,8 +107,8 @@ export function INavMissionPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="iNav Mission"
-          subtitle="Summary of the mission in the Plan tab or read from the FC."
+          title={tr("inavMission")}
+          subtitle={tr("summaryOfTheMissionIn")}
           icon={<Route size={16} />}
           loading={loading}
           loadProgress={null}
@@ -118,17 +120,17 @@ export function INavMissionPanel() {
 
         <div className="border border-border-default rounded p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-text-secondary">Total waypoints</span>
+            <span className="text-[11px] text-text-secondary">{tr("totalWaypoints")}</span>
             <span className="text-[14px] font-mono text-text-primary">{itemCount} / 60</span>
           </div>
 
           {waypoints.length === 0 ? (
             <p className="text-[11px] text-text-tertiary">
-              No mission loaded. Open the Plan tab to build one.
+              {tr("noMissionLoadedOpenThe")}
             </p>
           ) : (
             <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary font-mono">Breakdown by action</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tr("breakdownByAction")}</span>
               {Object.entries(counts).map(([label, count]) => (
                 <div key={label} className="flex items-center justify-between text-[11px]">
                   <span className="text-text-secondary">{label}</span>
@@ -144,7 +146,7 @@ export function INavMissionPanel() {
               onClick={handleOpenPlanner}
               className="flex items-center gap-2 text-[11px] px-3 py-1 border border-accent-primary text-accent-primary rounded hover:bg-accent-primary/10"
             >
-              Open Mission Planner
+              {tr("openMissionPlanner")}
               <ArrowRight size={12} />
             </button>
           </div>
@@ -152,9 +154,9 @@ export function INavMissionPanel() {
 
         <ConfirmDialog
           open={confirmReplace}
-          title="Replace the current plan?"
+          title={tr("replaceTheCurrentPlan")}
           message={`Reading from the flight controller replaces the ${waypoints.length}-waypoint plan in the Plan tab with the mission stored on the FC.`}
-          confirmLabel="Replace plan"
+          confirmLabel={tr("replacePlan")}
           cancelLabel="Cancel"
           variant="primary"
           onConfirm={() => { setConfirmReplace(false); void readFromFc(); }}

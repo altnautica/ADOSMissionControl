@@ -1,7 +1,8 @@
 /**
  * @module mock/mock-vision-nav
  * @description Demo stand-in for the Vision Navigation extension's node tab
- * (`com.altnautica.vision-nav` 0.5.0, panel `vision-nav-tab`). The extension
+ * (`com.altnautica.vision-nav`, panel `vision-nav-tab`, at the published release
+ * in `extension-manifests.ts`). The extension
  * ships its panel as a signed iframe bundle that demo mode cannot load, so the
  * demo mounts an in-memory inline module through the same plugin slot host
  * (`PluginSlot` → `InlinePluginHost`) on the demo drone that has the extension
@@ -11,25 +12,26 @@
  * The health payload mirrors the extension's `navigation` telemetry block
  * key for key (`HealthSnapshot::to_value` in the extension's agent half):
  * every key is always present, an unset optional rides as `null`, and the
- * pre-arm report is the gate's `{ mode, armable, checks }` map.
+ * pre-arm report is the gate's `{ mode, armable, checks }` map. The
+ * `nav.state` event the Navigation feed card reads is mirrored by
+ * {@link getMockVisionNavState}.
  *
  * @license GPL-3.0-only
  */
 
 import type { InlinePluginModule } from "@/lib/plugins/inline-host-types";
-import type { PluginSlotContribution } from "@/components/plugins/PluginHostProvider";
-import { slotToCapability, type GcsContributeRow } from "@/lib/plugins/types";
-import { getDemoDronePluginInstalls } from "./mock-plugins";
+import { demoInlineTab } from "./demo-inline-tab";
+import { demoReleaseManifest, VISION_NAV } from "./extension-manifests";
 import { jitter } from "./agent/utils";
 
 export const VISION_NAV_PLUGIN_ID = "com.altnautica.vision-nav";
 export const VISION_NAV_PANEL_ID = "vision-nav-tab";
-export const VISION_NAV_VERSION = "0.5.0";
+export const VISION_NAV_VERSION = demoReleaseManifest(VISION_NAV).version;
 
 /** Heartbeat cadence the panel refreshes its health snapshot at. */
 export const VISION_NAV_REFRESH_MS = 1000;
 
-export type VisionNavMode = "off" | "optical_flow" | "optical_flow_degraded";
+export type VisionNavMode = "off" | "optical_flow" | "optical_flow_degraded" | "external_nav";
 export type VisionNavCheckSeverity = "ok" | "pending" | "blocking";
 
 export interface VisionNavPreArmCheck {
@@ -66,9 +68,11 @@ export interface VisionNavHealth {
   rangefinderError: string | null;
   degradedReasons: string[];
   fcParams: string[];
+  /** Median age of a pose when its ODOMETRY is sent; null outside external nav. */
+  poseAgeMs: number | null;
 }
 
-/** The 0.5.0 `navigation` block keys, in emit order. */
+/** The `navigation` block keys, in emit order. */
 export const VISION_NAV_HEALTH_KEYS = [
   "opticalFlowSupported",
   "rangefinderTopology",
@@ -90,10 +94,11 @@ export const VISION_NAV_HEALTH_KEYS = [
   "rangefinderError",
   "degradedReasons",
   "fcParams",
+  "poseAgeMs",
 ] as const satisfies ReadonlyArray<keyof VisionNavHealth>;
 
-/** The estimators 0.5.0 can run, sorted as its agent sorts them. */
-const AVAILABLE_ESTIMATORS = ["off", "optical_flow", "optical_flow_degraded"];
+/** The estimators the extension can run, sorted as its agent sorts them. */
+const AVAILABLE_ESTIMATORS = ["external_nav", "off", "optical_flow", "optical_flow_degraded"];
 
 /**
  * Steady-state health of a converged optical-flow run with a companion
@@ -139,6 +144,39 @@ export function getMockVisionNavHealth(): VisionNavHealth {
     rangefinderError: null,
     degradedReasons: [],
     fcParams: [],
+    poseAgeMs: null,
+  };
+}
+
+/** Tracking health of the external pose feed. */
+export type VisionNavExtnavHealth = "good" | "degraded" | "lost";
+
+/** The extension's `nav.state` event (snake_case wire): what the navigation
+ * feed is doing now. Fields the running mode does not produce are null. */
+export interface VisionNavState {
+  mode: VisionNavMode;
+  active_set: number | null;
+  extnav_health: VisionNavExtnavHealth | null;
+  odom_rate_hz: number | null;
+  last_reset_counter: number | null;
+  obstacle_rate_hz: number | null;
+  min_obstacle_m: number | null;
+  gps_fix: number;
+}
+
+/** `nav.state` for the demo's optical-flow run: no external pose or obstacle
+ * feed, so those fields are null, and no GPS (the reason to fly on flow). The
+ * EKF source set is the flow set the operator switched to. */
+export function getMockVisionNavState(): VisionNavState {
+  return {
+    mode: "optical_flow",
+    active_set: 2,
+    extnav_health: null,
+    odom_rate_hz: null,
+    last_reset_counter: null,
+    obstacle_rate_hz: null,
+    min_obstacle_m: null,
+    gps_fix: 0,
   };
 }
 
@@ -153,73 +191,9 @@ export const DEMO_VISION_NAV_MODULE: InlinePluginModule = {
   },
 };
 
-/** Capabilities the extension's GCS half requests in its 0.5.0 manifest. */
-const VISION_NAV_GCS_CAPABILITIES = [
-  slotToCapability("node.detail.tab"),
-  "ui.slot.flight-skill",
-  "telemetry.subscribe.navigation",
-];
-
-interface DemoVisionNavContribution {
-  entry: GcsContributeRow;
-  contribution: PluginSlotContribution & { slot: "node.detail.tab" };
-}
-
-/** One contribution per drone, so a re-render hands the host the same bundle
- * object and the mounted panel is not torn down and rebuilt. */
-const contributionCache = new Map<string, DemoVisionNavContribution | null>();
-
 /**
  * The demo Vision Nav tab body for a drone, or null when that demo drone does
  * not run the extension. Keyed by the same install row the tab header reads,
  * so the body mounts under the header the operator clicked.
  */
-export function getDemoVisionNavContribution(deviceId: string): DemoVisionNavContribution | null {
-  const cached = contributionCache.get(deviceId);
-  if (cached !== undefined) return cached;
-  const built = buildContribution(deviceId);
-  contributionCache.set(deviceId, built);
-  return built;
-}
-
-function buildContribution(deviceId: string): DemoVisionNavContribution | null {
-  const install = getDemoDronePluginInstalls(deviceId).find(
-    (p) => p.pluginId === VISION_NAV_PLUGIN_ID && p.status === "running",
-  );
-  if (!install) return null;
-  const title = install.droneDetailTabTitle ?? install.name;
-  return {
-    entry: {
-      slot: "node.detail.tab",
-      panelId: VISION_NAV_PANEL_ID,
-      title,
-      profile: ["drone"],
-    },
-    contribution: {
-      slot: "node.detail.tab",
-      pluginId: VISION_NAV_PLUGIN_ID,
-      panelId: VISION_NAV_PANEL_ID,
-      title,
-      bundleUrl: "",
-      isolation: "inline",
-      inline: {
-        status: "ready",
-        bundle: {
-          kind: "inline",
-          module: DEMO_VISION_NAV_MODULE,
-          trust: {
-            pluginId: VISION_NAV_PLUGIN_ID,
-            version: install.version,
-            signerId: "demo",
-            entrypoint: "gcs/plugin.bundle.js",
-            paths: [],
-          },
-          readAsset: () => Promise.reject(new Error("the demo panel ships no assets")),
-        },
-      },
-      grantedCapabilities: new Set(VISION_NAV_GCS_CAPABILITIES),
-      handlers: {},
-      pluginInstallId: install.installId,
-    },
-  };
-}
+export const getDemoVisionNavContribution = demoInlineTab(VISION_NAV, VISION_NAV_PANEL_ID, DEMO_VISION_NAV_MODULE);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
@@ -10,7 +11,7 @@ import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
-import { Button } from "@/components/ui/button";
+
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import {
@@ -18,7 +19,7 @@ import {
   FRAME_CLASS_NAMES, FRAME_CLASS_DESCRIPTIONS, FRAME_CLASS_NOTES, FRAME_TYPE_DESCRIPTIONS,
 } from "@/lib/motor-layouts";
 import { Select } from "@/components/ui/select";
-import { Save, HardDrive, Box, Zap, Info } from "lucide-react";
+import { Save, Box, Zap, Info } from "lucide-react";
 import { FrameConfigLog, type ConfigLogEntry } from "./FrameConfigLog";
 import {
   ROVER_FRAME_CLASS_OPTIONS,
@@ -27,6 +28,8 @@ import {
 } from "./ardupilot-frame-enums";
 import { withCurrent } from "./enum-options";
 import { FcSection } from "@/components/fc/shared/FcSection";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 const MotorDiagram3D = dynamic(
   () => import("../motors/MotorDiagram3D").then((m) => ({ default: m.MotorDiagram3D })),
@@ -44,6 +47,8 @@ const FRAME_CLASS_OPTIONS = Object.entries(FRAME_CLASS_NAMES).map(([value, label
 }));
 
 export function FramePanel() {
+  const ol = useOptionLabels();
+  const tk = useTranslations("fcPanels.framePanel");
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const t = useTranslations("fcToasts.frame");
@@ -167,34 +172,34 @@ export function FramePanel() {
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-2xl space-y-6">
-            <PanelHeader title="Frame Configuration" subtitle="Vehicle frame class, type, and motor layout" icon={<Box size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
+            <PanelHeader title={tk("frameConfiguration")} subtitle={tk("vehicleFrameClassTypeAnd")} icon={<Box size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
             {isFixedWingOnly && (
-              <FcSection icon={<Box size={14} />} title="Frame Configuration" description="Not applicable for this vehicle type">
+              <FcSection icon={<Box size={14} />} title={tk("frameConfiguration")} description={tk("notApplicableForThisVehicle")}>
                 <div className="py-6 text-center space-y-2">
-                  <p className="text-xs text-text-secondary">Frame configuration is not applicable for fixed-wing aircraft.</p>
+                  <p className="text-xs text-text-secondary">{tk("frameConfigurationIsNotApplicable")}</p>
                   <p className="text-[10px] text-text-tertiary">QuadPlane frame settings (Q_FRAME_CLASS) are available when your plane has VTOL motors configured.</p>
                 </div>
               </FcSection>
             )}
 
             {hasLoaded && isRover && (
-              <FcSection icon={<Box size={14} />} title="Frame Selection" description="Rover frame class and motor arrangement">
+              <FcSection icon={<Box size={14} />} title={tk("frameSelection")} description={tk("roverFrameClassAndMotor")}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Select label="FRAME_CLASS" options={withCurrent(ROVER_FRAME_CLASS_OPTIONS, params.get("FRAME_CLASS"))} value={String(params.get("FRAME_CLASS") ?? "")} onChange={(v) => handleLocalChange("FRAME_CLASS", Number(v))} disabled={isHardBlocked} />
-                  <Select label="FRAME_TYPE" options={withCurrent(ROVER_FRAME_TYPE_OPTIONS, params.get("FRAME_TYPE"))} value={String(params.get("FRAME_TYPE") ?? "")} onChange={(v) => handleLocalChange("FRAME_TYPE", Number(v))} disabled={isHardBlocked} />
+                  <Select label="FRAME_CLASS" options={withCurrent(ol(ROVER_FRAME_CLASS_OPTIONS), params.get("FRAME_CLASS"))} value={String(params.get("FRAME_CLASS") ?? "")} onChange={(v) => handleLocalChange("FRAME_CLASS", Number(v))} disabled={isHardBlocked} />
+                  <Select label="FRAME_TYPE" options={withCurrent(ol(ROVER_FRAME_TYPE_OPTIONS), params.get("FRAME_TYPE"))} value={String(params.get("FRAME_TYPE") ?? "")} onChange={(v) => handleLocalChange("FRAME_TYPE", Number(v))} disabled={isHardBlocked} />
                 </div>
               </FcSection>
             )}
 
             {hasLoaded && isSub && (
-              <FcSection icon={<Box size={14} />} title="Frame Selection" description="Thruster configuration">
-                <Select label="FRAME_CONFIG" options={withCurrent(SUB_FRAME_CONFIG_OPTIONS, params.get("FRAME_CONFIG"))} value={String(params.get("FRAME_CONFIG") ?? "")} onChange={(v) => handleLocalChange("FRAME_CONFIG", Number(v))} disabled={isHardBlocked} />
+              <FcSection icon={<Box size={14} />} title={tk("frameSelection")} description={tk("thrusterConfiguration")}>
+                <Select label="FRAME_CONFIG" options={withCurrent(ol(SUB_FRAME_CONFIG_OPTIONS), params.get("FRAME_CONFIG"))} value={String(params.get("FRAME_CONFIG") ?? "")} onChange={(v) => handleLocalChange("FRAME_CONFIG", Number(v))} disabled={isHardBlocked} />
               </FcSection>
             )}
 
             {showMultirotor && (
-              <FcSection icon={<Box size={14} />} title="Frame Selection" description="Select airframe class and configuration type">
+              <FcSection icon={<Box size={14} />} title={tk("frameSelection")} description={tk("selectAirframeClassAndConfiguration")}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Select label={classParam} options={FRAME_CLASS_OPTIONS} value={String(frameClass)} onChange={(v) => handleLocalChange(classParam, Number(v))} disabled={isHardBlocked} searchable />
                   <Select
@@ -230,9 +235,9 @@ export function FramePanel() {
             )}
 
             {showMultirotor && (
-              <FcSection icon={<Zap size={14} />} title="Motor Layout" description={`${className} ${typeName} — ${motorCountStr}`}>
+              <FcSection icon={<Zap size={14} />} title={tk("motorLayout")} description={`${className} ${typeName} — ${motorCountStr}`}>
                 {loading && !layout ? (
-                  <div className="h-[360px] flex items-center justify-center text-xs text-text-tertiary bg-bg-tertiary animate-pulse">Loading parameters...</div>
+                  <div className="h-[360px] flex items-center justify-center text-xs text-text-tertiary bg-bg-tertiary animate-pulse">{tk("loadingParameters")}</div>
                 ) : layout ? (
                   <MotorDiagram3D layout={layout} />
                 ) : (
@@ -246,18 +251,23 @@ export function FramePanel() {
 
             {showMultirotor && (
               <div className="flex items-center gap-4 text-xs text-text-secondary">
-                <div><span className="text-text-tertiary">Motors: </span><span className="font-mono text-text-primary">{layout ? motorCountStr : "—"}</span></div>
-                <div><span className="text-text-tertiary">Class: </span><span className="font-mono text-text-primary">{className}</span></div>
-                <div><span className="text-text-tertiary">Type: </span><span className="font-mono text-text-primary">{typeName}</span></div>
+                <div><span className="text-text-tertiary">{tk("motors")} </span><span className="font-mono text-text-primary">{layout ? motorCountStr : "—"}</span></div>
+                <div><span className="text-text-tertiary">{tk("class")} </span><span className="font-mono text-text-primary">{className}</span></div>
+                <div><span className="text-text-tertiary">{tk("type")} </span><span className="font-mono text-text-primary">{typeName}</span></div>
               </div>
             )}
 
             {hasLoaded && !isFixedWingOnly && (
-              <div className="flex items-center gap-3 pt-2 pb-4">
-                <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty} loading={saving} onClick={handleSave}>Save to RAM</Button>
-                {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={committing} onClick={handleFlash}>Write to Flash</Button>}
-                {hasDirty && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-              </div>
+              <PanelSaveBar
+                saveLabel="saveToRam"
+                onSave={handleSave}
+                saving={saving}
+                saveDisabled={!hasDirty}
+                showFlash={hasRamWrites}
+                onFlash={handleFlash}
+                flashing={committing}
+                showUnsavedHint={hasDirty}
+              />
             )}
           </div>
         </div>

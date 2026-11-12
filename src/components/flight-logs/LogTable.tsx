@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { HistoryTable, type SortKey, type SortDir } from "@/components/history/HistoryTable";
 import type { FlightRecord } from "@/lib/types";
 
@@ -92,6 +93,10 @@ export interface LogTableProps {
   onResizeStart: (e: React.PointerEvent<HTMLDivElement>) => void;
   onResizeMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onResizeEnd: (e: React.PointerEvent<HTMLDivElement>) => void;
+  /** The list is the trash view, so an empty list reads "Trash is empty". */
+  trashMode: boolean;
+  /** Clears the search and filters from the empty-list state. */
+  onResetFilters: () => void;
 }
 
 export function LogTable({
@@ -109,7 +114,10 @@ export function LogTable({
   onResizeStart,
   onResizeMove,
   onResizeEnd,
+  trashMode,
+  onResetFilters,
 }: LogTableProps) {
+  const t = useTranslations("history");
   return (
     <>
       {!(selectedRecord && listCollapsed) && (
@@ -132,6 +140,8 @@ export function LogTable({
             sortDir={sortDir}
             onSortChange={onSortChange}
             compact={!!selectedRecord}
+            trashMode={trashMode}
+            onResetFilters={onResetFilters}
           />
         </div>
       )}
@@ -145,7 +155,7 @@ export function LogTable({
           onPointerUp={onResizeEnd}
           onPointerCancel={onResizeEnd}
           className="w-1 shrink-0 cursor-col-resize bg-border-default hover:bg-accent-primary/60 transition-colors"
-          title="Drag to resize"
+          title={t("dragToResize")}
         />
       )}
     </>

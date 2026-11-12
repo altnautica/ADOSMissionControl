@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { INavOsdAlarms } from "@/lib/protocol/types/inav";
 
 /**
@@ -47,8 +48,9 @@ interface AlarmFieldsEditorProps {
 }
 
 export function AlarmFieldsEditor({ alarms, onUpdate }: AlarmFieldsEditorProps) {
+  const tr = useTranslations("fcPanels.alarmFieldsEditor");
   if (!alarms) {
-    return <p className="text-[11px] text-text-tertiary">No alarm data returned by FC.</p>;
+    return <p className="text-[11px] text-text-tertiary">{tr("noAlarmDataReturnedBy")}</p>;
   }
   return (
     <div className="space-y-2">

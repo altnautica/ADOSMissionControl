@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import {
   LineChart,
@@ -31,6 +32,7 @@ function downsample<T>(arr: T[], maxPoints: number): T[] {
 }
 
 export function PidMotorChart({ data }: PidMotorChartProps) {
+  const tk = useTranslations("fcPanels.pidMotorChart");
   const chartData = useMemo(() => {
     const { motors, motorCount } = data.timeSeries;
     if (motors.length === 0 || motors[0].length === 0) return [];
@@ -60,7 +62,7 @@ export function PidMotorChart({ data }: PidMotorChartProps) {
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[200px] text-[10px] text-text-tertiary">
-        No motor data
+        {tk("noMotorData")}
       </div>
     );
   }

@@ -25,7 +25,7 @@ import {
 import { useMapStatusEntry, useNavFeed } from "@/hooks/use-nav-feed";
 import { WORLD_ENGINE_PLUGIN_ID } from "@/lib/api/agent/sensors";
 import { isDemoMode } from "@/lib/utils";
-import { NAV_STATE_STALE_MS, freshData } from "@/stores/nav-stream-store";
+import { NAV_STATE_STALE_MS, freshData, useNavStreamStore } from "@/stores/nav-stream-store";
 import { useUiStore } from "@/stores/ui-store";
 
 /** The world-engine Agent page that hosts its 3D viewer. */
@@ -68,6 +68,10 @@ export function DroneMapTab({ droneId, pluginAgentPages }: DroneMapTabProps) {
     };
   }, [droneId]);
   const entry = useMapStatusEntry(droneId);
+  // The LAN nav-stream entry runs at 1 Hz and goes stale sooner than the
+  // heartbeat slice relayed through the cloud.
+  const streamEntry = useNavStreamStore((s) => s.byDrone[droneId]?.map);
+  const source = entry && entry === streamEntry ? "stream" : "heartbeat";
   const poseEntry = useNavFeed(droneId)?.pose;
   const pose = freshData(poseEntry, now, NAV_STATE_STALE_MS);
   const viewerInstalled = pluginAgentPages.some(
@@ -93,7 +97,7 @@ export function DroneMapTab({ droneId, pluginAgentPages }: DroneMapTabProps) {
         </div>
       </div>
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[20rem_1fr]">
-        <MapStatusCard view={mapStatusView(entry, now)} poseHealth={pose?.health ?? null} />
+        <MapStatusCard view={mapStatusView(entry, now, source)} poseHealth={pose?.health ?? null} />
         <section
           className="relative min-h-[360px] overflow-hidden rounded border border-border-default bg-media"
           aria-label={t("liveMap")}

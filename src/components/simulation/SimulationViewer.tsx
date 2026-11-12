@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import type { Viewer as CesiumViewer } from "cesium";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import { computeFlightPlan } from "@/lib/flight-plan";
@@ -44,6 +45,7 @@ import { MissionWarningBanner } from "./MissionWarningBanner";
 import { SimCameraCluster } from "./SimCameraCluster";
 import { ConvexCesiumToken } from "./ConvexCesiumToken";
 import { useResolvedMissionPath } from "./use-resolved-mission-path";
+import { ViewerFailedCard } from "./ViewerFailedCard";
 
 interface SimulationViewerProps {
   waypoints: Waypoint[];
@@ -54,8 +56,11 @@ interface SimulationViewerProps {
 
 export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: SimulationViewerProps) {
   const t = useTranslations("simulate");
+  const router = useRouter();
   const [viewer, setViewer] = useState<CesiumViewer | null>(null);
   const [viewerError, setViewerError] = useState<string | null>(null);
+  // Bumped by Retry: a new key remounts the Cesium scene from scratch.
+  const [sceneAttempt, setSceneAttempt] = useState(0);
   const convexAvailable = useConvexAvailable();
   const [cesiumToken, setCesiumToken] = useState<string | undefined>(undefined);
   const handleCesiumToken = useCallback((t: string | null) => {
@@ -93,6 +98,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
       resolvedPath?.positions,
       resolvedPath?.waypointIndices,
       resolvedPath?.homeTerrainHeight,
+      resolvedPath?.groundHeights,
     ),
     [waypoints, flightPlan, waypointPositions, resolvedPath]
   );
@@ -128,11 +134,17 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   useSimCompletion(waypoints);
 
   const handleViewerReady = useCallback((v: CesiumViewer) => setViewer(v), []);
+  const handleRetry = useCallback(() => {
+    setViewer(null);
+    setViewerError(null);
+    setSceneAttempt((n) => n + 1);
+  }, []);
 
   return (
     <div className="flex-1 relative min-w-0 h-full">
       {convexAvailable && <ConvexCesiumToken onToken={handleCesiumToken} />}
       <CesiumScene
+        key={sceneAttempt}
         cesiumToken={effectiveCesiumToken}
         onReady={handleViewerReady}
         onError={(e) => setViewerError(e.message)}
@@ -202,13 +214,11 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
 
       {/* Error state */}
       {viewerError && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-bg-primary/80 backdrop-blur-md rounded-lg px-6 py-4 border border-status-error/30 text-center max-w-sm">
-            <p className="text-sm text-status-error">
-              {t("viewFailed", { message: viewerError })}
-            </p>
-          </div>
-        </div>
+        <ViewerFailedCard
+          message={viewerError}
+          onRetry={handleRetry}
+          fallback={{ label: t("editInPlanner"), onClick: () => router.push("/plan") }}
+        />
       )}
 
       {/* Empty state */}

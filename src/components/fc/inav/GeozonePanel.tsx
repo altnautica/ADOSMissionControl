@@ -23,6 +23,7 @@ import { GeozoneZoneEditor } from "./GeozoneZoneEditor";
 import { MapPin, Plus, Upload } from "lucide-react";
 
 export function GeozonePanel() {
+  const tr = useTranslations("fcPanels.geozonePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.inav");
@@ -79,8 +80,8 @@ export function GeozonePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Geozones"
-          subtitle="iNav polygon and circular no-fly or stay-inside zones"
+          title={tr("geozones")}
+          subtitle={tr("inavPolygonAndCircularNo")}
           icon={<MapPin size={16} />}
           loading={loading}
           loadProgress={null}
@@ -98,7 +99,7 @@ export function GeozonePanel() {
                 disabled={!connected}
                 onClick={() => addZone()}
               >
-                Add zone
+                {tr("addZone")}
               </Button>
             )}
             {hasLoaded && (
@@ -111,7 +112,7 @@ export function GeozonePanel() {
                 title={isArmed ? lockMessage : undefined}
                 onClick={handleWrite}
               >
-                Write to FC
+                {tr("writeToFC")}
               </Button>
             )}
           </div>
@@ -119,13 +120,13 @@ export function GeozonePanel() {
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
         {zones.length === 0 && hasLoaded === false && (
           <p className="text-xs text-text-tertiary">
-            Read from FC to load existing zones, or add a new zone above.
+            {tr("readFromFCToLoad")}
           </p>
         )}
 

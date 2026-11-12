@@ -17,7 +17,7 @@ import type {
   DroneProtocol, CommandQueueSnapshot, Transport, VehicleInfo, CommandResult,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
   LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
-  FenceElement, RallyPointItem,
+  FenceElement, RallyPointItem, MissionUploadProgressCallback,
 } from './types'
 import type { MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat } from './encoders'
@@ -360,7 +360,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async setParameter(name: string, value: number) { return prm.setParameter(this.st, name, value) }
 
   // ── Delegated Missions ─────────────────────────────────
-  async uploadMission(items: MissionItem[]) { return msn.uploadMission(this.st, items) }
+  async uploadMission(items: MissionItem[], onProgress?: MissionUploadProgressCallback) { return msn.uploadMission(this.st, items, onProgress) }
   async downloadMission() { return msn.downloadMission(this.st) }
   async setCurrentMissionItem(seq: number) { return msn.setCurrentMissionItem(this.st, seq) }
   async clearMission() { return msn.clearMission(this.st) }

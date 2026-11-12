@@ -57,7 +57,7 @@ function makeManager(): SubsManager {
   } as SubsManager;
 }
 
-const toast = () => {};
+const notify = () => {};
 const fullMask = () => new Array(10).fill(0xff);
 const goodReport = (compassId: number, calStatus: number, autosaved = 0) => ({
   compassId, calStatus, autosaved,
@@ -75,7 +75,7 @@ describe("accelerometer terminal STATUSTEXT (ArduPilot)", () => {
   it("completes on the bare 'Calibration successful' (no accel keyword)", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 6, "accel", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 6, "accel", notify, false);
 
     emit("accelPos", { position: 6 });        // last position confirmed
     emit("status", { severity: 6, text: "Calibration successful" });
@@ -88,7 +88,7 @@ describe("accelerometer terminal STATUSTEXT (ArduPilot)", () => {
   it("fails on the bare 'Calibration FAILED'", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 6, "accel", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 6, "accel", notify, false);
 
     emit("status", { severity: 3, text: "Calibration FAILED" });
     expect(get().status).toBe("error");
@@ -97,7 +97,7 @@ describe("accelerometer terminal STATUSTEXT (ArduPilot)", () => {
   it("does not let a compass-named terminal complete the accel cal", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 6, "accel", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 6, "accel", notify, false);
 
     emit("status", { severity: 6, text: "Compass calibration successful" });
     expect(get().status).toBe("in_progress");
@@ -110,7 +110,7 @@ describe("compass MAG_CAL completion + stall (ArduPilot)", () => {
   it("completes to waiting_accept once every compass reports", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", notify, false);
 
     emit("magProgress", { compassId: 0, completionPct: 100, calStatus: 3, completionMask: fullMask() });
     emit("magProgress", { compassId: 1, completionPct: 100, calStatus: 3, completionMask: fullMask() });
@@ -124,7 +124,7 @@ describe("compass MAG_CAL completion + stall (ArduPilot)", () => {
   it("surfaces a failing report immediately as cal_warning (not gated)", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", notify, false);
 
     emit("magProgress", { compassId: 0, completionPct: 100, calStatus: 3, completionMask: fullMask() });
     emit("magReport", goodReport(0, 6)); // BAD_ORIENTATION
@@ -135,7 +135,7 @@ describe("compass MAG_CAL completion + stall (ArduPilot)", () => {
   it("finalizes to waiting_accept when a sibling compass stalls (no infinite loop)", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", notify, false);
 
     emit("magProgress", { compassId: 0, completionPct: 50, calStatus: 2, completionMask: fullMask() });
     emit("magProgress", { compassId: 1, completionPct: 40, calStatus: 2, completionMask: fullMask() });
@@ -153,7 +153,7 @@ describe("compass MAG_CAL completion + stall (ArduPilot)", () => {
   it("errors out when nothing ever reports", () => {
     const { protocol, emit } = makeProtocol();
     const { get, setter } = makeState();
-    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", toast, false);
+    subscribeToCalibrationStatus(makeManager(), protocol, setter, 1, "compass", notify, false);
 
     emit("magProgress", { compassId: 0, completionPct: 30, calStatus: 2, completionMask: fullMask() });
     vi.advanceTimersByTime(31_000);
@@ -179,7 +179,7 @@ describe("PX4 [cal] stall handling", () => {
         activeTypeRef.current = typeof u === "function" ? (u as (p: string | null) => string | null)(activeTypeRef.current) : u;
       }) as React.Dispatch<React.SetStateAction<string | null>>,
     };
-    subscribePx4CalStatus(protocol, activeTypeRef, { current: new Set() }, setters, toast, makeManager());
+    subscribePx4CalStatus(protocol, activeTypeRef, { current: new Set() }, setters, notify, makeManager());
     return { emit, accel };
   }
 

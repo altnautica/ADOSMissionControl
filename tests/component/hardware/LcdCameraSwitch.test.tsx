@@ -173,7 +173,7 @@ describe("LcdCameraSwitch", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "No cameras detected. Plug a CSI or USB camera into the companion board and refresh.",
+          "No cameras detected. Plug a CSI or USB camera into the companion computer and refresh.",
         ),
       ).toBeDefined();
     });

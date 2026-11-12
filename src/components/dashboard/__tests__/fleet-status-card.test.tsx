@@ -39,13 +39,13 @@ describe("FleetStatusCard GPS-denied count", () => {
       ],
     });
     render(<FleetStatusCard />);
-    const label = screen.getByText("GPS-denied");
+    const label = screen.getByText("gpsDenied");
     expect(label.parentElement?.nextElementSibling?.textContent).toBe("1");
   });
 
   it("hides the row when every GPS-denied node is offline", () => {
     setFixtureFleet({ drones: [row("b", "offline", true)] });
     render(<FleetStatusCard />);
-    expect(screen.queryByText("GPS-denied")).toBeNull();
+    expect(screen.queryByText("gpsDenied")).toBeNull();
   });
 });

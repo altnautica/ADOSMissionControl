@@ -97,7 +97,7 @@ describe("skill picker Tweak panel", () => {
     expect(panel.textContent).not.toContain("follow_distance_m");
     expect(panel.textContent).toContain("orbit_rate_dps");
     expect(panel.textContent).toContain("Tweak");
-    expect(screen.getByRole("button", { name: "GO" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
   });
 
@@ -136,7 +136,7 @@ describe("skill picker colours", () => {
     expect(shadow).toMatch(/inset 0 0 0 2px/);
     expect(forms.some((c) => shadow.includes(c)), shadow).toBe(true);
     fireEvent.click(chip);
-    expect(forms).toContain(screen.getByText("ACTIVE").style.color.toLowerCase());
+    expect(forms).toContain(screen.getByText("Active").style.color.toLowerCase());
   });
 
   it("draws no skill ring while no skill runs", () => {

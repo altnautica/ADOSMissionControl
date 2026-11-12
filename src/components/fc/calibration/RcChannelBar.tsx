@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 const RC_PWM_MIN = 800;
@@ -56,16 +57,17 @@ export function RcCalSummaryTable({
   captures: Array<{ min: number; max: number; trim: number }>;
   channelLabels: string[];
 }) {
+  const tm = useTranslations("fcPanels.rcChannelBar");
   return (
     <div className="mb-3 overflow-x-auto">
       <table className="w-full text-[10px] font-mono">
         <thead>
           <tr className="text-text-tertiary">
             <th className="text-left px-1 py-0.5">CH</th>
-            <th className="text-right px-1 py-0.5">Min</th>
-            <th className="text-right px-1 py-0.5">Trim</th>
-            <th className="text-right px-1 py-0.5">Max</th>
-            <th className="text-right px-1 py-0.5">Range</th>
+            <th className="text-right px-1 py-0.5">{tm("min")}</th>
+            <th className="text-right px-1 py-0.5">{tm("trim")}</th>
+            <th className="text-right px-1 py-0.5">{tm("max")}</th>
+            <th className="text-right px-1 py-0.5">{tm("range")}</th>
           </tr>
         </thead>
         <tbody>

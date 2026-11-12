@@ -34,6 +34,7 @@ const STEPS = ["connect", "select", "confirm", "flash"] as const;
 type Step = (typeof STEPS)[number];
 
 export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
+  const tk = useTranslations("fcPanels.firmwareFcWizard");
   const t = useTranslations("flashTool.wizard");
   const [step, setStep] = useState<Step>("connect");
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -249,7 +250,7 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
                   onClick={fw.dismissParamBackup}
                   className="px-3 py-2 text-xs border border-border-default text-text-secondary hover:text-text-primary cursor-pointer transition-colors"
                 >
-                  Dismiss
+                  {tk("dismiss")}
                 </button>
               </div>
               <ParamRestoreDialog

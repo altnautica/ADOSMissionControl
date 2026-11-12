@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useRef, useEffect } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
@@ -85,6 +86,7 @@ interface CorrelationPanelProps {
 }
 
 export function CorrelationPanel({ frames }: CorrelationPanelProps) {
+  const tq = useTranslations("history.correlationPanel");
   const availableFields = useMemo(() => {
     const chans = new Set(frames.map((f) => f.channel));
     return FIELDS.filter((f) => chans.has(f.channel));
@@ -122,7 +124,7 @@ export function CorrelationPanel({ frames }: CorrelationPanelProps) {
     Math.abs(r) > 0.7 ? "text-status-success" : Math.abs(r) > 0.4 ? "text-status-warning" : "text-text-tertiary";
 
   return (
-    <Card title="Correlation" padding={true}>
+    <Card title={tq("correlation")} padding={true}>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <FieldPicker label="X" value={xField} options={availableFields} onChange={setXField} />
@@ -145,7 +147,7 @@ export function CorrelationPanel({ frames }: CorrelationPanelProps) {
         )}
         {xField && yField && xVals.length === 0 && (
           <p className="text-[10px] text-text-tertiary py-4 text-center">
-            No overlapping samples. Try fields recorded at similar rates.
+            {tq("noOverlappingSamplesTryFields")}
           </p>
         )}
       </div>

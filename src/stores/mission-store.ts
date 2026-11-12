@@ -83,6 +83,14 @@ export interface MissionStoreState {
   /** The flight controller's or transport's reason for the last failed
    *  upload; null when the last upload succeeded or none has failed. */
   uploadError: string | null;
+  /** How the last failed upload ended as a code the UI puts into words
+   *  (`missionResultKey`): the vehicle's MAV_MISSION_RESULT or a transfer
+   *  outcome. Null when `uploadError` is already operator text (the upload
+   *  was refused before anything was sent) or nothing failed. */
+  uploadErrorCode: number | null;
+  /** Items the vehicle has taken during the running upload, out of the total;
+   *  null before the first upload starts. */
+  uploadProgress: { sent: number; total: number } | null;
   downloadState: "idle" | "downloading" | "downloaded" | "error";
   /** Why the last download failed; null when it did not. */
   downloadError: string | null;
@@ -168,6 +176,8 @@ export const useMissionStore = create<MissionStoreState>()(
   currentWaypoint: null,
   uploadState: "idle",
   uploadError: null,
+  uploadErrorCode: null,
+  uploadProgress: null,
   downloadState: "idle",
   downloadError: null,
   downloadWarnings: [],

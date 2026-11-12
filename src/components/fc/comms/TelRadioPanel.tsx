@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -11,8 +12,8 @@ import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
-import { Button } from "@/components/ui/button";
-import { Radio, Save, HardDrive, Signal } from "lucide-react";
+
+import { Radio, Save, Signal } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
@@ -21,10 +22,13 @@ import {
 } from "./telradio-helpers";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 /** PX4 has no SERIALn_* or SYSID_* parameters (it uses MAV_n_* and MAV_SYS_ID). */
 const NO_PARAMS: string[] = [];
 
 export function TelRadioPanel() {
+  const tr = useTranslations("fcPanels.telRadioPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { label: pl } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -47,7 +51,7 @@ export function TelRadioPanel() {
     autoLoad: true,
   });
   useUnsavedGuard(dirtyParams.size > 0);
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
@@ -93,8 +97,8 @@ export function TelRadioPanel() {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Telemetry Radio"
-            subtitle="Radio link status and serial port config"
+            title={tr("telemetryRadio")}
+            subtitle={tr("radioLinkStatusAndSerial")}
             icon={<Radio size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -105,16 +109,16 @@ export function TelRadioPanel() {
           />
 
           {/* Link Status */}
-          <FcSection icon={<Signal size={14} />} title="Link Status" description="Live RADIO_STATUS telemetry">
+          <FcSection icon={<Signal size={14} />} title={tr("linkStatus")} description={tr("liveRADIOSTATUSTelemetry")}>
             {latestRadio ? (
               <div className="space-y-3">
-                <RssiBar label="Local RSSI" value={latestRadio.rssi} />
-                <RssiBar label="Remote RSSI" value={latestRadio.remrssi} />
+                <RssiBar label={tr("localRSSI")} value={latestRadio.rssi} />
+                <RssiBar label={tr("remoteRSSI")} value={latestRadio.remrssi} />
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
-                  <LiveStat label="TX Buffer" value={`${latestRadio.txbuf}`} unit="%" />
-                  <LiveStat label="Noise (device scale)" value={radioLevel(latestRadio.noise)} unit="" />
-                  <LiveStat label="RX Errors" value={`${latestRadio.rxerrors}`} unit="" />
-                  <LiveStat label="Fixed" value={`${latestRadio.fixed}`} unit="" />
+                  <LiveStat label={tr("txBuffer")} value={`${latestRadio.txbuf}`} unit="%" />
+                  <LiveStat label={tr("noiseDeviceScale")} value={radioLevel(latestRadio.noise)} unit="" />
+                  <LiveStat label={tr("rxErrors")} value={`${latestRadio.rxerrors}`} unit="" />
+                  <LiveStat label={tr("fixed")} value={`${latestRadio.fixed}`} unit="" />
                 </div>
                 <div className="text-[10px] text-text-tertiary">
                   Remote noise (device scale): {radioLevel(latestRadio.remnoise)}
@@ -130,27 +134,27 @@ export function TelRadioPanel() {
           {!isPx4 && (
             <>
               {/* Serial Port Config */}
-              <FcSection icon={<Radio size={14} />} title="Serial Port Configuration" description="Protocol and baud rate for telemetry ports">
+              <FcSection icon={<Radio size={14} />} title={tr("serialPortConfiguration")} description={tr("protocolAndBaudRateFor")}>
                 <div className="space-y-4">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">SERIAL1 (TELEM1)</span>
                     <div className="mt-2 space-y-2">
-                      {enumField("SERIAL1_PROTOCOL", "Protocol")}
-                      {enumField("SERIAL1_BAUD", "Baud Rate")}
+                      {enumField("SERIAL1_PROTOCOL", tr("protocol"))}
+                      {enumField("SERIAL1_BAUD", tr("baudRate"))}
                     </div>
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">SERIAL2 (TELEM2)</span>
                     <div className="mt-2 space-y-2">
-                      {enumField("SERIAL2_PROTOCOL", "Protocol")}
-                      {enumField("SERIAL2_BAUD", "Baud Rate")}
+                      {enumField("SERIAL2_PROTOCOL", tr("protocol"))}
+                      {enumField("SERIAL2_BAUD", tr("baudRate"))}
                     </div>
                   </div>
                 </div>
               </FcSection>
 
               {/* System ID */}
-              <FcSection icon={<Radio size={14} />} title="System Identification" description="MAVLink system and GCS IDs for multi-vehicle setups">
+              <FcSection icon={<Radio size={14} />} title={tr("systemIdentification")} description={tr("mavlinkSystemAndGCSIDs")}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {idField("SYSID_THISMAV", "Vehicle System ID")}
                   {idField("SYSID_MYGCS", "GCS System ID")}
@@ -163,34 +167,16 @@ export function TelRadioPanel() {
           )}
 
           {/* Save */}
-          <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<Save size={14} />}
-              disabled={!hasDirty || !connected}
-              loading={saving}
-              onClick={handleSave}
-            >
-              Save to Flight Controller
-            </Button>
-            {hasRamWrites && (
-              <Button
-                variant="secondary"
-                size="lg"
-                icon={<HardDrive size={14} />}
-                onClick={handleFlash}
-              >
-                Write to Flash
-              </Button>
-            )}
-            {!connected && (
-              <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>
-            )}
-            {hasDirty && connected && (
-              <span className="text-[10px] text-status-warning">Unsaved changes</span>
-            )}
-          </div>
+          <PanelSaveBar
+            onSave={handleSave}
+            saving={saving}
+            saveDisabled={!hasDirty || !connected}
+            showFlash={hasRamWrites}
+            onFlash={handleFlash}
+            flashing={flashing}
+            showConnectHint={!connected}
+            showUnsavedHint={hasDirty && connected}
+          />
         </div>
       </div>
     </ArmedWarningBanner>

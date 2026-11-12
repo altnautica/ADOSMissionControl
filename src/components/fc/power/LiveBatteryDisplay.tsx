@@ -14,6 +14,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Battery, Thermometer, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ function LiveStat({ label, value, unit }: { label: string; value: string; unit: 
 }
 
 export function LiveBatteryDisplay() {
+  const tm = useTranslations("fcPanels.liveBatteryDisplay");
   const battery = useFreshTelemetry("battery");
   const droneId = useDroneManager((s) => s.selectedDroneId);
   const knownCellCount = useKnownCellCount(droneId, battery?.cellCount);
@@ -77,7 +79,7 @@ export function LiveBatteryDisplay() {
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-center gap-2 mb-3">
         <Battery size={14} className="text-accent-primary" />
-        <h2 className="text-sm font-medium text-text-primary">Live Battery</h2>
+        <h2 className="text-sm font-medium text-text-primary">{tm("liveBattery")}</h2>
         {battery && cellCount !== null && (
           <span className="text-[10px] font-mono text-text-tertiary ml-auto">
             {cellCount}S
@@ -87,22 +89,22 @@ export function LiveBatteryDisplay() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <LiveStat
-          label="Voltage"
+          label={tm("voltage")}
           value={battery ? battery.voltage.toFixed(2) : NOT_MEASURED}
           unit="V"
         />
         <LiveStat
-          label="Current"
+          label={tm("current")}
           value={battery?.current !== undefined ? battery.current.toFixed(1) : NOT_MEASURED}
           unit="A"
         />
         <LiveStat
-          label="Remaining"
+          label={tm("remaining")}
           value={remaining !== null ? `${Math.round(remaining)}` : NOT_MEASURED}
           unit="%"
         />
         <LiveStat
-          label="Consumed"
+          label={tm("consumed")}
           value={battery?.consumed !== undefined ? Math.round(battery.consumed).toString() : NOT_MEASURED}
           unit="mAh"
         />
@@ -128,7 +130,7 @@ export function LiveBatteryDisplay() {
 
       {cells && (
         <div>
-          <span className="text-[10px] text-text-tertiary mb-1.5 block">Cell Voltages</span>
+          <span className="text-[10px] text-text-tertiary mb-1.5 block">{tm("cellVoltages")}</span>
           <div className="flex gap-1.5">
             {cells.map((cv, i) => (
               <div key={i} className="flex-1">
@@ -167,7 +169,7 @@ export function LiveBatteryDisplay() {
       )}
 
       {!battery && (
-        <p className="text-[10px] text-text-tertiary">No live battery data from the flight controller</p>
+        <p className="text-[10px] text-text-tertiary">{tm("noLiveBatteryDataFrom")}</p>
       )}
     </div>
   );

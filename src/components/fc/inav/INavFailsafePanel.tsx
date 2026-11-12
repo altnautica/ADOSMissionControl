@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -40,6 +41,7 @@ const readFailsafe = (p: DroneProtocol) => readSettingGroup(p.settings!, SPECS);
 const writeFailsafe = (p: DroneProtocol, g: SettingGroup<FailsafeKey>) => writeSettingGroup(p.settings!, SPECS, g);
 
 export function INavFailsafePanel() {
+  const tr = useTranslations("fcPanels.iNavFailsafePanel");
   const {
     values: group, setValues, loading, error, hasLoaded, dirty,
     connected, isArmed, lockMessage, read, write,
@@ -60,8 +62,8 @@ export function INavFailsafePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="iNav Failsafe"
-          subtitle="What the FC does when the RC link is lost"
+          title={tr("inavFailsafe")}
+          subtitle={tr("whatTheFCDoesWhen")}
           icon={<ShieldAlert size={16} />}
           loading={loading}
           loadProgress={null}
@@ -80,33 +82,33 @@ export function INavFailsafePanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={write}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
         {hasLoaded && (
           <div className="space-y-3">
             <Select
-              label="Failsafe procedure"
+              label={tr("failsafeProcedure")}
               options={enumOptionsFor(FAILSAFE_PROCEDURE_OPTIONS, group.values.procedure)}
               value={String(group.values.procedure)}
               onChange={(v) => update("procedure", parseInt(v))}
             />
             <SettingNumberField
-              label="Min distance (cm)"
+              label={tr("minDistanceCm")}
               value={group.values.minDistance}
               range={group.ranges.minDistance}
               onChange={(v) => update("minDistance", v)}
             />
             <Select
-              label="Procedure inside min distance"
+              label={tr("procedureInsideMinDistance")}
               options={enumOptionsFor(FAILSAFE_PROCEDURE_OPTIONS, group.values.minDistanceProcedure)}
               value={String(group.values.minDistanceProcedure)}
               onChange={(v) => update("minDistanceProcedure", parseInt(v))}

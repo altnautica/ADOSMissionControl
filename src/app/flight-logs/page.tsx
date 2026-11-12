@@ -9,40 +9,20 @@ import { LogFilter, useLogFilter } from "@/components/flight-logs/LogFilter";
 import { LogTable, useListLayout } from "@/components/flight-logs/LogTable";
 import { LogDetail, LogReplayView, useReplay } from "@/components/flight-logs/LogDetail";
 import { useHistoryStore } from "@/stores/history-store";
-import { useDemoMode } from "@/hooks/use-demo-mode";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useTranslations } from "next-intl";
 import type { FlightRecord } from "@/lib/types";
 
+/** The flight a link asked to open (`/flight-logs?flight=<id>`), if any. */
+function requestedFlightId(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("flight");
+}
+
 export default function FlightHistoryPage() {
   const t = useTranslations("history");
-  // Stored history is loaded by the root LocalStoreHydrator. In demo mode,
-  // wipe persisted history and re-seed from the curated dataset. Demo
-  // records are filtered out of persistToIDB so they never reach IDB.
-  const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
-  const resetDemoData = useHistoryStore((s) => s.resetDemoData);
-  const demo = useDemoMode();
-
-  useEffect(() => {
-    if (!demo) return;
-
-    let cancelled = false;
-    void (async () => {
-      const mod = await import("@/mock/history");
-      const { seedDemoHistory, seedDemoTelemetryRecordings } = mod;
-
-      await resetDemoData();
-      if (cancelled) return;
-
-      const records = seedDemoHistory();
-      await seedDemoTelemetryRecordings(records);
-      if (cancelled) return;
-      initWithSeedData(records);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [demo, initWithSeedData, resetDemoData]);
+  // Stored history, and the demo history in demo mode, are loaded by the
+  // root LocalStoreHydrator so every view reads the same records.
 
   const allRecords = useHistoryStore((s) => s.records);
   const filter = useLogFilter(allRecords);
@@ -51,10 +31,14 @@ export default function FlightHistoryPage() {
   // Selection state (multi-select)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastClickedRef = useRef<string | null>(null);
+  // The Delete key asks before moving the selection to the trash.
+  const [trashConfirmOpen, setTrashConfirmOpen] = useState(false);
 
   // Detail panel selection: keep only the id and read the live record, so
   // every edit (sign, media, notes, analysis) is seen by the open panel.
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A drone's Flights tab links here with `?flight=<id>`; the panel opens
+  // once that record is in the store.
+  const [selectedId, setSelectedId] = useState<string | null>(requestedFlightId);
   const selectedRecord = useHistoryStore((s) =>
     selectedId ? (s.records.find((r) => r.id === selectedId) ?? null) : null,
   );
@@ -67,6 +51,8 @@ export default function FlightHistoryPage() {
   // keyboard shortcuts for the history page
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // The confirm dialog owns the keyboard while it is open.
+      if (trashConfirmOpen) return;
       // Don't capture when typing in an input/textarea
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -89,17 +75,21 @@ export default function FlightHistoryPage() {
       if ((e.key === "Delete" || e.key === "Backspace") && !filter.showTrash) {
         if (selectedIds.size > 0 && !e.metaKey) {
           e.preventDefault();
-          if (!window.confirm(t("moveToTrashConfirm", { count: selectedIds.size }))) return;
-          const store = useHistoryStore.getState();
-          for (const id of selectedIds) store.removeRecord(id);
-          void store.persistToIDB();
-          setSelectedIds(new Set());
+          setTrashConfirmOpen(true);
         }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedRecord, selectedIds, filter, t]);
+  }, [selectedRecord, selectedIds, filter, trashConfirmOpen]);
+
+  const confirmMoveToTrash = useCallback(() => {
+    const store = useHistoryStore.getState();
+    for (const id of selectedIds) store.removeRecord(id);
+    void store.persistToIDB();
+    setSelectedIds(new Set());
+    setTrashConfirmOpen(false);
+  }, [selectedIds]);
 
   // Shift-click selects every visible row between the last clicked row and
   // this one, in the table's current sort/filter order.
@@ -194,6 +184,8 @@ export default function FlightHistoryPage() {
               onResizeStart={layout.handleResizeStart}
               onResizeMove={layout.handleResizeMove}
               onResizeEnd={layout.handleResizeEnd}
+              trashMode={filter.showTrash}
+              onResetFilters={handleResetAll}
             />
 
             {selectedRecord && (
@@ -215,6 +207,15 @@ export default function FlightHistoryPage() {
         onClearSelection={() => setSelectedIds(new Set())}
         onSelect={setSelectedIds}
         trashMode={filter.showTrash}
+      />
+      <ConfirmDialog
+        open={trashConfirmOpen}
+        variant="danger"
+        title={t("moveToTrashTitle")}
+        message={t("moveToTrashConfirm", { count: selectedIds.size })}
+        confirmLabel={t("moveToTrashTitle")}
+        onConfirm={confirmMoveToTrash}
+        onCancel={() => setTrashConfirmOpen(false)}
       />
     </div>
   );

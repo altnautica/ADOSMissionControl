@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Gamepad2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ const RC_RSSI_UNKNOWN = 255;
 const RC_RSSI_MAX = 254;
 
 export function RcInputCard({ className }: RcInputCardProps) {
+  const tq = useTranslations("command.rcInputCard");
   useTelemetryStore((s) => s._version);
   const rc = useTelemetryStore((s) => s.rc);
   // The ring buffer keeps its last sample when the link dies, so the bars are
@@ -46,10 +48,10 @@ export function RcInputCard({ className }: RcInputCardProps) {
       <div className="flex items-center gap-1.5 mb-2">
         <Gamepad2 className="w-3.5 h-3.5 text-text-tertiary" />
         <span className="text-xs font-medium text-text-secondary">
-          RC Input
+          {tq("rcInput")}
         </span>
         {stale && (
-          <span className="ml-auto text-[10px] text-status-warning">Stale</span>
+          <span className="ml-auto text-[10px] text-status-warning">{tq("stale")}</span>
         )}
       </div>
 
@@ -91,7 +93,7 @@ export function RcInputCard({ className }: RcInputCardProps) {
         {expanded ? (
           <>
             <ChevronUp className="w-3 h-3" />
-            Show less
+            {tq("showLess")}
           </>
         ) : (
           <>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -34,6 +35,7 @@ function getCommandName(cmd: number): string {
 }
 
 export function CommandQueuePanel() {
+  const tq = useTranslations("diagnostics.commandQueuePanel");
   const snapshot = useDiagnosticsStore((s) => s.commandQueueSnapshot);
   const updateSnapshot = useDiagnosticsStore((s) => s.updateCommandQueueSnapshot);
   const protocol = useDroneManager(selectSelectedProtocol);
@@ -73,7 +75,7 @@ export function CommandQueuePanel() {
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <ListOrdered size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Command Queue</span>
+        <span className="text-xs font-semibold text-text-primary">{tq("commandQueue")}</span>
         <span className="text-[10px] text-text-tertiary font-mono">
           {snapshot.pendingCount} pending
         </span>
@@ -83,7 +85,7 @@ export function CommandQueuePanel() {
         {/* Pending queue entries */}
         {snapshot.entries.length === 0 ? (
           <div className="text-center py-6">
-            <span className="text-[10px] text-text-tertiary">No pending commands</span>
+            <span className="text-[10px] text-text-tertiary">{tq("noPendingCommands")}</span>
           </div>
         ) : (
           <div className="space-y-1">

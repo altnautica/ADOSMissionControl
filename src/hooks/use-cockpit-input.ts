@@ -28,6 +28,7 @@ import { isDemoMode } from "@/lib/utils";
 import { useCockpitLayersStore } from "@/stores/cockpit-layers-store";
 import { useCockpitViewStore } from "@/lib/cockpit/views";
 import { pilotStreamOpen, requestPilotAction } from "@/lib/input/pilot-stream";
+import { useUiStore } from "@/stores/ui-store";
 
 interface CockpitInputOptions {
   /** The drone whose cockpit this is. */
@@ -52,6 +53,20 @@ function inputOwnedElsewhere(): boolean {
   );
 }
 
+/**
+ * True when a key press belongs to the cockpit: in full screen always;
+ * embedded in the Flight tab only while focus is nowhere in particular (the
+ * page body) or inside the flight screen. Focus on the fleet list, the tab
+ * strip or any other shell control keeps the cockpit's keys away from it.
+ */
+export function cockpitOwnsKeyboard(): boolean {
+  if (useUiStore.getState().immersiveMode) return true;
+  if (typeof document === "undefined") return true;
+  const active = document.activeElement;
+  if (active === null || active === document.body) return true;
+  return active.closest(".ados-cockpit.flight-screen") !== null;
+}
+
 export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions): void {
   // Ctrl/Cmd+K toggles the command palette. Not gated on the skill layer: the
   // palette is how an operator discovers the skills they could turn on.
@@ -73,7 +88,7 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
   // A confirm or a dialog opened from the editor handles its own Escape.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || !cockpitOwnsKeyboard()) return;
       if (useSkillConfirmStore.getState().pending !== null) return;
       if (
         e.target instanceof Element &&
@@ -102,7 +117,7 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     if (!cockpitEnabled) return;
     const handler = (e: KeyboardEvent) => {
       if (e.code !== "Comma" || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
-      if (isTextTarget(e.target)) return;
+      if (isTextTarget(e.target) || !cockpitOwnsKeyboard()) return;
       if (useSkillConfirmStore.getState().pending !== null) return;
       if (useSkillInputStore.getState().editorOpen) return;
       e.preventDefault();
@@ -119,7 +134,7 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     if (!droneId) return;
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-      if (isTextTarget(e.target) || inputOwnedElsewhere()) return;
+      if (isTextTarget(e.target) || inputOwnedElsewhere() || !cockpitOwnsKeyboard()) return;
       const vs = useVideoStreamsStore.getState();
       const streams = vs.streamsByDrone[droneId] ?? [];
       if (streams.length <= 1) return;
@@ -149,7 +164,7 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     if (!droneId) return;
     const handler = (e: KeyboardEvent) => {
       if (e.code !== "KeyP" || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-      if (isTextTarget(e.target) || inputOwnedElsewhere()) return;
+      if (isTextTarget(e.target) || inputOwnedElsewhere() || !cockpitOwnsKeyboard()) return;
       const st = useVideoStreamsStore.getState();
       const streams = st.streamsByDrone[droneId] ?? [];
       const concurrent = streams.filter((s) => s.kind === "concurrent");
@@ -177,7 +192,7 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
       if (e.code !== "KeyO" && e.code !== "KeyV") return;
-      if (isTextTarget(e.target) || inputOwnedElsewhere()) return;
+      if (isTextTarget(e.target) || inputOwnedElsewhere() || !cockpitOwnsKeyboard()) return;
       e.preventDefault();
       if (e.code === "KeyO") useCockpitLayersStore.getState().cycleLevel(droneId);
       else useCockpitViewStore.getState().cycleView(droneId);
@@ -193,7 +208,7 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
       const profile = profiles[e.code as keyof typeof profiles];
-      if (!profile || isTextTarget(e.target) || inputOwnedElsewhere()) return;
+      if (!profile || isTextTarget(e.target) || inputOwnedElsewhere() || !cockpitOwnsKeyboard()) return;
       if (!pilotStreamOpen(droneId)) return;
       e.preventDefault();
       void requestPilotAction(`profile:${profile}`);

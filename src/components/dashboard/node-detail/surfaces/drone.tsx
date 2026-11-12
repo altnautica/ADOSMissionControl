@@ -3,18 +3,12 @@
  * @description Surfaces for a drone (flight-controller) node, in two tiers.
  *
  * A **Status** band answers "how is this node" — Overview (the node home:
- * identity, reach, health, the companion band, per-node actions), Flight (the
- * single live-telemetry + map surface), Cockpit (full-bleed piloting) and,
- * with a companion agent, Map (the companion's local map and its status).
+ * identity, reach, health, the companion band, the vehicle readouts and
+ * per-node actions), Flight (the embedded piloting cockpit) and, with a
+ * companion agent, Map (the companion's local map and its status).
  * A **Vehicle** band answers "how is this aircraft set up" — Setup, Parameters
  * and, when the node advertises a CRSF lane, RC/ELRS. Logs and the Agent page
  * follow ungrouped.
- *
- * The division of labour between Overview and Flight is deliberate and load
- * bearing: every LIVE reading lives on Flight, and Overview carries none of
- * them. The two used to answer the same question from different sources with
- * different freshness gating, so the same battery read three ways across two
- * adjacent tabs.
  * @license GPL-3.0-only
  */
 
@@ -32,9 +26,6 @@ import { AGENT_SURFACE } from "../agent/agent-surface";
 // cockpit, parameter table and configure pages are each heavy.
 const DroneOverview = dynamic(() =>
   import("@/components/command/overview/DroneOverview").then((m) => m.DroneOverview),
-);
-const DroneOverviewTab = dynamic(() =>
-  import("@/components/drone-detail/DroneOverviewTab").then((m) => m.DroneOverviewTab),
 );
 const CockpitView = dynamic(() =>
   import("@/components/cockpit/CockpitView").then((m) => m.CockpitView),
@@ -58,32 +49,21 @@ const DroneMapTab = dynamic(() =>
 export const DRONE_SURFACES: SurfaceSpec[] = [
   {
     // The node home: identity, reach, health, the companion band and the
-    // per-node actions. Carries no live telemetry — that is Flight's job.
+    // per-node actions, plus the vehicle readouts and status text below the
+    // FC band. Live piloting lives on Flight.
     id: "overview",
     labelKey: "dronePanel.overview",
     group: STATUS_GROUP,
     render: (ctx) => <DroneOverview ctx={ctx} />,
   },
   {
-    // The single live-telemetry surface: instruments, the vehicle readouts and
-    // the map. When this node has no CRSF lane of its own it also carries the
-    // one RC channel card, so RC state has exactly one home either way.
-    id: "flight",
-    labelKey: "dronePanel.flight",
-    group: STATUS_GROUP,
-    render: (ctx) => (
-      <DroneOverviewTab
-        drone={ctx.drone}
-        showRcCard={ctx.crsfPresent !== "present"}
-      />
-    ),
-  },
-  {
-    // The immersive piloting cockpit (video + HUD + skill bar). Shown for every
-    // drone; an FC-only drone with no video renders the OSD/telemetry over a
-    // "no signal" state. "Immersive" collapses the dashboard chrome in place.
+    // Flight: the piloting cockpit (video + HUD + skill bar), embedded in the
+    // tab and taken full screen from its own top bar. Shown for every drone;
+    // an FC-only drone with no video renders the OSD/telemetry over a "no
+    // signal" state. The id stays `cockpit`, so every entry point that opens
+    // the cockpit lands here.
     id: "cockpit",
-    labelKey: "dronePanel.cockpit",
+    labelKey: "dronePanel.flight",
     group: STATUS_GROUP,
     render: (ctx) => <CockpitView droneId={ctx.droneId} />,
   },

@@ -25,7 +25,8 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast, type FlashCommitOutcome } from "@/hooks/use-flash-commit-toast";
 import type { PanelParamActions } from "@/hooks/use-panel-params-types";
@@ -46,6 +47,8 @@ export interface ParamPanelActionsOptions {
 export interface ParamPanelActions {
   /** True while the save-all-to-RAM round-trip is in flight. */
   saving: boolean;
+  /** True while a flash commit is in flight; another `flash()` meanwhile joins it. */
+  flashing: boolean;
   /**
    * Save every dirty parameter to RAM and surface a toast for the result.
    * Returns true when every param wrote successfully.
@@ -65,10 +68,6 @@ export interface ParamPanelActions {
 
 type ActionSource = Pick<PanelParamActions, "saveAllToRam" | "commitToFlash" | "revertAll">;
 
-const DEFAULT_SUCCESS = "Saved to flight controller";
-const DEFAULT_WARNING = "Some parameters failed to save";
-const DEFAULT_REVERT = "Reverted to FC values";
-
 export function useParamPanelActions(
   params: ActionSource,
   options: ParamPanelActionsOptions = {},
@@ -76,36 +75,51 @@ export function useParamPanelActions(
   const { saveAllToRam, commitToFlash, revertAll } = params;
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("panelCommit");
   const [saving, setSaving] = useState(false);
+  const [flashing, setFlashing] = useState(false);
+  const inFlightFlash = useRef<Promise<FlashCommitOutcome> | null>(null);
 
   const save = useCallback(async (): Promise<boolean> => {
     setSaving(true);
     try {
       const ok = await saveAllToRam();
       if (ok) {
-        toast(options.successMessage ?? DEFAULT_SUCCESS, "success");
+        toast(options.successMessage ?? t("saved"), "success");
       } else {
-        toast(options.warningMessage ?? DEFAULT_WARNING, "warning");
+        toast(options.warningMessage ?? t("partialSave"), "warning");
       }
       return ok;
     } finally {
       setSaving(false);
     }
-  }, [saveAllToRam, toast, options.successMessage, options.warningMessage]);
+  }, [saveAllToRam, toast, t, options.successMessage, options.warningMessage]);
 
-  const flash = useCallback(async (): Promise<FlashCommitOutcome> => {
-    const outcome = await commitToFlash();
-    showFlashResult(outcome, {
-      successMessage: options.flashSuccessMessage,
-      errorMessage: options.flashErrorMessage,
-    });
-    return outcome;
+  const flash = useCallback((): Promise<FlashCommitOutcome> => {
+    // A press while a commit is in flight joins it instead of sending a second one.
+    if (inFlightFlash.current) return inFlightFlash.current;
+    setFlashing(true);
+    const run = (async () => {
+      try {
+        const outcome = await commitToFlash();
+        showFlashResult(outcome, {
+          successMessage: options.flashSuccessMessage,
+          errorMessage: options.flashErrorMessage,
+        });
+        return outcome;
+      } finally {
+        inFlightFlash.current = null;
+        setFlashing(false);
+      }
+    })();
+    inFlightFlash.current = run;
+    return run;
   }, [commitToFlash, showFlashResult, options.flashSuccessMessage, options.flashErrorMessage]);
 
   const revert = useCallback(() => {
     revertAll();
-    toast(options.revertMessage ?? DEFAULT_REVERT, "info");
-  }, [revertAll, toast, options.revertMessage]);
+    toast(options.revertMessage ?? t("reverted"), "info");
+  }, [revertAll, toast, t, options.revertMessage]);
 
-  return { saving, save, flash, revert };
+  return { saving, flashing, save, flash, revert };
 }

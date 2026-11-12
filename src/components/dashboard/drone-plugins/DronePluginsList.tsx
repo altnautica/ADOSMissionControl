@@ -226,7 +226,13 @@ export function DronePluginsList({
       className={className}
       revocationPending={revocationPending}
       revocationLabel={t("revocationPending")}
-      failureLabel={(reason) => t("failureReason", { reason })}
+      failureLabel={(reason) =>
+        reason.startsWith("tampered")
+          ? t("failureTampered")
+          : reason.startsWith("signer_revoked")
+            ? t("failureSignerRevoked")
+            : t("failureReason", { reason })
+      }
     />
   );
 }
@@ -306,7 +312,7 @@ function PluginCardList({
           {c.failureReason && (
             <p
               data-testid="plugin-failure-reason"
-              className="mt-1 break-words font-mono text-[10px] text-status-error"
+              className="mt-1 break-words text-[11px] text-status-error"
             >
               {failureLabel(c.failureReason)}
             </p>

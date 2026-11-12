@@ -151,6 +151,7 @@ function Toolbar({
   category: CategoryFilter;
   setCategory: (v: CategoryFilter) => void;
 }) {
+  const tq = useTranslations("dashboard.registryCatalogBrowser");
   const t = useTranslations("pluginRegistry.browse");
   return (
     <div className="space-y-2">
@@ -168,7 +169,7 @@ function Toolbar({
           aria-label={t("searchPlaceholder")}
         />
       </div>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={tq("filter")}>
         <CategoryChip
           active={category === "all"}
           onClick={() => setCategory("all")}

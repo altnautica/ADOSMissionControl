@@ -23,7 +23,9 @@
 
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import type { PluginLocaleBundle } from "@/lib/plugins/plugin-locale";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
@@ -48,6 +50,15 @@ interface ParameterControlProps {
    * picker routes its engine-wide write to this drone's agent (local-first).
    * Required for the model widgets; ignored by all other widgets. */
   droneId?: string;
+  /** The plugin's own locale bundle. Manifest labels, help and enum options
+   * are keys into it (`settings.followMode`, `follow_mode.orbit`); a key with
+   * no entry shows as written. */
+  strings?: PluginLocaleBundle;
+}
+
+/** A manifest string read through the plugin's locale bundle. */
+function pluginString(strings: PluginLocaleBundle | undefined, key: string): string {
+  return strings && Object.prototype.hasOwnProperty.call(strings, key) ? strings[key] : key;
 }
 
 /** Shared input styling matching the repo's text-input primitive. */
@@ -94,11 +105,13 @@ export function ParameterControl({
   disabled = false,
   onCommit,
   droneId,
+  strings,
 }: ParameterControlProps) {
+  const t = useTranslations("plugins.parameters");
   const { schema, ui } = param;
   const widget = inferWidget(schema, ui);
-  const label = ui?.label ?? param.key;
-  const help = ui?.help;
+  const label = pluginString(strings, ui?.label ?? param.key);
+  const help = ui?.help ? pluginString(strings, ui.help) : undefined;
   const inputId = useId();
 
   // Local editing state for the free-text widgets (number/string) and the
@@ -121,19 +134,19 @@ export function ParameterControl({
     (raw: string) => {
       const parsed = Number(raw);
       if (raw.trim() === "" || !Number.isFinite(parsed)) {
-        setError("Enter a number");
+        setError(t("enterNumber"));
         setText(String(value));
         return;
       }
       const clamped = clampValue(schema, parsed);
       if (typeof clamped !== "number") {
-        setError("Invalid value");
+        setError(t("invalidValue"));
         setText(String(value));
         return;
       }
       const check = validateValue(schema, clamped);
       if (!check.ok) {
-        setError(check.error ?? "Invalid value");
+        setError(check.error ?? t("invalidValue"));
         setText(String(value));
         return;
       }
@@ -144,21 +157,21 @@ export function ParameterControl({
       if (clamped === value) return;
       onCommit(clamped);
     },
-    [schema, value, onCommit],
+    [schema, value, onCommit, t],
   );
 
   const commitString = useCallback(
     (raw: string) => {
       const check = validateValue(schema, raw);
       if (!check.ok) {
-        setError(check.error ?? "Invalid value");
+        setError(check.error ?? t("invalidValue"));
         return;
       }
       setError(null);
       if (raw === value) return;
       onCommit(raw);
     },
-    [schema, value, onCommit],
+    [schema, value, onCommit, t],
   );
 
   const commitRange = useCallback(() => {
@@ -238,7 +251,12 @@ export function ParameterControl({
 
   if (widget === "enum") {
     const enumVals = schema.enum ?? [];
-    const options = enumVals.map((e) => ({ value: String(e), label: String(e) }));
+    // An option's word is `<key>.<value>` in the plugin bundle.
+    const options = enumVals.map((e) => {
+      const optionKey = `${param.key}.${String(e)}`;
+      const word = pluginString(strings, optionKey);
+      return { value: String(e), label: word === optionKey ? String(e) : word };
+    });
     const onEnumChange = (next: string) => {
       const match = enumVals.find((e) => String(e) === next);
       if (match === undefined) return;
@@ -399,6 +417,7 @@ function CameraParameterControl({
   droneId?: string;
   onCommit: (value: ParameterValue) => void;
 }) {
+  const t = useTranslations("plugins.parameters");
   const roster = useCameraRoster(droneId);
   const cameras = [...(roster ?? [])].sort((a, b) => {
     const am = purpose && a.purpose.includes(purpose) ? 0 : 1;
@@ -406,7 +425,7 @@ function CameraParameterControl({
     return am - bm;
   });
   const options = [
-    { value: "auto", label: purpose ? `Auto (first ${purpose} camera)` : "Auto" },
+    { value: "auto", label: purpose ? t("cameraAutoPurpose", { purpose }) : t("cameraAuto") },
     ...cameras.map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.id})` : c.id })),
   ];
   if (!options.some((o) => o.value === value)) {
@@ -414,9 +433,9 @@ function CameraParameterControl({
   }
   const note =
     roster === null
-      ? "Camera list unavailable: this node's roster could not be read"
+      ? t("cameraListUnavailable")
       : roster === undefined
-        ? "Loading cameras…"
+        ? t("loadingCameras")
         : help;
   return (
     <div className="flex flex-col gap-1">

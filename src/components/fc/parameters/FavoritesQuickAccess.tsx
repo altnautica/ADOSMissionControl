@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { ParameterGrid } from "./ParameterGrid";
 import { ChevronDown, ChevronRight, Star } from "lucide-react";
@@ -22,6 +23,7 @@ export function FavoritesQuickAccess({
   metadata: Map<string, ParamMetadata>;
   columnVisibility: ParamColumnVisibility;
 }) {
+  const tk = useTranslations("fcPanels.favoritesQuickAccess");
   const [open, setOpen] = useState(true);
   const favSet = useMemo(() => new Set(favoriteParams), [favoriteParams]);
   const favParams = useMemo(
@@ -40,7 +42,7 @@ export function FavoritesQuickAccess({
         {open ? <ChevronDown size={10} className="text-text-tertiary" /> : <ChevronRight size={10} className="text-text-tertiary" />}
         <Star size={10} className="text-status-warning" fill="currentColor" />
         <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
-          Favorites
+          {tk("favorites")}
         </span>
         <span className="text-[10px] text-text-tertiary font-mono">({favParams.length})</span>
       </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Search, GripVertical, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface BfOsdElementListProps {
 export function BfOsdElementList({
   elements, activeProfile, selectedId, onSelectElement, onToggleVisibility, onResetAll,
 }: BfOsdElementListProps) {
+  const tr = useTranslations("fcPanels.bfOsdElementList");
   const [searchFilter, setSearchFilter] = useState("");
 
   const filteredElements = useMemo(() => {
@@ -41,7 +43,7 @@ export function BfOsdElementList({
         />
         <input
           type="text"
-          placeholder="Filter elements..."
+          placeholder={tr("filterElements")}
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
           className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs text-text-primary
@@ -111,7 +113,7 @@ export function BfOsdElementList({
         onClick={onResetAll}
         className="w-full"
       >
-        Reset All
+        {tr("resetAll")}
       </Button>
     </div>
   );

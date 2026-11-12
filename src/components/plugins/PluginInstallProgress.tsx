@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, X, Loader2, AlertCircle, Minus } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -59,6 +60,7 @@ interface ProgressState {
 const DEMO_TICK_MS = 600;
 
 export function PluginInstallProgress(props: PluginInstallProgressProps) {
+  const tq = useTranslations("plugins.pluginInstallProgress");
   const {
     jobId,
     transport,
@@ -259,7 +261,7 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            aria-label="Dismiss install progress"
+            aria-label={tq("dismissInstallProgress")}
             className="text-text-tertiary hover:text-text-primary"
           >
             <X size={14} />

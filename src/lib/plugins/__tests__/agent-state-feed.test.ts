@@ -86,12 +86,13 @@ afterEach(() => {
 });
 
 describe("agent-extended telemetry on a node-bound mount", () => {
-  it("delivers a workstation's `status` channel from the node's state route", async () => {
+  it("delivers a workstation's `status` channel from the node's state route, with its report time", async () => {
     fetchMock.mockImplementation(async () => stateBody(1, { jobs: 2 }));
     const { postEvent, dispose } = subscribeStatus();
     await vi.waitFor(() =>
       expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", {
         jobs: 2,
+        ts_ms: 1,
       }),
     );
     expect(String(fetchMock.mock.calls[0][0])).toBe(
@@ -111,6 +112,7 @@ describe("agent-extended telemetry on a node-bound mount", () => {
     await vi.waitFor(() =>
       expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", {
         jobs: 5,
+        ts_ms: 9,
       }),
     );
     expect(fetchMock).not.toHaveBeenCalled();

@@ -111,27 +111,27 @@ describe("gamepad remap dispatches the bound skill", () => {
     // active loadout slot whose gamepadButton matches and reads its skillId.
     useSettingsStore
       .getState()
-      .setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 7); // arm -> button 7
+      .setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 18); // arm -> a larger pad's extra button
 
     const { loadouts, activeLoadoutId } = useSettingsStore.getState();
     const loadout = loadouts[activeLoadoutId];
     const slot = loadout.slots.find(
-      (s) => s.gamepadButton === 7 && s.skillId !== null,
+      (s) => s.gamepadButton === 18 && s.skillId !== null,
     );
     expect(slot?.skillId).toBe("arm");
-    // And button 7 is now unique to that slot (last-write-wins clears dupes).
-    expect(loadout.slots.filter((s) => s.gamepadButton === 7)).toHaveLength(1);
+    // And button 18 is now unique to that slot (last-write-wins clears dupes).
+    expect(loadout.slots.filter((s) => s.gamepadButton === 18)).toHaveLength(1);
   });
 
   it("rebinding a button away from a slot removes the old resolution", () => {
     const s = useSettingsStore.getState();
-    // Bind button 0 to arm (slot 0), then move it to the kill slot (index 7).
-    s.setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 0);
-    useSettingsStore.getState().setSlotGamepadButton(DEFAULT_LOADOUT_ID, 7, 0);
+    // Bind button 18 to arm (slot 0), then move it to the kill slot (index 7).
+    s.setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 18);
+    useSettingsStore.getState().setSlotGamepadButton(DEFAULT_LOADOUT_ID, 7, 18);
     const slots = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
-    // Now button 0 resolves to kill, not arm.
+    // Now button 18 resolves to kill, not arm.
     const resolved = slots.find(
-      (sl) => sl.gamepadButton === 0 && sl.skillId !== null,
+      (sl) => sl.gamepadButton === 18 && sl.skillId !== null,
     );
     expect(resolved?.skillId).toBe("kill");
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { Upload, FileText, Clock, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ export function PidLogUploader({
   progress,
   metadata,
 }: PidLogUploaderProps) {
+  const tm = useTranslations("fcPanels.pidLogUploader");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -101,27 +103,27 @@ export function PidLogUploader({
       <div className="border border-border-default bg-bg-secondary p-4">
         <div className="flex items-center gap-2 mb-3">
           <FileText size={14} className="text-accent-primary" />
-          <span className="text-xs font-medium text-text-primary">Log Loaded</span>
+          <span className="text-xs font-medium text-text-primary">{tm("logLoaded")}</span>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-bg-tertiary/50 p-2">
             <div className="flex items-center gap-1.5 mb-1">
               <Clock size={10} className="text-text-tertiary" />
-              <span className="text-[9px] text-text-tertiary uppercase">Duration</span>
+              <span className="text-[9px] text-text-tertiary uppercase">{tm("duration")}</span>
             </div>
             <span className="text-xs font-mono text-text-primary">{formatDuration(metadata.durationSec)}</span>
           </div>
           <div className="bg-bg-tertiary/50 p-2">
             <div className="flex items-center gap-1.5 mb-1">
               <HardDrive size={10} className="text-text-tertiary" />
-              <span className="text-[9px] text-text-tertiary uppercase">Size</span>
+              <span className="text-[9px] text-text-tertiary uppercase">{tm("size")}</span>
             </div>
             <span className="text-xs font-mono text-text-primary">{formatBytes(metadata.fileSizeBytes)}</span>
           </div>
           <div className="bg-bg-tertiary/50 p-2">
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-[10px] text-text-tertiary">Hz</span>
-              <span className="text-[9px] text-text-tertiary uppercase">Gyro Rate</span>
+              <span className="text-[9px] text-text-tertiary uppercase">{tm("gyroRate")}</span>
             </div>
             <span className="text-xs font-mono text-text-primary">{metadata.gyroSampleRate} Hz</span>
           </div>
@@ -130,7 +132,7 @@ export function PidLogUploader({
           onClick={() => fileInputRef.current?.click()}
           className="mt-3 text-[10px] text-accent-primary hover:underline cursor-pointer"
         >
-          Upload a different log
+          {tm("uploadADifferentLog")}
         </button>
         <input
           ref={fileInputRef}
@@ -163,9 +165,9 @@ export function PidLogUploader({
           )}
         />
         <div className="text-center">
-          <p className="text-sm text-text-secondary">Drop .bin log file here</p>
+          <p className="text-sm text-text-secondary">{tm("dropBinLogFileHere")}</p>
           <p className="text-[10px] text-text-tertiary mt-1">
-            ArduPilot DataFlash binary log
+            {tm("ardupilotDataFlashBinaryLog")}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -175,14 +177,14 @@ export function PidLogUploader({
             icon={<Upload size={12} />}
             onClick={() => fileInputRef.current?.click()}
           >
-            Browse Files
+            {tm("browseFiles")}
           </Button>
           {isDemoMode() && (
             <button
               onClick={onLoadSample}
               className="text-[10px] text-accent-primary hover:underline cursor-pointer"
             >
-              Load Sample Log
+              {tm("loadSampleLog")}
             </button>
           )}
         </div>

@@ -1,20 +1,19 @@
 /**
  * @module mock/mock-live-world
- * @description Demo stand-in for the world-engine extension's drone Agent
- * page `live-world` (the live 3D viewer). The extension ships its viewer as a
- * bundle demo mode cannot load, so the demo mounts an in-memory inline module
- * in its place: the demo occupancy grid through the shared local-frame map,
- * plus a point cloud sampled from the synthetic room the demo drone flies in,
- * both labelled as demo data. The React panel is imported on mount only, so
- * it lands in the chunk a demo session opens.
+ * @description The demo page bodies for the world-engine extension. The
+ * extension ships its pages as a bundle demo mode cannot load, so the demo
+ * mounts an in-memory inline module in their place. The two pages that show
+ * live data get a demo rendition of the real page: `world-model` holds the
+ * live map (the demo occupancy grid through the shared local-frame map, plus
+ * a point cloud sampled from the synthetic room the demo drone flies in) and
+ * `live-world` is the capture monitor. Every other page shows a card that
+ * names itself as a demo stand-in. The React panels are imported on mount
+ * only, so they land in the chunk a demo session opens.
  * @license GPL-3.0-only
  */
 
-import type { PluginSlotContribution } from "@/components/plugins/PluginHostProvider";
 import type { InlinePluginModule } from "@/lib/plugins/inline-host-types";
-import { slotToCapability } from "@/lib/plugins/types";
 import { PILLARS, WALLS, ROOM_HALF_M } from "./mock-nav-world";
-import { DEMO_CAPTURE_PLUGIN_ID, LIVE_WORLD_PAGE } from "./mock-visor-surfaces";
 
 /** One map-frame point (x north, y east, z up, metres) with its height band. */
 export interface CloudPoint {
@@ -73,47 +72,23 @@ export function demoPointCloud(): CloudPoint[] {
   return out;
 }
 
-/** The inline module the demo mounts in place of the extension's viewer. */
+/** Pages whose demo body is a rendition of the real page. */
+const RENDERED_PAGES: Readonly<Record<string, true>> = { "live-world": true, "world-model": true };
+
+/** The inline module the demo mounts in place of every world-engine page. */
 export const DEMO_LIVE_WORLD_MODULE: InlinePluginModule = {
   async mount(root, host) {
-    // Lazy: the contribution producer imports this file on every route; the
-    // viewer (and its canvas/map code) belongs only in a demo session's chunk.
-    const { mountLiveWorldDemoPanel } = await import("./live-world-demo-panel");
-    return mountLiveWorldDemoPanel(root, host);
-  },
-};
-
-/** The demo `live-world` page body, built once so a re-render hands the host
- * the same bundle and the mounted viewer is not rebuilt. */
-export const DEMO_LIVE_WORLD_CONTRIBUTION: {
-  entry: typeof LIVE_WORLD_PAGE;
-  contribution: PluginSlotContribution & { slot: "node.agent.page" };
-} = {
-  entry: LIVE_WORLD_PAGE,
-  contribution: {
-    slot: "node.agent.page",
-    pluginId: DEMO_CAPTURE_PLUGIN_ID,
-    panelId: LIVE_WORLD_PAGE.panelId,
-    title: LIVE_WORLD_PAGE.title ?? "Live World",
-    bundleUrl: "",
-    isolation: "inline",
-    inline: {
-      status: "ready",
-      bundle: {
-        kind: "inline",
-        module: DEMO_LIVE_WORLD_MODULE,
-        trust: {
-          pluginId: DEMO_CAPTURE_PLUGIN_ID,
-          version: "0.0.0-demo",
-          signerId: "demo",
-          entrypoint: "gcs/plugin.bundle.js",
-          paths: [],
-        },
-        readAsset: () => Promise.reject(new Error("the demo viewer ships no assets")),
-      },
-    },
-    grantedCapabilities: new Set([slotToCapability("node.agent.page")]),
-    handlers: {},
-    pluginInstallId: DEMO_CAPTURE_PLUGIN_ID,
+    if (RENDERED_PAGES[host.plugin?.panelId ?? "world-model"]) {
+      // Lazy: the contribution producer imports this file on every route; the
+      // panels (and their canvas/map code) belong only in a demo session's chunk.
+      const { mountLiveWorldDemoPanel } = await import("./live-world-demo-panel");
+      return mountLiveWorldDemoPanel(root, host);
+    }
+    const card = document.createElement("div");
+    card.className =
+      "m-3 rounded border border-border-default bg-bg-secondary p-3 text-xs text-text-secondary";
+    card.textContent = `Demo stand-in: the world-engine extension's "${host.plugin.panelId}" page renders here on a node with the extension installed. Demo mode loads no extension bundle.`;
+    root.append(card);
+    return () => card.remove();
   },
 };

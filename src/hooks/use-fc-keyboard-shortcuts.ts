@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import type { PanelSaveOutcome } from "@/stores/fc-panel-actions-store";
@@ -23,6 +24,7 @@ export function useFcKeyboardShortcuts(
   onRefresh?: () => Promise<void>,
 ) {
   const { toast } = useToast();
+  const t = useTranslations("panelCommit.shortcuts");
 
   const handleKeyDown = useCallback(
     async (e: KeyboardEvent) => {
@@ -33,9 +35,9 @@ export function useFcKeyboardShortcuts(
         e.preventDefault();
         if (onSaveToRam) {
           const { attempted, ok } = await onSaveToRam();
-          if (attempted === 0) toast("No unsaved parameter changes", "info");
-          else if (ok) toast(`${attempted} parameter${attempted === 1 ? "" : "s"} saved to RAM`, "success");
-          else toast("Some parameters failed to save", "error");
+          if (attempted === 0) toast(t("noUnsaved"), "info");
+          else if (ok) toast(t("savedToRam", { count: attempted }), "success");
+          else toast(t("partialSave"), "error");
         }
         return;
       }
@@ -53,15 +55,15 @@ export function useFcKeyboardShortcuts(
             // means the command reached the wire and nothing confirmed the
             // write. Never render that as "committed to flash".
             if (result.acknowledged === false) {
-              toast("Flash commit sent — vehicle did not acknowledge it", "warning");
+              toast(t("flashUnacknowledged"), "warning");
             } else {
-              toast("Parameters committed to flash", "success");
+              toast(t("flashCommitted"), "success");
             }
           } else {
-            toast(`Flash commit failed: ${result.message}`, "error");
+            toast(t("flashFailed", { message: result.message ?? "" }), "error");
           }
         } else if (store.getPendingCount() === 0) {
-          toast("No pending changes to commit");
+          toast(t("noPending"));
         }
         return;
       }
@@ -71,12 +73,12 @@ export function useFcKeyboardShortcuts(
         e.preventDefault();
         if (onRefresh) {
           await onRefresh();
-          toast("Parameters refreshed");
+          toast(t("refreshed"));
         }
         return;
       }
     },
-    [onSaveToRam, onRefresh, toast],
+    [onSaveToRam, onRefresh, toast, t],
   );
 
   useEffect(() => {

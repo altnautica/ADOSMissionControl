@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../tests/helpers/intl-wrapper";
 import { PidAnalysisSummary } from "../PidAnalysisSummary";
 import { MOCK_PID_ANALYSIS_RESULT } from "@/mock/mock-pid-analysis";
 import type { PidAnalysisResult, TrackingAxisResult } from "@/lib/analysis/types";

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
@@ -26,6 +27,7 @@ export function FlightModeChannelControls({
   activeSlot,
   onUpdate,
 }: FlightModeChannelControlsProps) {
+  const tr = useTranslations("fcPanels.flightModeChannelControls");
   // PX4 has no INITIAL_MODE parameter; its boot mode uses a separate boot-mode
   // enum (distinct from the mode-slot enum), so this control is not wired for
   // PX4 and the ArduPilot custom_mode option values do not apply there.
@@ -53,12 +55,12 @@ export function FlightModeChannelControls({
       ];
 
   return (
-    <Card title="Mode Switch Channel">
+    <Card title={tr("modeSwitchChannel")}>
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1">
             <Select
-              label="RC channel for flight mode switch"
+              label={tr("rcChannelForFlightMode")}
               value={globalConfig.modeChannel}
               onChange={(v) => onUpdate({ modeChannel: v })}
               options={channelOptions}
@@ -71,13 +73,13 @@ export function FlightModeChannelControls({
             )}
             {isPx4 && globalConfig.modeChannel === "0" && (
               <p className="text-[10px] text-status-warning">
-                No mode channel assigned, so the six mode slots are inactive.
+                {tr("noModeChannelAssignedSo")}
               </p>
             )}
           </div>
           <div className="space-y-1">
             <Select
-              label="Initial boot mode (INITIAL_MODE)"
+              label={tr("initialBootModeINITIALMODE")}
               value={globalConfig.initialMode}
               onChange={(v) => onUpdate({ initialMode: v })}
               options={initialModeOptions}
@@ -85,7 +87,7 @@ export function FlightModeChannelControls({
             />
             {isPx4 && (
               <p className="text-[10px] text-text-tertiary">
-                PX4 sets its boot mode with a dedicated boot-mode parameter, not from this panel.
+                {tr("px4SetsItsBootMode")}
               </p>
             )}
           </div>
@@ -94,7 +96,7 @@ export function FlightModeChannelControls({
         <PwmRangeBar currentPwm={currentPwm} activeSlot={activeSlot} />
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-text-secondary">Current PWM:</span>
+          <span className="text-[10px] text-text-secondary">{tr("currentPWM")}</span>
           <span className="text-xs font-mono text-accent-primary tabular-nums">
             {currentPwm > 0 ? currentPwm : "—"}
           </span>

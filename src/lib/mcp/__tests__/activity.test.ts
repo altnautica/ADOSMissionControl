@@ -20,6 +20,8 @@ describe("mcp activity model", () => {
 
   it("maps a tool to its GCS surface", () => {
     expect(surfaceForTool("params.set")).toEqual({ kind: "tab", id: "parameters" });
+    // The cockpit tab is the drone's Flight tab.
+    expect(surfaceForTool("flight.arm")).toEqual({ kind: "tab", id: "cockpit" });
     expect(surfaceForTool("services.restart")).toEqual({ kind: "tab", id: "system" });
     expect(surfaceForTool("plugins.list")).toEqual({ kind: "tab", id: "plugins" });
     expect(surfaceForTool("mission.upload")).toEqual({ kind: "route", path: "/plan" });

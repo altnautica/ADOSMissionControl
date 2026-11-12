@@ -15,4 +15,9 @@ export function isDemoPlanId(id: string | null | undefined): boolean {
 }
 
 /** Device ids of the demo drones seeded as LAN-paired nodes. */
-export const DEMO_LAN_NODE_IDS = ["foxtrot-6", "mike-13"] as const;
+export const DEMO_LAN_NODE_IDS = ["delta-4", "golf-7"] as const;
+
+/** Device ids earlier demo builds seeded as LAN-paired nodes. A browser that
+ * ran one of them may still hold these in its persisted LAN-node store, so
+ * the residue sweep removes them too. */
+export const RETIRED_DEMO_LAN_NODE_IDS = ["foxtrot-6", "mike-13"] as const;

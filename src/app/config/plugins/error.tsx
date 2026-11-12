@@ -10,6 +10,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 export default function PluginsRouteError({
@@ -19,6 +20,7 @@ export default function PluginsRouteError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const tk = useTranslations("appPages.configPlugins");
   useEffect(() => {
     console.error("[plugins-error-boundary]", error);
   }, [error]);
@@ -28,7 +30,7 @@ export default function PluginsRouteError({
       <div className="max-w-sm w-full text-center space-y-3">
         <div className="text-2xl">⚠</div>
         <h2 className="text-sm font-semibold text-text-primary">
-          Plugins page failed to render
+          {tk("pluginsPageFailedToRender")}
         </h2>
         <p className="text-xs text-text-secondary">
           {error.message || "Unexpected error inside the plugins panel."}
@@ -37,7 +39,7 @@ export default function PluginsRouteError({
           onClick={reset}
           className="px-3 py-1.5 text-xs font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 transition-colors"
         >
-          Try Again
+          {tk("tryAgain")}
         </button>
       </div>
     </div>

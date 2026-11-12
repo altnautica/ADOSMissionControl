@@ -193,7 +193,7 @@ describe("NodesView", () => {
     const menu = screen.getByRole("menu");
     expect(within(menu).getByRole("menuitem", { name: "Loiter" })).toBeTruthy();
     expect(
-      within(menu).getByRole("menuitem", { name: /return to home/i }),
+      within(menu).getByRole("menuitem", { name: /return home/i }),
     ).toBeTruthy();
   });
 
@@ -258,7 +258,7 @@ describe("NodesView", () => {
     );
 
     const item = within(screen.getByRole("menu")).getByRole("menuitem", {
-      name: /return to home/i,
+      name: /return home/i,
     });
     // aria-disabled, not disabled: the item stays focusable so keyboard and
     // screen-reader operators can reach the reason, which is announced as the
@@ -276,7 +276,7 @@ describe("NodesView", () => {
     );
 
     const item = within(screen.getByRole("menu")).getByRole("menuitem", {
-      name: /return to home/i,
+      name: /return home/i,
     });
     item.focus();
     await user.keyboard("{Enter}");
@@ -309,7 +309,7 @@ describe("NodesView", () => {
     // The persisted snapshot says disarmed and the LAN credentials resolve a
     // lane, so without the liveness gate these would render pressable.
     const menu = screen.getByRole("menu");
-    for (const name of [/^arm$/i, /return to home/i, /land/i]) {
+    for (const name of [/^arm$/i, /return home/i, /land/i]) {
       const item = within(menu).getByRole("menuitem", { name });
       expect(item.getAttribute("aria-disabled")).toBe("true");
       expect(item).toHaveAccessibleDescription(/offline/i);

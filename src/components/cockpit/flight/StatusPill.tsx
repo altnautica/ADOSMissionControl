@@ -18,7 +18,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
 
 import { specString } from "@/lib/cockpit/spec-strings";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
@@ -31,6 +30,7 @@ import { useChecklistStore } from "@/stores/checklist-store";
 import { useCockpitAlertList } from "../CockpitAlerts";
 import type { CockpitAlertId } from "../band/cockpit-alert-rules";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
+import type { NavSourceResult } from "@/lib/hud/nav-source";
 import {
   controllerLost,
   pillAlerts,
@@ -42,7 +42,14 @@ import {
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightSheet } from "./flight-sheet";
-import { PILL_COLOR, PILL_ICON, StatusPillList } from "./StatusPillList";
+import { PILL_COLOR, StatusPillList } from "./StatusPillList";
+
+/** The pill's word colour per severity: the chrome text when all is well. */
+const PILL_TEXT_COLOR: Record<keyof typeof PILL_COLOR, string> = {
+  ok: "var(--fs-text)",
+  warning: "var(--fs-warn)",
+  critical: "var(--fs-text-crit)",
+};
 
 export type { PillAlert } from "@/lib/hud/status-pill";
 
@@ -71,6 +78,7 @@ const PREFLIGHT_SOURCE: Readonly<Record<string, PillSource>> = {
   link: "link",
   battery: "battery",
   nav_source: "nav_source",
+  gps: "nav_source",
   controller: "controller",
 };
 
@@ -94,6 +102,8 @@ export interface PillSources {
   /** The pre-flight checklist, or null before it was evaluated. */
   preflight: readonly PreflightItem[] | null;
   storagePct: number | null;
+  /** The resolved navigation source; the shared rule raises its degraded item. */
+  navSource?: Pick<NavSourceResult, "kind" | "quality" | "tone"> | null;
 }
 
 /**
@@ -121,6 +131,7 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
     pilotAgeMs: s.pilotAgeMs,
     agentReachable: s.agentReachable,
     controllerLost: fresh && controllerLost(s.pilot),
+    navSource: s.navSource ?? null,
     ...pilotFailsafe(s.pilot),
   }).filter((a) => !(a.source === "fc_status_text" && surfaceTexts.has(a.text)));
   const listed = new Set<PillSource>([...s.surface, ...shared].map((a) => a.source));
@@ -145,12 +156,10 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
 const PILL_TICK_MS = 500;
 
 export function usePillAlerts(droneId: string): PillAlert[] {
-  const t = useTranslations("flightScreen.pill");
   const { alerts, label } = useCockpitAlertList(droneId);
   const { pilot, receivedAt } = usePilotState(droneId);
   const disarmed = useDroneStore((s) => s.armState === "disarmed");
   const nav = useNavSource(droneId).result;
-  const navText = t("navSource", { kind: nav.kind });
   const disk = useAgentSystemStore((s) => s.status?.health?.disk_percent ?? null);
   // The focused agent's polls describe its own node; another drone (a direct
   // flight controller, or a node that is not focused) has no say in them.
@@ -173,14 +182,6 @@ export function usePillAlerts(droneId: string): PillAlert[] {
     text: label(a),
     source: ALERT_SOURCE[a.id],
   }));
-  if (nav.tone === "warn" || nav.tone === "crit") {
-    surface.push({
-      id: `nav:${nav.kind}:${nav.tone}`,
-      severity: nav.tone === "crit" ? "critical" : "warning",
-      text: navText,
-      source: "nav_source",
-    });
-  }
   return pillAlertsFor({
     surface,
     pilot,
@@ -189,6 +190,7 @@ export function usePillAlerts(droneId: string): PillAlert[] {
     disarmed,
     preflight,
     storagePct: typeof disk === "number" ? disk : null,
+    navSource: nav,
   });
 }
 
@@ -234,7 +236,6 @@ export function StatusPill({ droneId }: { droneId: string }) {
     };
   }, [open, keys, ackShown, setOpen]);
 
-  const Icon = PILL_ICON[summary.severity];
   return (
     <div ref={rootRef} className="fs-pill-wrap">
       <button
@@ -250,9 +251,15 @@ export function StatusPill({ droneId }: { droneId: string }) {
           ackShown(keys);
           setOpen((o) => !o);
         }}
-        style={{ "--pill-color": PILL_COLOR[summary.severity] } as React.CSSProperties}
+        style={
+          {
+            "--pill-color": PILL_COLOR[summary.severity],
+            // Words in a severity hue use its text variant, legible on the panel.
+            "--pill-text-color": PILL_TEXT_COLOR[summary.severity],
+          } as React.CSSProperties
+        }
       >
-        <Icon className="fs-ico" aria-hidden="true" />
+        <span className="fs-dot" aria-hidden="true" data-testid="status-pill-dot" />
         <span className="fs-pill-text" title={summary.text}>{summary.text}</span>
       </button>
       {open && <StatusPillList alerts={alerts} listRef={listRef} />}

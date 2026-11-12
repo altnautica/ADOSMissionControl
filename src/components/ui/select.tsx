@@ -15,6 +15,7 @@ export function Select({
   label, options, value, onChange, className, placeholder,
   disabled = false, searchable = false, searchPlaceholder, maxHeight = 280, ariaLabel, compact = false,
 }: SelectProps) {
+  const tk = useTranslations("ui.select");
   const tc = useTranslations("common");
   const searchText = searchPlaceholder ?? tc("search");
   const [isOpen, setIsOpen] = useState(false);
@@ -159,7 +160,7 @@ export function Select({
     let flatIdx = 0;
     if (grouped) {
       const groups = filteredOptions as SelectOptionGroup[];
-      if (groups.length === 0) return <div className="px-3 py-4 text-xs text-text-tertiary text-center">No matches found</div>;
+      if (groups.length === 0) return <div className="px-3 py-4 text-xs text-text-tertiary text-center">{tk("noMatchesFound")}</div>;
       return groups.map((group) => (
         <div key={group.label}>
           <div className="px-2 py-1.5 text-[11px] font-semibold text-text-tertiary sticky top-0 bg-bg-secondary">{group.label}</div>
@@ -168,7 +169,7 @@ export function Select({
       ));
     }
     const flat = filteredOptions as SelectOption[];
-    if (flat.length === 0) return <div className="px-3 py-4 text-xs text-text-tertiary text-center">No matches found</div>;
+    if (flat.length === 0) return <div className="px-3 py-4 text-xs text-text-tertiary text-center">{tk("noMatchesFound")}</div>;
     return flat.map((opt) => { const el = renderOption(opt, flatIdx); flatIdx++; return el; });
   };
 

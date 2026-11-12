@@ -21,6 +21,7 @@ export function StatTile({
   level,
   hint,
   className,
+  wrapValue = false,
 }: {
   icon?: ReactNode;
   label: ReactNode;
@@ -28,6 +29,8 @@ export function StatTile({
   level?: StatusLevel;
   hint?: ReactNode;
   className?: string;
+  /** A word value (a state, not a number): smaller sans text that wraps instead of truncating. */
+  wrapValue?: boolean;
 }) {
   return (
     <div
@@ -41,7 +44,14 @@ export function StatTile({
         <span className="truncate">{label}</span>
         {level && <StatusDot status={level} size="xs" className="ml-auto" />}
       </div>
-      <div className="mt-1 truncate font-mono text-lg font-semibold tabular-nums text-text-primary">
+      <div
+        className={cn(
+          "mt-1 font-semibold text-text-primary",
+          wrapValue
+            ? "line-clamp-2 break-words text-sm leading-tight"
+            : "truncate font-mono text-lg tabular-nums",
+        )}
+      >
         {value}
       </div>
       {hint && <div className="truncate text-[10px] text-text-tertiary">{hint}</div>}

@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -43,6 +44,7 @@ const homeIcon = L.divIcon({
 // ── Main Component ───────────────────────────────────────
 
 export function ReplayMap() {
+  const tk = useTranslations("history.replayMap");
   // Position rings mutate in place; `_version` is the change signal.
   useTelemetryStore((s) => s._version);
   const posBuffer = useTelemetryStore((s) => s.position);
@@ -111,7 +113,7 @@ export function ReplayMap() {
           className="absolute bottom-3 right-3 z-[1000] flex items-center gap-1 px-2 py-1 text-[10px] font-mono text-text-secondary bg-bg-primary/90 border border-border-default rounded hover:text-text-primary transition-colors cursor-pointer"
         >
           <Crosshair size={12} />
-          Re-center
+          {tk("reCenter")}
         </button>
       )}
     </div>

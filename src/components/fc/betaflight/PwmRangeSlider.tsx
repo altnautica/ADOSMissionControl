@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ export function PwmRangeSlider({
   activePwm: number | undefined;
   dirty?: boolean;
 }) {
+  const tr = useTranslations("fcPanels.pwmRangeSlider");
   const trackRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<"start" | "end" | null>(null);
 
@@ -118,7 +120,7 @@ export function PwmRangeSlider({
 
       <input
         type="range"
-        aria-label="Range start"
+        aria-label={tr("rangeStart")}
         min={0}
         max={PWM_RANGE_STEPS}
         value={start}
@@ -127,7 +129,7 @@ export function PwmRangeSlider({
       />
       <input
         type="range"
-        aria-label="Range end"
+        aria-label={tr("rangeEnd")}
         min={0}
         max={PWM_RANGE_STEPS}
         value={end}

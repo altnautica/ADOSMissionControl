@@ -5,7 +5,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../../tests/helpers/intl-wrapper";
 
 const direct = vi.hoisted(() => ({
   current: null as { agentUrl: string; apiKey: string | null; client: null } | null,

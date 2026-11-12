@@ -40,6 +40,7 @@ interface NodeStatsEntry {
 const STATS_TTL_MS = 5_000;
 
 export function DiagnosticsSection({ client = null }: DiagnosticsSectionProps) {
+  const tq = useTranslations("configUi.diagnosticsSection");
   const t = useTranslations("canConfig.diagnostics");
   const tCol = useTranslations("canConfig.diagnostics.perNode.columns");
 
@@ -172,7 +173,7 @@ export function DiagnosticsSection({ client = null }: DiagnosticsSectionProps) {
                       <button
                         onClick={() => toggle(entry.nodeId)}
                         className="text-text-tertiary hover:text-text-primary"
-                        aria-label="Toggle"
+                        aria-label={tq("toggle")}
                       >
                         {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                       </button>
@@ -198,7 +199,7 @@ export function DiagnosticsSection({ client = null }: DiagnosticsSectionProps) {
                         <button
                           onClick={() => fetchStats(entry.nodeId, true)}
                           className="ml-2 text-text-tertiary hover:text-text-primary"
-                          aria-label="Refresh"
+                          aria-label={tq("refresh")}
                           disabled={!client}
                         >
                           <RefreshCw size={10} />

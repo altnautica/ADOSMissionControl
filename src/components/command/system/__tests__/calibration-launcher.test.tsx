@@ -8,7 +8,8 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../tests/helpers/intl-wrapper";
 
 import { CalibrationLauncher } from "../CalibrationLauncher";
 import { useSettingsStore } from "@/stores/settings-store";

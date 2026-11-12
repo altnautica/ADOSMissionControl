@@ -11,8 +11,10 @@
  *
  * The chip never takes more than {@link CHIP_MAX_FRAC} of the top bar: a
  * longer text ends in an ellipsis and the full text stays in its title and
- * accessible name. At the compact classes it shows its compact face, the
- * state text alone without the secondary lines.
+ * accessible name. It is one line: a dot in the state colour, the state,
+ * then the secondary facts dimmed after " · ", inside a 1 px outline in the
+ * state colour. At the compact classes it shows its compact face, the state
+ * text alone without the secondary facts.
  *
  * @module cockpit/v2/FlightStateChip
  * @license GPL-3.0-only
@@ -110,21 +112,17 @@ export function FlightStateChip({
             } as React.CSSProperties
           }
         >
-          <span
-            className="fs-chip-text"
-            data-testid="flight-state-chip-text"
-            style={{ color: chip.color, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-          >
+          {/* The state colour is the dot and the outline; the words stay in
+              the chrome text colour, legible at any state. */}
+          <span className="fs-dot" aria-hidden="true" data-testid="flight-state-chip-dot" />
+          <span className="fs-chip-text" data-testid="flight-state-chip-text">
             {chip.text}
           </span>
           {secondary.length > 0 && (
-            // Line 2: the secondary facts and the control mode, joined by " · ".
+            // The secondary facts and the control mode follow on the same
+            // line, dimmed, and truncate before the state does.
             <span className="fs-chip-sub" data-testid="flight-state-chip-sub" aria-hidden="true">
-              {secondary.map((s, i) => (
-                <span key={s.text} style={{ color: s.color }}>
-                  {i > 0 ? ` · ${s.text}` : s.text}
-                </span>
-              ))}
+              {` · ${secondary.map((s) => s.text).join(" · ")}`}
             </span>
           )}
         </button>

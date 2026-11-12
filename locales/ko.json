@@ -60,7 +60,24 @@
       "quickLevelSendFailed": "Failed to send quick level command",
       "compassCalFailed": "Compass calibration failed",
       "compassCalComplete": "Compass calibration complete",
-      "compassCalSendFailed": "Failed to send the compass calibration command"
+      "compassCalSendFailed": "Failed to send the compass calibration command",
+      "status": {
+        "compassSkipped": "나침반 {ids} 저장 안 됨(피팅 실패).",
+        "failedParams": "실패: {params}",
+        "flashUnacknowledged": "플래시 저장 명령 전송됨(응답 없음).",
+        "flashSaved": "플래시에 저장됨.",
+        "flashFailed": "플래시 저장 실패. 오프셋이 RAM에만 저장되었을 수 있습니다.",
+        "compassOffsetsWritten": "나침반 {ids} 오프셋 기록됨. {flashNote} 적용하려면 재부팅하세요.",
+        "compassAccepted": "나침반 보정이 승인되었습니다. {flashNote} 적용하려면 재부팅하세요.",
+        "starting": "보정 시작 중...",
+        "startingQuickLevel": "빠른 수평 보정 시작 중...",
+        "gnssMagCalibrating": "기체 요 {yaw}° 기준으로 나침반 보정 중...",
+        "gnssMagUnsupported": "이 펌웨어는 알려진 방향 기반 나침반 보정을 지원하지 않습니다",
+        "gnssMagRejected": "알려진 방향 기반 나침반 보정이 거부되었습니다. 기체의 위치 픽스를 확인하세요.",
+        "gnssMagComplete": "기체 요 {yaw}° 기준으로 자기 모델에 맞춰 나침반 보정이 완료되었습니다."
+      },
+      "calTypeComplete": "{type, select, accel {가속도계} gyro {자이로} compass {나침반} level {수평} airspeed {대기속도} baro {기압계} rc {RC} esc {ESC} compassmot {CompassMot} other {{type}}} 보정 완료",
+      "calTypeFailedPlain": "{type, select, accel {가속도계} gyro {자이로} compass {나침반} level {수평} airspeed {대기속도} baro {기압계} rc {RC} esc {ESC} compassmot {CompassMot} other {{type}}} 보정 실패"
     },
     "can": {
       "forwardingUnavailable": "This connection cannot forward CAN frames",
@@ -204,14 +221,14 @@
   },
   "plannerIo": {
     "restoringAutosave": "Unsaved mission found — restoring",
-    "untitledPlan": "Untitled Plan",
+    "untitledPlan": "제목 없는 계획",
     "planSaved": "Plan saved",
     "planSavedAsCopy": "Plan saved as new copy",
     "exported": "Exported ({format})",
     "newPlanCreated": "New plan created",
     "downloadFailedWithError": "Mission download failed: {error}. Nothing was loaded",
     "downloadFailed": "Mission download failed — nothing was loaded",
-    "vehicleHasNoMission": "The vehicle has no mission",
+    "vehicleHasNoMission": "드론에 미션이 없습니다",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
     "connectDroneFirst": "Connect a drone first",
@@ -228,7 +245,33 @@
     "reverted": "Reverted to FC values",
     "flashWritten": "Written to flash — persists after reboot",
     "flashUnacknowledged": "Flash commit sent — vehicle did not acknowledge it",
-    "flashFailed": "Failed to write to flash"
+    "flashFailed": "Failed to write to flash",
+    "bar": {
+      "saveToFc": "비행 컨트롤러에 저장",
+      "saveToRam": "RAM에 저장",
+      "writeToFlash": "플래시에 쓰기",
+      "revert": "되돌리기",
+      "connectToSave": "파라미터를 저장하려면 드론을 연결하세요",
+      "unsavedChanges": "저장되지 않은 변경 사항"
+    },
+    "shortcuts": {
+      "noUnsaved": "저장되지 않은 파라미터 변경 사항이 없습니다",
+      "savedToRam": "{count, plural, one {파라미터 #개} other {파라미터 #개}}를 RAM에 저장했습니다",
+      "partialSave": "일부 파라미터를 저장하지 못했습니다",
+      "flashUnacknowledged": "플래시 커밋을 보냈지만 기체가 응답하지 않았습니다",
+      "flashCommitted": "파라미터를 플래시에 커밋했습니다",
+      "flashFailed": "플래시 커밋 실패: {message}",
+      "noPending": "커밋할 변경 사항이 없습니다",
+      "refreshed": "파라미터를 새로 고쳤습니다"
+    },
+    "disconnectGuard": {
+      "lostBeforeCommit": "플래시 커밋 전에 비행 컨트롤러 연결이 끊어져 변경 사항이 저장되지 않았습니다",
+      "commitFailedStillConnected": "플래시 커밋 실패: {message}. 연결은 유지되어 있으며 끊어진 것은 없습니다.",
+      "flashUnacknowledged": "플래시 커밋을 보냈지만 기체가 응답하지 않았습니다",
+      "armedTitle": "시동 상태인 드론의 연결을 해제할까요?",
+      "armedMessage": "{name}이(가) 시동 상태입니다. 연결을 해제하면 텔레메트리가 중단되고 GCS 페일세이프가 작동할 수 있습니다.",
+      "armedConfirm": "연결 해제"
+    }
   },
   "nodeConsole": {
     "type": {
@@ -359,8 +402,8 @@
     },
     "companionCta": {
       "title": "보조 컴퓨터 추가",
-      "body": "이 비행 컨트롤러에는 페어링된 온보드 컴퓨터가 없습니다. 하나를 페어링하면 영상, 비전, 확장 기능을 추가할 수 있습니다.",
-      "action": "컴퓨터 페어링"
+      "body": "이 비행 컨트롤러에 페어링된 컴패니언 컴퓨터가 없습니다. 페어링하면 영상, 비전, 확장 기능을 사용할 수 있습니다.",
+      "action": "노드 추가"
     }
   },
   "nav": {
@@ -371,7 +414,7 @@
     "command": "커맨드",
     "hardware": "하드웨어",
     "configure": "설정",
-    "history": "기록",
+    "history": "비행 로그",
     "community": "커뮤니티",
     "settings": "설정",
     "mcp": "MCP"
@@ -724,6 +767,48 @@
       "edited": "(edited)",
       "edit": "Edit",
       "delete": "Delete"
+    },
+    "changelogEditor": {
+      "version": "버전",
+      "title": "제목",
+      "releaseTitle": "릴리스 제목",
+      "body": "본문",
+      "whatChangedInThisRelease": "이번 릴리스에서 무엇이 바뀌었나요?",
+      "eGFeatureBugfixBreaking": "예: feature, bugfix, breaking",
+      "published": "게시됨",
+      "addTranslationOptional": "번역 추가(선택 사항)",
+      "titleTranslated": "제목(번역)",
+      "descriptionTranslated": "설명 (번역됨)",
+      "tagsCommaSeparated": "태그 (쉼표로 구분)",
+      "addTranslation": "번역 추가",
+      "cancel": "취소"
+    },
+    "changelogTimeline": {
+      "changelogTimeline": "변경 로그 타임라인",
+      "changelog": "변경 로그",
+      "deleteChangelogEntry": "변경 로그 항목 삭제",
+      "thisRemovesTheEntryFor": "모든 사용자에게서 이 항목이 삭제됩니다. 되돌릴 수 없습니다.",
+      "delete": "삭제",
+      "discord": "Discord",
+      "newRelease": "새 릴리스",
+      "loadingChangelog": "변경 내역 불러오는 중...",
+      "noChangelogEntriesYet": "아직 변경 내역이 없습니다.",
+      "loadingMore": "더 불러오는 중..."
+    },
+    "communityComments": {
+      "commentsCouldNotBeLoaded": "댓글을 불러올 수 없습니다.",
+      "loadingComments": "댓글 불러오는 중...",
+      "noCommentsYet": "아직 댓글이 없습니다.",
+      "deleteComment": "댓글 삭제",
+      "addAComment": "댓글 추가...",
+      "thisRemovesTheCommentFor": "모든 사용자에게서 이 댓글이 삭제됩니다. 되돌릴 수 없습니다.",
+      "delete": "삭제",
+      "commentsNeedTheCommunityBackend": "댓글 기능에는 커뮤니티 백엔드가 필요하지만 여기서는 사용할 수 없습니다.",
+      "post": "게시"
+    },
+    "changelogEntry": {
+      "edit": "편집",
+      "delete": "삭제"
     }
   },
   "shell": {
@@ -744,18 +829,18 @@
     "account": "계정"
   },
   "configNav": {
-    "title": "GCS 설정",
+    "title": "설정",
     "general": "일반",
     "inputDevices": "입력 장치",
     "video": "비디오",
     "notifications": "알림",
     "theme": "테마",
     "data": "데이터",
-    "flashTool": "플래시 도구",
     "operator": "Operator & Aircraft",
     "plugins": "확장 프로그램",
     "can": "DroneCAN",
-    "aircraftSetup": "Aircraft setup"
+    "aircraftSetup": "Aircraft setup",
+    "firmware": "펌웨어"
   },
   "general": {
     "title": "일반 설정",
@@ -861,7 +946,8 @@
       "title": "Video pipeline restarting",
       "message": "Video has restarted {count} times. Check the agent."
     },
-    "encoderSettingsOnNode": "Bitrate, codec and resolution are set per node, in that node's Video settings."
+    "encoderSettingsOnNode": "Bitrate, codec and resolution are set per node, in that node's Video settings.",
+    "openCameras": "{drone} › 카메라 열기"
   },
   "inputDevices": {
     "title": "입력 장치",
@@ -987,7 +1073,69 @@
       "title": "최근 경고",
       "noAlerts": "경고 없음"
     },
-    "newLogs": "새 로그 메시지"
+    "newLogs": "새 로그 메시지",
+    "messages": "메시지",
+    "scriptFileManager": {
+      "download": "다운로드",
+      "delete": "삭제",
+      "deleteScript": "스크립트 삭제",
+      "thisConnectionDoesNotSupport": "이 연결은 파일 업로드를 지원하지 않습니다.",
+      "onlyLuaScriptsCanBe": ".lua 스크립트만 업로드할 수 있습니다.",
+      "scriptsOnFC": "FC의 스크립트",
+      "refresh": "새로고침",
+      "dropA": "여기에 놓기:",
+      "noScriptsOnTheFlight": "비행 컨트롤러에 아직 스크립트가 없습니다."
+    },
+    "scrConfigCard": {
+      "scriptingEngine": "스크립팅 엔진",
+      "enableTheOnboardLuaVM": "온보드 Lua VM을 활성화하고 리소스 크기를 설정합니다",
+      "scripting": "스크립팅",
+      "heapSize": "힙 크기",
+      "vmInstructionCount": "VM 명령어 수",
+      "rebootCommandSentToThe": "비행 컨트롤러에 재부팅 명령을 보냈습니다",
+      "failedToSendRebootCommand": "재부팅 명령을 보내지 못했습니다",
+      "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
+      "rebootFC": "비행 컨트롤러 재부팅"
+    },
+    "appletCatalog": {
+      "starterScripts": "기본 제공 스크립트",
+      "minimalExamplesToUploadRun": "업로드, 실행, 수정할 수 있는 최소 예제입니다. 각 예제는 재부팅 후 비행 컨트롤러에서 실행됩니다.",
+      "connectOverATransportThat": "스크립트를 추가하려면 파일 전송을 지원하는 전송 방식으로 연결하세요."
+    },
+    "agentDiagnosticsStrip": {
+      "theHardwareEncoderFailedVideo": "하드웨어 인코더에 실패하여 CPU로 영상을 인코딩합니다",
+      "agentCommandPath": "에이전트 명령 경로",
+      "softwareEncode": "소프트웨어 인코딩"
+    },
+    "scriptConsole": {
+      "clear": "지우기",
+      "scriptOutput": "스크립트 출력",
+      "scriptsOnly": "스크립트만"
+    },
+    "fleetTelemetryCard": {
+      "fleetTelemetry": "편대 텔레메트리",
+      "noConnectedDrones": "연결된 드론 없음"
+    },
+    "fleetStatusCard": {
+      "fcLinkLost": "FC 링크 끊김",
+      "gpsDenied": "GPS 거부 환경"
+    },
+    "droneListPanel": {
+      "nodes": "노드"
+    },
+    "registryCatalogBrowser": {
+      "filter": "필터"
+    },
+    "quickActionsBar": {
+      "newMission": "새 임무",
+      "connectDrone": "드론 연결",
+      "rthAll": "전체 RTH"
+    },
+    "droneScriptsTab": {
+      "luaScripts": "Lua 스크립트",
+      "fileTransferUnavailableOnThis": "이 연결에서는 파일 전송을 사용할 수 없습니다",
+      "managingScriptsNeedsMAVLinkFile": "스크립트를 관리하려면 MAVLink 파일 전송이 필요합니다. 스크립트를 업로드하고 관리하려면 비행 컨트롤러에 직접(USB/시리얼/TCP) 연결하거나 ADOS 에이전트를 통해 연결하세요. 아래 스크립팅 엔진 설정은 계속 적용됩니다."
+    }
   },
   "swarmView": {
     "title": "군집",
@@ -1131,7 +1279,7 @@
   "emptyState": {
     "title": "연결된 드론 없음",
     "commandPaletteHint": "커맨드 팔레트 열기",
-    "scanEmpty": "No ADOS agents found on this network yet. Add one by hostname or IP above, or install the agent on a board below.",
+    "scanEmpty": "이 네트워크에서 아직 ADOS 에이전트를 찾지 못했습니다. '컴패니언 컴퓨터 페어링'에서 호스트 이름이나 IP로 페어링하거나, 아래 보드에 에이전트를 설치하세요.",
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
@@ -1201,12 +1349,12 @@
         "gps": "GPS",
         "battery": "Battery",
         "rangefinder": "Rangefinder",
-        "companion": "Companion"
+        "companion": "컴패니언 컴퓨터"
       }
     },
     "fcStackTitle": "Flight Controller",
     "fcStackDesc": "USB, WebSocket, UDP, TCP 또는 Bluetooth를 통한 직접 MAVLink",
-    "agentStackTitle": "Companion Computer",
+    "agentStackTitle": "컴패니언 컴퓨터",
     "agentStackDesc": "ADOS Agent — software-defined",
     "agentStackBadge": "Full features",
     "intro": {
@@ -1309,7 +1457,12 @@
       "hotPlugDisconnected": "Device disconnected: {label}",
       "toastConnected": "USB device connected: {label}",
       "toastDisconnected": "USB device disconnected: {label}"
-    }
+    },
+    "webSocketPanel": {
+      "wsLocalhost14550": "ws://localhost:14550"
+    },
+    "disconnect": "연결 해제",
+    "disconnectNamed": "{name} 연결 해제"
   },
   "droneDetail": {
     "overview": "개요",
@@ -1321,7 +1474,7 @@
     "fly": "비행",
     "immersive": "몰입 모드",
     "rec": "REC",
-    "rebootFc": "FC 재부팅",
+    "rebootFc": "비행 컨트롤러 재부팅",
     "inMission": "미션 수행 중",
     "fleet": "편대",
     "noFlights": "이 드론의 비행 기록이 없습니다",
@@ -1332,7 +1485,18 @@
     "flightMaxAlt": "최대 고도",
     "flightStatus": "상태",
     "flightBattery": "배터리",
-    "flightSuite": "스위트"
+    "flightSuite": "스위트",
+    "px4EventsFeed": {
+      "searchEvents": "이벤트 검색",
+      "flightControllerEvents": "비행 컨트롤러 이벤트"
+    },
+    "droneConfigureTab": {
+      "somePanelsOSDLEDAre": "일부 패널(OSD, LED)은 PX4에서 사용할 수 없습니다.",
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight 펌웨어입니다. 일부 패널은 ArduPilot과 다릅니다."
+    },
+    "logTelemetryGraph": {
+      "telemetryDataWillAppearHere": "연결되면 텔레메트리 데이터가 여기에 표시됩니다"
+    }
   },
   "flight": {
     "takeoffAltitudeOutOfRange": "Takeoff altitude must be between {min} and {max} m",
@@ -1428,7 +1592,29 @@
       "title": "외부 분석",
       "plotterDescription": "대화형 DataFlash / .tlog 그래프 플로터",
       "reviewerDescription": "자동 로그 분석 및 비행 검토"
-    }
+    },
+    "quickGraphs": {
+      "alt": "고도",
+      "voltage": "전압",
+      "vspd": "수직속도",
+      "noRCInput": "RC 입력 없음",
+      "altitude": "고도",
+      "battery": "배터리",
+      "climbRate": "상승률",
+      "rcInputs": "RC 입력"
+    },
+    "logAnalysisPanel": {
+      "logAnalysis": "로그 분석",
+      "live": "실시간",
+      "file": "파일",
+      "parsedLog": "파싱된 로그",
+      "loadABinDataFlashLog": "분석할 .bin DataFlash 로그를 불러오세요"
+    },
+    "gpsTrackMap": {
+      "gpsTrack": "GPS 경로",
+      "waitingForGPSData": "GPS 데이터 대기 중..."
+    },
+    "clear": "지우기"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1518,7 +1704,7 @@
     "cli": "CLI",
     "debugSection": "디버그",
     "mavlinkInspector": "MAVLink 검사기",
-    "blackbox": "Blackbox",
+    "blackbox": "블랙박스 (FC)",
     "debugPanel": "디버그",
     "diagnostics": "진단",
     "logAnalysis": "로그 분석",
@@ -1529,7 +1715,8 @@
     "fcSourceCta": "Change the FC source",
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
-    "pluginPanelGone": "This extension is no longer installed on this node."
+    "pluginPanelGone": "This extension is no longer installed on this node.",
+    "aircraftSetup": "기체 설정"
   },
   "droneStatus": {
     "online": "온라인",
@@ -1553,7 +1740,7 @@
     "map": "지도",
     "fly": "비행",
     "immersive": "몰입 모드",
-    "rebootFc": "FC 재부팅",
+    "rebootFc": "비행 컨트롤러 재부팅",
     "rebootConfirm": "비행 컨트롤러를 재부팅하시겠습니까? 드론 연결이 일시적으로 끊어집니다.",
     "reboot": "재부팅",
     "deleteDrone": "드론 삭제",
@@ -1577,16 +1764,15 @@
       "events": "Events",
       "recorder": "Recorder"
     },
-    "cockpit": "Cockpit",
     "agentGroups": {
       "overview": "개요",
       "software": "Software",
       "node": "노드"
     },
     "agentShowcase": {
-      "title": "Add an onboard computer",
+      "title": "컴패니언 컴퓨터 추가",
       "subtitle": "The ADOS Drone Agent runs on a companion computer beside your flight controller. Pair one to unlock live video, AI perception, autonomy, and fleet connectivity.",
-      "cta": "Pair a computer",
+      "cta": "노드 추가",
       "viewLogs": "View flight logs",
       "back": "Back",
       "cards": {
@@ -1634,9 +1820,9 @@
     "simChip": "SIM",
     "simChipTitle": "이 노드는 시뮬레이터에서 실행 중입니다",
     "companionOffline": {
-      "title": "컴패니언에 연결할 수 없음",
-      "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",
-      "viaHop": "This node's onboard computer is reached through {hop}, which is not answering right now. Its video, services and logs are unavailable until it does.",
+      "title": "컴패니언 컴퓨터에 연결할 수 없음",
+      "body": "이 노드에는 컴패니언 컴퓨터가 있지만 현재 이 브라우저에서 연결할 수 없습니다. 응답할 때까지 영상, 서비스, 로그를 사용할 수 없습니다.",
+      "viaHop": "이 노드의 컴패니언 컴퓨터는 {hop}을(를) 통해 연결되는데, 현재 응답하지 않습니다. 응답할 때까지 영상, 서비스, 로그를 사용할 수 없습니다.",
       "repair": "다시 페어링",
       "openAgent": "Open the Agent page"
     },
@@ -1693,7 +1879,7 @@
     "engineWideNote": "The detector is shared by every vision behavior on this drone — changing it changes them all.",
     "classesLine": "Classes: {classes}",
     "notActiveTitle": "No vision engine running yet",
-    "notActiveBody": "Vision runs on this drone's onboard computer. Install or select a detection model below to start a perception pipeline; a camera bound to the vision engine feeds it.",
+    "notActiveBody": "비전은 이 드론의 컴패니언 컴퓨터에서 실행됩니다. 인식 파이프라인을 시작하려면 아래에서 감지 모델을 설치하거나 선택하세요. 비전 엔진에 연결된 카메라가 영상을 공급합니다.",
     "pipelines": "Pipelines",
     "pipelinesRunning": "{count, plural, =0 {none running} one {# running} other {# running}}",
     "noPipelines": "No pipelines running. Start a detector below to begin perception.",
@@ -1760,7 +1946,7 @@
     "targetActions": {
       "dismiss": "닫기",
       "none": "이 표적에 사용할 수 있는 작업이 없습니다",
-      "pluginBadge": "플러그인",
+      "pluginBadge": "확장",
       "designate": "Designate target",
       "designated": "Target designated",
       "designateRejected": "Designate rejected",
@@ -1781,8 +1967,8 @@
     "notDetector": "Not a detector"
   },
   "nodeSettings": {
-    "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
-    "subtitleRelayed": "Configure this node's onboard computer. Changes reach the agent over the radio link via the ground station.",
+    "subtitle": "이 노드의 컴패니언 컴퓨터를 설정합니다. 변경 사항은 LAN을 통해 에이전트에 바로 기록됩니다.",
+    "subtitleRelayed": "이 노드의 컴패니언 컴퓨터를 설정합니다. 변경 사항은 지상국을 거쳐 무선 링크로 에이전트에 전달됩니다.",
     "loading": "Loading configuration…",
     "loadFailed": "Could not read the node configuration.",
     "readOnlyNoAgent": "No connection path to this node — configuration is read-only. Pair the node over the LAN (or connect to its agent) to edit its settings.",
@@ -2085,7 +2271,7 @@
     "discovery": {
       "title": "Discovery",
       "blurb": "How this node announces itself on the LAN, and the reach names and URLs it advertises.",
-      "mdnsLabel": "Announce over mDNS",
+      "mdnsLabel": "mDNS로 알리기",
       "mdnsHint": "Publish this node on the LAN so it can be found by name. Takes effect when the agent restarts.",
       "serviceTypeLabel": "Service type",
       "advertisedTitle": "Advertised by the node",
@@ -2382,10 +2568,33 @@
       "enabled": "Enabled",
       "disabled": "Disabled",
       "crashed": "Crashed",
-      "installed": "Installed"
+      "installed": "Installed",
+      "stopped": "중지됨"
     },
     "revocationPending": "Revocation pending (vehicle armed)",
-    "failureReason": "Stopped by the node: {reason}"
+    "failureReason": "Stopped by the node: {reason}",
+    "failureTampered": "설치 후 파일이 변경됨 — 다시 설치하세요",
+    "failureSignerRevoked": "서명자가 취소됨 — 다시 설치하세요",
+    "modelState": {
+      "resolved": "모델 준비됨",
+      "needs_model": "모델 필요",
+      "verify_failed": "모델 확인 실패",
+      "unknown": "모델 상태 알 수 없음"
+    },
+    "modelStateReason": "{state}: {reason}",
+    "serviceReady": "준비됨",
+    "serviceNotReady": "준비 안 됨",
+    "serviceNotReadyReason": "준비 안 됨: {reason}",
+    "moreActions": "추가 작업",
+    "disableConfirmTitle": "{name}을(를) 비활성화할까요?",
+    "disableConfirmMessage": "확장 기능의 처리가 즉시 중지되며, 백그라운드 작업도 모두 종료됩니다.",
+    "disableArmedNote": "이 기체는 시동(Arm) 상태입니다.",
+    "waitingForNode": "드론이 명령을 수신하기를 기다리는 중…",
+    "cancelCommand": "취소",
+    "commandCancelled": "{name}에 대한 명령을 취소했습니다",
+    "cancelTooLate": "드론이 이미 {name}에 대한 명령을 받았습니다. 응답을 기다리는 중입니다.",
+    "notPickedUp": "드론이 30초 안에 명령을 수신하지 않았습니다",
+    "nodeUnreachable": "이 네트워크에서 드론에 연결할 수 없습니다"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -2403,8 +2612,8 @@
     "pairedNodes": "PAIRED NODES",
     "noNodesPaired": "No nodes paired",
     "pairFirstNode": "Pair Your First Node",
-    "pairNewNode": "Pair New Node",
-    "pairNode": "Pair Node",
+    "pairNewNode": "노드 추가",
+    "pairNode": "노드 추가",
     "pairing": {
       "tab": {
         "addDrone": "Add a drone",
@@ -2419,7 +2628,18 @@
       "tabsLabel": "페어링 방식",
       "lanRelayNudge": "LAN 외부에서 이 노드에 접속하려면 로그인하여 클라우드 릴레이를 활성화하세요. 위의 LAN 페어링은 계정 없이도 사용할 수 있습니다.",
       "cloudRequired": "Pairing with a generated code needs the cloud backend, and this build has none. Pair the drone on this network instead.",
-      "pairOnNetwork": "Pair on this network"
+      "pairOnNetwork": "Pair on this network",
+      "claiming": "{code} 등록 중…",
+      "copyFailed": "복사하지 못했습니다. 텍스트가 선택되어 있으니 Ctrl+C를 눌러 복사하세요.",
+      "error": {
+        "notRegistered": "이 코드는 클라우드 릴레이에 등록되어 있지 않습니다. 드론이 같은 네트워크에 있다면 호스트 이름으로 페어링하세요.",
+        "rateLimited": "페어링 코드 시도 횟수가 너무 많습니다. {seconds}초 후에 다시 시도하세요.",
+        "expired": "페어링 코드가 만료되었습니다. 에이전트에서 새 코드를 생성하세요.",
+        "alreadyClaimed": "이 코드는 이미 다른 계정에서 사용되었습니다.",
+        "noCloud": "이 빌드에는 클라우드 백엔드가 없어 코드를 등록할 수 없습니다. 대신 이 네트워크에서 드론을 페어링하세요.",
+        "generic": "페어링하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요.",
+        "generateFailed": "페어링 코드를 생성하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요."
+      }
     },
     "unpair": "페어링 해제",
     "disconnect": "연결 해제",
@@ -2640,13 +2860,234 @@
     },
     "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling.",
     "pairLink": {
-      "missingCode": "This link is missing a pairing code. Open the setup wizard on your device and try again, or open Mission Control directly to pair manually.",
-      "backToDashboard": "Back to dashboard",
       "title": "Pairing this device",
       "codeLabel": "Code:",
       "deviceLabel": "Device:",
       "signInHint": "Sign in if prompted; the dialog below claims this code on your account."
-    }
+    },
+    "videoLatencyBreakdown": {
+      "videoLatencyBreakdown": "영상 지연 시간 분석",
+      "closePinnedPanel": "고정 패널 닫기",
+      "trueGlassToGlass": "실제 Glass-to-glass",
+      "cameraYourMonitor": "카메라 → 모니터",
+      "sampleEWMA": "샘플 EWMA",
+      "timeFromCameraCaptureOn": "드론의 카메라 캡처부터 화면에 프레임이 표시될 때까지의 시간입니다. H.264 비트스트림의 SEI 타임스탬프 + WebRTC presentationTime + 드론↔브라우저 시계 오프셋 추정치를 사용합니다.",
+      "dronePublishSide": "드론 송출 측",
+      "encoderOutputDroneRTSPReadback": "인코더 출력 → 드론 RTSP 재수신",
+      "stampToReadbackEWMA": "스탬프-재수신 EWMA",
+      "droneSideStampToReadback": "드론 측 스탬프-재수신: 인코더가 프레임을 출력한 시점(인코딩 후 SEI 타임스탬프가 삽입되는 지점)부터 해당 프레임을 드론 자체 RTSP 피드에서 다시 읽어 들이기까지의 시간입니다. 송출 먹스, RTSP 송출 및 드론 측 버퍼링을 포함합니다. 카메라 캡처, 인코딩, 무선 링크, 지상 수신 및 브라우저는 제외되므로 glass-to-glass 수치가 아닙니다.",
+      "samples1s": "샘플 (1초)",
+      "numberOfSEISamplesRead": "최근 1초 동안 드론의 로컬 탭이 읽은 SEI 샘플 수입니다. SEI가 정상이면 인코딩 프레임 속도와 거의 같습니다.",
+      "link": "링크",
+      "networkReceiverPath": "네트워크 + 수신기 경로",
+      "roundTrip": "왕복 시간",
+      "webrtcICECandidatePairCurrentRoundTripTime": "WebRTC ICE 후보 쌍의 currentRoundTripTime입니다. Chrome의 chrome://webrtc-internals에 표시되는 값과 같습니다.",
+      "rtpJitter": "RTP 지터",
+      "inboundRtpJitterVarianceIn": "inbound-rtp.jitter. 패킷 도착 시간의 편차로, 값이 높으면 네트워크가 프레임을 불규칙한 간격으로 전달하고 있음을 의미합니다.",
+      "playoutBuffer": "재생 버퍼",
+      "chromeSDecoderJitterBuffer": "Chrome 디코더 지터 버퍼: 각 프레임이 도착 후 디코딩되기까지 대기하는 시간입니다. 네트워크 지터가 크면 늘어나고 링크가 원활하면 줄어듭니다.",
+      "packetsLost": "손실 패킷",
+      "cumulativeRTPPacketsTheReceiver": "수신기가 손실로 감지한 누적 RTP 패킷 수입니다. 값이 계속 증가하면 링크 품질 또는 FEC 여유가 부족하다는 뜻입니다.",
+      "gcsReceive": "GCS 수신",
+      "browserSide": "브라우저 측",
+      "framesDecoded": "디코딩된 프레임",
+      "totalVideoFramesChromeHas": "이 세션 시작 이후 Chrome이 디코딩한 전체 영상 프레임 수입니다.",
+      "framesDropped": "누락된 프레임",
+      "framesChromeDecodedButCouldn": "Chrome이 디코딩했지만 제때 렌더링하지 못한 프레임입니다(컴포지터 부하, 백그라운드 탭).",
+      "clockOffset": "시계 오프셋",
+      "estimatedDroneBrowserWallClock": "/api/time 왕복(Cristian 알고리즘)으로 산출한 드론↔브라우저 실제 시계 오프셋 추정치입니다. 양수이면 드론 시계가 앞서 있습니다.",
+      "codec": "코덱",
+      "bitrate": "비트레이트",
+      "transport": "전송 방식",
+      "sei": "SEI",
+      "endToEndLatency": "종단 간 지연 시간"
+    },
+    "radioNetworkHealthPanel": {
+      "operatingRegion": "운용 지역",
+      "channelLock": "채널 / 잠금",
+      "onboardWiFi": "온보드 WiFi",
+      "rfLink": "RF 링크",
+      "linkDiagnosis": "링크 진단",
+      "packetsSeen": "수신 패킷",
+      "decryptErrors": "복호화 오류",
+      "phyStatus": "PHY 상태",
+      "radioStack": "무선 스택",
+      "managementLink": "관리 링크",
+      "reachBack": "리치백",
+      "usbRehome": "USB 재연결",
+      "radioNetworkHealth": "무선 / 네트워크 상태",
+      "refresh": "새로고침",
+      "recentActivity": "최근 활동"
+    },
+    "dashboardAccessPinCard": {
+      "dashboardAccess": "대시보드 접근",
+      "couldNotReadThePIN": "이 노드에서 PIN 상태를 읽을 수 없습니다.",
+      "webDashboard": "웹 대시보드",
+      "setA4DigitPIN": "4자리 PIN 설정",
+      "dashboardPINSet": "대시보드 PIN 설정됨",
+      "dashboardPINCleared": "대시보드 PIN 해제됨",
+      "unknown": "알 수 없음",
+      "locked": "잠김",
+      "pinSet": "PIN 설정됨",
+      "visitorsToThisNodeApos": "이 노드의 웹 대시보드 방문자는 4자리 PIN을 입력해야 잠금을 해제할 수 있습니다. PIN을 해제하면 현재 연결된 모든 사용자가 로그아웃되며, 새 PIN이 설정될 때까지 대시보드가 열린 상태로 유지됩니다.",
+      "retry": "다시 시도",
+      "clearThePINConnectedBrowsers": "PIN을 해제할까요? 연결된 브라우저는 로그아웃되며, 새 PIN이 설정될 때까지 대시보드가 열린 상태로 유지됩니다.",
+      "cancel": "취소",
+      "clearPIN": "PIN 해제"
+    },
+    "boardPinoutView": {
+      "output": "출력",
+      "timerGroup": "타이머 그룹",
+      "protocol": "프로토콜",
+      "notes": "메모",
+      "noOutputDataAvailable": "출력 데이터가 없습니다.",
+      "boardPinout": "보드 핀아웃",
+      "unknownBoardID": "알 수 없는 보드 ID:",
+      "timerGroupDataNotAvailable": "이 보드의 타이머 그룹 데이터를 사용할 수 없습니다. 프로토콜 충돌 감지가 비활성화됩니다.",
+      "notInDatabase": "이 보드는 아직 핀아웃 데이터베이스에 없어 핀 맵을 표시할 수 없습니다."
+    },
+    "videoTransportSwitcher": {
+      "switchVideoTransport": "영상 전송 방식 전환",
+      "videoTransportSwitcher": "영상 전송 방식 전환기",
+      "networkRoundTripChromePlayout": "네트워크 왕복 시간 + Chrome 재생 버퍼. 하단 바의 칩을 클릭하면 상세 내역을 볼 수 있습니다.",
+      "autoBestOfLANP2P": "자동 (LAN, P2P 중 최적)",
+      "lanDirect": "LAN 직접 연결",
+      "off": "끄기",
+      "p2pMQTT": "P2P MQTT",
+      "theAgentAposSVideo": "에이전트의 비디오 서비스가 실행되고 있지 않습니다. 확인:",
+      "retry": "다시 시도"
+    },
+    "fcSourcePicker": {
+      "fcSource": "FC 소스",
+      "rescanSerialPorts": "시리얼 포트 다시 검색",
+      "source": "소스",
+      "port": "포트",
+      "baud": "보드레이트",
+      "apply": "적용",
+      "mspLinkActive": "MSP 링크 활성",
+      "retry": "다시 시도"
+    },
+    "networkTab": {
+      "network": "네트워크",
+      "manageEveryUplinkPathWiFi": "모든 업링크 경로를 관리합니다: WiFi 액세스 포인트, WiFi 클라이언트, 이더넷, 4G 모뎀. 활성 업링크에 따라 에이전트가 클라우드 릴레이에 사용할 네트워크가 결정됩니다.",
+      "disconnectedFromWiFiNetwork": "WiFi 네트워크 연결이 해제되었습니다.",
+      "modemConfigurationSaved": "모뎀 구성이 저장되었습니다.",
+      "failedToSaveModemConfiguration": "모뎀 구성을 저장하지 못했습니다.",
+      "failedToUpdateUplinkPriority": "업링크 우선순위를 업데이트하지 못했습니다.",
+      "failedToUpdateShareSetting": "공유 설정을 업데이트하지 못했습니다.",
+      "pairWithDrone": "드론과 페어링"
+    },
+    "latency-breakdown-parts": {
+      "perHopMeasured": "구간별 (측정값)",
+      "receivePath": "수신 경로",
+      "captureReceive": "캡처 → 수신",
+      "encodePlusNetworkFromRVFC": "인코딩과 네트워크 구간으로, rVFC captureTime부터 receiveTime까지입니다. 원격 소스의 captureTime은 RTCP 송신자 보고와 클럭 동기화를 바탕으로 사용자 에이전트가 추정한 값이므로 실제 값이긴 하지만 정확도는 동기화 수준에 좌우되며, 세션 첫 1초 동안은 사용할 수 없습니다. 하드웨어 인코딩 송출기를 사용하는 정상 LAN의 참고값: 종단 간 약 180 ms P50 / 240 ms P95. 이는 참고값일 뿐 이 링크의 측정값이 아닙니다.",
+      "receivePresent": "수신 → 표시 준비",
+      "jitterBufferPlusDecodePlus": "지터 버퍼, 디코딩, 합성 구간입니다. 양 끝점 모두 사용자 에이전트가 performance.now() 클럭 기준으로 직접 보고하는 타임스탬프입니다.",
+      "decode": "· 디코딩",
+      "rvfcProcessingDurationTheSummedDecode": "rVFC processingDuration: 디코더가 보고한 프레임의 총 디코딩 시간입니다.",
+      "bufferComposite": "· 버퍼 + 합성",
+      "receiveToPresentMinusDecode": "수신→표시 준비 값에서 디코딩 값을 뺀 것입니다. 위 두 행의 차이로 계산한 값이며 관측값이 아닙니다. 이 구간을 직접 보고하는 곳은 없습니다.",
+      "presentDisplay": "표시 준비 → 화면 표시",
+      "theVSyncTaxFrom": "presentationTime부터 expectedDisplayTime까지의 v-sync 지연입니다. expectedDisplayTime은 프레임이 언제 보일지에 대한 사용자 에이전트의 예측값이며, 실제로 표시되었다는 보고가 아닙니다.",
+      "endToEnd": "종단 간",
+      "captureToPresentedFrameAnchored": "캡처부터 표시 준비된 프레임까지입니다. captureTime을 기준으로 하므로 첫 구간과 동일한 RTCP 동기화 관련 한계가 있습니다. 수신 경로가 실제로 달성하는 정직한 종단 간 수치이며, 캡처나 인코딩 구간이 전혀 포함되지 않는 왕복 시간과는 다른 값입니다.",
+      "bufferTarget": "버퍼 목표값",
+      "whatTheControlLoopCurrently": "제어 루프가 현재 수신기의 지터 버퍼에 요청하는 값으로, 측정된 프리즈, RTP 지터 및 손실을 바탕으로 최소 2초 유지 시간을 두고 선택됩니다. 측정 근거 없이 하드코딩되었던 50 ms를 대체합니다. 0은 루프가 버퍼를 추가할 이유를 찾지 못했거나, 이 브라우저가 수신기 설정을 모두 지원하지 않음을 뜻합니다. 프레임이 수신되고 있고 위의 버퍼+합성 구간 값이 상당하다면 이는 브라우저 자체의 버퍼 깊이이며 여기서 설정한 값이 아닙니다."
+    },
+    "hardwareStatusPanel": {
+      "hardware": "하드웨어",
+      "timeSinceTheLastDecoded": "마지막으로 디코딩된 MAVLink HEARTBEAT 이후 경과 시간",
+      "noPeripheralsDetected": "감지된 주변 장치 없음",
+      "clickScanNowToDiscover": "지금 검색을 클릭하여 연결된 하드웨어를 찾으세요",
+      "failedSteps": "실패한 단계",
+      "peripherals": "주변 장치",
+      "theHardwareScanDidNot": "하드웨어 스캔이 완료되지 않았습니다. 다시 스캔하여 재시도하세요."
+    },
+    "shared": {
+      "address": "주소",
+      "bus": "버스",
+      "capabilities": "기능"
+    },
+    "memoryPanel": {
+      "memory": "메모리",
+      "swap": "전환",
+      "system": "시스템",
+      "perService": "서비스별"
+    },
+    "videoFeedCard": {
+      "captureScreenshot": "스크린샷 캡처",
+      "pictureInPicture": "PIP 화면",
+      "reconnectVideo": "영상 다시 연결",
+      "popOutVideo": "영상 분리 창"
+    },
+    "rcInputCard": {
+      "stale": "오래됨",
+      "rcInput": "RC 입력",
+      "showLess": "간단히 보기"
+    },
+    "meshTab": {
+      "meshRX": "메시 및 RX",
+      "selfHealingWirelessMeshBetween": "지상 노드 간 자가 복구 무선 메시와 이를 통해 구성되는 분산 수신망입니다. 이 노드의 역할을 설정한 후 인접 노드, 게이트웨이 및 병합 스트림을 확인하세요.",
+      "retry": "다시 시도"
+    },
+    "physicalUiTab": {
+      "refreshesOncePerSecond": "1초마다 새로 고침",
+      "forgot": "삭제함: ",
+      "noPairedBluetoothDevices": "페어링된 Bluetooth 기기가 없습니다."
+    },
+    "nodeStatusHoverCard": {
+      "flightController": "비행 컨트롤러",
+      "onboardComputer": "컴패니언 컴퓨터",
+      "groundStation": "지상국"
+    },
+    "servicesPanel": {
+      "services": "서비스",
+      "noServiceDataAvailable": "사용 가능한 서비스 데이터가 없습니다"
+    },
+    "staleBanner": {
+      "reSubscribeToCloudHeartbeats": "클라우드 하트비트 다시 구독",
+      "reconnect": "다시 연결"
+    },
+    "agentStatusCard": {
+      "controlPlaneRoundTripTime": "에이전트까지의 제어 평면 왕복 시간",
+      "timeSinceTheLastDecoded": "마지막으로 디코딩된 MAVLink HEARTBEAT 이후 경과 시간"
+    },
+    "securitySection": {
+      "httpsGcsExampleCom": "https://gcs.example.com"
+    },
+    "dashboardPinUnlockCard": {
+      "thisGroundStationIsNot": "이 지상국은 페어링되지 않았습니다",
+      "unlockedWithThisNodeApos": "이 브라우저 세션 동안 이 노드의 대시보드 PIN으로 잠금 해제되었습니다.",
+      "missionControlHoldsNoKey": "Mission Control에 이 노드의 키가 없으므로 대시보드 PIN을 입력할 때까지 상태, 무선 및 네트워크 데이터를 거부합니다. 잠금 해제는 이 페이지를 새로 고칠 때까지 유지됩니다.",
+      "dashboardPIN": "대시보드 PIN"
+    },
+    "requirementsFooter": {
+      "linuxRaspberryPiOSRecommended": "Linux (Raspberry Pi OS 권장)",
+      "ardupilotOrPX4FlightController": "ArduPilot 또는 PX4 비행 컨트롤러"
+    },
+    "fleetNetworkPanel": {
+      "fleetNetwork": "플릿 네트워크"
+    },
+    "pairingConfirm": {
+      "codeGenerated": "코드 생성됨"
+    },
+    "peripheralsTab": {
+      "match": "일치:",
+      "actions": "동작:",
+      "loading": "로딩 중..."
+    },
+    "serviceTable": {
+      "dataStale": "오래된 데이터",
+      "restartFailed": "{name}을(를) 다시 시작하지 못했습니다"
+    },
+    "calibrationLauncher": {
+      "sensorCalibration": "센서 보정",
+      "opensTheCalibrationWizardsIn": "구성 탭에서 보정 마법사를 엽니다"
+    },
+    "cloudRelayNeedsAnAccount": "클라우드 릴레이를 사용하려면 계정이 필요합니다",
+    "signIn": "로그인",
+    "toEnableMAVLinkMessageSigning": "MAVLink 메시지 서명을 활성화하려면 드론 연결 후 구성 > 보안을 여세요."
   },
   "agent": {
     "status": "에이전트 상태",
@@ -2825,7 +3266,7 @@
       "nudge": "선택한 웨이포인트 미세 이동",
       "copy": "웨이포인트 복사",
       "paste": "웨이포인트 붙여넣기",
-      "poi": "관심 지점",
+      "poi": "관심 지점 도구",
       "outline": "Toggle plan outline",
       "inspector": "Toggle inspector",
       "focusMap": "Toggle both side panels",
@@ -2854,7 +3295,7 @@
     "paletteCategory": "플래너",
     "olderMissionOnAircraft": "기체에 이전 미션",
     "uploadFailed": "업로드 실패",
-    "untitledMission": "제목 없는 미션",
+    "untitledMission": "제목 없는 계획",
     "defaultAltitude": "기본 고도",
     "defaultSpeed": "기본 속도",
     "homePosition": "홈 위치",
@@ -2950,13 +3391,13 @@
     "spacing": "간격",
     "corridorWidth": "회랑 폭",
     "loadMission": "미션 불러오기",
-    "downloadFromFc": "FC에서 다운로드",
+    "downloadFromFc": "드론에서 다운로드",
     "exportMission": "미션 내보내기",
     "importMission": "미션 가져오기",
     "clearMission": "미션 삭제",
     "missionSaved": "미션 저장됨",
-    "missionUploaded": "미션이 FC에 업로드됨",
-    "missionDownloaded": "미션이 FC에서 다운로드됨",
+    "missionUploaded": "미션을 드론에 업로드했습니다",
+    "missionDownloaded": "드론에서 미션을 다운로드했습니다",
     "downloadFailed": "다운로드 실패",
     "format": "형식",
     "fileName": "파일 이름",
@@ -3054,7 +3495,7 @@
     "exportPlanQgc": ".plan 내보내기 (QGC)",
     "exportKml": "KML 내보내기",
     "exportCsv": "CSV 내보내기",
-    "discardChanges": "변경사항 버리기",
+    "discardChanges": "이 계획을 지우시겠습니까?",
     "relativeHome": "상대 (Home)",
     "absoluteMsl": "절대 (MSL)",
     "terrainFollowing": "지형 추종",
@@ -3096,11 +3537,11 @@
     "redo": "다시 실행",
     "clearAll": "전체 삭제",
     "keyboardShortcuts": "키보드 단축키",
-    "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
+    "discardChangesBody": "열린 계획에서 모든 웨이포인트, 도형, 지오펜스, 랠리 포인트를 제거합니다. 실행 취소(Ctrl+Z)로 되돌릴 수 있으며, 라이브러리에 저장된 사본은 저장하기 전까지 그대로 유지됩니다.",
     "discard": "Discard",
-    "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
+    "uploadBlockedErrors": "업로드 전에 유효성 검사 오류 {count}개를 수정하세요",
     "checklist": {
-      "title": "비행 전 체크리스트",
+      "title": "임무 준비 체크리스트",
       "ready": "준비 완료",
       "progress": "{checked}/{total}",
       "clear": "초기화",
@@ -3351,28 +3792,28 @@
       "elevationFailed": "고도 다운로드 실패: {reason}"
     },
     "commands": {
-      "sendToVehicle": "Send to vehicle",
-      "downloadFromDrone": "Download mission from drone",
+      "sendToVehicle": "드론에 업로드",
+      "downloadFromDrone": "드론에서 미션 다운로드",
       "importBoundary": "Import boundary (KML/SHP)",
-      "exportNative": "Export .altmission (lossless)",
+      "exportNative": ".altmission 내보내기(무손실)",
       "exportWaypoints": "Export .waypoints",
       "exportPlan": "Export .plan (QGC)",
       "exportKml": "Export KML",
-      "exportKmz": "Export KMZ",
+      "exportKmz": "KMZ 내보내기",
       "exportCsv": "Export CSV",
       "exportBrief": "Export flight brief (PDF)",
       "copyShareLink": "Copy share link",
       "reverseWaypoints": "Reverse waypoints",
       "transformMission": "Transform mission",
       "simulate": "Simulate in 3D",
-      "discardPlan": "Discard plan",
+      "discardPlan": "계획 지우기",
       "dock": {
         "altitude": "Show altitude profile",
         "terrain": "Show terrain profile",
         "issues": "Show mission issues",
         "energy": "Show energy estimate",
         "site": "Show site conditions",
-        "checklist": "Show pre-flight checklist"
+        "checklist": "임무 준비 체크리스트 표시"
       },
       "toggleView3d": "Toggle 3D view"
     },
@@ -3407,7 +3848,7 @@
         "acceptRadius": "Accept radius",
         "frame": "Altitude frame",
         "frameRel": "REL",
-        "frameRelTitle": "Relative to home",
+        "frameRelTitle": "홈 기준",
         "frameMsl": "MSL",
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
@@ -3488,7 +3929,7 @@
         "collapseAction": "Hide action settings",
         "expandAction": "Show action settings",
         "resumeFromHere": "여기서 재개…",
-        "resumeFirstReason": "임무가 여기서 시작되므로 평소대로 전송하세요"
+        "resumeFirstReason": "미션이 여기서 시작되므로 일반 방식으로 업로드하세요"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3575,7 +4016,7 @@
       },
       "label": "Inspector",
       "vehicle": {
-        "title": "기체",
+        "title": "드론",
         "autopilotLabel": "오토파일럿",
         "typeLabel": "유형",
         "autopilot": {
@@ -3599,7 +4040,7 @@
         "groundMsl": "해발 {alt}",
         "groundUnknown": "지면 알 수 없음",
         "notSet": "설정 안 됨",
-        "useVehicleHome": "기체 홈 사용",
+        "useVehicleHome": "드론 홈 위치 사용",
         "transitAlt": "이동 고도",
         "transitHint": "첫 웨이포인트 전과 복귀 시 이 높이까지 상승합니다.",
         "off": "끔"
@@ -3641,52 +4082,53 @@
       "poiItem": "POI {n}",
       "rowMenu": "웨이포인트 {n} 작업",
       "resumeFromHere": "여기서부터 재개…",
-      "resumeFirstReason": "계획이 여기서 시작합니다. 평소대로 전송하세요"
+      "resumeFirstReason": "계획이 여기서 시작됩니다. 일반 방식으로 업로드하세요"
     },
     "bar": {
       "plans": "Plans",
       "plansTitle": "Plan library (Ctrl/Cmd+O)",
       "nameLabel": "Plan name",
-      "vehicle": "Vehicle",
-      "issues": "{count, plural, one {# issue} other {# issues}}",
+      "vehicle": "드론",
+      "issues": "{count, plural, other {오류 #개}}",
       "issuesTitle": "Open mission issues",
       "save": "Save",
-      "send": "Send to vehicle",
-      "sending": "Sending…",
-      "sent": "Sent ✓",
-      "fixIssues": "Fix {count, plural, one {# issue} other {# issues}}",
-      "noVehicle": "Connect a vehicle to send",
-      "emptyMission": "Add waypoints to send",
+      "send": "드론에 업로드",
+      "sending": "업로드 중…",
+      "sent": "업로드됨 ✓",
+      "fixIssues": "{count, plural, other {오류 #개}} 수정",
+      "noVehicle": "업로드할 연결된 드론을 선택하세요",
+      "emptyMission": "업로드하려면 웨이포인트를 추가하세요",
       "more": "More plan actions",
-      "downloadFromDrone": "Download from drone",
-      "exportNative": "Export (.altmission, lossless)",
-      "exportKmz": "Export (.kmz)",
+      "downloadFromDrone": "드론에서 다운로드",
+      "exportNative": ".altmission 내보내기(무손실)",
+      "exportKmz": "KMZ 내보내기",
       "saveAs": "Save as new plan",
       "reverse": "Reverse waypoints",
       "transform": "Transform mission…",
       "simulate": "Simulate in 3D",
-      "discard": "Discard plan"
+      "discard": "계획 지우기",
+      "sendingProgress": "업로드 중 {sent}/{total}"
     },
     "send": {
-      "title": "Send to vehicle",
-      "intro": "Choose what to send to the selected vehicle.",
+      "title": "드론에 업로드",
+      "intro": "선택한 드론에 업로드할 항목을 선택하세요.",
       "mission": "Mission ({count, plural, one {# item} other {# items}})",
       "geofence": "Geofence",
       "rally": "Rally points ({count})",
       "blocked": "{count, plural, one {# issue blocks} other {# issues block}} the mission",
       "reviewIssues": "Review issues",
-      "checklist": "Pre-flight checklist {done}/{total}",
+      "checklist": "임무 준비 체크리스트 {done}/{total}",
       "openChecklist": "Open checklist",
-      "nothing": "Nothing to send. Add waypoints, a geofence or rally points first.",
-      "send": "Send",
-      "sending": "Sending…",
+      "nothing": "업로드할 항목이 없습니다. 먼저 웨이포인트, 지오펜스 또는 랠리 포인트를 추가하세요.",
+      "send": "업로드",
+      "sending": "업로드 중…",
       "cancel": "Cancel",
       "close": "Close",
-      "statusRunning": "Sending",
-      "statusOk": "Sent",
+      "statusRunning": "업로드 중",
+      "statusOk": "업로드됨",
       "statusFailed": "Failed",
-      "target": "Sends to {name}",
-      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "target": "{name}(으)로 업로드",
+      "targetMismatch": "이 계획은 {plan}에 할당되어 있습니다. 업로드 대상은 {target}입니다.",
       "switchTarget": "Switch to {plan}",
       "missionInFlight": "업로드하기 전에 미션을 일시 정지하세요",
       "profileMismatch": "{plan}용으로 계획됨; 대상은 {target}입니다",
@@ -3700,6 +4142,24 @@
         "plane": "고정익",
         "vtol": "VTOL",
         "rover": "로버"
+      },
+      "progress": "미션 업로드 중 {sent}/{total}",
+      "flyMission": "이 미션 비행",
+      "result": {
+        "noAnswer": "비행 컨트롤러가 응답하지 않습니다. 링크를 확인하고 다시 시도하세요.",
+        "stalled": "비행 컨트롤러가 미션 항목 요청을 중단했습니다. 링크를 확인하고 다시 시도하세요.",
+        "notConnected": "드론이 연결되어 있지 않습니다.",
+        "error": "비행 컨트롤러가 미션 오류를 보고했습니다.",
+        "unsupportedFrame": "비행 컨트롤러가 이 미션에 사용된 고도 기준을 지원하지 않습니다.",
+        "unsupported": "비행 컨트롤러가 이 미션에 사용된 명령을 지원하지 않습니다.",
+        "noSpace": "비행 컨트롤러에 이렇게 긴 미션을 저장할 공간이 없습니다.",
+        "invalid": "비행 컨트롤러가 미션에서 잘못된 값을 발견했습니다.",
+        "invalidParam": "비행 컨트롤러가 미션 항목 중 하나의 설정을 거부했습니다.",
+        "invalidPosition": "비행 컨트롤러가 웨이포인트 위치를 거부했습니다.",
+        "invalidSequence": "미션 항목이 순서대로 도착하지 않았습니다. 다시 업로드해 보세요.",
+        "denied": "비행 컨트롤러가 지금은 미션을 받을 수 없습니다.",
+        "cancelled": "비행 컨트롤러가 업로드를 취소했습니다.",
+        "unknown": "비행 컨트롤러가 미션을 거부했습니다(코드 {code})."
       }
     },
     "dock": {
@@ -3711,7 +4171,7 @@
         "issues": "Issues",
         "energy": "Energy",
         "site": "Site",
-        "checklist": "Checklist"
+        "checklist": "체크리스트"
       },
       "collapse": "Collapse",
       "stats": {
@@ -3727,27 +4187,27 @@
         "maxAboveHome": "홈 기준 최대 {value}",
         "maxAboveHomeTitle": "비행 중 홈 기준 최고 지점"
       },
-      "issueBadge": "{errors} errors, {warnings} warnings",
+      "issueBadge": "오류 {errors}개, 경고 {warnings}개",
       "checklistBadge": "{checked} of {total} checked",
       "noWaypoints": "Add waypoints to the plan to see this.",
       "needTwoWaypoints": "Add at least two waypoints to see the terrain profile.",
       "siteEmpty": "Add a waypoint or move the map to see site conditions.",
       "warningCount": "{count, plural, one {# warning} other {# warnings}}",
-      "errorCount": "{count, plural, one {# error} other {# errors}}",
-      "errorWarningCount": "{errors, plural, one {# error} other {# errors}}, {warnings, plural, one {# warning} other {# warnings}}"
+      "errorCount": "{count, plural, other {오류 #개}}",
+      "errorWarningCount": "{errors, plural, other {오류 #개}}, {warnings, plural, other {경고 #개}}"
     },
     "overlays": {
-      "title": "KML overlays",
-      "close": "Close overlay panel",
-      "empty": "No overlays loaded. Add a KML or KMZ file to display on the map.",
+      "title": "지도 오버레이",
+      "close": "오버레이 패널 닫기",
+      "empty": "불러온 오버레이가 없습니다. 지도에 표시할 KML 또는 KMZ 파일을 추가하세요.",
       "noGeometry": "No geometry found in file.",
       "parseFailed": "Failed to parse file. Check format.",
-      "add": "Add overlay",
-      "hide": "Hide overlay",
-      "show": "Show overlay",
-      "remove": "Remove overlay",
+      "add": "오버레이 추가",
+      "hide": "오버레이 숨기기",
+      "show": "오버레이 표시",
+      "remove": "오버레이 제거",
       "features": "{count, plural, one {# feature} other {# features}}",
-      "opacity": "Overlay opacity"
+      "opacity": "오버레이 불투명도"
     },
     "rail": {
       "ariaLabel": "Map tools",
@@ -3755,7 +4215,7 @@
       "drawTools": "Draw tools",
       "markerTools": "Marker tools",
       "patterns": "Patterns",
-      "layers": "Map layers",
+      "layers": "지도 오버레이",
       "offlineArea": "Download area for offline",
       "gallery": {
         "ariaLabel": "Pattern gallery",
@@ -3801,7 +4261,7 @@
         "tolerance": "허용 오차",
         "maxClimb": "최대 상승",
         "maxDescent": "최대 하강",
-        "terrainHint": "고도는 각 웨이포인트 아래 지면 기준입니다. 기체에 지형 데이터가 필요합니다.",
+        "terrainHint": "고도는 각 웨이포인트 아래 지면 기준입니다. 드론에 지형 데이터가 필요합니다.",
         "followHint": "모든 구간에서 지면 위 높이를 유지하는 해발 고도를 씁니다.",
         "sampling": "지형 샘플링 중…",
         "unavailable": "이곳의 지형을 사용할 수 없습니다. 홈 기준을 사용하세요",
@@ -3858,7 +4318,7 @@
       "roiNeedsWaypoint": "ROI를 설정하기 전에 웨이포인트를 추가하세요",
       "missionCleared": "미션을 지웠습니다",
       "waypointsReversed": "웨이포인트 순서를 뒤집었습니다",
-      "missionUploaded": "미션을 FC에 업로드했습니다",
+      "missionUploaded": "미션을 드론에 업로드했습니다",
       "uploadFailedReason": "미션 업로드 실패: {reason}",
       "uploadFailed": "미션 업로드 실패",
       "resumeUploaded": "WP {n}부터 재개하는 미션을 업로드했습니다",
@@ -3886,7 +4346,7 @@
       "plannedHome": "계획 홈 · {ground}",
       "groundMsl": "해발 {m} m",
       "groundUnknown": "지면 고도 알 수 없음",
-      "vehicleHome": "기체 홈",
+      "vehicleHome": "드론 홈",
       "useAsPlannedHome": "계획 홈으로 사용",
       "transitAlt": "↑ {m} m",
       "clipsTerrain": "지형을 {m} m 침범",
@@ -3901,6 +4361,74 @@
       "title": "Switch between the 2D map and the 3D view (3)",
       "drawIn2d": "Shapes are drawn on the 2D map.",
       "hint": "Drag a waypoint to move it · Alt+drag to change altitude · Right-drag to tilt"
+    },
+    "issue": {
+      "wpPX4HasNoTerrainAltitude": "WP{v0}: PX4에는 지형 고도 기준이 없습니다. 홈 기준 고도를 사용하거나 패턴에서 지형 추종을 사용하세요",
+      "terrainFrameWaypointsNeedTerrainData": "지형 기준 웨이포인트는 기체에 지형 데이터가 필요하지만 TERRAIN_ENABLE이 0입니다: 기체가 RTL로 전환됩니다",
+      "needsTerrainDataOnTheVehicle": "기체에 지형 데이터 필요 (TERRAIN_ENABLE 및 SD 카드 또는 GCS 지형)",
+      "geofenceUploadsItemsPX4StoresAt": "지오펜스 업로드 항목 {v0}개, PX4는 최대 {v1}개까지 저장합니다",
+      "rallyPointsPX4StoresAtMost": "랠리 포인트 {v0}개, PX4는 최대 {v1}개까지 저장합니다",
+      "missionUploadsItemsIncludingHomeArduPilot": "미션 업로드 항목 {v0}개(홈 포함), ArduPilot 보드는 {v1}개까지 저장합니다",
+      "missionUploadsItemsIncludingHomeArduPilot2": "미션 업로드 항목 {v0}개(홈 포함). ArduPilot 보드는 {v1}개까지 저장합니다: 보드를 확인하세요",
+      "wpTurnsIsRoundedDownTo": "WP{v0}: {v1}회전은 {v2}회전으로 내림 처리됩니다",
+      "wpAMLoiterRadiusIs": "WP{v0}: 선회 반경 {v1}m는 10m 단위로 저장됩니다",
+      "wpOutsideGeofencePolygon": "WP{v0}: 지오펜스 다각형 밖에 있음",
+      "wpMFromCenterExceedsM": "WP{v0}: 중심에서 {v1}m, 반경 {v2}m 초과",
+      "wpOutsideInclusionZone": "WP{v0}: 허용 구역 밖에 있음",
+      "wpInsideANoFlyExclusion": "WP{v0}: 비행 금지 구역 안에 있음",
+      "geofencePolygonIsSelfIntersectingContainment": "지오펜스 다각형이 자체 교차합니다. 포함 여부 검사가 부정확할 수 있습니다.",
+      "rallyInvalidCoordinates": "랠리 {v0}: 잘못된 좌표",
+      "rallyOutsideGeofencePolygon": "랠리 {v0}: 지오펜스 다각형 밖에 있음",
+      "rallyOutsideGeofenceCircle": "랠리 {v0}: 지오펜스 원 밖에 있음",
+      "rallyOutsideInclusionZone": "랠리 {v0}: 허용 구역 밖에 있음",
+      "rallyInsideANoFlyExclusion": "랠리 {v0}: 비행 금지 구역 안에 있음",
+      "rallyAltitudeMExceedsFenceCeiling": "랠리 {v0}: 고도 {v1}m가 펜스 상한 {v2}m를 초과합니다",
+      "wpMoreThanDOJUMPsOnly": "WP{v0}: DO_JUMP가 {v1}개를 초과합니다. 대부분의 보드는 처음 {v2}개의 점프만 추적합니다",
+      "wpDOJUMPHasNoValid": "WP{v0}: DO_JUMP에 유효한 대상 웨이포인트가 없습니다",
+      "wpDOJUMPTargetsWPBut": "WP{v0}: DO_JUMP 대상이 WP{v1}이지만 PX4는 이전 항목으로만 점프합니다",
+      "wpDOJUMPRepeatArduPilotNever": "WP{v0}: DO_JUMP 반복 {v1}: ArduPilot은 이 점프를 실행하지 않습니다 (-1만 무한 반복)",
+      "wpDOJUMPRepeatPX4Rejects": "WP{v0}: DO_JUMP 반복 {v1}: PX4는 -1 이외의 음수 반복을 거부합니다",
+      "wpDOJUMPLoopsBackTo": "WP{v0}: DO_JUMP가 WP{v1}로 무한 반복됩니다 — 미션이 착륙에 도달하지 않습니다",
+      "wpDOJUMPRepeatCountIs": "WP{v0}: DO_JUMP 반복 횟수가 음수입니다 — 점프가 무한 반복됩니다",
+      "wpDOJUMPTargetsWPWhich": "WP{v0}: DO_JUMP 대상 WP{v1}이 미션 종료 지점 WP{v2} 이후에 있습니다",
+      "wpToWPTheStraightLeg": "WP{v0} → WP{v1}: 직선 구간이 지오펜스를 벗어납니다",
+      "wpToWPTheStraightLeg2": "WP{v0} → WP{v1}: 직선 구간이 비행 금지 구역을 통과합니다",
+      "wpToWPMAlongThe": "WP{v0} → WP{v1}: 구간상 {v2} {v3}m (최소: {v4}m)",
+      "missionHasNoWaypoints": "미션에 웨이포인트가 없습니다",
+      "missionHasOnly1WaypointAdd": "미션에 웨이포인트가 1개뿐입니다. 의미 있는 미션을 위해 2개 이상 추가하세요.",
+      "firstWaypointIsNotTAKEOFFArduCopter": "첫 웨이포인트가 TAKEOFF가 아닙니다. ArduCopter는 TAKEOFF 없이 지상에서 AUTO를 시작하지 않습니다",
+      "firstWaypointIsNotTAKEOFFThe": "첫 웨이포인트가 TAKEOFF가 아닙니다. 드론이 제대로 이륙하지 못할 수 있습니다.",
+      "wpDuplicateWaypointIdTheMission": "WP{v0}: 중복된 웨이포인트 ID \"{v1}\" — 미션 순서가 모호합니다",
+      "wpIsAnActionAndMust": "WP{v0}: {v1}은(는) 액션이므로 단독으로 두지 말고 웨이포인트에 연결해야 합니다",
+      "wpInvalidCoordinates": "WP{v0}: 잘못된 좌표 ({v1}, {v2})",
+      "wpDuplicateOfWPMApart": "WP{v0}: WP{v1}과 중복 ({v2}m 간격)",
+      "kmApartMaxKm": "{v0}: {v1}km 간격 (최대: {v2}km)",
+      "mLegExceedsTheMLink": "{v0}: {v1}m 구간이 링크 범위 {v2}m를 초과합니다",
+      "wpMFromHomeBeyondThe": "WP{v0}: 홈에서 {v1}m, 링크 범위 {v2}m 밖입니다",
+      "wpMFromHomeOutsideThe": "WP{v0}: 홈에서 {v1}m, 홈 원형 펜스 {v2}m (FENCE_RADIUS) 밖입니다",
+      "wpTurnNeedsAMRadius": "WP{v0}: {v1}° 선회에 {v2}m 반경이 필요하지만 기체 최소값은 {v3}m입니다",
+      "rtlAltitudeMAboveHomeClears": "홈 기준 RTL 고도 {v0}m는 복귀 경로의 최고 지형(WP{v1}, {v2}m MSL)보다 {v3}m만 높습니다 (최소: {v4}m)",
+      "wpMFromTheGeofenceBoundary": "WP{v0}: 지오펜스 경계에서 {v1}m ({v2}m 경고 버퍼 이내)",
+      "wpAltitudeMAboveHomeExceeds": "WP{v0}: 홈 기준 고도 {v1}m가 제한 {v2}m를 초과합니다",
+      "wpFrameAltitudeCannotBeCompared": "WP{v0}: 홈 해발고도 없이는 {v1} 기준 고도를 상한 {v2}m와 비교할 수 없습니다",
+      "wpAltitudeMAboveHomeIs": "WP{v0}: 홈 기준 고도 {v1}m가 펜스 하한 {v2}m보다 낮습니다",
+      "wpHasNoLocation00": "WP{v0}: {v1}에 위치가 없습니다 (0, 0). 위도와 경도를 설정하세요",
+      "wpHasInvalidCoordinates": "WP{v0}: {v1}의 좌표가 올바르지 않습니다",
+      "startsAirborne": "WP1: TAKEOFF 명령 없이 공중에서 미션이 시작됩니다({alt}m, {frame} 프레임)",
+      "startsAirbornePx4": "WP1: TAKEOFF 명령 없이 공중에서 미션이 시작됩니다({alt}m, {frame} 프레임). PX4는 먼저 MIS_TAKEOFF_ALT까지 상승합니다",
+      "homeNotSet": "홈 지형 고도 없음: 상대 프레임 고도를 지형과 비교해 확인할 수 없습니다. 홈을 설정하거나 고도 샘플을 기다리세요.",
+      "noLandArduPlane": "마지막 웨이포인트가 LAND 또는 RTL이 아닙니다. ArduPlane은 미션 종료 시 RTL로 전환합니다.",
+      "noLandRover": "마지막 웨이포인트가 RTL이 아닙니다. 로버는 마지막 웨이포인트에서 정지합니다.",
+      "noLandArduCopter": "마지막 웨이포인트가 LAND 또는 RTL이 아닙니다. ArduCopter는 마지막 웨이포인트에서 호버링합니다.",
+      "noLandPx4": "마지막 웨이포인트가 LAND 또는 RTL이 아닙니다. PX4는 마지막 웨이포인트에서 선회 대기합니다.",
+      "noLandGeneric": "마지막 웨이포인트가 LAND 또는 RTL이 아닙니다. 드론이 마지막 웨이포인트에서 호버링할 수 있습니다.",
+      "landStartNeedsAutoland": "기체의 RTL_AUTOLAND = 0이므로 미션에 DO_LAND_START가 있으면 ArduPlane이 시동을 거부합니다. RTL 시 이를 통해 착륙하려면 RTL_AUTOLAND를 1 또는 2로, 복행 전용으로 사용하려면 3으로 설정하세요",
+      "legTerrainUnchecked": "WP{from}에서 WP{to}: 구간의 지형을 확인하지 않음(지면 프로필 또는 홈 고도 없음)",
+      "legsTerrainUnchecked": "WP{from}에서 WP{to}부터 {count}개 구간의 지형을 확인하지 않음(지면 프로필 또는 홈 고도 없음)",
+      "terrainUncheckedNoHome": "WP{wp}: 지형 여유 고도 확인 안 됨 — 이 상대 프레임 고도에 대한 홈 고도 없음",
+      "terrainUnknown": "WP{wp}: 지형 알 수 없음 — 이 웨이포인트의 지면 고도 샘플이 없어 여유 고도를 확인하지 않음",
+      "terrainClearanceGround": "WP{v0}: 지형 위 {v1}m에 불과함(최소: {v2}m). 지면: {ground}m MSL",
+      "terrainClearanceGroundUnknown": "WP{v0}: 지형 위 {v1}m에 불과함(최소: {v2}m). 지면 알 수 없음"
     }
   },
   "geofence": {
@@ -3937,7 +4465,64 @@
     "uploadFailed": "펜스 업로드 실패",
     "olderFenceOnAircraft": "Aircraft holds an older fence",
     "maxAltitudeRequired": "Enter a max altitude above 0 m",
-    "clearFenceConfirm": "Delete the fence geometry? Undo restores it."
+    "clearFenceConfirm": "Delete the fence geometry? Undo restores it.",
+    "panel": {
+      "px4Note": "PX4 지오펜스 동작 및 제한(GF_ACTION, GF_MAX_HOR_DIST, GF_MAX_VER_DIST)은 페일세이프 패널에서 설정합니다.",
+      "savedToRam": "지오펜스 파라미터가 RAM에 저장됨",
+      "saveFailed": "일부 파라미터 저장 실패",
+      "breachNone": "없음",
+      "breachMinAlt": "최소 고도",
+      "breachMaxAlt": "최대 고도",
+      "breachBoundary": "경계",
+      "title": "지오펜스 설정",
+      "subtitle": "지리적 경계 적용 및 이탈 시 동작 설정",
+      "enableTitle": "지오펜스 활성화",
+      "enableDesc": "펜스 적용 전체 활성화",
+      "typeTitle": "펜스 유형",
+      "typeDesc": "적용할 펜스 경계 선택(비트마스크)",
+      "circleTitle": "원형 펜스",
+      "circleDesc": "홈으로부터의 최대 수평 거리",
+      "maxRadius": "최대 반경",
+      "warningMargin": "경고 여유 거리",
+      "altTitle": "고도 펜스",
+      "altDesc": "고도 상한 및 하한",
+      "maxAltitude": "최대 고도",
+      "minAltitude": "최소 고도",
+      "polygonTitle": "다각형 펜스",
+      "polygonDesc": "다각형 경계 펜스",
+      "polygonVertices": "다각형 꼭짓점:",
+      "uploading": "업로드 중...",
+      "uploadPoints": "포인트 업로드",
+      "downloading": "다운로드 중...",
+      "downloadPoints": "포인트 다운로드",
+      "removeFromAircraft": "기체에서 제거",
+      "pointsUploaded": "펜스 포인트 업로드됨",
+      "olderOnAircraft": "기체에 이전 펜스가 저장되어 있음",
+      "pointsDownloaded": "펜스 포인트 다운로드됨",
+      "removeTitle": "기체에서 펜스 제거",
+      "removeMessage": "비행 컨트롤러에 저장된 모든 펜스 경계가 삭제되며, 기체는 더 이상 펜스를 적용하지 않습니다. 계속하시겠습니까?",
+      "removeConfirm": "펜스 제거",
+      "zonesTitle": "구역",
+      "zonesDesc": "포함 구역(내부 유지) 및 제외 구역(외부 유지)",
+      "noZones": "정의된 구역이 없습니다. 아래 버튼으로 구역을 추가하세요.",
+      "incl": "포함",
+      "excl": "제외",
+      "zoneType": {
+        "polygon": "다각형",
+        "circle": "원형"
+      },
+      "points": "{count}개 포인트",
+      "toggleRole": "포함/제외 전환",
+      "removeZone": "구역 제거",
+      "inclusion": "포함",
+      "exclusion": "제외",
+      "breachActionTitle": "이탈 시 동작",
+      "breachActionDesc": "펜스 이탈 시 수행할 동작",
+      "breachActiveTitle": "이탈 발생",
+      "breachActiveDesc": "현재 펜스 이탈 정보",
+      "breach": "이탈: {label}",
+      "totalBreaches": "총 이탈 횟수: {count}"
+    }
   },
   "rally": {
     "title": "랠리 포인트",
@@ -3965,7 +4550,7 @@
     "msl": "MSL",
     "noData": "지형 데이터 없음",
     "terrainFollowingAgl": "지형 추종 (AGL)",
-    "relativeToTakeoff": "이륙 지점 기준",
+    "relativeToTakeoff": "홈 기준",
     "showRelative": "상대 표시",
     "showTerrain": "지형 표시",
     "loadingTerrain": "지형 데이터 로딩 중...",
@@ -4064,7 +4649,7 @@
     "avgSpeed": "평균 속도",
     "waypointsVisited": "방문한 웨이포인트",
     "saveToHistory": "기록에 저장",
-    "missionHasErrors": "미션에 {count, plural, one {#개 오류} other {#개 오류}}가 있습니다",
+    "missionHasErrors": "미션에 {count, plural, other {오류 #개}}가 있습니다",
     "missionHasWarnings": "미션에 {count, plural, one {#개 경고} other {#개 경고}}가 있습니다",
     "editPlan": "계획 편집",
     "duration": "소요 시간",
@@ -4109,7 +4694,6 @@
     "labels": "Labels",
     "cameraTriggers": "Camera triggers",
     "initializing3dView": "Initializing 3D view...",
-    "viewFailed": "3D view failed: {message}",
     "noFlightPlanLoaded": "No flight plan loaded",
     "addWaypointsOrLoadPlan": "Add at least 2 waypoints in the Plan tab or load a plan from the library",
     "emptyTitle": "아직 시뮬레이션할 항목이 없습니다",
@@ -4151,10 +4735,14 @@
     "gestureZoom": "Zoom",
     "gestureLook": "Free look",
     "previewSource": "Computed from the planned path, not live telemetry",
-    "notModeled": "Not modeled in the trajectory preview"
+    "notModeled": "Not modeled in the trajectory preview",
+    "viewUnavailable": "이 기기에서는 3D 보기를 사용할 수 없습니다",
+    "switchTo2d": "2D로 전환",
+    "moreIssues": "+{count}개 더 보기",
+    "dismissWarning": "경고 닫기"
   },
   "history": {
-    "title": "비행 기록",
+    "title": "비행 로그",
     "noFlights": "비행 기록 없음",
     "emptyTitle": "아직 기록된 비행이 없습니다",
     "emptySubtitle": "드론을 연결하고 시동을 걸면 기록이 시작됩니다. 가져온 로그와 실시간 녹화가 여기에 표시됩니다.",
@@ -4220,7 +4808,6 @@
     "statsFlights": "비행 횟수",
     "statsHours": "비행 시간",
     "statsDistance": "비행 거리",
-    "statsBattery": "배터리 사용량",
     "inProgress": "진행 중",
     "syncLocalOnly": "로컬 전용",
     "syncSyncing": "동기화 중…",
@@ -4365,12 +4952,12 @@
       "totalFlights": "총 비행 횟수",
       "totalHours": "총 비행 시간",
       "totalDistance": "총 비행 거리",
-      "totalBattery": "총 배터리 사용량",
       "averages": "평균",
       "avgDuration": "평균 비행 시간",
       "avgDistance": "평균 비행 거리",
       "avgMaxAlt": "평균 최대 고도",
-      "byDrone": "드론별"
+      "byDrone": "드론별",
+      "avgBattery": "비행당 평균 배터리"
     },
     "restore": "Restore",
     "deletePermanently": "Delete permanently",
@@ -4379,7 +4966,294 @@
     "logBrowserNoFlights": "Downloaded {bytes}, but no flight was found in the log: it holds no arm-to-disarm flight, or its format is not one this browser reads.",
     "logBrowserDuplicates": "{count} flight(s) from this log were already in history and were left as they are.",
     "syncNotYet": "Not synced yet",
-    "syncPending": "{count} to sync"
+    "syncPending": "{count} to sync",
+    "moveToTrashTitle": "휴지통으로 이동",
+    "emptyTrashTitle": "휴지통 비우기",
+    "trashCount": "휴지통 ({count})",
+    "importBtn": "가져오기",
+    "mediaBtn": "미디어",
+    "backupWithTelemetry": "텔레메트리 포함",
+    "backupWithTelemetryTitle": "백업에 비행 텔레메트리를 포함하여 복원된 비행에서도 재생, 차트, 내보내기를 사용할 수 있습니다 (파일 크기 증가)",
+    "backupRestoreErrors": "복원이 완료되었지만 오류가 있습니다:\n{errors}",
+    "backupRestoreDone": "{stores}개 저장소를 복원하고 {records}개 레코드를 병합했습니다.",
+    "dragToResize": "드래그하여 크기 조정",
+    "trashIsEmpty": "휴지통이 비어 있습니다",
+    "noFlightsMatch": "필터와 일치하는 비행이 없습니다",
+    "selectFlight": "{drone} 선택",
+    "dateUnknown": "날짜 알 수 없음",
+    "dateUnknownHint": "로그에 시각 정보가 없습니다",
+    "importedFromDataflash": "데이터플래시 로그에서 가져옴",
+    "syncedToCloud": "클라우드에 동기화됨",
+    "statsBatteryAvg": "평균 배터리 / 비행",
+    "overviewTab": {
+      "flightInfo": "비행 정보",
+      "drone": "드론",
+      "name": "이름",
+      "date": "날짜",
+      "start": "시작",
+      "end": "종료",
+      "place": "장소",
+      "takeoff": "이륙",
+      "landing": "착륙",
+      "landingPlace": "착륙 장소",
+      "metrics": "지표",
+      "duration": "비행 시간",
+      "distance": "거리",
+      "maxAltitude": "최대 고도",
+      "maxSpeed": "최대 속도",
+      "avgSpeed": "평균 속도",
+      "waypoints": "웨이포인트",
+      "batteryUsed": "배터리 사용량",
+      "battStart": "시작 배터리",
+      "battEnd": "종료 배터리",
+      "missionAdherence": "임무 준수율",
+      "geofence": "지오펜스",
+      "phases": "단계",
+      "conditions": "기상 조건",
+      "preFlight": "비행 전 점검",
+      "loadout": "장비 구성",
+      "batteries": "배터리",
+      "propSet": "프로펠러 세트",
+      "motorSet": "모터 세트",
+      "escSet": "ESC 세트",
+      "camera": "카메라",
+      "gimbal": "짐벌",
+      "payload": "페이로드",
+      "frame": "프레임",
+      "rcTX": "RC 송신"
+    },
+    "replayTelemetryPanel": {
+      "position": "위치",
+      "battery": "배터리",
+      "attitude": "자세",
+      "flight": "비행",
+      "alt": "고도",
+      "spd": "속도",
+      "hdg": "방위",
+      "vs": "수직속도",
+      "bat": "배터리",
+      "volt": "전압",
+      "amp": "전류",
+      "gps": "GPS",
+      "fix": "FIX",
+      "sat": "위성",
+      "hdop": "HDOP",
+      "roll": "롤",
+      "pitch": "피치",
+      "yaw": "요",
+      "thr": "스로틀"
+    },
+    "compareModal": {
+      "close": "닫기",
+      "map": "지도",
+      "statsDelta": "통계 차이",
+      "locationA": "위치 A",
+      "locationB": "위치 B",
+      "metric": "지표",
+      "charts": "차트",
+      "altitudeM": "고도 (m)",
+      "groundSpeedMS": "지상 속도 (m/s)",
+      "batteryRemaining": "배터리 잔량 (%)",
+      "vibrationXMS": "진동 X (m/s²)",
+      "compareFlights": "비행 비교",
+      "loadingFrames": "프레임 불러오는 중…"
+    },
+    "conditionsCard": {
+      "sunrise": "일출",
+      "sunset": "일몰",
+      "sun": "태양",
+      "moonPhase": "달 위상",
+      "illumination": "조도",
+      "moon": "달",
+      "tempDew": "기온 / 이슬점",
+      "wind": "바람",
+      "visibility": "시정",
+      "ceiling": "운고",
+      "altimeter": "고도계",
+      "goldenHour": "골든 아워"
+    },
+    "historyDetailPanel": {
+      "verifySignatureHash": "서명 해시 확인",
+      "unsealToAllowEdits": "봉인 해제하여 편집 허용",
+      "signAndLockThisRecord": "이 기록에 서명하고 잠금",
+      "replayFlight": "비행 재생",
+      "close": "닫기",
+      "flightDetailTabs": "비행 상세 탭",
+      "sealed": "봉인됨",
+      "verify": "검증",
+      "unseal": "봉인 해제",
+      "replay": "재생"
+    },
+    "chartsTab": {
+      "charts": "차트",
+      "altitudeM": "고도 (m)",
+      "speedMS": "속도 (m/s)",
+      "battery": "배터리",
+      "attitude": "자세 (°)",
+      "gpsQuality": "GPS 품질",
+      "vibrationMS": "진동 (m/s²)"
+    },
+    "bulkExportModal": {
+      "close": "닫기",
+      "jurisdiction": "관할 지역",
+      "regulator": "규제 기관",
+      "format": "형식",
+      "output": "출력",
+      "validation": "검증",
+      "bulkComplianceExport": "규정 준수 일괄 내보내기",
+      "exporting": "내보내는 중",
+      "cancel": "취소"
+    },
+    "notesTab": {
+      "nameTags": "이름 및 태그",
+      "customName": "사용자 지정 이름",
+      "fieldANorthSurvey": "필드 A — 북부 측량",
+      "tagsCommaSeparated": "태그 (쉼표로 구분)",
+      "surveyFieldATest": "측량, 필드-a, 테스트",
+      "notesMarkdown": "메모 (마크다운)",
+      "addObservationsIncidentsOrContext": "이 비행에 대한 관찰 사항, 사고 또는 상황을 추가하세요…",
+      "thisRecordIsSealedUnseal": "이 기록은 봉인되어 있습니다. 이름, 태그, 메모를 편집하려면 패널 헤더에서 봉인을 해제하세요."
+    },
+    "exportTab": {
+      "telemetry": "텔레메트리",
+      "track": "궤적",
+      "noPathDataOnThis": "이 비행에는 경로 데이터가 없습니다.",
+      "record": "기록",
+      "compliance": "규정 준수",
+      "jurisdiction": "관할 지역",
+      "noTelemetryRecordingAttachedConnect": "첨부된 텔레메트리 기록이 없습니다. 드론을 연결하고 시동을 걸면 기록이 시작됩니다.",
+      "fullFlightRecordIncludingStatsPath": "통계, 경로, 메타데이터를 포함한 전체 FlightRecord."
+    },
+    "analysisTab": {
+      "healthSummary": "상태 요약",
+      "avgSats": "평균 위성 수",
+      "avgHDOP": "평균 HDOP",
+      "maxVibRMS": "최대 진동 RMS",
+      "batteryUsed": "배터리 사용량",
+      "noHealthStatsYet": "아직 상태 통계가 없습니다.",
+      "flags": "플래그",
+      "theTelemetryRecordingForThis": "이 비행의 텔레메트리 기록이 더 이상 저장되어 있지 않아 다시 분석할 수 없습니다."
+    },
+    "statisticsPanel": {
+      "statistics": "통계",
+      "noTelemetryData": "텔레메트리 데이터가 없습니다.",
+      "field": "필드",
+      "min": "최소",
+      "mean": "평균",
+      "max": "최대",
+      "std": "표준편차"
+    },
+    "windCard": {
+      "speed": "속도",
+      "from": "시작",
+      "samples": "샘플",
+      "method": "방법",
+      "windEstimatedFromFC": "바람 (FC 추정값)",
+      "metarWindShownAboveIs": "위에 표시된 METAR 바람은 가장 가까운 관측소 데이터입니다. 이 추정값은 비행 컨트롤러에서 산출되었습니다."
+    },
+    "customChartBuilder": {
+      "customChart": "사용자 지정 차트",
+      "buildACustomChartFrom": "원하는 텔레메트리 채널과 필드로 사용자 지정 차트를 만드세요.",
+      "addTrace": "트레이스 추가",
+      "add": "추가",
+      "clear": "지우기"
+    },
+    "mediaUploader": {
+      "noMatch": "일치 항목 없음",
+      "importMedia": "미디어 가져오기",
+      "dropPhotosOrVideosHere": "사진이나 동영상을 여기에 놓거나 클릭하여 찾아보세요",
+      "jpegPNGWebPHEICMP4": "JPEG, PNG, WebP, HEIC, MP4, MOV, WebM",
+      "close": "닫기"
+    },
+    "logBrowser": {
+      "close": "닫기",
+      "time": "시간",
+      "size": "크기",
+      "download": "다운로드",
+      "thisFlightControllerAposS": "이 비행 컨트롤러의 펌웨어는 이 링크를 통한 온보드 로그 다운로드를 지원하지 않습니다.",
+      "downloadCancelledNothingWasImported": "다운로드가 취소되었습니다. 취소된 로그에서 가져온 항목은 없습니다."
+    },
+    "overlayModal": {
+      "close": "닫기",
+      "map": "지도",
+      "stats": "통계",
+      "metric": "지표"
+    },
+    "importLogModal": {
+      "dropLogFilesHereOr": "로그 파일을 여기에 놓거나 클릭하여 찾아보기",
+      "importFlightLogs": "비행 로그 가져오기",
+      "cancel": "취소",
+      "close": "닫기"
+    },
+    "preflightCard": {
+      "noChecklistCaptured": "기록된 체크리스트 없음",
+      "fcPrearmWarnings": "FC 시동 전 경고",
+      "checklistComplete": "체크리스트 완료",
+      "checklistIncomplete": "체크리스트 미완료"
+    },
+    "adherenceCard": {
+      "waypoints": "웨이포인트",
+      "maxXTE": "최대 XTE",
+      "meanXTE": "평균 XTE",
+      "deviations": "편차"
+    },
+    "mediaTab": {
+      "media": "미디어",
+      "noMediaLinkedToThis": "이 비행에 연결된 미디어가 없습니다. 미디어 가져오기 버튼으로 사진이나 동영상을 추가하세요."
+    },
+    "eventsTab": {
+      "events": "이벤트",
+      "noEventsForThisFlight": "이 비행에 대한 이벤트가 없습니다.",
+      "theTelemetryRecordingForThis": "이 비행의 텔레메트리 기록이 더 이상 저장되어 있지 않아 분석할 수 없습니다."
+    },
+    "replayPlaybackBar": {
+      "skipToStart": "처음으로 이동",
+      "stepBack5s": "5초 뒤로",
+      "stepForward5s": "5초 앞으로",
+      "skipToEnd": "끝으로 이동"
+    },
+    "fleetCoverageModal": {
+      "close": "닫기",
+      "fleetCoverage": "기체 운용 범위"
+    },
+    "replayView": {
+      "loadingRecording": "녹화 불러오는 중...",
+      "exitReplay": "재생 종료",
+      "returnToHistory": "기록으로 돌아가기"
+    },
+    "summaryCard": {
+      "summary": "요약",
+      "suggestedTags": "추천 태그"
+    },
+    "vibrationSpectrogramPanel": {
+      "vibrationLevelSpectrum": "진동 수준 스펙트럼"
+    },
+    "correlationPanel": {
+      "correlation": "상관관계",
+      "noOverlappingSamplesTryFields": "겹치는 샘플이 없습니다. 비슷한 주기로 기록된 필드를 선택해 보세요."
+    },
+    "cloudSyncBadge": {
+      "signInWithConvexSync": "Convex 동기화로 로그인하여 비행 기록을 클라우드에 보관하세요"
+    },
+    "storageFailureAlerts": {
+      "flightTelemetryCouldNotBe": "비행 텔레메트리를 저장할 수 없습니다: 저장 공간이 가득 찼습니다",
+      "thePlanCouldNotBe": "계획을 자동 저장할 수 없습니다: 브라우저 저장 공간이 가득 찼거나 차단되었습니다. 저장하거나 내보내세요."
+    },
+    "fleetCoverageMapInner": {
+      "searchPolygonActive": "수색 폴리곤 활성화됨",
+      "clear": "지우기",
+      "heatmap": "히트맵",
+      "paths": "경로"
+    },
+    "mapTab": {
+      "noPathDataForThis": "이 비행의 경로 데이터가 없습니다"
+    },
+    "uPlotChart": {
+      "noDataForSelectedTraces": "선택한 트레이스에 데이터가 없습니다."
+    },
+    "replayMap": {
+      "reCenter": "다시 중앙으로"
+    }
   },
   "library": {
     "title": "비행 계획",
@@ -4447,7 +5321,7 @@
     "readProgress": "읽는 중... {percent}%",
     "readError": "파라미터 읽기 실패",
     "retry": "재시도",
-    "saveToRam": "저장",
+    "saveToRam": "FC에 쓰기 (RAM)",
     "saving": "저장 중...",
     "writeToFlash": "플래시에 기록",
     "writingFlash": "기록 중...",
@@ -4458,24 +5332,27 @@
     "disconnectedTitle": "비행 컨트롤러 연결 해제됨",
     "disconnectedMessage": "설정 패널에 접근하려면 비행 컨트롤러를 연결하세요.",
     "rebootRequired": "변경사항을 적용하려면 재부팅이 필요합니다",
-    "rebootNow": "지금 재부팅",
+    "rebootNow": "비행 컨트롤러 재부팅",
     "missingParams": "이 펌웨어에서 일부 선택적 파라미터를 사용할 수 없습니다",
     "refresh": "새로고침",
     "pendingFlashCount": "{count, plural, one {1개 파라미터} other {{count}개 파라미터}}가 RAM에서 수정되었으나 플래시에 기록되지 않았습니다",
     "includesCritical": "(안전 관련 파라미터 포함)",
     "commitAll": "전체 적용",
     "connectTo": "설정하려면 {name}에 연결하세요",
-    "connect": "연결"
+    "connect": "연결",
+    "writeToFcCount": "비행 컨트롤러에 {n}개 쓰기",
+    "writingProgress": "쓰는 중 {current}/{total}…",
+    "writeToFcHint": "변경된 파라미터를 비행 컨트롤러로 전송"
   },
   "calibration": {
     "title": "캘리브레이션",
     "accelerometer": "가속도계",
     "gyroscope": "자이로스코프",
     "compass": "나침반",
-    "level": "수평",
+    "level": "수평 보정",
     "airspeed": "대기 속도",
     "barometer": "기압계",
-    "rc": "RC 캘리브레이션",
+    "rc": "조종기",
     "esc": "ESC 캘리브레이션",
     "compassMot": "CompassMot",
     "startCalibration": "캘리브레이션 시작",
@@ -4577,7 +5454,7 @@
     "compareTitle": "파라미터 비교",
     "rebootTitle": "재부팅 필요",
     "rebootMessage": "변경한 일부 파라미터가 적용되려면 비행 컨트롤러 재부팅이 필요합니다. 지금 재부팅하시겠습니까?",
-    "rebootConfirmLabel": "FC 재부팅",
+    "rebootConfirmLabel": "비행 컨트롤러 재부팅",
     "optionsColumn": "Options",
     "setBitmask": "Set Bitmask",
     "bitmaskTitle": "Set Bitmask — {name}",
@@ -4715,6 +5592,25 @@
       "axisTooltip": "Vibration {axis}: {value} m/s/s (warn: {warn}, crit: {crit})",
       "trend": "Vibration Trend",
       "clip": "Clip: {c0}/{c1}/{c2}"
+    },
+    "rebootRequiredBanner": {
+      "dismiss": "닫기",
+      "rebootFlightController": "비행 컨트롤러 재부팅",
+      "theFlightControllerRestartsAnd": "비행 컨트롤러가 재시작되며 복구될 때까지 링크가 끊깁니다. 계속하시겠습니까?",
+      "reboot": "재부팅"
+    },
+    "trafficPill": {
+      "nearbyTraffic": "주변 항공 교통"
+    },
+    "gpsSkyView": {
+      "gps1": "GPS1",
+      "gps2": "GPS2"
+    },
+    "armedWriteConfirmDialog": {
+      "cancel": "취소",
+      "writeAnyway": "그래도 쓰기",
+      "parameters": "파라미터",
+      "panel": "패널:"
     }
   },
   "flightInfo": {
@@ -4884,7 +5780,7 @@
   },
   "fleet": {
     "title": "편대",
-    "addDrone": "드론 추가",
+    "addDrone": "노드 추가",
     "expandPanel": "편대 패널 확장",
     "collapsePanel": "편대 패널 축소",
     "searchDrones": "드론 검색...",
@@ -4925,8 +5821,13 @@
     "reconnecting": {
       "title": "Reconnecting",
       "label": "{name}: reconnecting (attempt {attempts})",
-      "stop": "Stop reconnecting"
-    }
+      "stop": "Stop reconnecting",
+      "disconnectedReconnecting": "{name} 연결 끊김 — 재연결 중...",
+      "bleLost": "{name}과(와)의 블루투스 연결이 끊어졌습니다. 연결 대화 상자에서 다시 연결하세요.",
+      "reconnected": "{name}에 다시 연결됨",
+      "autoConnected": "{name}에 자동 연결됨"
+    },
+    "overview": "기체 현황"
   },
   "commandPalette": {
     "placeholder": "명령을 입력하세요...",
@@ -4942,7 +5843,7 @@
     "toggleImmersive": "몰입 모드 전환",
     "goToDashboard": "대시보드로 이동",
     "goToPlan": "미션 플래너로 이동",
-    "goToHistory": "기록으로 이동",
+    "goToHistory": "비행 로그로 이동",
     "goToAnalytics": "분석으로 이동",
     "goToConfig": "설정으로 이동",
     "goToWizard": "비행 전 마법사로 이동",
@@ -4970,7 +5871,7 @@
   },
   "disconnectedPage": {
     "alpha": "알파",
-    "pairANode": "Pair a Node",
+    "pairANode": "노드 추가",
     "installAndConnect": "에이전트를 설치하고, 이 코드를 입력하면 연결됩니다.",
     "turnAnyDrone": "모든 드론을 스마트 드론으로",
     "mavlinkProxy": "MAVLink 프록시",
@@ -5484,13 +6385,13 @@
     },
     "displayPage": {
       "title": "Display",
-      "description": "Manage the SPI LCD attached to the companion board: live preview, page switcher, calibration, and theme."
+      "description": "컴패니언 컴퓨터에 연결된 SPI LCD 관리: 실시간 미리보기, 페이지 전환, 보정, 테마."
     },
     "lcdCameraSwitch": {
       "title": "Cameras",
       "refresh": "Refresh",
       "loading": "Detecting cameras...",
-      "emptyDescription": "No cameras detected. Plug a CSI or USB camera into the companion board and refresh.",
+      "emptyDescription": "감지된 카메라가 없습니다. 컴패니언 컴퓨터에 CSI 또는 USB 카메라를 연결한 후 새로고침하세요.",
       "primaryBadge": "Primary",
       "switchLabel": "Switch primary camera",
       "restarting": "Restarting encoder...",
@@ -5957,6 +6858,113 @@
       "shareTitle": "Share uplink with WiFi clients?",
       "shareMessage": "This installs a NAT rule and routes connected clients' traffic over the active uplink, which can use metered data and can drop your connection while the uplink is reconfigured.",
       "shareConfirm": "Share"
+    },
+    "wifiSection": {
+      "accessPoint": "액세스 포인트",
+      "n8Characters": "8자 이상",
+      "channel": "채널",
+      "wifiClient": "WiFi 클라이언트",
+      "wifiClientNotAvailableOn": "이 하드웨어에서는 WiFi 클라이언트를 사용할 수 없습니다.",
+      "signal": "신호",
+      "gateway": "게이트웨이",
+      "notConnectedToAnyNetwork": "연결된 네트워크가 없습니다.",
+      "ssid": "SSID",
+      "adosGS": "ADOS-GS",
+      "ip": "IP",
+      "passphrase": "암호",
+      "save": "저장",
+      "scanNetworks": "네트워크 검색",
+      "leave": "연결 해제"
+    },
+    "cellularSection": {
+      "enabled": "사용",
+      "state": "상태",
+      "signal": "신호",
+      "operator": "통신사",
+      "interface": "인터페이스",
+      "dataCap": "데이터 한도",
+      "capsApplyTo4GOnly": "한도는 4G에만 적용됩니다. WiFi 및 이더넷은 무제한입니다.",
+      "apn": "APN",
+      "ip": "IP",
+      "configure": "구성",
+      "dataUsage": "데이터 사용량"
+    },
+    "uplinkPriorityPanel": {
+      "uplinkPriority": "업링크 우선순위",
+      "dragARowToReorder": "행을 드래그하여 순서를 변경하세요. 다음 페일오버 시 맨 위 항목이 우선합니다.",
+      "noFailoversRecordedThisSession": "이번 세션에 기록된 페일오버가 없습니다.",
+      "shareUplinkWithAPClients": "AP 클라이언트와 업링크 공유",
+      "dragToReorderTheFirst": "드래그하여 순서를 변경하세요. 정상 상태인 첫 번째 업링크가 트래픽을 처리합니다.",
+      "last5Failovers": "최근 페일오버 5건",
+      "routesActiveUplinkTrafficOut": "활성 업링크 트래픽을 지상국 액세스 포인트로 라우팅합니다. 고급 옵션입니다."
+    },
+    "joystickCalibrationWizard": {
+      "joystickCalibration": "조이스틱 보정",
+      "samplingCenterPosition": "중앙 위치 샘플링 중...",
+      "recordingAxisRange": "축 범위 기록 중...",
+      "redo": "다시 하기",
+      "saveCalibration": "캘리브레이션 저장",
+      "releaseAllSticksAndLeave": "모든 스틱에서 손을 떼고 중앙에 두세요. 컨트롤러를 만지지 마세요.",
+      "moveAllSticksToTheir": "모든 스틱을 최대 범위까지 움직이세요. 각 스틱을 네 모서리로 끝까지 민 다음 중앙으로 되돌리세요."
+    },
+    "controllersSection": {
+      "stickControl": "스틱 조종",
+      "calibration": "보정",
+      "notCalibrated": "보정되지 않음",
+      "letsTheGamepadFlyThe": "게임패드로 선택한 기체를 조종할 수 있습니다. 스틱 입력은 수신기 오버라이드로 전송되므로, 기체가 시동(arm)되고 조종사가 스틱을 조작하는 모드에 있기 전까지는 아무것도 전송되지 않습니다. 스트림은 여기서 켜야만 열리며, 컨트롤러를 분리하면 다시 꺼집니다.",
+      "noGamepadIsReportingConnect": "감지된 게임패드가 없습니다. 게임패드를 연결하고 버튼을 누르세요.",
+      "calibrated": "캘리브레이션됨",
+      "reset": "초기화"
+    },
+    "modemConfigModal": {
+      "configure4GModem": "4G 모뎀 구성",
+      "internet": "인터넷",
+      "modemEnabled": "모뎀 활성화됨",
+      "apn": "APN",
+      "cancel": "취소",
+      "save": "저장"
+    },
+    "bluetoothPairModal": {
+      "pairBluetoothDevice": "Bluetooth 기기 페어링",
+      "scanningForDevices": "기기 검색 중...",
+      "close": "닫기",
+      "noGroundStationConnected": "연결된 지상국이 없습니다.",
+      "tapScanToDiscoverNearby": "주변 장치를 찾으려면 검색을 누르세요.",
+      "scanResults": "검색 결과"
+    },
+    "wifiPowersaveCard": {
+      "wifiPowerSave": "WiFi 절전",
+      "reAsserts": "재적용 횟수",
+      "signal": "신호",
+      "link": "링크",
+      "lastReAssert": "마지막 재적용"
+    },
+    "adapterStabilityCard": {
+      "adapterStability": "어댑터 안정성",
+      "chipset": "칩셋",
+      "pinnedMAC": "고정 MAC",
+      "currentMAC": "현재 MAC",
+      "detectedBy": "감지 주체"
+    },
+    "videoLinkPanel": {
+      "latency": "지연 시간",
+      "encoder": "인코더",
+      "radioFEC": "무선 FEC",
+      "channel": "채널",
+      "tierLadder": "티어 단계"
+    },
+    "networkPageModals": {
+      "leaveWiFiNetwork": "WiFi 네트워크에서 나가시겠습니까?",
+      "theGroundNodeWillFall": "지상 노드가 액세스 포인트 모드로 전환됩니다.",
+      "leave": "나가기"
+    },
+    "roleChangeCard": {
+      "changeDeploymentRole": "배포 역할 변경",
+      "transitioningServices": "서비스 전환 중..."
+    },
+    "uplinkPriorityList": {
+      "noUplinksConfigured": "구성된 업링크가 없습니다.",
+      "active": "활성"
     }
   },
   "toast": {
@@ -6046,7 +7054,30 @@
     "inlineMountFailed": "{name} failed to start: {reason}",
     "inlineNeedsNode": "Install this extension on a node to load it here",
     "inlineRetry": "Retry",
-    "inlineCrashed": "This extension stopped responding."
+    "inlineCrashed": "This extension stopped responding.",
+    "pluginInstallProgress": {
+      "dismissInstallProgress": "설치 진행 상황 닫기"
+    },
+    "pluginCrashBanner": {
+      "dismiss": "닫기"
+    },
+    "parameters": {
+      "unconfirmedDefault": "기본값 — 드론에서 읽지 않음",
+      "agentManaged": "에이전트 관리 — 여기서는 읽기 전용",
+      "agentUnreachable": "이 변경 사항을 적용하기 위해 에이전트에 연결할 수 없습니다",
+      "enterNumber": "숫자를 입력하세요",
+      "invalidValue": "잘못된 값",
+      "cameraListUnavailable": "카메라 목록을 사용할 수 없음: 이 노드의 명단을 읽을 수 없습니다",
+      "loadingCameras": "카메라 불러오는 중…",
+      "cameraAuto": "자동",
+      "cameraAutoPurpose": "자동(첫 번째 {purpose} 카메라)"
+    },
+    "stages": {
+      "dragA": "끌어다 놓기:",
+      "chooseFile": "파일 선택",
+      "close": "닫기",
+      "tryAgain": "다시 시도"
+    }
   },
   "pluginRegistry": {
     "browse": {
@@ -6946,7 +7977,7 @@
       "reloadFromFc": "FC에서 다시 읽기",
       "dirty": "저장되지 않은 변경",
       "rebootRequired": "재부팅 필요",
-      "rebootFc": "FC 재부팅",
+      "rebootFc": "비행 컨트롤러 재부팅",
       "rebootFailed": "FC did not accept the reboot",
       "notConnected": "CAN 파라미터를 읽거나 쓰려면 드론을 연결하세요.",
       "loading": "비행 컨트롤러에서 파라미터 로드 중...",
@@ -7246,7 +8277,7 @@
       "chip": "데이터 일시 중지됨",
       "tooltip": "마지막 측정값 {ago}에서 일시 중지됨. 하트비트가 복귀하면 값이 재개됩니다."
     },
-    "disambiguation": "비행 컨트롤러 연결은 USB나 네트워크를 통해 오토파일럿과 직접 통신합니다. 컴패니언 컴퓨터 페어링은 영상, 스크립트, 4G를 위해 ADOS 에이전트를 실행하는 보드를 추가합니다.",
+    "disambiguation": "USB 또는 네트워크로 비행 컨트롤러를 연결하거나, 영상·스크립트·4G를 위해 ADOS 에이전트를 실행 중인 컴패니언 컴퓨터를 페어링하세요.",
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
@@ -7390,7 +8421,8 @@
       "configure": "영상 소스 설정",
       "frozenLinkLost": "링크 끊김 — 화면 정지, 재연결 중",
       "frozenNoFrames": "프레임 없음 — 화면 정지, 재연결 중"
-    }
+    },
+    "openMapView": "지도 보기"
   },
   "skills": {
     "arm": {
@@ -7553,8 +8585,6 @@
     "rebindButtonFrom": "Rebind from button {button}",
     "pressButton": "Press a button…",
     "clearButton": "Clear button",
-    "applyControllerDefaults": "Apply controller defaults",
-    "controllerDefaultsApplied": "Applied {count} controller default binding(s).",
     "resetToDefaults": "Reset to defaults",
     "resetDone": "Bindings reset to defaults.",
     "reservedChord": "{key} is reserved and cannot be bound.",
@@ -8022,6 +9052,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
+    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -8137,6 +9168,14 @@
       "cancel": "Cancel",
       "nameError": "Enter a name.",
       "urlError": "Enter an rtsp:// or http:// URL."
+    },
+    "confirm": {
+      "removeTitle": "카메라 제거",
+      "removeMessage": "{name}을(를) 제거할까요? 영상이 몇 초간 재시작됩니다.",
+      "removeAction": "제거",
+      "armedTitle": "시동 상태에서 영상을 재시작할까요?",
+      "armedMessage": "이 드론은 시동이 걸린 상태입니다. 카메라 변경 사항을 저장하면 영상이 몇 초간 재시작됩니다.",
+      "armedAction": "저장 후 재시작"
     }
   },
   "nodesView": {
@@ -8396,7 +9435,18 @@
     }
   },
   "changelog": {
-    "reactionFailed": "Could not save your reaction. Sign in again and retry."
+    "reactionFailed": "Could not save your reaction. Sign in again and retry.",
+    "changelogNotificationModal": {
+      "whatSNew": "새로운 기능",
+      "noUpdatesYet": "아직 업데이트가 없습니다.",
+      "gotIt": "확인"
+    },
+    "changelogNotificationGate": {
+      "changelogNotification": "changelog-notification"
+    },
+    "changelogBadge": {
+      "community": "커뮤니티"
+    }
   },
   "desktopUpdate": {
     "available": "Version {version} is available.",
@@ -8962,42 +10012,19 @@
       }
     },
     "mapTab": {
-      "title": "Map",
-      "status": "Map status",
-      "noData": "No map data from this node yet. The map appears once the mapping extension publishes its status.",
-      "stale": "Map status is stale",
-      "session": "Session",
-      "noSession": "No capture session",
-      "points": "Points",
-      "area": "Area",
-      "health": "Pose health",
-      "placement": "Compute placement",
-      "memory": "Memory",
+      "title": "지도",
+      "status": "지도 상태",
+      "noData": "이 노드에서 아직 지도 데이터가 없습니다. 매핑 확장 기능이 상태를 게시하면 지도가 표시됩니다.",
+      "noSession": "캡처 세션 없음",
+      "health": "포즈 상태",
       "memoryValue": "{used} / {budget} MB",
-      "voxel": "Voxel size",
-      "keyframesDropped": "Keyframes dropped",
-      "upload": "Upload",
-      "stream": "Stream",
-      "navPose": "Navigation pose",
-      "openViewer": "Open 3D viewer",
-      "viewerUnavailable": "The mapping extension's viewer is not installed on this node.",
-      "liveMap": "Live map",
-      "placementOnboard": "On board",
-      "placementStream": "Stream to workstation",
-      "placementPostFlight": "After flight",
-      "placementHybrid": "Hybrid",
-      "uploadIdle": "Idle",
-      "uploadQueued": "Queued",
-      "uploadUploading": "Uploading {pct}%",
-      "uploadDone": "Done",
-      "uploadFailed": "Failed",
-      "streamOff": "Off",
-      "streamConnecting": "Connecting",
-      "streamLive": "Live · {rate}",
-      "streamDegraded": "Degraded · {rate}",
-      "navPoseAlways": "Always",
-      "navPoseCapture": "During capture only",
-      "noPose": "No pose"
+      "navPose": "내비게이션 포즈",
+      "openViewer": "3D 뷰어 열기",
+      "viewerUnavailable": "이 노드에 매핑 확장 기능의 뷰어가 설치되어 있지 않습니다.",
+      "liveMap": "실시간 지도",
+      "navPoseAlways": "항상",
+      "navPoseCapture": "캡처 중에만",
+      "noPose": "포즈 없음"
     },
     "followSkill": {
       "title": "Follow",
@@ -9018,7 +10045,7 @@
   "aircraftSetup": {
     "title": "Aircraft setup",
     "description": "Calibration, initial tune and the ADOS Pilot hand-over, run by the drone's agent. Each step can be run again on its own.",
-    "noDrone": "Select a drone to set it up.",
+    "noDrone": "설정할 드론을 위에서 선택하세요.",
     "noAgent": "This drone has no reachable ADOS agent on this network. Use the flight controller pages for direct setup.",
     "loading": "Reading the aircraft setup…",
     "loadError": "Could not read the aircraft setup: {error}",
@@ -9057,14 +10084,15 @@
       "noSteps": "No step results yet.",
       "snapshots": "Parameter snapshots",
       "noSnapshots": "No snapshots yet."
-    }
+    },
+    "settingUp": "{name} 설정 중",
+    "pickDrone": "드론",
+    "pickDronePlaceholder": "드론 선택",
+    "noDronesWithAgent": "에이전트가 있는 드론이 기체 목록에 없습니다"
   },
   "flightScreen": {
     "pill": {
-      "aria": "Status: {text}. Open the alert list",
-      "navSource": "Navigation source degraded ({kind})",
-      "storage": "Companion storage {pct}% full",
-      "pilotStale": "ADOS Pilot not answering"
+      "navSource": "Navigation source degraded ({kind})"
     },
     "row": {
       "d": "Distance from home",
@@ -9074,6 +10102,2193 @@
       "agl": "Height above the ground"
     },
     "fly": "Fly",
-    "flyTitle": "Open the flight screen"
+    "flyTitle": "Open the flight screen",
+    "planBanner": {
+      "differs": "드론의 계획이 이 기기의 계획과 다릅니다",
+      "load": "드론에서 다운로드",
+      "loading": "불러오는 중…"
+    }
+  },
+  "operatorRegistry": {
+    "profile": {
+      "pilot": "조종사",
+      "firstName": "이름",
+      "lastName": "성",
+      "dateOfBirth": "생년월일",
+      "licenseNumber": "자격증 번호",
+      "licenseNumberPlaceholder": "예: RPL-12345",
+      "licenseIssuer": "자격증 발급 기관",
+      "licenseClass": "자격증 등급",
+      "licenseExpiry": "자격증 만료일",
+      "priorPicHours": "이전 PIC 비행 시간",
+      "casaArn": "CASA ARN",
+      "faaTrustId": "FAA TRUST ID",
+      "organisation": "조직",
+      "operatorName": "운영자 이름",
+      "operatorCertNumber": "운영자 인증서 번호",
+      "certIssuer": "인증서 발급 기관",
+      "certExpiry": "인증서 만료일",
+      "address": "주소",
+      "insurance": "보험",
+      "insurer": "보험사",
+      "policyNumber": "보험 증권 번호",
+      "policyExpiry": "보험 만료일",
+      "coverageAmount": "보장 금액",
+      "defaults": "기본값",
+      "defaultJurisdiction": "기본 관할 지역",
+      "notSet": "설정 안 됨"
+    },
+    "aircraft": {
+      "title": "기체",
+      "registeredCount": "등록된 기체 {count}대",
+      "add": "기체 추가",
+      "empty": "아직 기체가 없습니다. 드론을 연결하면 항목이 자동으로 생성되며, 추가를 클릭해 직접 등록할 수도 있습니다.",
+      "newName": "새 기체",
+      "colName": "이름",
+      "colReg": "등록번호",
+      "colType": "유형",
+      "colHours": "시간",
+      "colFlights": "비행",
+      "delete": "삭제",
+      "deleteTitle": "기체 삭제",
+      "deleteMessage": "이 기체 기록을 삭제하시겠습니까?",
+      "name": "이름",
+      "registration": "등록번호",
+      "registrationPlaceholder": "UIN / N-번호 / EASA 등록번호",
+      "manufacturer": "제조사",
+      "model": "모델",
+      "serialNumber": "일련번호",
+      "remoteIdSerial": "Remote ID 일련번호",
+      "vehicleTypeLabel": "기체 유형",
+      "categoryLabel": "카테고리",
+      "mtomKg": "MTOM (kg)",
+      "airworthinessCert": "감항 증명서",
+      "airworthinessExpiry": "감항 증명 만료일",
+      "lastMaintenance": "최근 정비일",
+      "vehicleType": {
+        "copter": "멀티로터",
+        "plane": "고정익",
+        "vtol": "VTOL",
+        "rover": "로버",
+        "sub": "수중 드론"
+      },
+      "category": {
+        "nano": "나노 (<250 g)",
+        "micro": "마이크로 (≤2 kg)",
+        "small": "소형 (≤25 kg)",
+        "medium": "중형 (≤150 kg)",
+        "large": "대형 (>150 kg)"
+      }
+    },
+    "battery": {
+      "title": "배터리",
+      "packCount": "{count, plural, other {팩 #개}}",
+      "retiredHidden": "퇴역 {count}개 숨김",
+      "showRetired": "퇴역 항목 표시",
+      "add": "팩 추가",
+      "empty": "등록된 배터리 팩이 없습니다. 추가를 클릭해 첫 팩을 등록하세요.",
+      "newLabel": "새 배터리 팩",
+      "chemistryOther": "기타",
+      "colLabel": "라벨",
+      "colChem": "화학",
+      "colCells": "셀",
+      "colMah": "mAh",
+      "colCycles": "사이클",
+      "colHealth": "상태",
+      "retiredTag": "퇴역",
+      "retire": "퇴역",
+      "retirePack": "팩 퇴역",
+      "delete": "삭제",
+      "deletePack": "팩 삭제",
+      "deleteTitle": "배터리 팩 삭제",
+      "deleteMessage": "이 배터리 팩을 영구적으로 삭제하시겠습니까?",
+      "retireTitle": "배터리 팩 퇴역",
+      "retireMessage": "이 팩을 퇴역시키시겠습니까? 활성 탑재 구성 선택 목록에서 숨겨집니다.",
+      "label": "라벨",
+      "serialNumber": "일련번호",
+      "chemistry": "화학 조성",
+      "cellCount": "셀 수 (S)",
+      "capacityMah": "용량 (mAh)",
+      "cRating": "C 등급",
+      "manufacturer": "제조사",
+      "model": "모델",
+      "purchaseDate": "구매일",
+      "lastCharged": "최근 충전일",
+      "cycleCount": "사이클 수",
+      "healthOverride": "상태 % 수동 설정",
+      "healthProjected": "{value} (예상)"
+    },
+    "equipment": {
+      "title": "장비",
+      "activeCount": "활성 항목 {count, plural, other {#개}} 중 {shown}개",
+      "allTypes": "모든 유형",
+      "showRetired": "퇴역 항목 표시",
+      "add": "항목 추가",
+      "empty": "등록된 장비가 없습니다. 추가를 클릭하여 프로펠러 세트, 모터, ESC, 카메라, 짐벌, 페이로드, 프레임 또는 RC 송신기를 등록하세요.",
+      "newLabel": "새 장비",
+      "colType": "유형",
+      "colLabel": "라벨",
+      "colFitment": "장착 위치",
+      "colHours": "시간",
+      "colFlights": "비행 횟수",
+      "inspectionDue": "점검 필요",
+      "retiredTag": "퇴역",
+      "markInspected": "점검 완료 표시",
+      "retire": "퇴역",
+      "retireItem": "항목 퇴역",
+      "delete": "삭제",
+      "deleteItem": "항목 삭제",
+      "deleteTitle": "장비 항목 삭제",
+      "deleteMessage": "이 장비 항목을 영구적으로 삭제하시겠습니까?",
+      "retireTitle": "장비 항목 퇴역",
+      "retireMessage": "이 항목을 퇴역 처리하시겠습니까? 활성 구성 선택 목록에서 숨겨집니다.",
+      "typeLabel": "유형",
+      "label": "라벨",
+      "manufacturer": "제조사",
+      "model": "모델",
+      "serialNumber": "일련번호",
+      "fitment": "장착 위치",
+      "fitmentPlaceholder": "Alpha-1 모터 3",
+      "installDate": "설치일",
+      "inspectEvery": "점검 주기(비행 시간)",
+      "lastInspected": "최근 점검일",
+      "totalFlightHours": "총 비행 시간",
+      "totalFlights": "총 비행 횟수",
+      "type": {
+        "prop_set": "프로펠러 세트",
+        "motor_set": "모터 세트",
+        "esc_set": "ESC 세트",
+        "camera": "카메라",
+        "gimbal": "짐벌",
+        "payload": "페이로드",
+        "frame": "프레임",
+        "rc_tx": "RC 송신기"
+      },
+      "typeShort": {
+        "prop_set": "프롭",
+        "motor_set": "모터",
+        "esc_set": "ESC",
+        "camera": "카메라",
+        "gimbal": "짐벌",
+        "payload": "페이로드",
+        "frame": "프레임",
+        "rc_tx": "RC 송신기"
+      }
+    }
+  },
+  "fcCalibration": {
+    "wizard": {
+      "status": {
+        "idle": "준비됨",
+        "in_progress": "보정 중",
+        "waiting_accept": "검토 및 승인",
+        "cal_warning": "결과 검토",
+        "success": "완료",
+        "error": "실패"
+      },
+      "beforeYouStart": "시작하기 전에",
+      "troubleshooting": "문제 해결",
+      "forceSave": "오프셋 강제 저장",
+      "retry": "다시 시도",
+      "confirmPosition": "자세 확인",
+      "cancel": "취소",
+      "calibrating": "보정 중...",
+      "notAvailable": "사용 불가",
+      "recalibrate": "재보정",
+      "start": "시작"
+    }
+  },
+  "fcGimbal": {
+    "title": "짐벌",
+    "subtitle": "마운트 유형, 축 제한, RC 속도 및 수동 제어",
+    "px4Note": "PX4는 짐벌 입력에 MNT_MODE_IN을, AUX 제어 입력에 MNT_MAN_*을 사용합니다.",
+    "configTitle": "짐벌 구성",
+    "configDesc": "마운트 유형 및 기본 동작",
+    "inputMode": "입력 모드",
+    "mountType": "마운트 유형",
+    "defaultMode": "기본 모드",
+    "axisTitle": "축 제한",
+    "axisDesc": "각 축의 최소/최대 각도",
+    "axis": {
+      "Pitch": "피치",
+      "Roll": "롤",
+      "Yaw": "요"
+    },
+    "min": "최소",
+    "max": "최대",
+    "rcRate": "RC 속도",
+    "rcTitle": "RC 입력",
+    "rcDesc": "RC 채널을 짐벌 축 제어에 매핑",
+    "rcTilt": "틸트(피치) 입력",
+    "rcRoll": "롤 입력",
+    "rcPan": "팬(요) 입력",
+    "rcAssignHint": "수신기 패널에서 짐벌 축을 RC 채널에 할당하세요: RCx_OPTION 212 (Mount1 롤), 213 (Mount1 피치), 214 (Mount1 요).",
+    "liveTitle": "실시간 상태",
+    "liveDesc": "현재 짐벌 방향",
+    "mountModeTitle": "마운트 모드",
+    "mountModeDesc": "DO_MOUNT_CONFIGURE 명령을 전송하여 활성 모드 변경",
+    "activeMode": "활성 모드",
+    "setMode": "모드 설정",
+    "manualTitle": "수동 제어",
+    "manualDesc": "짐벌을 조준하세요. 슬라이더를 놓으면 각도가 전송됩니다",
+    "pitchAria": "짐벌 피치",
+    "yawAria": "짐벌 요",
+    "center": "중앙",
+    "roiTitle": "ROI 설정",
+    "roiDesc": "짐벌을 GPS 위치로 향하게 합니다",
+    "latitude": "위도",
+    "longitude": "경도",
+    "altitude": "고도",
+    "setRoi": "ROI 설정"
+  },
+  "fcFailsafe": {
+    "failsafeConfiguration": "페일세이프 구성",
+    "configureFailsafeActionsForLoss": "조종 신호, 배터리, GCS 링크 손실 시 페일세이프 동작 구성",
+    "radioFailsafe": "무선 페일세이프",
+    "triggeredWhenTheRCThrottle": "RC 스로틀 채널이 임계값 아래로 떨어지거나 수신기 연결이 끊기면 작동",
+    "shortFailsafe": "단기 페일세이프",
+    "triggeredOnBriefSignalLoss": "짧은 신호 손실 시 작동",
+    "longFailsafe": "장기 페일세이프",
+    "triggeredOnExtendedSignalLoss": "장시간 신호 손실 시 작동",
+    "throttleFailsafe": "스로틀 페일세이프",
+    "triggeredOnRCThrottleLoss": "RC 스로틀 신호 손실 시 작동",
+    "batteryFailsafe": "배터리 페일세이프",
+    "triggeredOnLowBatteryVoltage": "배터리 전압 저하 시 작동",
+    "batteryFailsafePX4": "배터리 페일세이프 (PX4)",
+    "actionOnLowAndCritical": "배터리 부족 및 위험 시 동작",
+    "gcsFailsafe": "GCS 페일세이프",
+    "triggeredOnGCSLinkLoss": "GCS 링크 손실 시 작동",
+    "ekfCrashFailsafe": "EKF 및 충돌 페일세이프",
+    "triggeredOnNavigationVarianceOr": "항법 편차 또는 충돌 감지 시 작동",
+    "terrainFailsafe": "지형 페일세이프",
+    "triggeredWhenTerrainDataIs": "지형 추종 중 지형 데이터를 사용할 수 없을 때 작동",
+    "failsafeOptions": "페일세이프 옵션",
+    "fsOPTIONSBitmaskAdditionalFailsafe": "FS_OPTIONS 비트마스크 — 추가 페일세이프 동작",
+    "rcChannelOptions": "RC 채널 옵션",
+    "perChannelRCSwitchFunctions": "채널별 RC 스위치 기능 (RCn_OPTION)",
+    "geofence": "지오펜스",
+    "geographicalBoundaryEnforcement": "지리적 경계 적용",
+    "geofencePX4": "지오펜스 (PX4)",
+    "px4GeofenceActionAndLimits": "PX4 지오펜스 동작 및 제한",
+    "throttlePWMThreshold": "스로틀 PWM 임계값",
+    "timeoutS": "타임아웃 (초)",
+    "rcFailsafeTimeoutS": "RC 페일세이프 타임아웃 (초)",
+    "throttlePWMValue": "스로틀 PWM 값",
+    "lowVoltageThreshold": "저전압 임계값",
+    "lowThreshold": "낮음 임계값",
+    "timeout": "타임아웃",
+    "maxAltitude": "최대 고도",
+    "maxRadius": "최대 반경",
+    "minAltitude": "최소 고도",
+    "radioFailsafeAction": "무선 페일세이프 동작",
+    "action": "동작",
+    "voltageSource": "전압 소스",
+    "lowVoltageAction": "저전압 동작",
+    "batteryFailsafeAction": "배터리 페일세이프 동작",
+    "gcsFailsafeAction": "GCS 페일세이프 동작",
+    "ekfFailsafeAction": "EKF 페일세이프 동작",
+    "crashCheck": "충돌 감지",
+    "terrainFollowing": "지형 추종",
+    "breachAction": "이탈 시 동작",
+    "ekfPosTitle": "EKF 위치 페일세이프 (PX4)",
+    "maxEph": "최대 EPH (m)",
+    "maxEvh": "최대 EVH (m/s)",
+    "throttleHint": "스로틀 PWM이 이 값 아래로 떨어지면 무선 페일세이프 동작이 작동합니다. RC 송신기의 최소 스로틀 출력보다 약 10μs 낮게 설정하세요.",
+    "px4BattFractionHint": "전압이 아닌 잔여 충전 비율입니다 (0.15 = 15% 남음)."
+  },
+  "fcPower": {
+    "powerBattery": "전원 / 배터리",
+    "batteryCapacityCurrentSensorCalibration": "배터리 용량, 전류 센서 보정, 실시간 셀 모니터링",
+    "batterySettings": "배터리 설정",
+    "minCellVoltageV": "최소 셀 전압 (V)",
+    "maxCellVoltageV": "최대 셀 전압 (V)",
+    "warningCellVoltageV": "경고 셀 전압 (V)",
+    "capacityMAh": "용량 (mAh)",
+    "currentSensorCalibration": "전류 센서 보정",
+    "battery1Failsafe": "배터리 1 페일세이프",
+    "battery2Settings": "배터리 2 설정",
+    "battery2Failsafe": "배터리 2 페일세이프",
+    "batteryMonitorType": "배터리 모니터 유형",
+    "batteryCapacity": "배터리 용량",
+    "ampsPerVolt": "볼트당 암페어",
+    "currentSensorZeroOffset": "전류 센서 영점 오프셋",
+    "lowVoltage": "저전압",
+    "criticalVoltage": "위험 전압",
+    "lowMAhRemaining": "잔량 부족 (mAh)",
+    "criticalMAhRemaining": "잔량 위험 (mAh)",
+    "battery2MonitorType": "배터리 2 모니터 유형",
+    "battery2Capacity": "배터리 2 용량",
+    "battery2AmpsPerVolt": "배터리 2 볼트당 암페어",
+    "battery2CurrentSensorZero": "배터리 2 전류 센서 영점 오프셋",
+    "cellVoltageBelowWhichFailsafe": "이 셀 전압 미만이면 페일세이프가 작동합니다. 기본값: 3.30V",
+    "fullChargeVoltagePerCell": "셀당 완충 전압. 셀 수 자동 감지에 사용됩니다. 기본값: 4.30V",
+    "cellVoltageWarningThresholdDefault": "셀 전압 경고 임계값. 기본값: 3.50V",
+    "batteryCapacityInMAhSet": "배터리 용량(mAh). 자동 감지하려면 0으로 설정하세요."
+  },
+  "fcPanels": {
+    "bfMotorsPanel": {
+      "motorsESC": "모터 및 ESC",
+      "motorConfigurationESCProtocolAnd": "모터 구성, ESC 프로토콜 및 모터 테스트",
+      "escProtocol": "ESC 프로토콜",
+      "communicationProtocolBetweenFCAnd": "FC와 ESC 간 통신 프로토콜",
+      "protocol": "프로토콜",
+      "pwmRate": "PWM 주파수",
+      "dshotIsADigitalProtocol": "DShot은 디지털 프로토콜이므로 PWM 주파수 설정이 적용되지 않습니다.",
+      "throttle": "스로틀",
+      "motorThrottleRangeAndIdle": "모터 스로틀 범위 및 아이들 설정",
+      "minThrottle": "최소 스로틀",
+      "maxThrottle": "최대 스로틀",
+      "minCommand": "최소 명령값",
+      "motorTest": "모터 테스트",
+      "testIndividualMotorsDISARMEDState": "개별 모터를 테스트합니다. DISARMED 상태여야 합니다.",
+      "dshotCommands": "DShot 명령",
+      "beaconSpinDirectionAnd3D": "비콘, 회전 방향 및 3D 모드. DISARMED 상태여야 합니다.",
+      "timing": "타이밍",
+      "gyroAndPIDLoopRate": "자이로 및 PID 루프 주기 구성",
+      "gyroSyncDenom": "자이로 동기화 분모",
+      "pidProcessDenom": "PID 프로세스 분모",
+      "gyroSampleRateFC": "자이로 샘플링 주기 (FC)",
+      "effectivePIDLoop": "실제 PID 루프",
+      "theFlightControllerDidNot": "비행 컨트롤러가 자이로 주기를 보고하지 않았습니다(MSP API 1.43 이상 필요)."
+    },
+    "cameraPanel": {
+      "camera": "카메라",
+      "cameraTriggerServoSettingsDistance": "카메라 트리거, 서보 설정, 거리 기반 촬영",
+      "cameraConfiguration": "카메라 구성",
+      "cameraTypeAndTriggerMethod": "카메라 유형 및 트리거 방식",
+      "servoTrigger": "서보 트리거",
+      "pwmValuesForServoBased": "서보 방식 셔터용 PWM 값",
+      "servoOffPWM": "서보 Off PWM",
+      "servoOnPWM": "서보 On PWM",
+      "pulseDuration": "펄스 지속 시간",
+      "distanceTrigger": "거리 트리거",
+      "automaticCaptureAtDistanceIntervals": "일정 거리 간격으로 자동 촬영",
+      "triggerDistance": "트리거 거리",
+      "setTo0ToDisable": "거리 기반 트리거를 끄려면 0으로 설정",
+      "surveyHelper": "측량 도우미",
+      "calculateTriggerDistanceFromSurvey": "측량 파라미터로 트리거 거리 계산",
+      "altitude": "고도",
+      "cameraFOV": "카메라 FOV",
+      "overlap": "중첩률",
+      "calculatedDistance": "계산된 거리:",
+      "manualTrigger": "수동 트리거",
+      "triggerCameraManually": "카메라 수동 트리거",
+      "intervalTrigger": "간격 트리거",
+      "triggerCameraAtAFixed": "일정한 시간 간격으로 카메라 트리거",
+      "interval": "간격",
+      "apply": "적용",
+      "triggerCamera": "카메라 트리거"
+    },
+    "gpsPanel": {
+      "gpsProtocolAndGPSRescue": "GPS 프로토콜 및 GPS Rescue(귀환) 구성",
+      "gpsProtocol": "GPS 프로토콜",
+      "provider": "제공자",
+      "sbasMode": "SBAS 모드",
+      "autoConfig": "자동 구성",
+      "autoBaud": "자동 보드레이트",
+      "galileoSupport": "Galileo 지원",
+      "gpsRescue": "GPS 구조",
+      "betaflightReturnToHome": "Betaflight 홈 귀환",
+      "maxRescueAngle": "최대 Rescue 각도",
+      "initialAltitude": "초기 고도",
+      "descentDistance": "하강 거리",
+      "groundSpeed": "대지 속도",
+      "throttleMin": "최소 스로틀",
+      "throttleMax": "스로틀 최대",
+      "throttleHover": "호버 스로틀",
+      "sanityChecks": "정상성 검사",
+      "minSatellites": "최소 위성 수",
+      "gps": "GPS",
+      "gpsRescueMustAlsoBe": "GPS Rescue를 활성화하려면 모드 탭에서도 모드로 활성화(AUX 채널에 할당)해야 합니다."
+    },
+    "arduPilotGpsPanel": {
+      "gpsReceiverTypeGNSSConstellations": "GPS 수신기 유형, GNSS 위성군, 블렌딩 및 GPS 기반 요",
+      "receivers": "수신기",
+      "gps1Type": "GPS 1 유형",
+      "gps2Type": "GPS 2 유형",
+      "autoSwitch": "자동 전환",
+      "primaryGPS": "기본 GPS",
+      "blendMask": "블렌드 마스크",
+      "constellationsRate": "위성군 및 갱신율",
+      "updateRate": "업데이트 주기",
+      "sbasMode": "SBAS 모드",
+      "autoConfig": "자동 구성",
+      "navFilter": "내비 필터",
+      "minElevation": "최소 고도각",
+      "gnssConstellations": "GNSS 위성군",
+      "gpsForYawAntennaOffsets": "GPS 요 및 안테나 오프셋",
+      "movingBaselineType": "무빙 베이스라인 유형",
+      "driverOptions": "드라이버 옵션",
+      "gps": "GPS",
+      "gpsForYawNeedsA": "GPS 기반 요(yaw)에는 무빙 베이스라인 수신기 쌍(GPS 유형 17/18 또는 22/23)이 필요합니다. 안테나 오프셋은 기체 좌표계에서 주 안테나의 위치입니다."
+    },
+    "rcCalibrationWizard": {
+      "calibrateRCTransmitterStickEndpoints": "RC 송신기 스틱 끝점과 트림을 캘리브레이션합니다. 모든 스틱과 스위치를 끝까지 움직이세요.",
+      "beforeYouStart": "시작하기 전에",
+      "turnOnRCTransmitterAnd": "시작하기 전에 RC 송신기를 켜고 바인딩을 확인하세요",
+      "ensureAllTrimsOnTransmitter": "송신기의 모든 트림이 중앙에 있는지 확인하세요 (서브 트림 없음)",
+      "youWillNeedToMove": "모든 스틱과 스위치를 끝까지 움직여야 합니다",
+      "writingRCParametersToFlight": "비행 컨트롤러에 RC 파라미터 쓰는 중...",
+      "confirmTrimReset": "트림 초기화 확인",
+      "resetAllTrims": "모든 트림 초기화",
+      "cancel": "취소",
+      "start": "시작",
+      "resetTrims": "트림 초기화",
+      "next": "다음",
+      "save": "저장",
+      "saving": "저장 중..."
+    },
+    "parameterSearchFilter": {
+      "searchParameters": "파라미터 검색...",
+      "showOnlyParametersYouVe": "이번 세션에서 변경한 파라미터만 표시",
+      "showParametersThatDifferFrom": "펌웨어 기본값과 다른 파라미터 표시",
+      "openDetailedDiffViewComparing": "현재 값과 펌웨어 기본값을 비교하는 상세 비교 보기 열기",
+      "showOnlyStarredParameters": "즐겨찾기한 파라미터만 표시",
+      "downloadAllParametersAsA": "모든 파라미터를 Mission Planner .param 파일로 다운로드",
+      "export": "내보내기",
+      "downloadAllParametersAsA2": "모든 파라미터를 QGroundControl .params 파일로 다운로드",
+      "exportQGC": "QGC로 내보내기",
+      "loadAParamOrParams": ".param 또는 .params 파일을 불러와 현재 FC 값과 비교",
+      "compare": "비교",
+      "discardAllUnsavedChangesDoes": "저장하지 않은 모든 변경 사항 취소 (FC에는 영향 없음)",
+      "modified": "수정됨",
+      "nonDefault": "기본값 아님",
+      "viewDiff": "차이 보기",
+      "favorites": "즐겨찾기",
+      "resetToDefault": "기본값으로 재설정"
+    },
+    "exportKeyModal": {
+      "close": "닫기",
+      "copiedToClipboard": "클립보드에 복사됨",
+      "clearingClipboard": "클립보드 지우는 중...",
+      "clipboardCleared": "클립보드를 지웠습니다.",
+      "exportSigningKey": "서명 키 내보내기",
+      "exportingRotatesTheKeyA": "내보내면 키가 교체됩니다. 새 32바이트 키가 생성되어 비행 컨트롤러에 등록되고 클립보드에 복사됩니다. 이전 키는 즉시 사용할 수 없게 됩니다.",
+      "theNewKeyNeverAppears": "새 키는 화면에 표시되지 않습니다. 60초 이내에 원하는 위치에 붙여넣으세요. 이후에는 클립보드가 자동으로 지워집니다.",
+      "type": "입력",
+      "cancel": "취소",
+      "rotateAndCopy": "교체 후 복사",
+      "rotatingKey": "키 교체 중…",
+      "clearNow": "지금 지우기",
+      "closeWithoutCopying": "복사하지 않고 닫기",
+      "copyAgain": "다시 복사",
+      "tryAgain": "다시 시도",
+      "iClearedIt": "지웠습니다"
+    },
+    "framePanel": {
+      "frameConfiguration": "프레임 구성",
+      "vehicleFrameClassTypeAnd": "기체 프레임 클래스, 유형 및 모터 배치",
+      "notApplicableForThisVehicle": "이 기체 유형에는 해당되지 않음",
+      "frameConfigurationIsNotApplicable": "고정익 항공기에는 프레임 구성이 적용되지 않습니다.",
+      "frameSelection": "프레임 선택",
+      "roverFrameClassAndMotor": "로버 프레임 클래스 및 모터 배치",
+      "thrusterConfiguration": "스러스터 구성",
+      "selectAirframeClassAndConfiguration": "기체 클래스 및 구성 유형 선택",
+      "motorLayout": "모터 배치",
+      "loadingParameters": "파라미터 불러오는 중...",
+      "motors": "모터:",
+      "class": "클래스:",
+      "type": "유형:",
+      "frameCLASS": "FRAME_CLASS",
+      "frameTYPE": "FRAME_TYPE",
+      "frameCONFIG": "FRAME_CONFIG"
+    },
+    "sensorsPanel": {
+      "sensors": "센서",
+      "rangefinderOpticalFlowAirspeedBarometer": "거리 센서, 옵티컬 플로우, 대기속도, 기압계 설정",
+      "rangefinder": "거리 측정기",
+      "rangefinderSensors": "거리 센서 목록",
+      "ekfRangeConfig": "EKF 거리 설정",
+      "rangeAidEnable": "거리 보조 활성화",
+      "maxHeightM": "최대 고도 (m)",
+      "noiseM": "노이즈 (m)",
+      "minRangeM": "최소 거리 (m)",
+      "liveDistance": "실시간 거리",
+      "sensorType": "센서 유형",
+      "analogPin": "아날로그 핀",
+      "minDistance": "최소 거리",
+      "maxDistance": "최대 거리",
+      "opticalFlow": "광학 흐름",
+      "xScaler": "X 스케일러",
+      "yScaler": "Y 스케일러",
+      "yawOrientation": "요 방향",
+      "airspeed": "대기속도",
+      "pressureOffset": "압력 오프셋",
+      "speedRatio": "속도 비율",
+      "liveAirspeed": "실시간 대기속도",
+      "barometer": "기압계",
+      "absolutePressure": "절대 기압",
+      "groundTemperature": "지상 온도",
+      "primaryBarometer": "기본 기압계"
+    },
+    "preArmPanel": {
+      "healthCheck": "상태 점검",
+      "sensorStatus": "센서 상태",
+      "ekfStatus": "EKF 상태",
+      "extendedKalmanFilterVariance": "확장 칼만 필터 분산",
+      "vibration": "진동",
+      "accelerometerVibrationLevelsMS": "가속도계 진동 수준 (m/s/s)",
+      "positionFixAndSatelliteInfo": "위치 고정 및 위성 정보",
+      "preArmChecks": "시동 전 점검",
+      "flightReadinessVerification": "비행 준비 상태 확인",
+      "blockers": "차단 요인",
+      "notes": "참고",
+      "noActiveFlags": "활성 플래그가 없습니다.",
+      "gps": "GPS",
+      "sensorStatusEKFVibrationGPS": "센서 상태, EKF, 진동, GPS 및 시동 전 점검"
+    },
+    "ledPanel": {
+      "ledConfiguration": "LED 설정",
+      "notificationLEDTypesBrightnessAnd": "알림 LED 유형, 밝기 및 색상 소스",
+      "betaflightLEDStrip": "Betaflight LED 스트립",
+      "ledStripConfigurationForBetaflight": "Betaflight용 LED 스트립 설정",
+      "ledTypes": "LED 유형",
+      "selectEnabledLEDHardwareBitmask": "활성화할 LED 하드웨어 선택 (비트마스크)",
+      "stripSettings": "스트립 설정",
+      "ledCountAndBrightnessLevel": "LED 개수 및 밝기 수준",
+      "stripLength": "스트립 길이",
+      "colourSource": "색상 소스",
+      "whereTheNotificationLEDTakes": "알림 LED 색상의 출처",
+      "patternPreview": "패턴 미리보기",
+      "visualRepresentationOfLEDStrip": "LED 스트립 시각화",
+      "betaflightLEDStripUsesPacked": "Betaflight LED 스트립은 압축된 위치/기능/색상 비트마스크를 사용하므로 CLI로 설정하는 것이 가장 좋습니다.",
+      "useThe": "다음을 사용하세요:"
+    },
+    "mixerProfilePanel": {
+      "mixerProfiles": "믹서 프로필",
+      "platformTypeMotorAndServo": "플랫폼 유형, 모터 및 서보 수",
+      "activeMixerProfile": "활성 믹서 프로필",
+      "notReportedByTheFC": "FC에서 보고되지 않음",
+      "platform": "플랫폼",
+      "motorSlotsFCMax": "모터 슬롯 (FC 최대)",
+      "servoSlotsFCMax": "서보 슬롯 (FC 최대)",
+      "motorDirectionInverted": "모터 방향 반전",
+      "motorStopOnLow": "저스로틀 시 모터 정지",
+      "hasFlaps": "플랩 있음",
+      "appliedPreset": "적용된 프리셋",
+      "mixerTables": "믹서 테이블",
+      "motorAndServoMixerRules": "모터 및 서보 믹서 규칙",
+      "activeMixerInfo": "활성 믹서 정보",
+      "writeToFC": "FC에 쓰기",
+      "theMixerProfileChangedAnd": "믹서 프로필이 변경되었으며 아래 표는 이전 프로필에서 읽은 것입니다. 쓰기 전에 다시 읽으세요.",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "arduPilotCalibrations": {
+      "setTheReferenceLevelHorizon": "비행 컨트롤러의 기준 수평면을 설정합니다.",
+      "levelCalibrationSaved": "수평 캘리브레이션 저장됨",
+      "airspeedCalibration": "대기속도 캘리브레이션",
+      "arduplaneOnlyCoverThePitot": "ArduPlane 전용 — 시작 전에 피토관 입구를 막으세요.",
+      "barometerCalibration": "기압계 보정",
+      "resetsGroundPressureReferenceKeep": "지상 기압 기준값을 초기화합니다. 보정 중에는 기체를 움직이지 마세요.",
+      "pressure": "기압",
+      "temp": "온도",
+      "escCalibration": "ESC 보정",
+      "setESCThrottleEndpointsREMOVE": "ESC 스로틀 끝점을 설정합니다. 시작하기 전에 모든 프로펠러를 제거하세요.",
+      "escCalibrationSaved": "ESC 캘리브레이션 저장됨",
+      "compassmotMotorInterference": "CompassMot (모터 간섭)",
+      "measuresMagneticInterferenceFromMotors": "다양한 스로틀 수준에서 모터/ESC의 자기 간섭을 측정하여 컴퍼스 값을 보정합니다.",
+      "compassmotCalibrationSaved": "CompassMot 캘리브레이션 저장됨"
+    },
+    "telRadioPanel": {
+      "telemetryRadio": "텔레메트리 무선",
+      "radioLinkStatusAndSerial": "무선 링크 상태 및 시리얼 포트 설정",
+      "linkStatus": "링크 상태",
+      "liveRADIOSTATUSTelemetry": "실시간 RADIO_STATUS 텔레메트리",
+      "localRSSI": "로컬 RSSI",
+      "remoteRSSI": "원격 RSSI",
+      "txBuffer": "TX 버퍼",
+      "noiseDeviceScale": "노이즈 (장치 기준)",
+      "rxErrors": "RX 오류",
+      "fixed": "수정됨",
+      "serialPortConfiguration": "시리얼 포트 설정",
+      "protocolAndBaudRateFor": "텔레메트리 포트의 프로토콜 및 전송 속도",
+      "protocol": "프로토콜",
+      "baudRate": "보드 레이트",
+      "systemIdentification": "시스템 식별",
+      "mavlinkSystemAndGCSIDs": "다중 기체 구성을 위한 MAVLink 시스템 및 GCS ID"
+    },
+    "signingEnabledSection": {
+      "signingEnabled": "서명 활성화됨",
+      "keyFingerprint": "키 지문",
+      "enrolled": "등록됨",
+      "syncToCloud": "클라우드에 동기화",
+      "withAKeyInIts": "저장소에 키가 있으면 ArduPilot은 USB 포트(채널 0)에서만 서명되지 않은 명령을 허용하고 다른 모든 링크에서는 거부합니다. 비행 컨트롤러가 이를 보고하지 않으므로 패널에서도 이를 표시하지 않습니다.",
+      "theFlightControllerMayHold": "비행 컨트롤러에 새 키 또는 이전 키가 저장되어 있을 수 있습니다",
+      "itHasTheNewKey": "새 키가 있음",
+      "itKeptThePreviousKey": "이전 키를 유지함",
+      "disableSentTheFlightController": "비활성화 요청을 보냈으나 비행 컨트롤러가 확인하지 않았습니다",
+      "thisBrowserKeepsTheKey": "확인할 때까지 이 브라우저는 키를 보관하고 계속 서명합니다. 비행 컨트롤러가 USB 이외의 링크에서 서명되지 않은 명령을 허용하면 서명이 꺼진 것입니다.",
+      "signingIsOffForgetThe": "서명 꺼짐: 키 삭제",
+      "itIsStillSigningKeep": "아직 서명 중: 키 유지",
+      "rotateKey": "키 교체",
+      "exportKey": "키 내보내기",
+      "disableSigning": "서명 비활성화"
+    },
+    "geozoneZoneEditor": {
+      "removeZone": "구역 삭제",
+      "type": "유형",
+      "shape": "형태",
+      "minAltitudeM": "최소 고도 (m)",
+      "maxAltitudeM": "최대 고도 (m)",
+      "fenceAction": "펜스 동작",
+      "lat": "위도",
+      "lon": "경도",
+      "removeVertex": "꼭짓점 삭제",
+      "polygonZonesNeedAtLeast": "폴리곤 구역은 업로드 전에 최소 3개의 꼭짓점이 필요합니다.",
+      "altitudesRelativeToSeaLevel": "해수면 기준 고도",
+      "addVertex": "꼭짓점 추가"
+    },
+    "portsPanel": {
+      "serialPorts": "시리얼 포트",
+      "connectToADroneTo": "시리얼 포트를 설정하려면 드론에 연결하세요.",
+      "protocolAndBaudRateFor": "각 시리얼 포트의 프로토콜 및 보드레이트",
+      "loadingSerialParameters": "시리얼 파라미터 불러오는 중...",
+      "saveChanges": "변경 사항 저장",
+      "serialPortChangesRequireA": "시리얼 포트 변경 사항은 재부팅 후 적용됩니다.",
+      "clickQuotReadFromFC": "\"FC에서 읽기\"를 클릭하여 시리얼 파라미터를 불러오세요.",
+      "px4AutoDetectsPortProtocols": "PX4는 포트 프로토콜을 자동 감지합니다. 아래에서 보드레이트를 설정하세요.",
+      "port": "포트",
+      "label": "레이블",
+      "protocol": "프로토콜",
+      "baudRate": "보드레이트"
+    },
+    "auxModesPanel": {
+      "auxiliaryModes": "보조 모드",
+      "configureModeActivationViaAUX": "AUX 채널 PWM 범위로 모드 활성화 설정",
+      "liveRCChannels": "실시간 RC 채널",
+      "currentAUXChannelPWMValues": "현재 AUX 채널 PWM 값",
+      "channel": "채널",
+      "addRange": "범위 추가",
+      "addMode": "모드 추가",
+      "assignANewModeTo": "AUX 채널에 새 모드 할당",
+      "mode": "모드",
+      "add": "추가",
+      "noModeRangesConfiguredAdd": "설정된 모드 범위가 없습니다. 위에서 모드를 추가하여 시작하세요.",
+      "thisConnectionCannotWriteMode": "이 연결에서는 모드 범위를 쓸 수 없습니다"
+    },
+    "debugPanel": {
+      "debugValues": "디버그 값",
+      "table": "표",
+      "graph": "그래프",
+      "exportCSV": "CSV 내보내기",
+      "clear": "지우기",
+      "noDebugValuesReceived": "수신된 디버그 값 없음",
+      "name": "이름",
+      "value": "값",
+      "type": "유형",
+      "lastUpdate": "마지막 업데이트",
+      "selectValuesAboveToView": "그래프를 보려면 위에서 값을 선택하세요"
+    },
+    "batteryProfilePanel": {
+      "batteryProfiles": "배터리 프로필",
+      "voltageThresholdsCapacityAndCurrent": "전압 임계값, 용량 및 전류 센서 설정",
+      "activeProfile": "활성 프로필",
+      "cellVoltages001V": "셀 전압 (0.01 V)",
+      "capacity": "용량",
+      "capacityUnit": "용량 단위",
+      "currentSensor": "전류 센서",
+      "scaleMVAX10": "스케일 (mV/A x10)",
+      "offsetMA": "오프셋 (mA)",
+      "voltageSource": "전압 소스",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "actuatorPanel": {
+      "actuatorConfiguration": "액추에이터 설정",
+      "px4ControlAllocationMotorGeometry": "PX4 제어 할당 — 모터 지오메트리 및 출력 매핑",
+      "motorGeometry": "모터 지오메트리",
+      "rotorCount": "로터 수",
+      "motor": "모터",
+      "xFwd": "X (전방)",
+      "yRight": "Y (우측)",
+      "zDown": "Z (하방)",
+      "pwmOutputFunctions": "PWM 출력 기능",
+      "controlSurfaces": "조종면",
+      "surfaceCount": "조종면 수",
+      "actuatorTest": "액추에이터 테스트"
+    },
+    "pX4CalibrationsSection": {
+      "px4OnlyCalibrations": "PX4 전용 보정",
+      "quickLevelPX4": "빠른 수평 보정 (PX4)",
+      "setLevelReferenceFromCurrent": "현재 자세를 수평 기준으로 설정합니다. 시작하기 전에 기체를 수평으로 놓으세요.",
+      "quickLevelCalibrationSaved": "빠른 수평 보정이 저장되었습니다",
+      "vehicleHeadingTrueDegrees": "기체 방위 (진북 기준, 도)",
+      "knownHeadingCompassCalibration": "알려진 방위 기반 나침반 보정",
+      "calibrateTheCompassFromThe": "세계 자기 모델과 기체 기수가 향하는 방위를 이용해 나침반을 보정합니다. 위치 고정이 필요하며, 회전은 필요하지 않습니다.",
+      "compassCalibrationSaved": "나침반 보정이 저장되었습니다",
+      "thermalCalibration": "온도 보정",
+      "additionalCalibrationOptionsAvailableOn": "PX4 펌웨어에서 사용 가능한 추가 보정 옵션",
+      "configureAndTriggerThermalCalibration": "센서 섹션의 열 보정 패널에서 열 보정을 설정하고 실행하세요. 다음 콜드 부팅 시 실행됩니다."
+    },
+    "importKeyModal": {
+      "close": "닫기",
+      "signingKeyHex": "서명 키 (16진수)",
+      "n64LowercaseHexChars": "소문자 16진수 64자",
+      "keyImportedSignedCommandsWill": "키를 가져왔습니다. 서명된 명령에 이 키가 사용됩니다.",
+      "importSigningKey": "서명 키 가져오기",
+      "pasteA64CharacterHex": "64자리 16진수 MAVLink 서명 키를 붙여 넣으세요. 키는 이미 비행 컨트롤러에 등록되어 있다고 간주합니다. 여기서는 등록이 이루어지지 않습니다.",
+      "cancel": "취소",
+      "import": "가져오기",
+      "importingKey": "키 가져오는 중…",
+      "tryAgain": "다시 시도"
+    },
+    "blackboxPanel": {
+      "blackbox": "블랙박스",
+      "flightDataRecordingDeviceAnd": "비행 데이터 기록 장치 및 기록 속도",
+      "loggingDevice": "기록 장치",
+      "device": "장치",
+      "logRate": "기록 속도",
+      "numerator": "분자",
+      "denominator": "분모",
+      "readingStorageInfo": "저장소 정보 읽는 중...",
+      "downloadLogs": "로그 다운로드",
+      "erase": "지우기",
+      "downloadingBlackboxLog": "블랙박스 로그 다운로드 중…"
+    },
+    "adjustmentsPanel": {
+      "adjustments": "조정",
+      "inFlightParameterAdjustmentVia": "RC 채널을 통한 비행 중 파라미터 조정",
+      "liveRCChannels": "실시간 RC 채널",
+      "currentAUXChannelPWMValues": "현재 AUX 채널 PWM 값",
+      "noAdjustmentsConfigured": "설정된 조정이 없습니다.",
+      "whenChannel": "조건 채널",
+      "applyFunction": "적용 기능",
+      "viaChannel": "조정 채널",
+      "activationRange": "활성화 범위",
+      "assignRCChannelRangesTo": "비행 중 PID, 레이트 및 기타 파라미터를 조정하도록 RC 채널 범위를 지정합니다. 각 조정은 스위치 채널(활성화 범위)과 조정 채널(값)에 매핑됩니다.",
+      "addAdjustment": "조정 추가"
+    },
+    "gpsConfigSection": {
+      "gpsConfiguration": "GPS 설정",
+      "antennaPositionOffsetRelativeTo": "안테나 위치 오프셋 (IMU 기준)",
+      "notOnThisFirmware": "이 펌웨어에서 지원되지 않음",
+      "gnssConstellation": "GNSS 위성군",
+      "antennaPositionOffsetsAndConstellation": "안테나 위치 오프셋 및 위성군 선택",
+      "read": "읽기",
+      "save": "저장"
+    },
+    "px4ControlAllocationPanel": {
+      "controlAllocation": "제어 할당",
+      "px4AirframeAllocationMethodRotor": "PX4 기체 구성, 할당 방식, 로터 계수, 조종면 및 틸트 서보",
+      "airframe": "기체 프레임",
+      "reversibleMotors": "역회전 가능 모터",
+      "rotors": "로터",
+      "setARotorCountTo": "로터 계수를 구성하려면 로터 수를 설정하세요.",
+      "controlSurfaces": "조종면",
+      "tiltServos": "틸트 서보",
+      "reversibleMotorsCARREV": "역회전 가능 모터 (CA_R_REV)"
+    },
+    "bfMotorTest": {
+      "iConfirmAllPropellersHave": "모든 프로펠러를 제거했음을 확인합니다",
+      "motorTestIsNotAvailable": "이 링크에서는 모터 테스트를 사용할 수 없습니다.",
+      "disarmToTestMotors": "모터를 테스트하려면 시동을 해제하세요",
+      "waitingForTheFlightController": "비행 컨트롤러의 모터 출력 보고를 기다리는 중입니다.",
+      "masterThrottle": "마스터 스로틀",
+      "masterThrottle2": "마스터 스로틀",
+      "motorsWillSpinWhenTested": "테스트 시 모터가 회전합니다. 프로펠러를 제거하지 않으면 부상이나 손상이 발생할 수 있습니다.",
+      "enableMotorTest": "모터 테스트 활성화",
+      "stopAllMotors": "모든 모터 정지"
+    },
+    "iNavMissionPanel": {
+      "inavMission": "iNav 미션",
+      "summaryOfTheMissionIn": "Plan 탭의 미션 또는 FC에서 읽어온 미션 요약입니다.",
+      "totalWaypoints": "총 웨이포인트",
+      "breakdownByAction": "동작별 분류",
+      "replaceTheCurrentPlan": "현재 계획을 교체하시겠습니까?",
+      "replacePlan": "계획 교체",
+      "noMissionLoadedOpenThe": "불러온 임무가 없습니다. 계획 탭을 열어 임무를 만드세요.",
+      "openMissionPlanner": "임무 계획 열기"
+    },
+    "bfDshotCommands": {
+      "iConfirmAllPropellersHave": "모든 프로펠러를 제거했음을 확인합니다",
+      "disarmToSendESCCommands": "ESC 명령을 보내려면 시동을 해제하세요.",
+      "spinDirectionMotor": "회전 방향 — 모터",
+      "beepLocate": "비프음 (위치 찾기)",
+      "setNormal": "정방향 설정",
+      "setReversed": "역방향 설정",
+      "enable": "활성화",
+      "disable": "비활성화"
+    },
+    "parameterGrid": {
+      "name": "이름",
+      "description": "설명",
+      "value": "값",
+      "range": "범위",
+      "units": "단위",
+      "type": "유형",
+      "ramOnlyNotFlashed": "RAM에만 저장됨, 플래시에 기록되지 않음"
+    },
+    "firmwareArduPilotSection": {
+      "retry": "다시 시도",
+      "loadingBoards": "보드 불러오는 중...",
+      "vehicleType": "기체 유형",
+      "version": "버전",
+      "targetBoard": "대상 보드",
+      "loadingManifest": "매니페스트 불러오는 중...",
+      "firmwareVersion": "펌웨어 버전"
+    },
+    "rateProfilePanel": {
+      "rateProfiles": "레이트 프로필",
+      "betaflightRateCurveConfiguration": "Betaflight 레이트 커브 구성",
+      "ratesType": "레이트 유형",
+      "roll": "롤",
+      "pitch": "피치",
+      "yaw": "요",
+      "throttle": "스로틀",
+      "rateCurvePreview": "레이트 커브 미리보기"
+    },
+    "betaflightConfigPanel": {
+      "configuration": "구성",
+      "featureTogglesArmingSettingsAnd": "기능 토글, 시동 설정 및 비퍼 구성",
+      "enableOrDisableFirmwareFeatures": "펌웨어 기능 활성화/비활성화 (BF_FEATURE_MASK)",
+      "arming": "시동",
+      "autoDisarmTimeoutAndSmall": "자동 시동 해제 시간 제한 및 소각도 제한",
+      "autoDisarmDelay": "자동 시동 해제 지연",
+      "smallAngleLimit": "소각도 제한",
+      "toggleIndividualBeeperConditionsBF": "개별 비퍼 조건 토글 (BF_BEEPER_DISABLED_MASK는 반전됨: bit=1이면 비활성화)"
+    },
+    "px4ThermalCalPanel": {
+      "thermalCalibration": "온도 보정",
+      "temperatureCompensationForGyroAccel": "자이로, 가속도계, 기압계 온도 보정 (TC_*)",
+      "compensation": "보정",
+      "runCalibration": "보정 실행",
+      "minTemp": "최저 온도",
+      "refTemp": "기준 온도",
+      "maxTemp": "최대 온도"
+    },
+    "pidAnalysisWizard": {
+      "event": "이벤트:",
+      "testTheseSettingsInSITL": "비행 전에 SITL 또는 안전한 환경에서 이 설정을 테스트하세요.",
+      "noStepResponseEventsDetected": "이 로그에서 스텝 응답 이벤트가 감지되지 않았습니다.",
+      "saveAsBaseline": "기준선으로 저장",
+      "saveCurrentAnalysisThenRe": "현재 분석을 저장한 후, 튜닝 후 다시 분석하여 비교하세요.",
+      "appliedValuesAppearInThe": "적용된 값은 위의 PID 슬라이더에 저장되지 않은 변경 사항으로 표시됩니다. 기록하려면 \"비행 컨트롤러에 저장\"을 사용하세요.",
+      "back": "뒤로",
+      "next": "다음"
+    },
+    "programmingPidPanel": {
+      "programmingPIDs": "프로그래밍 PID",
+      "setpoint": "설정값",
+      "measurement": "측정값",
+      "gains": "게인",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "iNavFailsafePanel": {
+      "inavFailsafe": "iNav 페일세이프",
+      "whatTheFCDoesWhen": "RC 링크가 끊겼을 때 FC의 동작",
+      "failsafeProcedure": "페일세이프 절차",
+      "minDistanceCm": "최소 거리 (cm)",
+      "procedureInsideMinDistance": "최소 거리 내 절차",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "airframePanel": {
+      "airframeSelection": "기체 선택",
+      "px4AirframeConfigurationSYSAUTOSTART": "PX4 기체 구성 (SYS_AUTOSTART)",
+      "currentAirframe": "현재 기체",
+      "changingAirframeRequiresAReboot": "기체를 변경하면 재부팅이 필요합니다. 모든 파라미터가 기체 기본값으로 초기화됩니다.",
+      "searchAirframes": "기체 검색...",
+      "noAirframesMatchYourSearch": "검색과 일치하는 기체가 없습니다.",
+      "customAirframeID": "사용자 지정 기체 ID"
+    },
+    "firmwarePx4Section": {
+      "retry": "다시 시도",
+      "release": "릴리스",
+      "loadingReleases": "릴리스 불러오는 중...",
+      "px4Release": "PX4 릴리스",
+      "targetBoard": "대상 보드"
+    },
+    "mavlinkShellPanel": {
+      "mavlinkShell": "MAVLink 셸",
+      "px4NuttXConsole": "PX4 NuttX 콘솔",
+      "copyOutput": "출력 복사",
+      "downloadOutput": "출력 다운로드",
+      "clearTerminal": "터미널 지우기",
+      "enterNuttXCommand": "NuttX 명령 입력..."
+    },
+    "signingDebugSection": {
+      "debug": "디버그",
+      "keyFingerprint": "키 지문",
+      "hasBrowserKey": "브라우저 키 보유",
+      "enrollmentState": "등록 상태",
+      "previousKeyKept": "이전 키 유지됨"
+    },
+    "timerGroupDiagram": {
+      "selectBoard": "보드 선택...",
+      "timerGroupLayout": "타이머 그룹 레이아웃",
+      "dshotMotor": "DShot 모터",
+      "pwmServo": "PWM 서보",
+      "disabledGPIO": "비활성/GPIO"
+    },
+    "servosPanel": {
+      "servoConfig": "서보 설정",
+      "travelLimitsCenterPositionAnd": "이동 한계, 중앙 위치 및 비율",
+      "rate": "레이트 (%)",
+      "thisPanelAppliesToFixed": "이 패널은 고정익 및 트라이콥터 플랫폼에 적용됩니다. 연결된 비행 컨트롤러는 멀티로터로 설정되어 있습니다.",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항 : FC에 쓰기를 사용해 저장하세요."
+    },
+    "safehomePanel": {
+      "safehomeSlots": "세이프홈 슬롯",
+      "latitude": "위도",
+      "longitude": "경도",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "outputMappingPanel": {
+      "outputMapping": "출력 매핑",
+      "timerGroupsAndOutputType": "타이머 그룹 및 출력 유형 할당",
+      "timerOutputModes": "타이머 출력 모드",
+      "outputAssignmentsReadOnly": "출력 할당 (읽기 전용)",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "geozonePanel": {
+      "geozones": "지오존",
+      "inavPolygonAndCircularNo": "iNav 다각형 및 원형 비행 금지 또는 내부 유지 구역",
+      "addZone": "구역 추가",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항 : FC에 쓰기를 사용해 저장하세요.",
+      "readFromFCToLoad": "FC에서 읽어 기존 구역을 불러오거나 위에서 새 구역을 추가하세요."
+    },
+    "controlProfilePanel": {
+      "controlProfiles": "제어 프로필",
+      "switchTheActiveRateAnd": "활성 레이트 및 제어 프로필 전환",
+      "activeControlProfile": "활성 제어 프로필",
+      "switchActiveControlProfile": "활성 제어 프로필을 전환할까요?",
+      "switchProfile": "프로필 전환"
+    },
+    "flightModeChannelControls": {
+      "modeSwitchChannel": "모드 스위치 채널",
+      "rcChannelForFlightMode": "비행 모드 스위치용 RC 채널",
+      "initialBootModeINITIALMODE": "초기 부팅 모드 (INITIAL_MODE)",
+      "currentPWM": "현재 PWM:",
+      "noModeChannelAssignedSo": "모드 채널이 지정되지 않아 6개의 모드 슬롯이 비활성 상태입니다.",
+      "px4SetsItsBootMode": "PX4는 이 패널이 아닌 전용 부팅 모드 파라미터로 부팅 모드를 설정합니다."
+    },
+    "cliPanel": {
+      "fcConsole": "FC 콘솔",
+      "export": "내보내기",
+      "clear": "지우기",
+      "send": "전송"
+    },
+    "bfSettingsPanel": {
+      "allSettings": "전체 설정",
+      "everyBetaflightSettingReadAnd": "CLI로 읽고 쓰는 모든 Betaflight 설정",
+      "searchSettings": "설정 검색...",
+      "apply": "적용",
+      "save": "저장",
+      "modifiedOnly": "변경된 항목만"
+    },
+    "bfLedStripPanel": {
+      "ledStrip": "LED 스트립",
+      "betaflightPerLEDPositionColor": "Betaflight LED별 위치, 색상, 기능 및 효과",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항 : 적용하려면 FC에 쓰기를 사용하세요.",
+      "noLEDsConfiguredOnThis": "이 스트립에 구성된 LED가 없습니다.",
+      "colourPalette": "색상 팔레트",
+      "the16HSVColoursThe": "LED별 “Color N” 인덱스가 참조하는 16개의 HSV 색상입니다.",
+      "writeToFC": "FC에 쓰기"
+    },
+    "signingDisabledSection": {
+      "mavlinkSigningIsOff": "MAVLink 서명이 꺼져 있습니다",
+      "letTheAgentSignIts": "에이전트가 자체 트래픽에 서명하도록 허용 (키를 노드에 저장)",
+      "withoutThisTheFlightController": "이 옵션이 없으면 시리얼 링크에서 서명이 켜졌을 때 비행 컨트롤러가 에이전트 자체 프레임(스트림 속도, 파라미터 스윕, 스웜 명령)을 버립니다.",
+      "enableSigning": "서명 활성화",
+      "importAnExistingKey": "기존 키 가져오기"
+    },
+    "signingPanel": {
+      "noDroneSelected": "선택된 드론이 없습니다.",
+      "mavlinkSigning": "MAVLink 서명",
+      "hmacSHA256AuthenticationOfEvery": "비행 컨트롤러로 전송되는 모든 명령에 HMAC-SHA256 인증을 적용합니다.",
+      "privateBrowsingDetectedSigningKeys": "비공개 브라우징이 감지되었습니다. 이 창에서 등록한 서명 키는 현재 세션에서만 유효하며 창을 닫으면 사라집니다."
+    },
+    "receiverBindingUI": {
+      "stickTrims": "스틱 트림",
+      "trimPreviewRollPitchYaw": "트림 미리보기 (롤, 피치, 요):",
+      "confirm": "확인",
+      "cancel": "취소",
+      "setTrimsToCurrent": "현재 값으로 트림 설정"
+    },
+    "px4ActuatorTest": {
+      "iConfirmAllPropellersHave": "모든 프로펠러를 제거했음을 확인합니다",
+      "disarmToTestActuators": "액추에이터를 테스트하려면 시동을 해제하세요.",
+      "output": "출력",
+      "stop": "정지"
+    },
+    "px4PowerSections": {
+      "batterySettings": "배터리 설정",
+      "battery1Source": "배터리 1 소스",
+      "capacity": "용량",
+      "cellCount": "셀 수",
+      "internalResistance": "내부 저항",
+      "capacity1MeansUnknownInternal": "용량 -1은 알 수 없음을 의미하며, 내부 저항 -1은 PX4가 자동으로 추정합니다.",
+      "powerModuleCalibration": "전원 모듈 보정",
+      "voltageDivider": "전압 분배기",
+      "ampsPerVolt": "볼트당 암페어",
+      "currentSensorZeroOffset": "전류 센서 영점 오프셋",
+      "batteryFailsafe": "배터리 페일세이프",
+      "batteryFailsafeAction": "배터리 페일세이프 동작"
+    },
+    "pidTuningPanel": {
+      "pidTuning": "PID 튜닝",
+      "presetProfiles": "프리셋 프로필",
+      "filterSettings": "필터 설정",
+      "insGyroAccelLowPass": "INS 자이로/가속도계 저역 통과 필터 및 하모닉 노치 필터"
+    },
+    "outputsPanel": {
+      "servoMotorOutputs": "서보 / 모터 출력",
+      "connectToADroneTo": "출력을 구성하려면 드론에 연결하세요.",
+      "outputFunctionAssignmentPWMLimits": "출력 기능 할당, PWM 제한 및 모터 테스트",
+      "save": "저장"
+    },
+    "motorTestSection": {
+      "motorTest": "모터 테스트",
+      "enableMotorTestSafetyMaster": "모터 테스트 활성화 (안전 마스터)",
+      "motor": "모터",
+      "removePropellersBeforeTestingMotors": "모터 테스트 전에 프로펠러를 제거하세요. 드론이 고정되어 있는지 확인하세요."
+    },
+    "navConfigPanel": {
+      "navigationConfig": "내비게이션 설정",
+      "inavPositionHoldAndNavigation": "iNav 위치 유지 및 내비게이션 속도 설정",
+      "posholdStickMode": "POSHOLD 스틱 모드",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "mcBrakingPanel": {
+      "mcBraking": "MC 제동",
+      "multicopterPositionHoldBrakingParameters": "멀티콥터 위치 유지 제동 파라미터",
+      "thisPanelAppliesToMultirotor": "이 패널은 멀티로터 플랫폼에 적용됩니다. 연결된 비행 컨트롤러는 다른 플랫폼으로 설정되어 있습니다.",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항 : FC에 쓰기를 사용해 저장하세요."
+    },
+    "geozoneCircleFields": {
+      "centreLat": "중심 위도",
+      "centreLon": "중심 경도",
+      "radiusM": "반경 (m)",
+      "circularZonesNeedACentre": "원형 구역은 업로드 전에 중심과 반경이 필요합니다."
+    },
+    "ezTunePanel": {
+      "ezTune": "EZ 튠",
+      "simplifiedPIDAndFilterTuning": "통합 슬라이더를 통한 간편 PID 및 필터 튜닝.",
+      "enableEZTune": "EZ Tune 활성화",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "modeSlotRow": {
+      "simpleModeEarthRelativeHeading": "Simple 모드 — 지구 기준 방향",
+      "superSimpleModeHomeRelative": "Super Simple 모드 — 홈 기준 방향",
+      "resetToFCValues": "FC 값으로 초기화",
+      "active": "활성"
+    },
+    "firmwareBoardInfo": {
+      "connectedBoard": "연결된 보드",
+      "firmware": "펌웨어",
+      "vehicle": "기체",
+      "systemID": "시스템 ID"
+    },
+    "bfPortsPanel": {
+      "ports": "포트",
+      "betaflightPerUARTFunctionAnd": "Betaflight UART별 기능 및 보드레이트 설정",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 비행 컨트롤러에 저장하세요.",
+      "savedTheFlightControllerApplies": "저장되었습니다. 비행 컨트롤러는 다음 재부팅 시 포트 변경 사항을 적용합니다.",
+      "writeToFC": "FC에 쓰기"
+    },
+    "bfOsdEditorPanel": {
+      "betaflightOSD": "Betaflight OSD",
+      "videoSystem": "비디오 시스템",
+      "osdProfile": "OSD 프로필:",
+      "save": "저장",
+      "uploadFontMcm": "폰트 업로드 (.mcm)"
+    },
+    "subConfigPanel": {
+      "subConfiguration": "잠수정 설정",
+      "depthHoldPositionControlFailsafes": "수심 유지, 위치 제어, 페일세이프 및 조이스틱 버튼",
+      "joystickButtons": "조이스틱 버튼",
+      "shiftedFunctionsHeldWhileThe": "시프트 기능 (시프트 버튼이 활성화된 동안 유지)."
+    },
+    "streamRatesPanel": {
+      "telemetryStreamRates": "텔레메트리 스트림 속도",
+      "perPortMAVLinkMessageGroup": "포트별 MAVLink 메시지 그룹 속도 (Hz)",
+      "mavlinkChannel": "MAVLink 채널",
+      "gcsManagesTelemetryRatesOn": "GCS가 텔레메트리 레이트를 관리합니다. 연결, 링크 복구 및 비행 컨트롤러 재부팅 시 이 GCS는 연결된 채널에서 자체 레이트를 요청합니다. 여기서 또는 에이전트'의 라우터에서 설정한 레이트를 그대로 유지하려면 끄세요."
+    },
+    "signingHistorySection": {
+      "history": "기록",
+      "signInToCloudSync": "로그인하면 이 드론을 클라우드에 동기화하고 드론별 감사 로그를 여기에 표시합니다.",
+      "loadingHistory": "기록 불러오는 중…",
+      "noSigningEventsRecordedFor": "이 드론에 기록된 서명 이벤트가 아직 없습니다."
+    },
+    "rcChannelMapSection": {
+      "rcChannelAssignment": "RC 채널 할당",
+      "read": "읽기",
+      "save": "저장"
+    },
+    "px4GpsPanel": {
+      "gpsConfiguration": "GPS 설정",
+      "px4GNSSProtocolSystemsAnd": "PX4 GNSS 프로토콜, 시스템 및 u-blox 설정",
+      "primaryGPS": "기본 GPS",
+      "secondaryGPS": "보조 GPS"
+    },
+    "servoTestSection": {
+      "servoTest": "서보 테스트",
+      "enableServoTestSafetyMaster": "서보 테스트 활성화 (안전 마스터)",
+      "servoTestSendsLivePWM": "서보 테스트는 실시간 PWM 명령을 전송합니다. 서보가 안전하게 움직일 수 있는지 확인하세요."
+    },
+    "outputTimerGroupConfig": {
+      "timerGroupConflict": "타이머 그룹 충돌",
+      "duplicateFunctions": "중복 기능",
+      "pwmWarnings": "PWM 경고"
+    },
+    "globalVariablesPanel": {
+      "globalVariables": "전역 변수",
+      "armedOverridesDisabledLiveValues": "시동됨: 오버라이드가 비활성화되었습니다. 실시간 값은 아래에 갱신됩니다.",
+      "set": "설정",
+      "settingAValueIsA": "값 설정은 실시간 런타임 오버라이드입니다. 로직 조건에 의해 다시 변경될 수 있으며 EEPROM에 기록되지 않습니다. 시동 중에는 오버라이드가 차단됩니다."
+    },
+    "rateDynamicsPanel": {
+      "rateDynamics": "레이트 다이내믹스",
+      "stickResponseCurveShapingWithin": "비행 컨트롤러가 보고한 범위 내에서 스틱 응답 곡선을 조정합니다.",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "navPidPanel": {
+      "navPID": "내비 PID",
+      "inavNavigationControllerPIDGains": "iNav 내비게이션 컨트롤러 PID 게인",
+      "writeToFC": "FC에 쓰기",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "frameConfigLog": {
+      "configLog": "설정 로그",
+      "clearLog": "로그 지우기",
+      "noEventsYetReadFrom": "아직 이벤트가 없습니다. 시작하려면 FC에서 읽기를 실행하세요."
+    },
+    "calibrationLog": {
+      "calibrationLog": "캘리브레이션 로그",
+      "clearLog": "로그 지우기",
+      "noCalibrationMessagesYet": "아직 캘리브레이션 메시지가 없습니다"
+    },
+    "columnVisibilityToggle": {
+      "toggleColumns": "열 표시 전환",
+      "columns": "열"
+    },
+    "signingUnsupportedNotice": {
+      "signingNotAvailableOnThis": "이 드론에서는 서명을 사용할 수 없습니다",
+      "commandsSentToThisDrone": "이 드론으로 전송되는 명령은 MAVLink 계층에서 암호화 인증되지 않습니다."
+    },
+    "px4VtolPanel": {
+      "vtolTransition": "VTOL 전환",
+      "px4VTOLTypeTransitionTiming": "PX4 VTOL 유형, 전환 타이밍, 쿼드 슈트 및 기체별 틸트/추력",
+      "transition": "전환"
+    },
+    "px4FlightBehaviorPanel": {
+      "flightBehavior": "비행 동작",
+      "px4MulticopterSpeedAccelerationAnd": "PX4 멀티콥터 속도, 가속도 및 위치 제어 (MPC)",
+      "positionVelocityControllers": "위치 및 속도 컨트롤러"
+    },
+    "px4AutotunePanel": {
+      "autotune": "자동 튜닝",
+      "autotuneSettings": "오토튠 설정"
+    },
+    "pidTrackingChart": {
+      "rmsError": "RMS 오차",
+      "noTrackingData": "추적 데이터 없음"
+    },
+    "pidLiveAnalysis": {
+      "oscillation": "진동"
+    },
+    "pidAnalysisSection": {
+      "aiAnalysisAmpTuning": "AI 분석 & 튜닝",
+      "prev": "이전",
+      "next": "다음"
+    },
+    "displayPortOsdPanel": {
+      "osdPreview": "OSD 미리보기",
+      "liveReconstructionOfTheOSD": "비행 컨트롤러가 그리는 OSD의 실시간 재구성(MSP DisplayPort)입니다. FC가 이 연결에서 MSP DisplayPort로 OSD를 출력하도록 설정된 경우(HD 고글 / DJI 구성)에만 프레임이 수신됩니다. 사용자 정의 폰트 글리프는 점으로 표시되며, 텍스트와 숫자 필드는 전송된 그대로 표시됩니다."
+    },
+    "tempSensorsPanel": {
+      "temperatureSensors": "온도 센서",
+      "n1WireAndI2CTemperature": "1-Wire 및 I2C 온도 센서 설정",
+      "noTemperatureSensorsConfiguredOn": "이 FC에 구성된 온도 센서가 없습니다."
+    },
+    "flightModesPanel": {
+      "flightModes": "비행 모드",
+      "connectToADroneTo": "비행 모드를 구성하려면 드론에 연결하세요.",
+      "currentMode": "현재 모드:"
+    },
+    "flightModesHeader": {
+      "flightModes": "비행 모드",
+      "read": "읽기"
+    },
+    "firmwarePanel": {
+      "flashTool": "플래시 도구"
+    },
+    "calibrationRebootBanner": {
+      "rebootRequired": "재부팅 필요"
+    },
+    "pwmRangeSlider": {
+      "rangeStart": "범위 시작",
+      "rangeEnd": "범위 끝"
+    },
+    "bfOsdElementList": {
+      "filterElements": "요소 필터...",
+      "resetAll": "모두 초기화"
+    },
+    "vtolPanel": {
+      "quadplaneVTOL": "쿼드플레인 / VTOL",
+      "frameTransitionAndTiltTailsitter": "VTOL 비행기의 프레임, 전환 및 틸트/테일시터 설정"
+    },
+    "tecsPanel": {
+      "tecsL1Tuning": "TECS / L1 튜닝",
+      "fixedWingTotalEnergyControl": "고정익 총에너지 제어 및 L1 횡방향 항법"
+    },
+    "waveform-chart": {
+      "waiting": "대기 중..."
+    },
+    "sailboatPanel": {
+      "sailboat": "범선",
+      "sailControlAndWindVane": "범선 기체용 돛 제어 및 풍향계 설정"
+    },
+    "px4FwTuningPanel": {
+      "fixedWingTuning": "고정익 튜닝",
+      "px4FixedWingRateControllers": "PX4 고정익 각속도 컨트롤러 및 TECS 에너지 제어"
+    },
+    "payloadPanel": {
+      "gripperPayload": "그리퍼 / 페이로드",
+      "servoOrEPMGripperRelease": "픽업 및 투하 페이로드용 서보 또는 EPM 그리퍼 해제"
+    },
+    "paramTooltip": {
+      "rebootRequiredAfterChange": "변경 후 재부팅 필요"
+    },
+    "harmonicNotchPanel": {
+      "harmonicNotchFilter": "고조파 노치 필터",
+      "dynamicNotchFilterInFlight": "동적 노치 필터 + 비행 중 FFT로 모터 주파수 진동 제거"
+    },
+    "debug-helpers": {
+      "waitingForData": "데이터 대기 중..."
+    },
+    "settingNumberField": {
+      "notOnThisFirmware": "이 펌웨어에서 지원되지 않음"
+    },
+    "alarmFieldsEditor": {
+      "noAlarmDataReturnedBy": "FC에서 반환된 알람 데이터가 없습니다."
+    },
+    "ekf3Panel": {
+      "ekf3Estimator": "EKF3 추정기",
+      "extendedKalmanFilterSourceSets": "확장 칼만 필터 소스 세트, IMU 선택 및 측정 노이즈",
+      "alternateSourceSetsAmpNoise": "대체 소스 세트 & 노이즈"
+    },
+    "rate-curve-preview": {
+      "stick": "스틱 %"
+    },
+    "bfOsdGrid": {
+      "visibleInOSDProfiles": "OSD 프로필에서 표시"
+    },
+    "airspeedPanel": {
+      "airspeed": "대기속도",
+      "airspeedSensorCalibrationAndThe": "대기속도 센서 보정 및 고정익 속도 범위"
+    },
+    "adsbPanel": {
+      "adsBAvoidance": "ADS-B 및 회피",
+      "trafficAwarenessADSBPlus": "항공 교통 인식(ADS-B) 및 장애물·교통 회피"
+    },
+    "receiverPanel": {
+      "rcReceiver": "RC 수신기",
+      "connectToADroneTo": "수신기를 설정하려면 드론에 연결하세요.",
+      "channelMappingCalibrationAndPer": "채널 매핑, 캘리브레이션 및 채널별 설정",
+      "liveRCChannels": "실시간 RC 채널",
+      "channelMapping": "채널 매핑",
+      "roll": "롤",
+      "pitch": "피치",
+      "throttle": "스로틀",
+      "yaw": "요",
+      "rcProtocolRSSI": "RC 프로토콜 및 RSSI",
+      "rssiTYPERSSISource": "RSSI_TYPE — RSSI 소스",
+      "channelSettings": "채널 설정",
+      "min": "최소",
+      "max": "최대",
+      "trim": "트림",
+      "rev": "반전",
+      "rcPROTOCOLSAllowedRCProtocols": "RC_PROTOCOLS — 허용된 RC 프로토콜",
+      "save": "저장",
+      "bitmaskOfAllowedRCInput": "허용되는 RC 입력 프로토콜의 비트마스크입니다. 비트 0(“전체”)은 모든 프로토콜을 허용하며, 그렇지 않으면 수신기에 맞는 비트를 설정하세요."
+    },
+    "mavlinkInspectorPanel": {
+      "messageRates": "메시지 전송률",
+      "message": "메시지",
+      "mavlinkInspector": "MAVLink 인스펙터",
+      "filterIDOrNameComma": "필터: ID 또는 이름 (쉼표로 구분)",
+      "export": "내보내기",
+      "clear": "지우기",
+      "time": "시간",
+      "dir": "방향",
+      "name": "이름",
+      "sys": "Sys",
+      "comp": "Comp",
+      "seq": "Seq",
+      "len": "길이",
+      "payload": "페이로드"
+    },
+    "canMonitorPanel": {
+      "canBusMonitor": "CAN 버스 모니터",
+      "clearFrames": "프레임 지우기",
+      "totalFrames": "총 프레임",
+      "framesSec": "프레임/초",
+      "distinctIDs": "고유 ID",
+      "clickStartToBeginCapturing": "CAN 프레임 캡처를 시작하려면 시작을 클릭하세요",
+      "waitingForCANFrames": "CAN 프레임 대기 중...",
+      "time": "시간",
+      "bus": "버스",
+      "node": "노드",
+      "label": "레이블",
+      "data": "데이터",
+      "clear": "지우기",
+      "detectedNodes": "감지된 노드",
+      "mostActiveIDs": "가장 활발한 ID"
+    },
+    "vtxPanel": {
+      "videoTransmitterBandChannelAnd": "영상 송신기 밴드, 채널 및 출력 설정",
+      "vtxType": "VTX 유형",
+      "detectedByTheFlightController": "연결된 장치에서 비행 컨트롤러가 감지함.",
+      "bandChannel": "밴드 / 채널",
+      "band": "밴드",
+      "powerSettings": "출력 설정",
+      "powerLevel": "출력 레벨",
+      "pitMode": "피트 모드",
+      "lowPowerOnDisarm": "시동 해제 시 저출력",
+      "frequencyOverride": "주파수 수동 지정",
+      "manualFrequencyMHz": "수동 주파수 (MHz)",
+      "vtx": "VTX",
+      "setTo0ToUse": "위의 밴드/채널 선택을 사용하려면 0으로 설정하세요. 0이 아니면 밴드/채널 설정을 무시합니다."
+    },
+    "paramCompare": {
+      "filterParams": "파라미터 필터...",
+      "parameter": "파라미터",
+      "fcValue": "FC 값",
+      "fileValue": "파일 값",
+      "status": "상태",
+      "loadAParamFileTo": "현재 FC 파라미터와 비교할 .param 파일을 불러오세요",
+      "loadParamFile": ".param 파일 불러오기",
+      "selectAll": "모두 선택",
+      "selectNone": "선택 해제",
+      "noParametersMatchTheCurrent": "현재 필터와 일치하는 파라미터가 없습니다."
+    },
+    "writeConfirmDialog": {
+      "confirmParameterWrite": "파라미터 쓰기 확인",
+      "parameter": "파라미터",
+      "old": "이전",
+      "new": "새 값",
+      "thisBatchIncludesFlightSafety": "이 배치에는 비행 안전 파라미터가 포함되어 있습니다. 기록하기 전에 신중히 검토하세요.",
+      "flightSafety": "비행 안전",
+      "iUnderstandThisChangeAffects": "이 변경이 비행 안전에 영향을 준다는 것을 이해합니다",
+      "cancel": "취소"
+    },
+    "disconnectGuard": {
+      "uncommittedParameterChanges": "적용되지 않은 파라미터 변경 사항",
+      "parameter": "파라미터",
+      "old": "이전",
+      "new": "새 값",
+      "commitToFlashDisconnect": "플래시에 커밋 후 연결 해제",
+      "discardDisconnect": "취소하고 연결 해제",
+      "cancel": "취소",
+      "includesSafetyCriticalParametersFailsafe": "안전에 중요한 파라미터(페일세이프, 배터리, 모터, 시동)가 포함되어 있습니다."
+    },
+    "servoMappingTable": {
+      "function": "기능",
+      "min": "최소",
+      "max": "최대",
+      "trim": "트림",
+      "rev": "반전",
+      "current": "현재",
+      "disabledByTimerGroupConflict": "타이머 그룹 충돌로 비활성화됨"
+    },
+    "paramRestoreDialog": {
+      "cancel": "취소",
+      "connectTheFlightControllerTo": "비교 및 복원하려면 비행 컨트롤러를 연결하세요.",
+      "nothingToRestoreEveryValue": "복원할 항목 없음: 모든 값이 이미 일치합니다.",
+      "name": "이름",
+      "now": "현재",
+      "restore": "복원",
+      "readingCurrentParameters": "현재 파라미터 읽는 중…"
+    },
+    "inboundSigningSection": {
+      "inboundVerification": "수신 검증",
+      "noMAVLinkLinkIsOpen": "이 드론에 열린 MAVLink 링크가 없습니다.",
+      "link": "링크",
+      "verified": "검증됨",
+      "failed": "실패",
+      "unsigned": "서명 안 됨"
+    },
+    "servoMixerTable": {
+      "targetCh": "대상 채널",
+      "inputSource": "입력 소스",
+      "rate": "레이트",
+      "speed": "속도",
+      "condition": "조건",
+      "addServoRule": "서보 규칙 추가"
+    },
+    "calibrationDiffTable": {
+      "parameter": "파라미터",
+      "before": "변경 전",
+      "after": "변경 후",
+      "change": "변경",
+      "parametersChangedDuringCalibration": "보정 중 변경된 파라미터",
+      "dismiss": "닫기"
+    },
+    "paramDefaultsDiff": {
+      "filterParams": "파라미터 필터...",
+      "parameter": "파라미터",
+      "current": "현재",
+      "default": "기본값",
+      "diff": "차이"
+    },
+    "motorMixerTable": {
+      "throttle": "스로틀",
+      "roll": "롤",
+      "pitch": "피치",
+      "yaw": "요",
+      "addMotorRule": "모터 규칙 추가"
+    },
+    "lcProgrammingPanel": {
+      "programmingJS": "프로그래밍 (JS)",
+      "writeExpressionsAndCompileThem": "표현식을 작성하고 Logic Conditions로 컴파일합니다. 불러오면 비행 컨트롤러의 빈 슬롯에 배치되며, 이미 사용 중인 조건은 그대로 유지됩니다. Logic Conditions 편집기에서 검토한 후 그곳에서 FC에 쓰세요.",
+      "compile": "컴파일",
+      "loadIntoLogicConditions": "Logic Conditions로 불러오기"
+    },
+    "customOsdElementsPanel": {
+      "customOSD": "사용자 지정 OSD",
+      "visible": "표시",
+      "text": "텍스트",
+      "reset": "초기화"
+    },
+    "bfLedModeColors": {
+      "modeColours": "모드 색상",
+      "specialColours": "특수 색상",
+      "colourAuxChannel": "색상 보조 채널",
+      "paletteColourUsedPerFlight": "비행 모드 및 방향별로 사용되는 팔레트 색상입니다."
+    },
+    "bfReceiverPanel": {
+      "receiver": "수신기",
+      "betaflightRCInputReceiverConfig": "Betaflight RC 입력, 수신기 설정 및 채널 맵",
+      "liveChannels": "실시간 채널",
+      "noLiveRCDataCheck": "실시간 RC 데이터가 없습니다. 송신기와 링크를 확인하세요.",
+      "configuration": "설정",
+      "serialRXProvider": "시리얼 RX 프로토콜",
+      "validPulseMinS": "유효 펄스 최소 (µs)",
+      "stickCenterS": "스틱 중앙 (µs)",
+      "validPulseMaxS": "유효 펄스 최대 (µs)",
+      "minCheckS": "최소 체크 (µs)",
+      "maxCheckS": "최대 체크 (µs)",
+      "spektrumSatBind": "Spektrum 위성 바인드",
+      "fpvCamAngle": "FPV 카메라 각도 (°)",
+      "airModeThreshold": "에어 모드 임계값 (%)",
+      "usbHIDType": "USB HID 유형",
+      "rcSmoothing": "RC 스무딩",
+      "rcSmoothing2": "RC 스무딩",
+      "setpointCutoffHz0Auto": "셋포인트 컷오프 (Hz, 0=자동)",
+      "throttleCutoffHz0Auto": "스로틀 컷오프 (Hz, 0=자동)",
+      "autoFactorRPY": "자동 계수 RPY",
+      "autoFactorThrottle": "자동 계수 스로틀",
+      "channelMap": "채널 맵",
+      "writeToFC": "FC에 쓰기",
+      "savedTheFlightControllerSwitches": "저장되었습니다. 비행 컨트롤러는 다음 재부팅 시 새 시리얼 RX 제공자로 전환됩니다."
+    },
+    "firmwareBetaflightSection": {
+      "retry": "재시도",
+      "loadingTargets": "타겟 불러오는 중...",
+      "release": "릴리스",
+      "radioProtocol": "무선 프로토콜",
+      "telemetryProtocol": "텔레메트리 프로토콜",
+      "motorProtocol": "모터 프로토콜",
+      "osdOptions": "OSD 옵션",
+      "otherOptions": "기타 옵션",
+      "statusCheckFailedRetrying": "상태 확인 실패, 재시도 중...",
+      "theBuildIsStillRunning": "빌드가 아직 진행 중입니다. 5분 후 상태 확인이 중지되었습니다.",
+      "targetBoard": "대상 보드",
+      "firmwareVersion": "펌웨어 버전",
+      "customCloudBuild": "사용자 지정 클라우드 빌드",
+      "buildFirmwareWithSpecificFeatures": "특정 기능(무선 프로토콜, 텔레메트리 등)을 활성화하여 펌웨어 빌드",
+      "retryBuild": "빌드 재시도",
+      "checkAgain": "다시 확인"
+    },
+    "pidComparisonSection": {
+      "autotune": "자동 튜닝",
+      "liveAttitudeResponse": "실시간 자세 응답",
+      "roll": "롤",
+      "pitch": "피치",
+      "yaw": "요",
+      "beforeAfter": "이전 / 이후",
+      "param": "파라미터",
+      "before": "이전",
+      "current": "현재",
+      "delta": "변화량",
+      "noChangesFromSnapshot": "스냅샷 대비 변경 사항 없음",
+      "px4GainMultipliers": "PX4 게인 배율",
+      "overallRateControllerGainScaling": "레이트 컨트롤러 전체 게인 배율입니다. 기본값 1.0. 응답을 완화하려면 낮추세요.",
+      "snapshotCurrent": "현재 스냅샷"
+    },
+    "servoCalibrationSection": {
+      "minPWM": "최소 PWM",
+      "trimPWM": "트림 PWM",
+      "maxPWM": "최대 PWM",
+      "testPWM": "테스트 PWM:",
+      "servoEndpointCalibration": "서보 끝점 보정",
+      "enableOutputTestPropsRemoved": "출력 테스트 활성화 (프로펠러 제거)",
+      "output": "출력",
+      "function": "기능",
+      "range": "범위",
+      "travel": "이동 범위",
+      "test": "테스트",
+      "setMinMaxTrimPWM": "각 서보 출력의 최소/최대/트림 PWM과 동작 범위를 설정합니다. 행을 클릭하면 펼쳐집니다.",
+      "read": "읽기",
+      "save": "저장"
+    },
+    "iNavOsdPanel": {
+      "osdINav": "OSD (iNav)",
+      "osdLayoutSummaryAlarmsAnd": "OSD 레이아웃 요약, 경보 및 표시 설정.",
+      "layouts": "레이아웃",
+      "layoutCount": "레이아웃 수",
+      "itemsPerLayout": "레이아웃당 항목 수",
+      "noLayoutData": "레이아웃 데이터가 없습니다.",
+      "alarms": "경보",
+      "preferences": "환경설정",
+      "font": "글꼴",
+      "saveAlarms": "알람 저장",
+      "savePrefs": "환경설정 저장",
+      "unsavedChangesUseTheSave": "저장되지 않은 변경 사항 : 유지하려면 위의 저장 버튼을 사용하세요.",
+      "osdFontToTheFlight": "OSD 글꼴을 비행 컨트롤러로 전송합니다(아날로그 OSD).",
+      "uploadFontMcm": "글꼴 업로드 (.mcm)"
+    },
+    "firmwareCommonSections": {
+      "dfuDeviceConnected": "DFU 장치 연결됨",
+      "fcConnectedViaMAVLink": "MAVLink로 FC 연결됨",
+      "noConnection": "연결 없음",
+      "firmwareStack": "펌웨어 스택",
+      "flashMethod": "플래시 방식",
+      "noDFUDevicesDetectedUse": "감지된 DFU 장치가 없습니다. 위의 스캔 버튼을 사용해 찾으세요.",
+      "yourFCIsConnectedVia": "FC가 MAVLink로 연결되어 있습니다. DFU 플래싱을 하려면 연결을 해제한 후 BOOT 버튼을 누른 상태로 다시 연결하세요.",
+      "scanForDFU": "DFU 검색",
+      "connectYourFCInDFU": "FC를 DFU 모드로 연결하세요: BOOT를 누른 상태로 USB를 꽂은 후 검색을 클릭하세요."
+    },
+    "pidComparisonView": {
+      "noBaselineSavedYet": "저장된 기준값이 없습니다",
+      "beforeVsAfter": "이전 vs 이후",
+      "before": "이전",
+      "after": "이후",
+      "overallScore": "종합 점수",
+      "rollTracking": "롤 추종",
+      "pitchTracking": "피치 추종",
+      "yawTracking": "요 추종",
+      "motorHealth": "모터 상태",
+      "issuesLowerBetter": "문제 (낮을수록 좋음)",
+      "saveCurrentAnalysisAsBaseline": "현재 분석을 기준선으로 저장한 후 튜닝 변경 뒤 다시 분석하세요"
+    },
+    "osdPreferencesEditor": {
+      "videoSystem": "영상 시스템",
+      "units": "단위",
+      "energyUnit": "에너지 단위",
+      "crosshairsStyle": "십자선 스타일",
+      "leftSidebar": "왼쪽 사이드바",
+      "rightSidebar": "오른쪽 사이드바",
+      "adsBWarningStyle": "ADS-B 경고 스타일",
+      "voltageDecimals": "전압 소수 자릿수",
+      "reverseAHIRoll": "AHI 롤 반전",
+      "sidebarScrollArrows": "사이드바 스크롤 화살표",
+      "noPreferenceDataReturnedBy": "FC에서 반환된 환경설정 데이터가 없습니다."
+    },
+    "pidLogUploader": {
+      "logLoaded": "로그 로드됨",
+      "duration": "지속 시간",
+      "size": "크기",
+      "gyroRate": "자이로 속도",
+      "dropBinLogFileHere": ".bin 로그 파일을 여기에 놓으세요",
+      "uploadADifferentLog": "다른 로그 업로드",
+      "ardupilotDataFlashBinaryLog": "ArduPilot DataFlash 바이너리 로그",
+      "browseFiles": "파일 찾아보기",
+      "loadSampleLog": "샘플 로그 불러오기"
+    },
+    "pidAiRecommendations": {
+      "param": "파라미터",
+      "current": "현재",
+      "suggested": "권장",
+      "applies": "적용 대상",
+      "delta": "차이",
+      "analyzingTuneQuality": "튜닝 품질 분석 중...",
+      "noRecommendationsYet": "아직 권장 사항이 없습니다",
+      "clickQuotGetAISuggestions": "\"AI 제안 받기\"를 클릭하여 튜닝을 분석하세요",
+      "apply": "적용"
+    },
+    "fwApproachPanel": {
+      "fwApproach": "고정익 접근",
+      "fixedWingLandingApproachConfiguration": "고정익 착륙 접근 설정입니다. 비행 컨트롤러에 저장된 접근마다 슬롯 하나씩 사용합니다.",
+      "approachAltCm": "접근 고도 (cm)",
+      "landAltCm": "착륙 고도 (cm)",
+      "approachDirection": "접근 방향",
+      "landHeading1Deg0": "착륙 방위 1 (deg, 0 = 끔)",
+      "landHeading2Deg0": "착륙 방위 2 (deg, 0 = 끔)",
+      "altitudeReference": "고도 기준",
+      "thisPanelAppliesToFixed": "이 패널은 고정익 및 트라이콥터 플랫폼에 적용됩니다. 연결된 비행 컨트롤러는 멀티로터로 구성되어 있습니다."
+    },
+    "sensorGraphPanel": {
+      "sensorGraphs": "센서 그래프",
+      "connectADroneToView": "센서 데이터를 보려면 드론을 연결하세요",
+      "vibration": "진동",
+      "imuVibrationLevelsMS": "IMU 진동 수준 (m/s/s)",
+      "ekfStatus": "EKF 상태",
+      "extendedKalmanFilterVariance": "확장 칼만 필터 분산",
+      "gyroscope": "자이로스코프",
+      "angularRateDegS": "각속도 (deg/s)",
+      "accelerometer": "가속도계",
+      "linearAccelerationMSU00b2": "선형 가속도 (m/s\\u00b2)",
+      "magnetometer": "자력계",
+      "magneticFieldMGauss": "자기장 (mGauss)"
+    },
+    "liveBatteryDisplay": {
+      "liveBattery": "실시간 배터리",
+      "voltage": "전압",
+      "current": "전류",
+      "remaining": "잔량",
+      "consumed": "소모량",
+      "cellVoltages": "셀 전압",
+      "noLiveBatteryDataFrom": "비행 컨트롤러에서 실시간 배터리 데이터가 없습니다"
+    },
+    "compassPreflightChecks": {
+      "compassPreFlightChecks": "나침반 비행 전 점검",
+      "enabled": "활성화됨",
+      "fix": "수정"
+    },
+    "pidAnalysisSummary": {
+      "tuneScore": "튜닝 점수",
+      "noiseLevel": "노이즈 수준",
+      "issues": "문제",
+      "allClear": "이상 없음"
+    },
+    "logicConditionsPanel": {
+      "logicConditions": "논리 조건",
+      "writeToFC": "FC에 쓰기",
+      "armedEditsDisabledLiveStatus": "시동됨: 편집이 비활성화되었습니다. 아래에서 실시간 상태를 볼 수 있습니다.",
+      "unsavedChangesUseWriteTo": "저장되지 않은 변경 사항: FC에 쓰기를 사용해 저장하세요."
+    },
+    "compass-display": {
+      "angularRateRadS": "각속도 (rad/s)",
+      "hardIronOffsets": "하드 아이언 오프셋",
+      "softIronDiagonal": "소프트 아이언 대각 성분",
+      "softIronOffDiagonal": "소프트 아이언 비대각 성분"
+    },
+    "rcChannelBar": {
+      "min": "최소",
+      "trim": "트림",
+      "max": "최대",
+      "range": "범위"
+    },
+    "arduPilotNonGpsPanel": {
+      "nonGPSPositioning": "비 GPS 위치 측정",
+      "ekf3SourceSetsAndExternal": "EKF3 소스 세트 및 외부 내비게이션 / 비콘 백엔드",
+      "externalNavigationVISO": "외부 내비게이션 (VISO)",
+      "beaconBCN": "비콘 (BCN)"
+    },
+    "arduPilotHeliPanel": {
+      "helicopter": "헬리콥터",
+      "swashplateRotorSpeedControlAnd": "스와시플레이트, 로터 속도 제어 및 오토로테이션"
+    },
+    "geozoneMapEditor": {
+      "circularZonesUseTheForm": "원형 구역은 위의 양식 편집기를 사용하세요.",
+      "startDraw": "그리기 시작",
+      "undoVertex": "꼭짓점 실행 취소",
+      "finish": "완료",
+      "cancel": "취소",
+      "commitToZone": "구역에 적용",
+      "noVerticesYetClickLdquo": "아직 꼭짓점이 없습니다. “그리기 시작”을 클릭한 후 지도를 클릭해 꼭짓점을 추가하세요.",
+      "clickToAddVerticesDouble": "클릭하여 꼭짓점을 추가합니다. 더블클릭, 첫 꼭짓점 우클릭 또는 Enter로 닫습니다. Esc는 그리기를 취소하고, Backspace는 마지막 꼭짓점을 삭제합니다."
+    },
+    "aiSuggestionsGate": {
+      "getAISuggestions": "AI 제안 받기",
+      "signInForAISuggestions": "AI 제안을 받으려면 로그인하세요",
+      "freeAccountRequiredAIAnalysis": "무료 계정이 필요합니다. 베타 기간에는 AI 분석 사용량이 제한됩니다."
+    },
+    "osdElementGrid": {
+      "osdElements": "OSD 요소",
+      "copy": "복사",
+      "paste": "붙여넣기",
+      "resetToDefault": "기본값으로 재설정"
+    },
+    "osdScreenPreview": {
+      "grid": "그리드",
+      "live": "실시간",
+      "dragElementsToRepositionClick": "요소를 드래그하여 위치를 변경하세요. 사이드바에서 요소를 클릭하면 표시 여부가 전환됩니다."
+    },
+    "keyAgeNudge": {
+      "rotateNow": "지금 교체",
+      "remindMeIn30Days": "30일 후 다시 알림"
+    },
+    "enrollmentProgress": {
+      "retry": "재시도",
+      "cancel": "취소"
+    },
+    "firmwareBackupRestore": {
+      "backupParameters": "파라미터 백업",
+      "restoreParameters": "파라미터 복원"
+    },
+    "gnssConstellationEditor": {
+      "receiverDefault": "수신기 기본값"
+    },
+    "pidStepResponseChart": {
+      "noStepResponseData": "스텝 응답 데이터 없음"
+    },
+    "pidMotorChart": {
+      "noMotorData": "모터 데이터 없음"
+    },
+    "pidFFTChart": {
+      "noFFTData": "FFT 데이터 없음"
+    },
+    "favoritesQuickAccess": {
+      "favorites": "즐겨찾기"
+    },
+    "firmwareFcWizard": {
+      "dismiss": "닫기"
+    }
+  },
+  "diagnostics": {
+    "ringBufferPanel": {
+      "ringBuffers": "링 버퍼",
+      "noRingBuffersTracked": "추적 중인 링 버퍼 없음",
+      "buffer": "버퍼",
+      "count": "개수",
+      "cap": "용량",
+      "fill": "사용률",
+      "bar": "막대"
+    },
+    "messageRatePanel": {
+      "messageRates": "메시지 속도",
+      "noMessageTraffic": "메시지 트래픽 없음",
+      "messageName": "메시지 이름",
+      "rateHz": "속도 (Hz)",
+      "bar": "막대",
+      "connectADroneToSee": "메시지 유형별 수신률을 보려면 드론을 연결하세요"
+    },
+    "eventTimeline": {
+      "eventTimeline": "이벤트 타임라인",
+      "noEventsRecorded": "기록된 이벤트 없음",
+      "filter": "필터",
+      "all": "전체",
+      "none": "없음",
+      "eventsLikeArmDisarmMode": "시동/시동 해제, 모드 변경, 오류, 파라미터 쓰기 등의 이벤트가 여기에 표시됩니다"
+    },
+    "frameInspector": {
+      "frameInspector": "프레임 검사기",
+      "noFramesCaptured": "캡처된 프레임 없음",
+      "rawMAVLinkFrameHexDump": "원시 MAVLink 프레임 헥스 덤프가 여기에 표시됩니다"
+    },
+    "diagnosticsPanel": {
+      "diagnostics": "진단",
+      "clearAll": "모두 지우기"
+    },
+    "commandQueuePanel": {
+      "commandQueue": "명령 대기열",
+      "noPendingCommands": "대기 중인 명령 없음"
+    },
+    "performancePanel": {
+      "performance": "성능"
+    }
+  },
+  "configUi": {
+    "controlsSettings": {
+      "controller": "컨트롤러",
+      "action": "동작",
+      "moveToControl": "조작하여 할당",
+      "stickMode": "스틱 모드",
+      "none": "없음",
+      "close": "닫기"
+    },
+    "rpcTraceTable": {
+      "node": "노드",
+      "filterByNode": "노드별 필터",
+      "type": "유형",
+      "filterByType": "유형별 필터"
+    },
+    "diagnosticsSection": {
+      "toggle": "전환",
+      "refresh": "새로 고침"
+    },
+    "nodeBrowserSection": {
+      "close": "닫기"
+    },
+    "operatorProfileEditor": {
+      "smallPart107A2STS": "소형 / Part 107 / A2 / STS-01",
+      "reocOALUCPart107": "ReOC / OA / LUC / Part 107 면제",
+      "dgcaFAAEASACAAUK": "DGCA / FAA / EASA / CAA UK",
+      "usd1000000": "USD 1,000,000"
+    },
+    "controlsSettingsCards": {
+      "doneSticksReleased": "완료 (스틱 놓음)",
+      "start": "시작"
+    },
+    "languageSection": {
+      "github": "GitHub"
+    }
+  },
+  "appPages": {
+    "configInput": {
+      "controllers": "컨트롤러",
+      "gameControllersJoysticksAndHOTAS": "지상국 에이전트 또는 브라우저에 직접 연결된 게임 컨트롤러, 조이스틱, HOTAS 장치입니다.",
+      "devices": "장치",
+      "setAPrimaryControllerTo": "드론에 스틱 입력을 보낼 기본 컨트롤러를 설정하세요.",
+      "name": "이름",
+      "device": "장치",
+      "connection": "연결",
+      "status": "상태",
+      "action": "작업",
+      "pairedBluetoothDevices": "페어링된 블루투스 장치",
+      "browserInput": "브라우저 입력",
+      "browserControllersOnlyFeedSticks": "브라우저 컨트롤러는 이 탭이 열려 있는 동안에만 스틱 입력을 전송합니다.",
+      "primaryControllerUpdated": "기본 컨트롤러가 업데이트되었습니다.",
+      "failedToUpdatePrimaryController": "기본 컨트롤러를 업데이트하지 못했습니다.",
+      "forgot": "삭제됨: ",
+      "scanBluetooth": "블루투스 검색",
+      "primary": "기본",
+      "setAsPrimary": "기본으로 설정",
+      "noPairedBluetoothDevices": "페어링된 블루투스 장치가 없습니다.",
+      "forget": "삭제",
+      "calibrateAndTuneControllersConnected": "Web Gamepad API를 통해 이 브라우저에 직접 연결된 컨트롤러를 보정하고 조정합니다."
+    },
+    "community": {
+      "communityNavigation": "커뮤니티 탐색",
+      "communitylayout": "CommunityLayout",
+      "failedToLoadCommunityData": "커뮤니티 데이터를 불러오지 못했습니다",
+      "retry": "다시 시도"
+    },
+    "convexclientprovider": {
+      "authBridge": "auth-bridge"
+    },
+    "globalerror": {
+      "somethingWentWrong": "문제가 발생했습니다",
+      "tryAgain": "다시 시도"
+    },
+    "error": {
+      "somethingWentWrong": "문제가 발생했습니다",
+      "tryAgain": "다시 시도"
+    },
+    "configPlugins": {
+      "pluginsPageFailedToRender": "플러그인 페이지를 렌더링하지 못했습니다",
+      "tryAgain": "다시 시도"
+    }
+  },
+  "shared": {
+    "rthallconfirmdialog": {
+      "returnToHomeAllDrones": "귀환 — 모든 드론",
+      "thisWillCommandALLActive": "활성화된 모든 드론에 즉시 홈 위치로 귀환하도록 명령합니다. 이 작업은 되돌릴 수 없습니다.",
+      "rthAll": "전체 RTH"
+    },
+    "slcanModeBanner": {
+      "dismiss": "닫기",
+      "resumeMAVLinkWhenTheFlash": "플래시가 완료되면 MAVLink를 재개합니다."
+    },
+    "timeSeriesChart": {
+      "waitingForData": "데이터 대기 중..."
+    },
+    "multiSeriesChart": {
+      "waitingForData": "데이터 대기 중..."
+    }
+  },
+  "ui": {
+    "select": {
+      "noMatchesFound": "일치하는 항목 없음"
+    }
+  },
+  "onboarding": {
+    "introStep": {
+      "mission": "Mission",
+      "control": "Control"
+    },
+    "languageStep": {
+      "missionControl": "Mission Control"
+    },
+    "themeWorkspacePreview": {
+      "missionControl": "Mission Control"
+    }
+  },
+  "optionLabels": {
+    "accelLPFHz": "가속도계 LPF (Hz)",
+    "accelerometer": "가속도계",
+    "acroPitchRate": "ACRO 피치 속도",
+    "acroRollPitchRate": "ACRO 롤/피치 속도",
+    "acroRollRate": "ACRO 롤 속도",
+    "acroYawRate": "ACRO 요 속도",
+    "adosDroneAgent": "ADOS 드론 에이전트",
+    "adosGroundAgent": "ADOS 지상 에이전트",
+    "adsB": "ADS-B",
+    "aggressiveness": "공격성",
+    "apPeriphCANNodes": "AP_Periph (CAN 노드)",
+    "arducopterMultirotor": "ArduCopter (멀티로터)",
+    "ardupilot": "ArduPilot",
+    "arduplaneFixedWing": "ArduPlane (고정익)",
+    "arduroverGroundVehicle": "ArduRover (지상 차량)",
+    "ardusubSubmarine": "ArduSub (잠수정)",
+    "auto": "자동",
+    "axisRatio": "축 비율",
+    "back": "뒤로",
+    "barometer": "기압계",
+    "beeper": "비퍼",
+    "betaflight": "Betaflight",
+    "bit0ContinueIfInAutoModeOnRCFailsafe": "Bit 0 — RC 페일세이프 시 자동 모드이면 계속",
+    "bit1ContinueIfInAutoModeOnGCSFailsafe": "Bit 1 — GCS 페일세이프 시 자동 모드이면 계속",
+    "bit2ContinueIfInGuidedModeOnRCFailsafe": "Bit 2 — RC 페일세이프 시 가이드 모드이면 계속",
+    "bit3ContinueIfLandingOnAnyFailsafe": "Bit 3 — 모든 페일세이프 시 착륙 중이면 계속",
+    "bit4ContinueIfInPilotControlledModeOnGCSFailsafe": "Bit 4 — GCS 페일세이프 시 조종사 제어 모드이면 계속",
+    "bit5ReleaseGripper": "Bit 5 — 그리퍼 해제",
+    "blackbox": "블랙박스",
+    "brushed": "브러시드",
+    "calibrateAtNextPowerUp": "다음 전원 켤 때 보정",
+    "cameraCapture": "카메라 촬영",
+    "cameraTrigger": "카메라 트리거",
+    "constantMax": "상수 최대",
+    "constantMin": "상수 최소",
+    "coverPitot": "피토관 덮기",
+    "coverThePitotTubeOpeningToSealItFromAirflow": "피토관 입구를 덮어 공기 흐름을 차단하세요",
+    "cruiseSpeedMS": "순항 속도 (m/s)",
+    "cruiseThrottle": "순항 스로틀 (%)",
+    "customOSDText": "사용자 정의 OSD 텍스트",
+    "damping": "감쇠",
+    "disabled": "비활성화",
+    "disabledNoMotorOutput": "비활성화 (모터 출력 없음)",
+    "dronecan": "DroneCAN",
+    "dshot150": "DShot150",
+    "dshot300": "DShot300",
+    "dshot600": "DShot600",
+    "enabled": "활성화",
+    "escSensor": "ESC 센서",
+    "expo": "Expo",
+    "extendedStatusSysBatteryGPS": "확장 상태 (시스템, 배터리, GPS)",
+    "extra1Attitude": "추가 1 (자세)",
+    "extra2VFRHUD": "추가 2 (VFR HUD)",
+    "extra3AHRSWindStatus": "추가 3 (AHRS, 바람, 상태)",
+    "filterCutoff": "필터 차단 주파수",
+    "frskyHubTelemetry": "FrSky Hub 텔레메트리",
+    "frskyOSD": "FrSky OSD",
+    "gimbal": "짐벌",
+    "gimbalPitch": "짐벌 피치",
+    "gimbalRoll": "짐벌 롤",
+    "gimbalYaw": "짐벌 요",
+    "gps": "GPS",
+    "gripper": "그리퍼",
+    "gyroLPFHz": "자이로 LPF (Hz)",
+    "gyroscope": "자이로스코프",
+    "hottTelemetry": "HoTT 텔레메트리",
+    "ibusTelemetry": "IBUS 텔레메트리",
+    "icEngineChoke": "내연기관 초크",
+    "icEngineIgnition": "내연기관 점화",
+    "icEngineStarter": "내연기관 시동기",
+    "icEngineThrottle": "내연기관 스로틀",
+    "keepStill": "움직이지 마세요",
+    "keepTheVehiclePerfectlyStillOnALevelSurface": "기체를 평평한 표면에 완전히 정지시켜 두세요",
+    "keepVehicleStillInCurrentEnvironmentDoNotCoverBarometer": "현재 환경에서 기체를 정지 상태로 유지하세요 — 기압계를 가리지 마세요",
+    "landingGear": "랜딩 기어",
+    "landingGearWheel": "랜딩 기어 휠",
+    "led": "LED",
+    "leftSide": "왼쪽 면",
+    "level": "수평",
+    "levelSurface": "평평한 표면",
+    "lidar": "LIDAR",
+    "ltmTelemetry": "LTM 텔레메트리",
+    "mavlinkTelemetry": "MAVLink 텔레메트리",
+    "maxStartTemp": "최대 시동 온도",
+    "maxThrottle": "최대 스로틀",
+    "maxTurnAccelG": "최대 선회 가속도 (g)",
+    "minStartTemp": "최소 시동 온도",
+    "minThrottle": "최소 스로틀",
+    "motors": "모터",
+    "motorsWillSpinStayClearInterferenceIsMeasuredAtVariousThrottleLevels": "모터가 회전합니다 — 가까이 가지 마세요. 여러 스로틀 단계에서 간섭을 측정합니다",
+    "msp": "MSP",
+    "multishot": "MultiShot",
+    "n0Auto": "0 — 자동",
+    "n0BlueROV1": "0 — BlueROV1",
+    "n0Default": "0 — 기본값",
+    "n0Disabled": "0 — 비활성화",
+    "n0FirstGPS": "0 — 첫 번째 GPS",
+    "n0None": "0 — 없음",
+    "n0Off": "0 — 끄기",
+    "n0Portable": "0 — 휴대용",
+    "n0RelativeToAlternateGPS": "0 — 보조 GPS 기준",
+    "n0Retract": "0 — 접기",
+    "n0Undefined": "0 — 정의되지 않음",
+    "n0UsePrimary": "0 — 기본 사용",
+    "n100Ms10Hz": "100 ms — 10 Hz",
+    "n10SBFSeptentrio": "10 — SBF (Septentrio)",
+    "n10Xacti": "10 — Xacti",
+    "n115200": "115200",
+    "n11GSOFTrimble": "11 — GSOF (Trimble)",
+    "n11Viewpro": "11 — Viewpro",
+    "n125Ms8Hz": "125 ms — 8 Hz",
+    "n12Topotek": "12 — Topotek",
+    "n13CADDX": "13 — CADDX",
+    "n13ERB": "13 — ERB",
+    "n14MAV": "14 — MAV",
+    "n14XFRobot": "14 — XFRobot",
+    "n15NOVA": "15 — NOVA",
+    "n16HemisphereNMEA": "16 — Hemisphere NMEA",
+    "n17UBloxMovingBaselineBase": "17 — uBlox 무빙 베이스라인 베이스",
+    "n18UBloxMovingBaselineRover": "18 — uBlox 무빙 베이스라인 로버",
+    "n19200": "19200",
+    "n19MSP": "19 — MSP",
+    "n1AnalogPin": "1 — 아날로그 핀",
+    "n1Auto": "1 — 자동",
+    "n1EGNOS": "1 — EGNOS",
+    "n1Enabled": "1 — 활성화",
+    "n1Neutral": "1 — 중립",
+    "n1Omni3": "1 — Omni3",
+    "n1On": "1 — 켜짐",
+    "n1OnInBand": "1 — 켜짐 (인밴드)",
+    "n1OnboardFlash": "1 — 온보드 플래시",
+    "n1RelativeToCustomBase": "1 — 사용자 지정 베이스 기준",
+    "n1Rover": "1 — 로버",
+    "n1SecondGPS": "1 — 두 번째 GPS",
+    "n1SerialGPSesOnly": "1 — 시리얼 GPS만",
+    "n1Servo": "1 — 서보",
+    "n1UseBest": "1 — 최적 사용",
+    "n1Vectored": "1 — 벡터드",
+    "n200Ms5Hz": "200 ms — 5 Hz",
+    "n20AllyStar": "20 — AllyStar",
+    "n21ExternalAHRS": "21 — 외부 AHRS",
+    "n22DroneCANMovingBaselineBase": "22 — DroneCAN 무빙 베이스라인 베이스",
+    "n230400": "230400",
+    "n23DRSolo": "2 — 3DR Solo",
+    "n23DroneCANMovingBaselineRover": "23 — DroneCAN 무빙 베이스라인 로버",
+    "n24UnicoreNMEA": "24 — Unicore NMEA",
+    "n25UnicoreMovingBaselineNMEA": "25 — Unicore 무빙 베이스라인 NMEA",
+    "n26SBFDualAntenna": "26 — SBF 듀얼 안테나",
+    "n2Blend": "2 — 블렌드",
+    "n2Boat": "2 — 보트",
+    "n2FailsafeOnly": "2 — 페일세이프 전용",
+    "n2MAVLinkTargeting": "2 — MAVLink 타기팅",
+    "n2NoChange": "2 — 변경 없음",
+    "n2OmniX": "2 — OmniX",
+    "n2OnOutBand": "2 — 켜짐 (대역 외)",
+    "n2RCChannelPWM": "2 — RC 채널 PWM",
+    "n2SDCard": "2 — SD 카드",
+    "n2SerialDroneCAN": "2 — 시리얼 + DroneCAN",
+    "n2Stationary": "2 — 정지",
+    "n2UBlox": "2 — uBlox",
+    "n2UntilFirstArm": "2 — 첫 시동까지",
+    "n2Vectored6DOF": "2 — Vectored 6DOF",
+    "n2WAAS": "2 — WAAS",
+    "n38400": "38400",
+    "n3AlexmosSerial": "3 — Alexmos 시리얼",
+    "n3BalanceBot": "3 — BalanceBot",
+    "n3ClearConfigUBloxOnly": "3 — 설정 초기화 (uBlox 전용)",
+    "n3MSAS": "3 — MSAS",
+    "n3OmniPlus": "3 — OmniPlus",
+    "n3Pedestrian": "3 — 보행자",
+    "n3RCTargeting": "3 — RC 타기팅",
+    "n3ReceiverProtocolCRSFELRSSBUS": "3 — 수신기 프로토콜 (CRSF/ELRS, SBUS, ...)",
+    "n3SerialPort": "3 — 시리얼 포트",
+    "n3Vectored6DOF90": "3 — Vectored 6DOF 90",
+    "n460800": "460800",
+    "n4Automotive": "4 — 자동차",
+    "n4GAGAN": "4 — GAGAN",
+    "n4GPSPoint": "4 — GPS 지점",
+    "n4Omni3Mecanum": "4 — Omni3Mecanum",
+    "n4PWMInputPin": "4 — PWM 입력 핀",
+    "n4SToRM32MAVLink": "4 — SToRM32 MAVLink",
+    "n4SimpleROV3": "4 — SimpleROV-3",
+    "n4UsePrimaryIf3DFixOrBetter": "4 — 3D 픽스 이상이면 기본 사용",
+    "n57600": "57600",
+    "n5NMEA": "5 — NMEA",
+    "n5None": "5 — 없음",
+    "n5SToRM32Serial": "5 — SToRM32 시리얼",
+    "n5Sea": "5 — 해상",
+    "n5SimpleROV4": "5 — SimpleROV-4",
+    "n5SysIDTarget": "5 — SysID 대상",
+    "n5TelemetryRadioRSSI": "5 — 텔레메트리 무선 RSSI",
+    "n6Airborne1g": "6 — 공중 <1g",
+    "n6HomeLocation": "6 — 홈 위치",
+    "n6MAVLinkGremsyAVT": "6 — MAVLink (Gremsy/AVT)",
+    "n6SiRF": "6 — SiRF",
+    "n6SimpleROV5": "6 — SimpleROV-5",
+    "n7Airborne2g": "7 — 공중 <2g",
+    "n7BrushlessPWM": "7 — BrushlessPWM",
+    "n7Custom": "7 — 사용자 정의",
+    "n7HIL": "7 — HIL",
+    "n8Airborne4g": "8 — 공중 <4g",
+    "n8Siyi": "8 — Siyi",
+    "n8SwiftNav": "8 — SwiftNav",
+    "n921600": "921600",
+    "n9600": "9600",
+    "n9DroneCAN": "9 — DroneCAN",
+    "n9Scripting": "9 — 스크립팅",
+    "noseDown": "기수 아래",
+    "noseUp": "기수 위",
+    "notchAttenuationDB": "노치 감쇠 (dB)",
+    "notchBWHz": "노치 대역폭 (Hz)",
+    "notchEnable": "노치 활성화",
+    "notchFreqHz": "노치 주파수 (Hz)",
+    "notchMode": "노치 모드",
+    "notchReference": "노치 기준",
+    "off": "끄기",
+    "oneshot125": "OneShot125",
+    "oneshot42": "OneShot42",
+    "parachute": "낙하산",
+    "parameters": "파라미터",
+    "pinio": "PINIO",
+    "placeVehicleInOpenAreaEnsureGPSFixRemoveNearbyMetalObjects": "기체를 개방된 장소에 두세요. GPS 수신을 확인하고 주변 금속 물체를 치우세요",
+    "placeVehicleLevelOnAFlatSurface": "기체를 평평한 표면에 수평으로 놓으세요",
+    "placeVehicleOnAPerfectlyLevelSurface": "기체를 완전히 수평인 표면에 놓으세요",
+    "placeVehicleUpsideDown": "기체를 뒤집어 놓으세요",
+    "pointTheNoseStraightDown": "기수를 똑바로 아래로 향하게 하세요",
+    "pointTheNoseStraightUp": "기수를 똑바로 위로 향하게 하세요",
+    "position": "위치",
+    "ppsInput": "PPS 입력",
+    "proshot1000": "ProShot1000",
+    "pwm": "PWM",
+    "px4": "PX4",
+    "rate": "레이트",
+    "rawController": "원시 컨트롤러",
+    "rawSensorsIMUPressure": "원시 센서 (IMU, 기압)",
+    "rcChannelsServoOutput": "RC 채널 및 서보 출력",
+    "rcFlaps": "RC 플랩",
+    "rcPitch": "RC 피치",
+    "rcRoll": "RC 롤",
+    "rcThrottle": "RC 스로틀",
+    "rcYaw": "RC 요",
+    "rcdevice": "RCDevice",
+    "removeALLPROPELLERSDisconnectBatteryEnsureESCsArePoweredOff": "모든 프로펠러를 제거하세요. 배터리를 분리하고 ESC 전원이 꺼져 있는지 확인하세요",
+    "requiredRise": "필요 상승량",
+    "response": "응답",
+    "rightSide": "오른쪽 면",
+    "rotate": "회전",
+    "rotateVehicleSoLeftSideFacesDown": "기체의 왼쪽 면이 아래를 향하도록 회전하세요",
+    "rotateVehicleSoRightSideFacesDown": "기체의 오른쪽 면이 아래를 향하도록 회전하세요",
+    "rpmInput": "RPM 입력",
+    "runTest": "테스트 실행",
+    "safety": "안전",
+    "serialRX": "시리얼 RX",
+    "servos": "서보",
+    "setThrottleToMaximumAndConnectBattery": "스로틀을 최대로 올리고 배터리를 연결하세요",
+    "setThrottleToMinimumWaitForConfirmationBeeps": "스로틀을 최소로 내리고 확인 비프음을 기다리세요",
+    "setup": "설정",
+    "slowlyRotateTheVehicleInAllOrientationsRollPitchAndYaw": "기체를 롤, 피치, 요 등 모든 방향으로 천천히 회전시키세요",
+    "smartportTelemetry": "SmartPort 텔레메트리",
+    "snappiness": "반응성",
+    "stability": "안정성",
+    "stabilize": "Stabilize",
+    "steeringAngleP": "조향각 P",
+    "vtxMSP": "VTX (MSP)",
+    "vtxSmartAudio": "VTX (SmartAudio)",
+    "vtxTramp": "VTX (Tramp)",
+    "waitForBeep": "비프음 대기",
+    "waitForESCBeepSequenceHighLowTones": "ESC 비프음 시퀀스(높은음-낮은음)를 기다리세요",
+    "waypointSpeedMS": "웨이포인트 속도 (m/s)"
+  },
+  "agentErrors": {
+    "E_ARMED": "드론이 시동 상태여서 거부되었습니다. 시동을 해제한 후 다시 시도하세요.",
+    "E_PROFILE_MISMATCH": "이 노드는 이 설정이 속한 프로필을 실행하고 있지 않습니다.",
+    "E_BAD_REQUEST": "드론이 값을 거부했습니다. 값을 확인하고 다시 시도하세요.",
+    "E_WRITE_DISABLED": "드론에서 이 설정의 변경이 비활성화되어 있습니다.",
+    "E_MISSING_SSID": "네트워크 이름을 입력하세요.",
+    "E_WIFI_JOIN_FAILED": "드론이 해당 네트워크에 연결하지 못했습니다. 이름과 비밀번호를 확인하세요.",
+    "E_WIFI_LEAVE_FAILED": "드론이 해당 네트워크에서 연결을 끊지 못했습니다. 다시 시도하세요.",
+    "E_WIFI_AUTOCONNECT_FAILED": "드론이 해당 네트워크의 자동 연결 설정을 변경하지 못했습니다. 다시 시도하세요.",
+    "E_WIFI_STATUS_UNAVAILABLE": "현재 드론이 Wi-Fi 상태를 읽을 수 없습니다.",
+    "E_AP_APPLY_FAILED": "드론이 핫스팟 설정을 적용하지 못했습니다. 다시 시도하세요.",
+    "E_RECORDING_ACTIVE": "먼저 녹화를 중지하세요."
   }
 }

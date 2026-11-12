@@ -15,6 +15,7 @@ interface ThemeWorkspacePreviewProps {
 }
 
 export function ThemeWorkspacePreview({ theme }: ThemeWorkspacePreviewProps) {
+  const tk = useTranslations("onboarding.themeWorkspacePreview");
   const t = useTranslations("welcome.theme");
   const tNav = useTranslations("nav");
   const tStatus = useTranslations("status");
@@ -46,7 +47,7 @@ export function ThemeWorkspacePreview({ theme }: ThemeWorkspacePreviewProps) {
         }}
       >
         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentHex }} />
-        <span className="text-xs font-semibold" style={{ color: colors.text }}>Mission Control</span>
+        <span className="text-xs font-semibold" style={{ color: colors.text }}>{tk("missionControl")}</span>
         <span className="ml-auto text-[10px] opacity-70" style={{ color: colors.text }}>{tStatus("connected")}</span>
       </div>
 

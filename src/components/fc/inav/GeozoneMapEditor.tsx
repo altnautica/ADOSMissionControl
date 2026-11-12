@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import type { INavGeozoneVertex } from "@/lib/protocol/types/inav";
@@ -67,10 +68,11 @@ export function GeozoneMapEditor({
   onCommit,
   onCancel,
 }: GeozoneMapEditorProps) {
+  const tk = useTranslations("fcPanels.geozoneMapEditor");
   if (shape === SHAPE_CIRCULAR) {
     return (
       <div className="rounded border border-border-default bg-bg-secondary px-4 py-3 text-[11px] font-mono text-text-tertiary">
-        Circular zones use the form editor above.
+        {tk("circularZonesUseTheForm")}
       </div>
     );
   }
@@ -96,6 +98,7 @@ function PolygonGeozoneMapEditor({
   onCommit,
   onCancel,
 }: GeozoneMapEditorProps) {
+  const tk = useTranslations("fcPanels.geozoneMapEditor");
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const managerRef = useRef<DrawingManager | null>(null);
@@ -263,7 +266,7 @@ function PolygonGeozoneMapEditor({
             size="sm"
             onClick={startDraw}
           >
-            Start draw
+            {tk("startDraw")}
           </Button>
         ) : (
           <>
@@ -274,7 +277,7 @@ function PolygonGeozoneMapEditor({
               onClick={undoVertex}
               disabled={displayCount === 0}
             >
-              Undo vertex
+              {tk("undoVertex")}
             </Button>
             <Button
               variant="ghost"
@@ -286,7 +289,7 @@ function PolygonGeozoneMapEditor({
                 if (manager) manager.completePolygon();
               }}
             >
-              Finish
+              {tk("finish")}
             </Button>
           </>
         )}
@@ -298,7 +301,7 @@ function PolygonGeozoneMapEditor({
             icon={<X size={10} />}
             onClick={cancelDraw}
           >
-            Cancel
+            {tk("cancel")}
           </Button>
           <Button
             variant="primary"
@@ -307,7 +310,7 @@ function PolygonGeozoneMapEditor({
             disabled={!hasCommittable}
             onClick={commitToZone}
           >
-            Commit to zone
+            {tk("commitToZone")}
           </Button>
         </div>
       </div>
@@ -319,7 +322,7 @@ function PolygonGeozoneMapEditor({
         {!isDrawing && displayCount === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-bg-secondary/80 rounded px-3 py-2 text-[11px] font-mono text-text-tertiary">
-              No vertices yet. Click &ldquo;Start draw&rdquo; then click the map to add vertices.
+              {tk("noVerticesYetClickLdquo")}
             </div>
           </div>
         )}
@@ -336,7 +339,7 @@ function PolygonGeozoneMapEditor({
       {/* Instruction footer when drawing */}
       {isDrawing && (
         <div className="px-3 py-1.5 bg-bg-secondary border-t border-border-default text-[10px] font-mono text-text-tertiary">
-          Click to add vertices. Double-click, right-click the first vertex or press Enter to close. Esc cancels the draw. Backspace removes the last vertex.
+          {tk("clickToAddVerticesDouble")}
         </div>
       )}
     </div>

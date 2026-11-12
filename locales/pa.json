@@ -60,7 +60,24 @@
       "quickLevelSendFailed": "Failed to send quick level command",
       "compassCalFailed": "Compass calibration failed",
       "compassCalComplete": "Compass calibration complete",
-      "compassCalSendFailed": "Failed to send the compass calibration command"
+      "compassCalSendFailed": "Failed to send the compass calibration command",
+      "status": {
+        "compassSkipped": "ਕੰਪਾਸ {ids} ਸੇਵ ਨਹੀਂ ਹੋਇਆ (ਫਿੱਟ ਅਸਫਲ)।",
+        "failedParams": "ਅਸਫਲ: {params}",
+        "flashUnacknowledged": "ਫਲੈਸ਼ ਕਮਿਟ ਭੇਜਿਆ ਗਿਆ (ਪੁਸ਼ਟੀ ਨਹੀਂ ਹੋਈ)।",
+        "flashSaved": "ਫਲੈਸ਼ ਵਿੱਚ ਸੇਵ ਕੀਤਾ ਗਿਆ।",
+        "flashFailed": "ਫਲੈਸ਼ ਕਮਿਟ ਅਸਫਲ; ਆਫਸੈੱਟ ਸਿਰਫ਼ RAM ਵਿੱਚ ਹੋ ਸਕਦੇ ਹਨ।",
+        "compassOffsetsWritten": "ਕੰਪਾਸ {ids} ਦੇ ਆਫਸੈੱਟ ਲਿਖੇ ਗਏ। {flashNote} ਲਾਗੂ ਕਰਨ ਲਈ ਰੀਬੂਟ ਕਰੋ।",
+        "compassAccepted": "ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸਵੀਕਾਰ ਕੀਤੀ ਗਈ। {flashNote} ਲਾਗੂ ਕਰਨ ਲਈ ਰੀਬੂਟ ਕਰੋ।",
+        "starting": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸ਼ੁਰੂ ਹੋ ਰਹੀ ਹੈ...",
+        "startingQuickLevel": "ਤੇਜ਼ ਲੈਵਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸ਼ੁਰੂ ਹੋ ਰਹੀ ਹੈ...",
+        "gnssMagCalibrating": "{yaw}° ਵਾਹਨ ਯੌ ਲਈ ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਟ ਹੋ ਰਿਹਾ ਹੈ...",
+        "gnssMagUnsupported": "ਇਹ ਫਰਮਵੇਅਰ ਜਾਣੀ-ਪਛਾਣੀ ਦਿਸ਼ਾ ਵਾਲੀ ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਦਾ ਸਮਰਥਨ ਨਹੀਂ ਕਰਦਾ",
+        "gnssMagRejected": "ਜਾਣੀ-ਪਛਾਣੀ ਦਿਸ਼ਾ ਵਾਲੀ ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਰੱਦ ਕਰ ਦਿੱਤੀ ਗਈ। ਯਕੀਨੀ ਬਣਾਓ ਕਿ ਵਾਹਨ ਕੋਲ ਪੋਜ਼ੀਸ਼ਨ ਫਿਕਸ ਹੈ।",
+        "gnssMagComplete": "{yaw}° ਵਾਹਨ ਯੌ ਲਈ ਕੰਪਾਸ ਨੂੰ ਮੈਗਨੈਟਿਕ ਮਾਡਲ ਅਨੁਸਾਰ ਕੈਲੀਬ੍ਰੇਟ ਕੀਤਾ ਗਿਆ।"
+      },
+      "calTypeComplete": "{type, select, accel {ਐਕਸੈਲ} gyro {ਜਾਇਰੋ} compass {ਕੰਪਾਸ} level {ਲੈਵਲ} airspeed {ਏਅਰਸਪੀਡ} baro {ਬੈਰੋ} rc {RC} esc {ESC} compassmot {ਕੰਪਾਸਮੋਟ} other {{type}}} ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਪੂਰੀ ਹੋਈ",
+      "calTypeFailedPlain": "{type, select, accel {ਐਕਸੈਲ} gyro {ਜਾਇਰੋ} compass {ਕੰਪਾਸ} level {ਲੈਵਲ} airspeed {ਏਅਰਸਪੀਡ} baro {ਬੈਰੋ} rc {RC} esc {ESC} compassmot {ਕੰਪਾਸਮੋਟ} other {{type}}} ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਅਸਫਲ ਰਹੀ"
     },
     "can": {
       "forwardingUnavailable": "This connection cannot forward CAN frames",
@@ -204,14 +221,14 @@
   },
   "plannerIo": {
     "restoringAutosave": "Unsaved mission found — restoring",
-    "untitledPlan": "Untitled Plan",
+    "untitledPlan": "ਬਿਨਾਂ ਸਿਰਲੇਖ ਯੋਜਨਾ",
     "planSaved": "Plan saved",
     "planSavedAsCopy": "Plan saved as new copy",
     "exported": "Exported ({format})",
     "newPlanCreated": "New plan created",
     "downloadFailedWithError": "Mission download failed: {error}. Nothing was loaded",
     "downloadFailed": "Mission download failed — nothing was loaded",
-    "vehicleHasNoMission": "The vehicle has no mission",
+    "vehicleHasNoMission": "ਡਰੋਨ ਵਿੱਚ ਕੋਈ ਮਿਸ਼ਨ ਨਹੀਂ ਹੈ",
     "droneMissionName": "Drone Mission ({time})",
     "loadedFromDrone": "Loaded {count} waypoints from drone",
     "connectDroneFirst": "Connect a drone first",
@@ -228,7 +245,33 @@
     "reverted": "Reverted to FC values",
     "flashWritten": "Written to flash — persists after reboot",
     "flashUnacknowledged": "Flash commit sent — vehicle did not acknowledge it",
-    "flashFailed": "Failed to write to flash"
+    "flashFailed": "Failed to write to flash",
+    "bar": {
+      "saveToFc": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਸੇਵ ਕਰੋ",
+      "saveToRam": "RAM ਵਿੱਚ ਸੇਵ ਕਰੋ",
+      "writeToFlash": "ਫਲੈਸ਼ ਵਿੱਚ ਲਿਖੋ",
+      "revert": "ਵਾਪਸ ਕਰੋ",
+      "connectToSave": "ਪੈਰਾਮੀਟਰ ਸੇਵ ਕਰਨ ਲਈ ਡਰੋਨ ਕਨੈਕਟ ਕਰੋ",
+      "unsavedChanges": "ਬਿਨਾਂ ਸੇਵ ਕੀਤੀਆਂ ਤਬਦੀਲੀਆਂ"
+    },
+    "shortcuts": {
+      "noUnsaved": "ਕੋਈ ਅਣਸੇਵ ਪੈਰਾਮੀਟਰ ਬਦਲਾਅ ਨਹੀਂ",
+      "savedToRam": "{count, plural, one {# ਪੈਰਾਮੀਟਰ} other {# ਪੈਰਾਮੀਟਰ}} RAM ਵਿੱਚ ਸੇਵ ਕੀਤੇ ਗਏ",
+      "partialSave": "ਕੁਝ ਪੈਰਾਮੀਟਰ ਸੇਵ ਨਹੀਂ ਹੋ ਸਕੇ",
+      "flashUnacknowledged": "ਫਲੈਸ਼ ਕਮਿਟ ਭੇਜਿਆ ਗਿਆ — ਵਾਹਨ ਨੇ ਪੁਸ਼ਟੀ ਨਹੀਂ ਕੀਤੀ",
+      "flashCommitted": "ਪੈਰਾਮੀਟਰ ਫਲੈਸ਼ ਵਿੱਚ ਕਮਿਟ ਕੀਤੇ ਗਏ",
+      "flashFailed": "ਫਲੈਸ਼ ਕਮਿਟ ਅਸਫਲ: {message}",
+      "noPending": "ਕਮਿਟ ਕਰਨ ਲਈ ਕੋਈ ਬਕਾਇਆ ਬਦਲਾਅ ਨਹੀਂ",
+      "refreshed": "ਪੈਰਾਮੀਟਰ ਤਾਜ਼ਾ ਕੀਤੇ ਗਏ"
+    },
+    "disconnectGuard": {
+      "lostBeforeCommit": "ਫਲੈਸ਼ ਕਮਿਟ ਤੋਂ ਪਹਿਲਾਂ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਡਿਸਕਨੈਕਟ ਹੋ ਗਿਆ; ਬਦਲਾਅ ਸੇਵ ਨਹੀਂ ਹੋਏ",
+      "commitFailedStillConnected": "ਫਲੈਸ਼ ਕਮਿਟ ਅਸਫਲ: {message}। ਅਜੇ ਵੀ ਕਨੈਕਟ ਹੈ; ਕੁਝ ਵੀ ਡਿਸਕਨੈਕਟ ਨਹੀਂ ਹੋਇਆ।",
+      "flashUnacknowledged": "ਫਲੈਸ਼ ਕਮਿਟ ਭੇਜਿਆ ਗਿਆ — ਵਾਹਨ ਨੇ ਇਸਦੀ ਪੁਸ਼ਟੀ ਨਹੀਂ ਕੀਤੀ",
+      "armedTitle": "ਆਰਮ ਕੀਤੇ ਡਰੋਨ ਨੂੰ ਡਿਸਕਨੈਕਟ ਕਰਨਾ ਹੈ?",
+      "armedMessage": "{name} ਆਰਮ ਹੈ। ਡਿਸਕਨੈਕਟ ਕਰਨ ਨਾਲ ਟੈਲੀਮੈਟਰੀ ਬੰਦ ਹੋ ਜਾਂਦੀ ਹੈ ਅਤੇ ਇਸਦਾ GCS ਫੇਲਸੇਫ਼ ਚਾਲੂ ਹੋ ਸਕਦਾ ਹੈ।",
+      "armedConfirm": "ਡਿਸਕਨੈਕਟ ਕਰੋ"
+    }
   },
   "nodeConsole": {
     "type": {
@@ -359,8 +402,8 @@
     },
     "companionCta": {
       "title": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਜੋੜੋ",
-      "body": "ਇਸ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨਾਲ ਕੋਈ ਆਨਬੋਰਡ ਕੰਪਿਊਟਰ ਜੋੜਿਆ ਨਹੀਂ ਹੈ। ਵੀਡੀਓ, ਵਿਜ਼ਨ ਅਤੇ ਐਕਸਟੈਂਸ਼ਨ ਜੋੜਨ ਲਈ ਇੱਕ ਜੋੜੋ।",
-      "action": "ਕੰਪਿਊਟਰ ਜੋੜੋ"
+      "body": "ਇਸ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨਾਲ ਕੋਈ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪੇਅਰ ਨਹੀਂ ਹੈ। ਵੀਡੀਓ, ਵਿਜ਼ਨ ਅਤੇ ਐਕਸਟੈਂਸ਼ਨ ਜੋੜਨ ਲਈ ਇੱਕ ਪੇਅਰ ਕਰੋ।",
+      "action": "ਨੋਡ ਜੋੜੋ"
     }
   },
   "nav": {
@@ -371,7 +414,7 @@
     "command": "ਕਮਾਂਡ",
     "hardware": "ਹਾਰਡਵੇਅਰ",
     "configure": "ਕੌਂਫਿਗਰ",
-    "history": "ਇਤਿਹਾਸ",
+    "history": "ਉਡਾਣ ਲੌਗ",
     "community": "ਭਾਈਚਾਰਾ",
     "settings": "ਸੈਟਿੰਗਜ਼",
     "mcp": "MCP"
@@ -724,6 +767,48 @@
       "edited": "(edited)",
       "edit": "Edit",
       "delete": "Delete"
+    },
+    "changelogEditor": {
+      "version": "ਵਰਜਨ",
+      "title": "ਸਿਰਲੇਖ",
+      "releaseTitle": "ਰਿਲੀਜ਼ ਸਿਰਲੇਖ",
+      "body": "ਮੁੱਖ ਭਾਗ",
+      "whatChangedInThisRelease": "ਇਸ ਰਿਲੀਜ਼ ਵਿੱਚ ਕੀ ਬਦਲਿਆ?",
+      "eGFeatureBugfixBreaking": "ਜਿਵੇਂ feature, bugfix, breaking",
+      "published": "ਪ੍ਰਕਾਸ਼ਿਤ",
+      "addTranslationOptional": "ਅਨੁਵਾਦ ਸ਼ਾਮਲ ਕਰੋ (ਵਿਕਲਪਿਕ)",
+      "titleTranslated": "ਸਿਰਲੇਖ (ਅਨੁਵਾਦਿਤ)",
+      "descriptionTranslated": "ਵੇਰਵਾ (ਅਨੁਵਾਦਿਤ)",
+      "tagsCommaSeparated": "ਟੈਗ (ਕੌਮੇ ਨਾਲ ਵੱਖ ਕੀਤੇ)",
+      "addTranslation": "ਅਨੁਵਾਦ ਸ਼ਾਮਲ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ"
+    },
+    "changelogTimeline": {
+      "changelogTimeline": "changelog-timeline",
+      "changelog": "ਤਬਦੀਲੀ ਲੌਗ",
+      "deleteChangelogEntry": "ਤਬਦੀਲੀ ਲੌਗ ਐਂਟਰੀ ਮਿਟਾਓ",
+      "thisRemovesTheEntryFor": "ਇਹ ਐਂਟਰੀ ਸਾਰਿਆਂ ਲਈ ਹਟਾ ਦਿੰਦਾ ਹੈ। ਇਸਨੂੰ ਵਾਪਸ ਨਹੀਂ ਲਿਆ ਜਾ ਸਕਦਾ।",
+      "delete": "ਮਿਟਾਓ",
+      "discord": "Discord",
+      "newRelease": "ਨਵੀਂ ਰਿਲੀਜ਼",
+      "loadingChangelog": "ਚੇਂਜਲੌਗ ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+      "noChangelogEntriesYet": "ਅਜੇ ਕੋਈ ਚੇਂਜਲੌਗ ਐਂਟਰੀ ਨਹੀਂ ਹੈ।",
+      "loadingMore": "ਹੋਰ ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ..."
+    },
+    "communityComments": {
+      "commentsCouldNotBeLoaded": "ਟਿੱਪਣੀਆਂ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀਆਂ।",
+      "loadingComments": "ਟਿੱਪਣੀਆਂ ਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ...",
+      "noCommentsYet": "ਅਜੇ ਕੋਈ ਟਿੱਪਣੀ ਨਹੀਂ।",
+      "deleteComment": "ਟਿੱਪਣੀ ਮਿਟਾਓ",
+      "addAComment": "ਟਿੱਪਣੀ ਸ਼ਾਮਲ ਕਰੋ...",
+      "thisRemovesTheCommentFor": "ਇਹ ਟਿੱਪਣੀ ਸਾਰਿਆਂ ਲਈ ਹਟਾ ਦਿੰਦਾ ਹੈ। ਇਸਨੂੰ ਵਾਪਸ ਨਹੀਂ ਲਿਆ ਜਾ ਸਕਦਾ।",
+      "delete": "ਮਿਟਾਓ",
+      "commentsNeedTheCommunityBackend": "ਟਿੱਪਣੀਆਂ ਲਈ ਕਮਿਊਨਿਟੀ ਬੈਕਐਂਡ ਲੋੜੀਂਦਾ ਹੈ, ਜੋ ਇੱਥੇ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+      "post": "ਪੋਸਟ ਕਰੋ"
+    },
+    "changelogEntry": {
+      "edit": "ਸੋਧੋ",
+      "delete": "ਮਿਟਾਓ"
     }
   },
   "shell": {
@@ -744,18 +829,18 @@
     "account": "ਖਾਤਾ"
   },
   "configNav": {
-    "title": "GCS ਸੈਟਿੰਗਾਂ",
+    "title": "ਸੈਟਿੰਗਾਂ",
     "general": "ਆਮ",
     "inputDevices": "ਇਨਪੁੱਟ ਡਿਵਾਈਸ",
     "video": "ਵੀਡੀਓ",
     "notifications": "ਸੂਚਨਾਵਾਂ",
     "theme": "ਥੀਮ",
     "data": "ਡੇਟਾ",
-    "flashTool": "ਫਲੈਸ਼ ਟੂਲ",
     "operator": "Operator & Aircraft",
     "plugins": "ਐਕਸਟੈਂਸ਼ਨ",
     "can": "DroneCAN",
-    "aircraftSetup": "Aircraft setup"
+    "aircraftSetup": "Aircraft setup",
+    "firmware": "ਫਰਮਵੇਅਰ"
   },
   "general": {
     "title": "ਆਮ ਸੈਟਿੰਗਾਂ",
@@ -861,7 +946,8 @@
       "title": "Video pipeline restarting",
       "message": "Video has restarted {count} times. Check the agent."
     },
-    "encoderSettingsOnNode": "Bitrate, codec and resolution are set per node, in that node's Video settings."
+    "encoderSettingsOnNode": "Bitrate, codec and resolution are set per node, in that node's Video settings.",
+    "openCameras": "{drone} › ਕੈਮਰੇ ਖੋਲ੍ਹੋ"
   },
   "inputDevices": {
     "title": "ਇਨਪੁੱਟ ਡਿਵਾਈਸ",
@@ -987,7 +1073,69 @@
       "title": "ਹਾਲੀਆ ਚੇਤਾਵਨੀਆਂ",
       "noAlerts": "ਕੋਈ ਚੇਤਾਵਨੀ ਨਹੀਂ"
     },
-    "newLogs": "ਨਵੇਂ ਲੌਗ ਸੁਨੇਹੇ"
+    "newLogs": "ਨਵੇਂ ਲੌਗ ਸੁਨੇਹੇ",
+    "messages": "ਸੁਨੇਹੇ",
+    "scriptFileManager": {
+      "download": "ਡਾਊਨਲੋਡ ਕਰੋ",
+      "delete": "ਮਿਟਾਓ",
+      "deleteScript": "ਸਕ੍ਰਿਪਟ ਮਿਟਾਓ",
+      "thisConnectionDoesNotSupport": "ਇਹ ਕਨੈਕਸ਼ਨ ਫਾਈਲ ਅੱਪਲੋਡ ਦਾ ਸਮਰਥਨ ਨਹੀਂ ਕਰਦਾ।",
+      "onlyLuaScriptsCanBe": "ਸਿਰਫ਼ .lua ਸਕ੍ਰਿਪਟਾਂ ਹੀ ਅੱਪਲੋਡ ਕੀਤੀਆਂ ਜਾ ਸਕਦੀਆਂ ਹਨ।",
+      "scriptsOnFC": "FC ਉੱਤੇ ਸਕ੍ਰਿਪਟਾਂ",
+      "refresh": "ਰਿਫ੍ਰੈਸ਼ ਕਰੋ",
+      "dropA": "ਇੱਥੇ ਛੱਡੋ",
+      "noScriptsOnTheFlight": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਉੱਤੇ ਅਜੇ ਕੋਈ ਸਕ੍ਰਿਪਟ ਨਹੀਂ।"
+    },
+    "scrConfigCard": {
+      "scriptingEngine": "ਸਕ੍ਰਿਪਟਿੰਗ ਇੰਜਣ",
+      "enableTheOnboardLuaVM": "ਔਨਬੋਰਡ Lua VM ਚਾਲੂ ਕਰੋ ਅਤੇ ਇਸਦੇ ਸਰੋਤਾਂ ਦਾ ਆਕਾਰ ਤੈਅ ਕਰੋ",
+      "scripting": "ਸਕ੍ਰਿਪਟਿੰਗ",
+      "heapSize": "ਹੀਪ ਆਕਾਰ",
+      "vmInstructionCount": "VM ਹਦਾਇਤ ਗਿਣਤੀ",
+      "rebootCommandSentToThe": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੂੰ ਰੀਬੂਟ ਕਮਾਂਡ ਭੇਜੀ ਗਈ",
+      "failedToSendRebootCommand": "ਰੀਬੂਟ ਕਮਾਂਡ ਭੇਜਣ ਵਿੱਚ ਅਸਫਲ",
+      "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
+      "rebootFC": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ"
+    },
+    "appletCatalog": {
+      "starterScripts": "ਸ਼ੁਰੂਆਤੀ ਸਕ੍ਰਿਪਟਾਂ",
+      "minimalExamplesToUploadRun": "ਅੱਪਲੋਡ ਕਰਨ, ਚਲਾਉਣ ਅਤੇ ਬਦਲਣ ਲਈ ਛੋਟੀਆਂ ਉਦਾਹਰਨਾਂ। ਹਰ ਇੱਕ ਰੀਬੂਟ ਤੋਂ ਬਾਅਦ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਉੱਤੇ ਚੱਲਦੀ ਹੈ।",
+      "connectOverATransportThat": "ਸਕ੍ਰਿਪਟਾਂ ਜੋੜਨ ਲਈ ਫਾਈਲ ਟ੍ਰਾਂਸਫਰ ਦਾ ਸਮਰਥਨ ਕਰਨ ਵਾਲੇ ਟ੍ਰਾਂਸਪੋਰਟ ਰਾਹੀਂ ਕਨੈਕਟ ਕਰੋ।"
+    },
+    "agentDiagnosticsStrip": {
+      "theHardwareEncoderFailedVideo": "ਹਾਰਡਵੇਅਰ ਐਨਕੋਡਰ ਫੇਲ੍ਹ ਹੋ ਗਿਆ; ਵੀਡੀਓ CPU 'ਤੇ ਐਨਕੋਡ ਹੋ ਰਹੀ ਹੈ",
+      "agentCommandPath": "ਏਜੰਟ ਕਮਾਂਡ ਮਾਰਗ",
+      "softwareEncode": "ਸਾਫ਼ਟਵੇਅਰ ਐਨਕੋਡ"
+    },
+    "scriptConsole": {
+      "clear": "ਸਾਫ਼ ਕਰੋ",
+      "scriptOutput": "ਸਕ੍ਰਿਪਟ ਆਉਟਪੁੱਟ",
+      "scriptsOnly": "ਸਿਰਫ਼ ਸਕ੍ਰਿਪਟਾਂ"
+    },
+    "fleetTelemetryCard": {
+      "fleetTelemetry": "ਫਲੀਟ ਟੈਲੀਮੈਟਰੀ",
+      "noConnectedDrones": "ਕੋਈ ਡਰੋਨ ਕਨੈਕਟ ਨਹੀਂ"
+    },
+    "fleetStatusCard": {
+      "fcLinkLost": "FC ਲਿੰਕ ਟੁੱਟ ਗਿਆ",
+      "gpsDenied": "GPS-ਰਹਿਤ"
+    },
+    "droneListPanel": {
+      "nodes": "ਨੋਡ"
+    },
+    "registryCatalogBrowser": {
+      "filter": "ਫਿਲਟਰ"
+    },
+    "quickActionsBar": {
+      "newMission": "ਨਵਾਂ ਮਿਸ਼ਨ",
+      "connectDrone": "ਡਰੋਨ ਕਨੈਕਟ ਕਰੋ",
+      "rthAll": "ਸਭ ਦਾ RTH"
+    },
+    "droneScriptsTab": {
+      "luaScripts": "Lua ਸਕ੍ਰਿਪਟਾਂ",
+      "fileTransferUnavailableOnThis": "ਇਸ ਕਨੈਕਸ਼ਨ 'ਤੇ ਫ਼ਾਈਲ ਟ੍ਰਾਂਸਫ਼ਰ ਉਪਲਬਧ ਨਹੀਂ",
+      "managingScriptsNeedsMAVLinkFile": "ਸਕ੍ਰਿਪਟਾਂ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰਨ ਲਈ MAVLink ਫ਼ਾਈਲ ਟ੍ਰਾਂਸਫ਼ਰ ਦੀ ਲੋੜ ਹੈ। ਸਕ੍ਰਿਪਟਾਂ ਅੱਪਲੋਡ ਅਤੇ ਪ੍ਰਬੰਧਿਤ ਕਰਨ ਲਈ ਫ਼ਲਾਈਟ ਕੰਟਰੋਲਰ ਨਾਲ ਸਿੱਧਾ (USB/ਸੀਰੀਅਲ/TCP) ਜਾਂ ADOS ਏਜੰਟ ਰਾਹੀਂ ਕਨੈਕਟ ਕਰੋ। ਹੇਠਾਂ ਦਿੱਤੀਆਂ ਸਕ੍ਰਿਪਟਿੰਗ-ਇੰਜਣ ਸੈਟਿੰਗਾਂ ਫਿਰ ਵੀ ਲਾਗੂ ਹੁੰਦੀਆਂ ਹਨ।"
+    }
   },
   "swarmView": {
     "title": "ਸਵਾਰਮ",
@@ -1131,7 +1279,7 @@
   "emptyState": {
     "title": "No nodes yet",
     "commandPaletteHint": "to open command palette",
-    "scanEmpty": "No ADOS agents found on this network yet. Add one by hostname or IP above, or install the agent on a board below.",
+    "scanEmpty": "ਇਸ ਨੈੱਟਵਰਕ 'ਤੇ ਅਜੇ ਕੋਈ ADOS ਏਜੰਟ ਨਹੀਂ ਮਿਲਿਆ। 'ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪੇਅਰ ਕਰੋ' ਤੋਂ ਹੋਸਟਨੇਮ ਜਾਂ IP ਰਾਹੀਂ ਇੱਕ ਪੇਅਰ ਕਰੋ, ਜਾਂ ਹੇਠਾਂ ਦਿੱਤੇ ਕਿਸੇ ਬੋਰਡ 'ਤੇ ਏਜੰਟ ਇੰਸਟਾਲ ਕਰੋ।",
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
@@ -1201,12 +1349,12 @@
         "gps": "GPS",
         "battery": "Battery",
         "rangefinder": "Rangefinder",
-        "companion": "Companion"
+        "companion": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ"
       }
     },
     "fcStackTitle": "Flight Controller",
     "fcStackDesc": "USB, WebSocket, UDP, TCP ਜਾਂ Bluetooth ਉੱਤੇ ਸਿੱਧਾ MAVLink",
-    "agentStackTitle": "Companion Computer",
+    "agentStackTitle": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ",
     "agentStackDesc": "ADOS Agent — software-defined",
     "agentStackBadge": "Full features",
     "intro": {
@@ -1309,7 +1457,12 @@
       "hotPlugDisconnected": "Device disconnected: {label}",
       "toastConnected": "USB device connected: {label}",
       "toastDisconnected": "USB device disconnected: {label}"
-    }
+    },
+    "webSocketPanel": {
+      "wsLocalhost14550": "ws://localhost:14550"
+    },
+    "disconnect": "ਡਿਸਕਨੈਕਟ ਕਰੋ",
+    "disconnectNamed": "{name} ਨੂੰ ਡਿਸਕਨੈਕਟ ਕਰੋ"
   },
   "droneDetail": {
     "overview": "Overview",
@@ -1321,7 +1474,7 @@
     "fly": "Fly",
     "immersive": "Immersive",
     "rec": "REC",
-    "rebootFc": "Reboot FC",
+    "rebootFc": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
     "inMission": "IN MISSION",
     "fleet": "FLEET",
     "noFlights": "No flight records found for this drone",
@@ -1332,7 +1485,18 @@
     "flightMaxAlt": "Max Alt",
     "flightStatus": "Status",
     "flightBattery": "Battery",
-    "flightSuite": "Suite"
+    "flightSuite": "Suite",
+    "px4EventsFeed": {
+      "searchEvents": "ਘਟਨਾਵਾਂ ਖੋਜੋ",
+      "flightControllerEvents": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਘਟਨਾਵਾਂ"
+    },
+    "droneConfigureTab": {
+      "somePanelsOSDLEDAre": "ਕੁਝ ਪੈਨਲ (OSD, LED) PX4 ਲਈ ਉਪਲਬਧ ਨਹੀਂ ਹਨ।",
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight ਫਰਮਵੇਅਰ। ਕੁਝ ਪੈਨਲ ArduPilot ਤੋਂ ਵੱਖਰੇ ਹਨ।"
+    },
+    "logTelemetryGraph": {
+      "telemetryDataWillAppearHere": "ਕਨੈਕਟ ਹੋਣ 'ਤੇ ਟੈਲੀਮੈਟਰੀ ਡਾਟਾ ਇੱਥੇ ਦਿਖਾਈ ਦੇਵੇਗਾ"
+    }
   },
   "flight": {
     "takeoffAltitudeOutOfRange": "Takeoff altitude must be between {min} and {max} m",
@@ -1428,7 +1592,29 @@
       "title": "ਬਾਹਰੀ ਵਿਸ਼ਲੇਸ਼ਣ",
       "plotterDescription": "ਇੰਟਰਐਕਟਿਵ DataFlash / .tlog ਗ੍ਰਾਫ ਪਲੌਟਰ",
       "reviewerDescription": "ਸਵੈਚਾਲਿਤ ਲੌਗ ਵਿਸ਼ਲੇਸ਼ਣ ਅਤੇ ਉਡਾਣ ਸਮੀਖਿਆ"
-    }
+    },
+    "quickGraphs": {
+      "alt": "ਉਚਾਈ",
+      "voltage": "ਵੋਲਟੇਜ",
+      "vspd": "ਲੰਬਕਾਰੀ ਰਫ਼ਤਾਰ",
+      "noRCInput": "ਕੋਈ RC ਇਨਪੁੱਟ ਨਹੀਂ",
+      "altitude": "ਉਚਾਈ",
+      "battery": "ਬੈਟਰੀ",
+      "climbRate": "ਚੜ੍ਹਾਈ ਦਰ",
+      "rcInputs": "RC ਇਨਪੁੱਟ"
+    },
+    "logAnalysisPanel": {
+      "logAnalysis": "ਲੌਗ ਵਿਸ਼ਲੇਸ਼ਣ",
+      "live": "ਲਾਈਵ",
+      "file": "ਫ਼ਾਈਲ",
+      "parsedLog": "ਪਾਰਸ ਕੀਤਾ ਲੌਗ",
+      "loadABinDataFlashLog": "ਵਿਸ਼ਲੇਸ਼ਣ ਲਈ .bin DataFlash ਲੌਗ ਲੋਡ ਕਰੋ"
+    },
+    "gpsTrackMap": {
+      "gpsTrack": "GPS ਟ੍ਰੈਕ",
+      "waitingForGPSData": "GPS ਡਾਟਾ ਦੀ ਉਡੀਕ ਹੋ ਰਹੀ ਹੈ..."
+    },
+    "clear": "ਸਾਫ਼ ਕਰੋ"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1518,7 +1704,7 @@
     "cli": "CLI",
     "debugSection": "DEBUG",
     "mavlinkInspector": "MAVLink Inspector",
-    "blackbox": "Blackbox",
+    "blackbox": "ਬਲੈਕਬਾਕਸ (FC)",
     "debugPanel": "Debug",
     "diagnostics": "Diagnostics",
     "logAnalysis": "Log Analysis",
@@ -1529,7 +1715,8 @@
     "fcSourceCta": "Change the FC source",
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
-    "pluginPanelGone": "This extension is no longer installed on this node."
+    "pluginPanelGone": "This extension is no longer installed on this node.",
+    "aircraftSetup": "ਏਅਰਕ੍ਰਾਫਟ ਸੈੱਟਅੱਪ"
   },
   "droneStatus": {
     "online": "ਔਨਲਾਈਨ",
@@ -1553,7 +1740,7 @@
     "map": "ਮੈਪ",
     "fly": "Fly",
     "immersive": "Immersive",
-    "rebootFc": "Reboot FC",
+    "rebootFc": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
     "rebootConfirm": "Reboot the flight controller? The drone will be temporarily disconnected.",
     "reboot": "Reboot",
     "deleteDrone": "Delete Drone",
@@ -1577,16 +1764,15 @@
       "events": "Events",
       "recorder": "Recorder"
     },
-    "cockpit": "Cockpit",
     "agentGroups": {
       "overview": "ਸੰਖੇਪ ਜਾਣਕਾਰੀ",
       "software": "Software",
       "node": "ਨੋਡ"
     },
     "agentShowcase": {
-      "title": "Add an onboard computer",
+      "title": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਜੋੜੋ",
       "subtitle": "The ADOS Drone Agent runs on a companion computer beside your flight controller. Pair one to unlock live video, AI perception, autonomy, and fleet connectivity.",
-      "cta": "Pair a computer",
+      "cta": "ਨੋਡ ਜੋੜੋ",
       "viewLogs": "View flight logs",
       "back": "Back",
       "cards": {
@@ -1634,9 +1820,9 @@
     "simChip": "SIM",
     "simChipTitle": "ਇਹ ਨੋਡ ਸਿਮੂਲੇਟਰ ਨਾਲ ਚੱਲ ਰਿਹਾ ਹੈ",
     "companionOffline": {
-      "title": "ਕੰਪੈਨੀਅਨ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ",
-      "body": "This node has an onboard computer, but this browser cannot reach it right now. Its video, services and logs are unavailable until it answers.",
-      "viaHop": "This node's onboard computer is reached through {hop}, which is not answering right now. Its video, services and logs are unavailable until it does.",
+      "title": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ",
+      "body": "ਇਸ ਨੋਡ ਵਿੱਚ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਹੈ, ਪਰ ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਇਸ ਸਮੇਂ ਉਸ ਤੱਕ ਨਹੀਂ ਪਹੁੰਚ ਸਕਦਾ। ਜਵਾਬ ਮਿਲਣ ਤੱਕ ਇਸਦੀ ਵੀਡੀਓ, ਸੇਵਾਵਾਂ ਅਤੇ ਲੌਗ ਉਪਲਬਧ ਨਹੀਂ ਹਨ।",
+      "viaHop": "ਇਸ ਨੋਡ ਦੇ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਤੱਕ {hop} ਰਾਹੀਂ ਪਹੁੰਚਿਆ ਜਾਂਦਾ ਹੈ, ਜੋ ਇਸ ਸਮੇਂ ਜਵਾਬ ਨਹੀਂ ਦੇ ਰਿਹਾ। ਜਵਾਬ ਮਿਲਣ ਤੱਕ ਇਸਦੀ ਵੀਡੀਓ, ਸੇਵਾਵਾਂ ਅਤੇ ਲੌਗ ਉਪਲਬਧ ਨਹੀਂ ਹਨ।",
       "repair": "ਮੁੜ ਜੋੜੋ",
       "openAgent": "Open the Agent page"
     },
@@ -1693,7 +1879,7 @@
     "engineWideNote": "The detector is shared by every vision behavior on this drone — changing it changes them all.",
     "classesLine": "Classes: {classes}",
     "notActiveTitle": "No vision engine running yet",
-    "notActiveBody": "Vision runs on this drone's onboard computer. Install or select a detection model below to start a perception pipeline; a camera bound to the vision engine feeds it.",
+    "notActiveBody": "ਵਿਜ਼ਨ ਇਸ ਡਰੋਨ ਦੇ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ 'ਤੇ ਚੱਲਦਾ ਹੈ। ਪਰਸੈਪਸ਼ਨ ਪਾਈਪਲਾਈਨ ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਹੇਠਾਂ ਕੋਈ ਡਿਟੈਕਸ਼ਨ ਮਾਡਲ ਇੰਸਟਾਲ ਕਰੋ ਜਾਂ ਚੁਣੋ; ਵਿਜ਼ਨ ਇੰਜਣ ਨਾਲ ਜੁੜਿਆ ਕੈਮਰਾ ਇਸਨੂੰ ਡਾਟਾ ਦਿੰਦਾ ਹੈ।",
     "pipelines": "Pipelines",
     "pipelinesRunning": "{count, plural, =0 {none running} one {# running} other {# running}}",
     "noPipelines": "No pipelines running. Start a detector below to begin perception.",
@@ -1760,7 +1946,7 @@
     "targetActions": {
       "dismiss": "ਬੰਦ ਕਰੋ",
       "none": "ਇਸ ਨਿਸ਼ਾਨੇ ਲਈ ਕੋਈ ਕਾਰਵਾਈ ਨਹੀਂ",
-      "pluginBadge": "ਪਲੱਗਇਨ",
+      "pluginBadge": "ਐਕਸਟੈਂਸ਼ਨ",
       "designate": "Designate target",
       "designated": "Target designated",
       "designateRejected": "Designate rejected",
@@ -1781,8 +1967,8 @@
     "notDetector": "Not a detector"
   },
   "nodeSettings": {
-    "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
-    "subtitleRelayed": "Configure this node's onboard computer. Changes reach the agent over the radio link via the ground station.",
+    "subtitle": "ਇਸ ਨੋਡ ਦੇ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ। ਤਬਦੀਲੀਆਂ LAN ਰਾਹੀਂ ਸਿੱਧੇ ਏਜੰਟ ਨੂੰ ਲਿਖੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।",
+    "subtitleRelayed": "ਇਸ ਨੋਡ ਦੇ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਨੂੰ ਕੌਂਫਿਗਰ ਕਰੋ। ਤਬਦੀਲੀਆਂ ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਰਾਹੀਂ ਰੇਡੀਓ ਲਿੰਕ 'ਤੇ ਏਜੰਟ ਤੱਕ ਪਹੁੰਚਦੀਆਂ ਹਨ।",
     "loading": "Loading configuration…",
     "loadFailed": "Could not read the node configuration.",
     "readOnlyNoAgent": "No connection path to this node — configuration is read-only. Pair the node over the LAN (or connect to its agent) to edit its settings.",
@@ -2085,7 +2271,7 @@
     "discovery": {
       "title": "Discovery",
       "blurb": "How this node announces itself on the LAN, and the reach names and URLs it advertises.",
-      "mdnsLabel": "Announce over mDNS",
+      "mdnsLabel": "mDNS ਰਾਹੀਂ ਪ੍ਰਸਾਰਿਤ ਕਰੋ",
       "mdnsHint": "Publish this node on the LAN so it can be found by name. Takes effect when the agent restarts.",
       "serviceTypeLabel": "Service type",
       "advertisedTitle": "Advertised by the node",
@@ -2382,10 +2568,33 @@
       "enabled": "Enabled",
       "disabled": "Disabled",
       "crashed": "Crashed",
-      "installed": "Installed"
+      "installed": "Installed",
+      "stopped": "ਰੁਕਿਆ ਹੋਇਆ"
     },
     "revocationPending": "Revocation pending (vehicle armed)",
-    "failureReason": "Stopped by the node: {reason}"
+    "failureReason": "Stopped by the node: {reason}",
+    "failureTampered": "ਇੰਸਟਾਲ ਤੋਂ ਬਾਅਦ ਫ਼ਾਈਲਾਂ ਬਦਲੀਆਂ ਗਈਆਂ — ਮੁੜ ਇੰਸਟਾਲ ਕਰੋ",
+    "failureSignerRevoked": "ਇਸਦੇ ਸਾਈਨਰ ਨੂੰ ਰੱਦ ਕੀਤਾ ਗਿਆ — ਮੁੜ ਇੰਸਟਾਲ ਕਰੋ",
+    "modelState": {
+      "resolved": "ਮਾਡਲ ਤਿਆਰ ਹੈ",
+      "needs_model": "ਮਾਡਲ ਦੀ ਲੋੜ ਹੈ",
+      "verify_failed": "ਮਾਡਲ ਜਾਂਚ ਅਸਫਲ ਰਹੀ",
+      "unknown": "ਮਾਡਲ ਦੀ ਸਥਿਤੀ ਅਣਜਾਣ"
+    },
+    "modelStateReason": "{state}: {reason}",
+    "serviceReady": "ਤਿਆਰ",
+    "serviceNotReady": "ਤਿਆਰ ਨਹੀਂ",
+    "serviceNotReadyReason": "ਤਿਆਰ ਨਹੀਂ: {reason}",
+    "moreActions": "ਹੋਰ ਕਾਰਵਾਈਆਂ",
+    "disableConfirmTitle": "{name} ਨੂੰ ਬੰਦ ਕਰਨਾ ਹੈ?",
+    "disableConfirmMessage": "ਐਕਸਟੈਂਸ਼ਨ ਤੁਰੰਤ ਪ੍ਰੋਸੈਸਿੰਗ ਬੰਦ ਕਰ ਦੇਵੇਗਾ। ਬੈਕਗ੍ਰਾਊਂਡ ਵਿੱਚ ਚੱਲ ਰਿਹਾ ਸਾਰਾ ਕੰਮ ਰੋਕ ਦਿੱਤਾ ਜਾਵੇਗਾ।",
+    "disableArmedNote": "ਇਹ ਏਅਰਕ੍ਰਾਫਟ ਆਰਮ ਹੈ।",
+    "waitingForNode": "ਡਰੋਨ ਵੱਲੋਂ ਇਸਨੂੰ ਪ੍ਰਾਪਤ ਕਰਨ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…",
+    "cancelCommand": "ਰੱਦ ਕਰੋ",
+    "commandCancelled": "{name} ਲਈ ਕਮਾਂਡ ਰੱਦ ਕੀਤੀ ਗਈ",
+    "cancelTooLate": "ਡਰੋਨ ਕੋਲ {name} ਲਈ ਕਮਾਂਡ ਪਹਿਲਾਂ ਹੀ ਪਹੁੰਚ ਚੁੱਕੀ ਹੈ। ਇਸਦੇ ਜਵਾਬ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ।",
+    "notPickedUp": "ਡਰੋਨ ਨੇ 30 ਸਕਿੰਟਾਂ ਵਿੱਚ ਕਮਾਂਡ ਪ੍ਰਾਪਤ ਨਹੀਂ ਕੀਤੀ",
+    "nodeUnreachable": "ਇਸ ਨੈੱਟਵਰਕ 'ਤੇ ਡਰੋਨ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਹੋ ਸਕਦੀ"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -2403,8 +2612,8 @@
     "pairedNodes": "PAIRED NODES",
     "noNodesPaired": "No nodes paired",
     "pairFirstNode": "Pair Your First Node",
-    "pairNewNode": "Pair New Node",
-    "pairNode": "Pair Node",
+    "pairNewNode": "ਨੋਡ ਜੋੜੋ",
+    "pairNode": "ਨੋਡ ਜੋੜੋ",
     "pairing": {
       "tab": {
         "addDrone": "Add a drone",
@@ -2419,7 +2628,18 @@
       "tabsLabel": "ਜੋੜਨ ਦਾ ਤਰੀਕਾ",
       "lanRelayNudge": "ਆਪਣੇ LAN ਤੋਂ ਬਾਹਰੋਂ ਇਸ ਨੋਡ ਤੱਕ ਪਹੁੰਚਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰਕੇ ਕਲਾਊਡ ਰੀਲੇਅ ਚਾਲੂ ਕਰੋ। ਉੱਪਰ ਦਿੱਤੀ LAN ਜੋੜੀ ਬਿਨਾਂ ਖਾਤੇ ਦੇ ਕੰਮ ਕਰਦੀ ਹੈ।",
       "cloudRequired": "Pairing with a generated code needs the cloud backend, and this build has none. Pair the drone on this network instead.",
-      "pairOnNetwork": "Pair on this network"
+      "pairOnNetwork": "Pair on this network",
+      "claiming": "{code} ਕਲੇਮ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…",
+      "copyFailed": "ਕਾਪੀ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਟੈਕਸਟ ਚੁਣਿਆ ਹੋਇਆ ਹੈ, ਇਸਨੂੰ ਕਾਪੀ ਕਰਨ ਲਈ Ctrl+C ਦਬਾਓ।",
+      "error": {
+        "notRegistered": "ਇਹ ਕੋਡ ਕਲਾਊਡ ਰਿਲੇ ਨਾਲ ਰਜਿਸਟਰ ਨਹੀਂ ਹੈ। ਜੇ ਇਹ ਡਰੋਨ ਤੁਹਾਡੇ ਨੈੱਟਵਰਕ 'ਤੇ ਹੈ, ਤਾਂ ਇਸਨੂੰ ਹੋਸਟਨੇਮ ਰਾਹੀਂ ਪੇਅਰ ਕਰੋ।",
+        "rateLimited": "ਪੇਅਰ-ਕੋਡ ਦੀਆਂ ਬਹੁਤ ਜ਼ਿਆਦਾ ਕੋਸ਼ਿਸ਼ਾਂ। {seconds} s ਬਾਅਦ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+        "expired": "ਪੇਅਰਿੰਗ ਕੋਡ ਦੀ ਮਿਆਦ ਖਤਮ ਹੋ ਗਈ। ਏਜੰਟ ਨੂੰ ਨਵਾਂ ਕੋਡ ਬਣਾਉਣ ਲਈ ਕਹੋ।",
+        "alreadyClaimed": "ਇਹ ਕੋਡ ਪਹਿਲਾਂ ਹੀ ਕਿਸੇ ਹੋਰ ਖਾਤੇ ਵੱਲੋਂ ਵਰਤਿਆ ਜਾ ਚੁੱਕਾ ਹੈ।",
+        "noCloud": "ਇਸ ਬਿਲਡ ਵਿੱਚ ਕਲਾਊਡ ਬੈਕਐਂਡ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਇਹ ਕੋਡ ਕਲੇਮ ਨਹੀਂ ਕਰ ਸਕਦਾ। ਇਸਦੀ ਬਜਾਏ ਡਰੋਨ ਨੂੰ ਇਸ ਨੈੱਟਵਰਕ 'ਤੇ ਪੇਅਰ ਕਰੋ।",
+        "generic": "ਪੇਅਰਿੰਗ ਨਹੀਂ ਹੋ ਸਕੀ। ਆਪਣਾ ਕਨੈਕਸ਼ਨ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+        "generateFailed": "ਪੇਅਰਿੰਗ ਕੋਡ ਨਹੀਂ ਬਣ ਸਕਿਆ। ਆਪਣਾ ਕਨੈਕਸ਼ਨ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+      }
     },
     "unpair": "Unpair",
     "disconnect": "Disconnect",
@@ -2640,13 +2860,234 @@
     },
     "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling.",
     "pairLink": {
-      "missingCode": "This link is missing a pairing code. Open the setup wizard on your device and try again, or open Mission Control directly to pair manually.",
-      "backToDashboard": "Back to dashboard",
       "title": "Pairing this device",
       "codeLabel": "Code:",
       "deviceLabel": "Device:",
       "signInHint": "Sign in if prompted; the dialog below claims this code on your account."
-    }
+    },
+    "videoLatencyBreakdown": {
+      "videoLatencyBreakdown": "ਵੀਡੀਓ ਲੇਟੈਂਸੀ ਵੇਰਵਾ",
+      "closePinnedPanel": "ਪਿੰਨ ਕੀਤਾ ਪੈਨਲ ਬੰਦ ਕਰੋ",
+      "trueGlassToGlass": "ਅਸਲ ਗਲਾਸ-ਟੂ-ਗਲਾਸ",
+      "cameraYourMonitor": "ਕੈਮਰਾ → ਤੁਹਾਡਾ ਮਾਨੀਟਰ",
+      "sampleEWMA": "ਸੈਂਪਲ EWMA",
+      "timeFromCameraCaptureOn": "ਡਰੋਨ 'ਤੇ ਕੈਮਰੇ ਦੁਆਰਾ ਕੈਪਚਰ ਤੋਂ ਲੈ ਕੇ ਤੁਹਾਡੀ ਸਕ੍ਰੀਨ 'ਤੇ ਫ੍ਰੇਮ ਦਿਖਾਏ ਜਾਣ ਤੱਕ ਦਾ ਸਮਾਂ। H.264 ਬਿਟਸਟ੍ਰੀਮ ਵਿੱਚ SEI ਟਾਈਮਸਟੈਂਪ + WebRTC presentationTime + ਡਰੋਨ↔ਬ੍ਰਾਊਜ਼ਰ ਘੜੀ ਆਫਸੈੱਟ ਅਨੁਮਾਨ ਵਰਤਦਾ ਹੈ।",
+      "dronePublishSide": "ਡਰੋਨ ਪ੍ਰਕਾਸ਼ਨ ਪਾਸਾ",
+      "encoderOutputDroneRTSPReadback": "ਏਨਕੋਡਰ ਆਉਟਪੁੱਟ → ਡਰੋਨ RTSP ਰੀਡਬੈਕ",
+      "stampToReadbackEWMA": "ਸਟੈਂਪ-ਤੋਂ-ਰੀਡਬੈਕ EWMA",
+      "droneSideStampToReadback": "ਡਰੋਨ-ਪਾਸੇ ਸਟੈਂਪ-ਤੋਂ-ਰੀਡਬੈਕ: ਏਨਕੋਡਰ ਦੁਆਰਾ ਫ੍ਰੇਮ ਜਾਰੀ ਕਰਨ (ਜਿੱਥੇ ਏਨਕੋਡ ਤੋਂ ਬਾਅਦ SEI ਟਾਈਮਸਟੈਂਪ ਪਾਇਆ ਜਾਂਦਾ ਹੈ) ਅਤੇ ਉਸ ਫ੍ਰੇਮ ਨੂੰ ਡਰੋਨ ਦੀ ਆਪਣੀ RTSP ਫੀਡ ਤੋਂ ਵਾਪਸ ਪੜ੍ਹੇ ਜਾਣ ਵਿਚਕਾਰ ਸਮਾਂ। ਇਸ ਵਿੱਚ ਪ੍ਰਕਾਸ਼ਨ ਮਕਸ, RTSP ਪ੍ਰਕਾਸ਼ਨ ਅਤੇ ਡਰੋਨ-ਪਾਸੇ ਬਫਰਿੰਗ ਸ਼ਾਮਲ ਹੈ। ਇਸ ਵਿੱਚ ਕੈਮਰਾ ਕੈਪਚਰ, ਏਨਕੋਡ, ਰੇਡੀਓ ਲਿੰਕ, ਗਰਾਊਂਡ ਇਨਜੈਸਟ ਅਤੇ ਬ੍ਰਾਊਜ਼ਰ ਸ਼ਾਮਲ ਨਹੀਂ ਹਨ — ਇਹ ਗਲਾਸ-ਟੂ-ਗਲਾਸ ਅੰਕੜਾ ਨਹੀਂ ਹੈ।",
+      "samples1s": "ਸੈਂਪਲ (1s)",
+      "numberOfSEISamplesRead": "ਪਿਛਲੇ ਸਕਿੰਟ ਵਿੱਚ ਡਰੋਨ ਦੇ ਲੋਕਲ ਟੈਪ ਦੁਆਰਾ ਪੜ੍ਹੇ ਗਏ SEI ਸੈਂਪਲਾਂ ਦੀ ਗਿਣਤੀ। SEI ਠੀਕ ਹੋਣ 'ਤੇ ਲਗਭਗ ਏਨਕੋਡ ਫ੍ਰੇਮਰੇਟ ਦੇ ਬਰਾਬਰ।",
+      "link": "ਲਿੰਕ",
+      "networkReceiverPath": "ਨੈੱਟਵਰਕ + ਰਿਸੀਵਰ ਮਾਰਗ",
+      "roundTrip": "ਰਾਊਂਡ-ਟ੍ਰਿਪ",
+      "webrtcICECandidatePairCurrentRoundTripTime": "WebRTC ICE candidate-pair currentRoundTripTime। ਉਹੀ ਅੰਕ ਜੋ Chrome chrome://webrtc-internals ਵਿੱਚ ਦਿਖਾਉਂਦਾ ਹੈ।",
+      "rtpJitter": "RTP ਜਿਟਰ",
+      "inboundRtpJitterVarianceIn": "inbound-rtp.jitter। ਪੈਕੇਟ ਪਹੁੰਚਣ ਦੇ ਸਮੇਂ ਵਿੱਚ ਭਿੰਨਤਾ — ਉੱਚ ਮੁੱਲਾਂ ਦਾ ਮਤਲਬ ਹੈ ਕਿ ਨੈੱਟਵਰਕ ਅਸਮਾਨ ਰਫ਼ਤਾਰ ਨਾਲ ਫ੍ਰੇਮ ਪਹੁੰਚਾ ਰਿਹਾ ਹੈ।",
+      "playoutBuffer": "ਪਲੇਆਊਟ ਬਫਰ",
+      "chromeSDecoderJitterBuffer": "Chrome ਦਾ ਡੀਕੋਡਰ ਜਿਟਰ ਬਫਰ: ਹਰ ਫ੍ਰੇਮ ਪਹੁੰਚਣ ਅਤੇ ਡੀਕੋਡ ਹੋਣ ਵਿਚਕਾਰ ਕਿੰਨੀ ਦੇਰ ਉਡੀਕ ਕਰਦਾ ਹੈ। ਨੈੱਟਵਰਕ ਵਿੱਚ ਜਿਟਰ ਹੋਣ 'ਤੇ ਵਧਦਾ ਹੈ; ਲਿੰਕ ਸੁਚਾਰੂ ਹੋਣ 'ਤੇ ਘਟਦਾ ਹੈ।",
+      "packetsLost": "ਗੁੰਮ ਪੈਕੇਟ",
+      "cumulativeRTPPacketsTheReceiver": "ਰਿਸੀਵਰ ਦੁਆਰਾ ਗੁੰਮ ਪਾਏ ਗਏ ਕੁੱਲ RTP ਪੈਕੇਟ। ਵਧਦੇ ਮੁੱਲਾਂ ਦਾ ਮਤਲਬ ਹੈ ਕਿ ਲਿੰਕ ਗੁਣਵੱਤਾ ਜਾਂ FEC ਬਜਟ ਨਾਕਾਫ਼ੀ ਹੈ।",
+      "gcsReceive": "GCS ਪ੍ਰਾਪਤੀ",
+      "browserSide": "ਬ੍ਰਾਊਜ਼ਰ-ਪਾਸਾ",
+      "framesDecoded": "ਡੀਕੋਡ ਕੀਤੇ ਫ੍ਰੇਮ",
+      "totalVideoFramesChromeHas": "ਇਸ ਸੈਸ਼ਨ ਦੇ ਸ਼ੁਰੂ ਹੋਣ ਤੋਂ ਬਾਅਦ Chrome ਦੁਆਰਾ ਡੀਕੋਡ ਕੀਤੇ ਕੁੱਲ ਵੀਡੀਓ ਫ੍ਰੇਮ।",
+      "framesDropped": "ਛੱਡੇ ਗਏ ਫ੍ਰੇਮ",
+      "framesChromeDecodedButCouldn": "ਉਹ ਫ੍ਰੇਮ ਜੋ Chrome ਨੇ ਡੀਕੋਡ ਕੀਤੇ ਪਰ ਸਮੇਂ ਸਿਰ ਰੈਂਡਰ ਨਹੀਂ ਕਰ ਸਕਿਆ (ਕੰਪੋਜ਼ੀਟਰ ਦਬਾਅ, ਟੈਬ ਬੈਕਗ੍ਰਾਊਂਡ ਵਿੱਚ)।",
+      "clockOffset": "ਘੜੀ ਆਫਸੈੱਟ",
+      "estimatedDroneBrowserWallClock": "ਅਨੁਮਾਨਿਤ ਡਰੋਨ↔ਬ੍ਰਾਊਜ਼ਰ ਘੜੀ ਆਫਸੈੱਟ, /api/time ਰਾਊਂਡ-ਟ੍ਰਿਪਾਂ (Cristian ਦਾ ਐਲਗੋਰਿਦਮ) ਤੋਂ ਪ੍ਰਾਪਤ। ਸਕਾਰਾਤਮਕ ਦਾ ਮਤਲਬ ਹੈ ਡਰੋਨ ਦੀ ਘੜੀ ਅੱਗੇ ਹੈ।",
+      "codec": "ਕੋਡੇਕ",
+      "bitrate": "ਬਿਟਰੇਟ",
+      "transport": "ਟ੍ਰਾਂਸਪੋਰਟ",
+      "sei": "SEI",
+      "endToEndLatency": "ਸਿਰੇ-ਤੋਂ-ਸਿਰੇ ਤੱਕ ਲੇਟੈਂਸੀ"
+    },
+    "radioNetworkHealthPanel": {
+      "operatingRegion": "ਸੰਚਾਲਨ ਖੇਤਰ",
+      "channelLock": "ਚੈਨਲ / ਲੌਕ",
+      "onboardWiFi": "ਆਨਬੋਰਡ WiFi",
+      "rfLink": "RF ਲਿੰਕ",
+      "linkDiagnosis": "ਲਿੰਕ ਜਾਂਚ",
+      "packetsSeen": "ਦੇਖੇ ਗਏ ਪੈਕੇਟ",
+      "decryptErrors": "ਡੀਕ੍ਰਿਪਟ ਗਲਤੀਆਂ",
+      "phyStatus": "PHY ਸਥਿਤੀ",
+      "radioStack": "ਰੇਡੀਓ ਸਟੈਕ",
+      "managementLink": "ਪ੍ਰਬੰਧਨ ਲਿੰਕ",
+      "reachBack": "ਰੀਚ-ਬੈਕ",
+      "usbRehome": "USB ਰੀਹੋਮ",
+      "radioNetworkHealth": "ਰੇਡੀਓ / ਨੈੱਟਵਰਕ ਸਿਹਤ",
+      "refresh": "ਰਿਫ੍ਰੈਸ਼ ਕਰੋ",
+      "recentActivity": "ਹਾਲੀਆ ਗਤੀਵਿਧੀ"
+    },
+    "dashboardAccessPinCard": {
+      "dashboardAccess": "ਡੈਸ਼ਬੋਰਡ ਪਹੁੰਚ",
+      "couldNotReadThePIN": "ਇਸ ਨੋਡ ਤੋਂ PIN ਸਥਿਤੀ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ।",
+      "webDashboard": "ਵੈੱਬ ਡੈਸ਼ਬੋਰਡ",
+      "setA4DigitPIN": "4-ਅੰਕਾਂ ਦਾ PIN ਸੈੱਟ ਕਰੋ",
+      "dashboardPINSet": "ਡੈਸ਼ਬੋਰਡ PIN ਸੈੱਟ ਕੀਤਾ ਗਿਆ",
+      "dashboardPINCleared": "ਡੈਸ਼ਬੋਰਡ PIN ਹਟਾਇਆ ਗਿਆ",
+      "unknown": "ਅਣਜਾਣ",
+      "locked": "ਲੌਕ ਹੈ",
+      "pinSet": "PIN ਸੈੱਟ ਹੈ",
+      "visitorsToThisNodeApos": "ਇਸ ਨੋਡ ਦੇ ਵੈੱਬ ਡੈਸ਼ਬੋਰਡ ਨੂੰ ਅਨਲੌਕ ਕਰਨ ਲਈ ਵਿਜ਼ਿਟਰ 4-ਅੰਕਾਂ ਵਾਲਾ PIN ਦਰਜ ਕਰਦੇ ਹਨ। PIN ਹਟਾਉਣ ਨਾਲ ਹੁਣ ਕਨੈਕਟ ਹਰ ਵਿਅਕਤੀ ਸਾਈਨ ਆਊਟ ਹੋ ਜਾਂਦਾ ਹੈ ਅਤੇ ਨਵਾਂ PIN ਸੈੱਟ ਹੋਣ ਤੱਕ ਡੈਸ਼ਬੋਰਡ ਖੁੱਲ੍ਹਾ ਰਹਿੰਦਾ ਹੈ।",
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "clearThePINConnectedBrowsers": "ਕੀ PIN ਹਟਾਉਣਾ ਹੈ? ਕਨੈਕਟ ਕੀਤੇ ਬ੍ਰਾਊਜ਼ਰ ਸਾਈਨ ਆਊਟ ਹੋ ਜਾਣਗੇ ਅਤੇ ਨਵਾਂ PIN ਸੈੱਟ ਹੋਣ ਤੱਕ ਡੈਸ਼ਬੋਰਡ ਖੁੱਲ੍ਹਾ ਰਹੇਗਾ।",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "clearPIN": "PIN ਹਟਾਓ"
+    },
+    "boardPinoutView": {
+      "output": "ਆਉਟਪੁੱਟ",
+      "timerGroup": "ਟਾਈਮਰ ਗਰੁੱਪ",
+      "protocol": "ਪ੍ਰੋਟੋਕੋਲ",
+      "notes": "ਨੋਟਸ",
+      "noOutputDataAvailable": "ਕੋਈ ਆਉਟਪੁੱਟ ਡਾਟਾ ਉਪਲਬਧ ਨਹੀਂ।",
+      "boardPinout": "ਬੋਰਡ ਪਿਨਆਊਟ",
+      "unknownBoardID": "ਅਣਜਾਣ ਬੋਰਡ ID:",
+      "timerGroupDataNotAvailable": "ਇਸ ਬੋਰਡ ਲਈ ਟਾਈਮਰ ਗਰੁੱਪ ਡਾਟਾ ਉਪਲਬਧ ਨਹੀਂ। ਪ੍ਰੋਟੋਕੋਲ ਟਕਰਾਅ ਖੋਜ ਬੰਦ ਹੈ।",
+      "notInDatabase": "ਇਹ ਬੋਰਡ ਅਜੇ ਪਿਨਆਊਟ ਡੇਟਾਬੇਸ ਵਿੱਚ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਕੋਈ ਪਿਨ ਮੈਪ ਨਹੀਂ ਦਿਖਾਇਆ ਜਾ ਸਕਦਾ।"
+    },
+    "videoTransportSwitcher": {
+      "switchVideoTransport": "ਵੀਡੀਓ ਟ੍ਰਾਂਸਪੋਰਟ ਬਦਲੋ",
+      "videoTransportSwitcher": "ਵੀਡੀਓ ਟ੍ਰਾਂਸਪੋਰਟ ਸਵਿੱਚਰ",
+      "networkRoundTripChromePlayout": "ਨੈੱਟਵਰਕ ਰਾਊਂਡ-ਟ੍ਰਿਪ + Chrome ਪਲੇਆਊਟ ਬਫਰ। ਪੂਰੇ ਵੇਰਵੇ ਲਈ ਹੇਠਲੀ ਪੱਟੀ ਵਿੱਚ ਚਿੱਪ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "autoBestOfLANP2P": "ਆਟੋ (LAN, P2P ਵਿੱਚੋਂ ਸਭ ਤੋਂ ਵਧੀਆ)",
+      "lanDirect": "LAN ਡਾਇਰੈਕਟ",
+      "off": "ਬੰਦ",
+      "p2pMQTT": "P2P MQTT",
+      "theAgentAposSVideo": "ਏਜੰਟ ਦੀ ਵੀਡੀਓ ਸੇਵਾ ਨਹੀਂ ਚੱਲ ਰਹੀ। ਜਾਂਚ ਕਰੋ",
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "fcSourcePicker": {
+      "fcSource": "FC ਸਰੋਤ",
+      "rescanSerialPorts": "ਸੀਰੀਅਲ ਪੋਰਟ ਮੁੜ ਸਕੈਨ ਕਰੋ",
+      "source": "ਸਰੋਤ",
+      "port": "ਪੋਰਟ",
+      "baud": "ਬੌਡ",
+      "apply": "ਲਾਗੂ ਕਰੋ",
+      "mspLinkActive": "MSP ਲਿੰਕ ਸਰਗਰਮ",
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "networkTab": {
+      "network": "ਨੈੱਟਵਰਕ",
+      "manageEveryUplinkPathWiFi": "ਹਰ ਅੱਪਲਿੰਕ ਮਾਰਗ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰੋ: WiFi ਐਕਸੈਸ ਪੁਆਇੰਟ, WiFi ਕਲਾਇੰਟ, ਈਥਰਨੈੱਟ ਅਤੇ 4G ਮੋਡਮ। ਕਿਰਿਆਸ਼ੀਲ ਅੱਪਲਿੰਕ ਤੈਅ ਕਰਦਾ ਹੈ ਕਿ ਏਜੰਟ ਕਲਾਊਡ ਰੀਲੇਅ ਲਈ ਕਿਹੜਾ ਨੈੱਟਵਰਕ ਵਰਤਦਾ ਹੈ।",
+      "disconnectedFromWiFiNetwork": "WiFi ਨੈੱਟਵਰਕ ਤੋਂ ਡਿਸਕਨੈਕਟ ਹੋ ਗਿਆ।",
+      "modemConfigurationSaved": "ਮੋਡਮ ਸੰਰਚਨਾ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ।",
+      "failedToSaveModemConfiguration": "ਮੋਡਮ ਸੰਰਚਨਾ ਸੁਰੱਖਿਅਤ ਕਰਨ ਵਿੱਚ ਅਸਫਲ।",
+      "failedToUpdateUplinkPriority": "ਅੱਪਲਿੰਕ ਤਰਜੀਹ ਅੱਪਡੇਟ ਕਰਨ ਵਿੱਚ ਅਸਫਲ।",
+      "failedToUpdateShareSetting": "ਸਾਂਝਾਕਰਨ ਸੈਟਿੰਗ ਅੱਪਡੇਟ ਕਰਨ ਵਿੱਚ ਅਸਫਲ।",
+      "pairWithDrone": "ਡਰੋਨ ਨਾਲ ਜੋੜਾ ਬਣਾਓ"
+    },
+    "latency-breakdown-parts": {
+      "perHopMeasured": "ਪ੍ਰਤੀ-ਹੌਪ (ਮਾਪਿਆ)",
+      "receivePath": "ਪ੍ਰਾਪਤੀ ਮਾਰਗ",
+      "captureReceive": "ਕੈਪਚਰ → ਪ੍ਰਾਪਤੀ",
+      "encodePlusNetworkFromRVFC": "ਐਨਕੋਡ ਅਤੇ ਨੈੱਟਵਰਕ, rVFC captureTime ਤੋਂ receiveTime ਤੱਕ। ਰਿਮੋਟ ਸਰੋਤ ਲਈ captureTime, RTCP ਸੈਂਡਰ ਰਿਪੋਰਟਾਂ ਅਤੇ ਘੜੀ ਸਮਕਾਲੀਕਰਨ ਤੋਂ ਯੂਜ਼ਰ ਏਜੰਟ ਦਾ ਅੰਦਾਜ਼ਾ ਹੈ, ਇਸ ਲਈ ਇਹ ਅਸਲ ਹੈ ਪਰ ਸਿਰਫ਼ ਉਸ ਸਮਕਾਲੀਕਰਨ ਜਿੰਨਾ ਹੀ ਸਹੀ — ਅਤੇ ਸੈਸ਼ਨ ਦੇ ਪਹਿਲੇ ਸਕਿੰਟ ਲਈ ਵਰਤੋਂਯੋਗ ਨਹੀਂ। ਹਾਰਡਵੇਅਰ-ਐਨਕੋਡ ਕੀਤੇ ਪਬਲਿਸ਼ਰ ਵਾਲੇ ਸਿਹਤਮੰਦ LAN ਲਈ ਹਵਾਲਾ: ਸ਼ੁਰੂ ਤੋਂ ਅੰਤ ਤੱਕ ਲਗਭਗ 180 ms P50 / 240 ms P95। ਇਹ ਹਵਾਲਾ ਹੈ, ਇਸ ਲਿੰਕ ਦਾ ਮਾਪ ਨਹੀਂ।",
+      "receivePresent": "ਪ੍ਰਾਪਤੀ → ਪੇਸ਼ਕਾਰੀ",
+      "jitterBufferPlusDecodePlus": "ਜਿਟਰ ਬਫਰ ਅਤੇ ਡੀਕੋਡ ਅਤੇ ਕੰਪੋਜ਼ਿਟ। ਦੋਵੇਂ ਸਿਰੇ ਉਹ ਟਾਈਮਸਟੈਂਪ ਹਨ ਜੋ ਯੂਜ਼ਰ ਏਜੰਟ ਸਿੱਧੇ performance.now() ਘੜੀ 'ਤੇ ਦੱਸਦਾ ਹੈ।",
+      "decode": "· ਡੀਕੋਡ",
+      "rvfcProcessingDurationTheSummedDecode": "rVFC processingDuration: ਫਰੇਮ ਲਈ ਕੁੱਲ ਡੀਕੋਡ ਸਮਾਂ, ਡੀਕੋਡਰ ਵੱਲੋਂ ਦੱਸਿਆ ਗਿਆ।",
+      "bufferComposite": "· ਬਫਰ + ਕੰਪੋਜ਼ਿਟ",
+      "receiveToPresentMinusDecode": "ਪ੍ਰਾਪਤੀ-ਤੋਂ-ਪੇਸ਼ਕਾਰੀ ਘਟਾਓ ਡੀਕੋਡ। ਉੱਪਰਲੀਆਂ ਦੋ ਕਤਾਰਾਂ ਦਾ ਘਟਾਓ, ਨਿਰੀਖਣ ਨਹੀਂ — ਇਸ ਹੌਪ ਨੂੰ ਕੋਈ ਵੀ ਸਿੱਧਾ ਨਹੀਂ ਦੱਸਦਾ।",
+      "presentDisplay": "ਪੇਸ਼ਕਾਰੀ → ਡਿਸਪਲੇ",
+      "theVSyncTaxFrom": "v-sync ਦੇਰੀ, presentationTime ਤੋਂ expectedDisplayTime ਤੱਕ। expectedDisplayTime ਯੂਜ਼ਰ ਏਜੰਟ ਦੀ ਭਵਿੱਖਬਾਣੀ ਹੈ ਕਿ ਫਰੇਮ ਕਦੋਂ ਦਿਖਾਈ ਦੇਵੇਗਾ, ਇਹ ਰਿਪੋਰਟ ਨਹੀਂ ਕਿ ਇਹ ਦਿਖਾਈ ਦਿੱਤਾ।",
+      "endToEnd": "ਸ਼ੁਰੂ ਤੋਂ ਅੰਤ ਤੱਕ",
+      "captureToPresentedFrameAnchored": "ਕੈਪਚਰ ਤੋਂ ਪੇਸ਼ ਕੀਤੇ ਫਰੇਮ ਤੱਕ। captureTime 'ਤੇ ਅਧਾਰਿਤ, ਇਸ ਲਈ ਇਸ ਵਿੱਚ ਪਹਿਲੇ ਹੌਪ ਵਾਲੀ RTCP-ਸਮਕਾਲੀਕਰਨ ਚੇਤਾਵਨੀ ਲਾਗੂ ਹੁੰਦੀ ਹੈ। ਇਹ ਪ੍ਰਾਪਤੀ ਮਾਰਗ ਦਾ ਇਮਾਨਦਾਰ ਸ਼ੁਰੂ-ਤੋਂ-ਅੰਤ ਅੰਕੜਾ ਹੈ; ਇਹ ਰਾਊਂਡ-ਟ੍ਰਿਪ ਸਮੇਂ ਵਰਗੀ ਮਾਤਰਾ ਨਹੀਂ, ਜਿਸ ਵਿੱਚ ਕੋਈ ਕੈਪਚਰ ਜਾਂ ਐਨਕੋਡ ਹਿੱਸਾ ਨਹੀਂ ਹੁੰਦਾ।",
+      "bufferTarget": "ਬਫਰ ਟੀਚਾ",
+      "whatTheControlLoopCurrently": "ਕੰਟਰੋਲ ਲੂਪ ਇਸ ਵੇਲੇ ਰਿਸੀਵਰ ਦੇ ਜਿਟਰ ਬਫਰ ਤੋਂ ਕੀ ਮੰਗਦਾ ਹੈ, ਜੋ ਮਾਪੇ ਗਏ ਫ੍ਰੀਜ਼, RTP ਜਿਟਰ ਅਤੇ ਨੁਕਸਾਨ ਤੋਂ ਘੱਟੋ-ਘੱਟ 2 s ਠਹਿਰਾਅ ਨਾਲ ਚੁਣਿਆ ਜਾਂਦਾ ਹੈ। ਇਸ ਨੇ ਹਾਰਡਕੋਡ ਕੀਤੇ 50 ms ਦੀ ਥਾਂ ਲਈ ਜੋ ਕਿਸੇ ਮਾਪ ਤੋਂ ਨਹੀਂ ਆਇਆ ਸੀ। ਜ਼ੀਰੋ ਦਾ ਮਤਲਬ ਹੈ ਕਿ ਜਾਂ ਤਾਂ ਲੂਪ ਨੂੰ ਬਫਰ ਜੋੜਨ ਦਾ ਕੋਈ ਕਾਰਨ ਨਹੀਂ ਮਿਲਿਆ, ਜਾਂ ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਕੋਈ ਵੀ ਰਿਸੀਵਰ ਨੌਬ ਲਾਗੂ ਨਹੀਂ ਕਰਦਾ — ਜੇ ਫਰੇਮ ਆ ਰਹੇ ਹਨ ਅਤੇ ਉੱਪਰ ਬਫਰ+ਕੰਪੋਜ਼ਿਟ ਹੌਪ ਮਹੱਤਵਪੂਰਨ ਹੈ, ਤਾਂ ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਦੀ ਆਪਣੀ ਡੂੰਘਾਈ ਹੈ ਅਤੇ ਇੱਥੇ ਕਿਸੇ ਨੇ ਇਸ ਨੂੰ ਸੈੱਟ ਨਹੀਂ ਕੀਤਾ।"
+    },
+    "hardwareStatusPanel": {
+      "hardware": "ਹਾਰਡਵੇਅਰ",
+      "timeSinceTheLastDecoded": "ਆਖਰੀ ਡੀਕੋਡ ਕੀਤੇ MAVLink HEARTBEAT ਤੋਂ ਬਾਅਦ ਦਾ ਸਮਾਂ",
+      "noPeripheralsDetected": "ਕੋਈ ਪੈਰੀਫਿਰਲ ਨਹੀਂ ਮਿਲਿਆ",
+      "clickScanNowToDiscover": "ਜੁੜੇ ਹਾਰਡਵੇਅਰ ਨੂੰ ਲੱਭਣ ਲਈ ਹੁਣੇ ਸਕੈਨ ਕਰੋ 'ਤੇ ਕਲਿੱਕ ਕਰੋ",
+      "failedSteps": "ਅਸਫਲ ਪੜਾਅ",
+      "peripherals": "ਪੈਰੀਫ਼ੇਰਲ",
+      "theHardwareScanDidNot": "ਹਾਰਡਵੇਅਰ ਸਕੈਨ ਪੂਰਾ ਨਹੀਂ ਹੋਇਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਲਈ ਦੁਬਾਰਾ ਸਕੈਨ ਕਰੋ।"
+    },
+    "shared": {
+      "address": "ਪਤਾ",
+      "bus": "ਬੱਸ",
+      "capabilities": "ਸਮਰੱਥਾਵਾਂ"
+    },
+    "memoryPanel": {
+      "memory": "ਮੈਮੋਰੀ",
+      "swap": "ਅਦਲਾ-ਬਦਲੀ",
+      "system": "ਸਿਸਟਮ",
+      "perService": "ਪ੍ਰਤੀ ਸੇਵਾ"
+    },
+    "videoFeedCard": {
+      "captureScreenshot": "ਸਕ੍ਰੀਨਸ਼ੌਟ ਲਓ",
+      "pictureInPicture": "ਪਿਕਚਰ ਇਨ ਪਿਕਚਰ",
+      "reconnectVideo": "ਵੀਡੀਓ ਮੁੜ ਕਨੈਕਟ ਕਰੋ",
+      "popOutVideo": "ਵੀਡੀਓ ਵੱਖਰੀ ਵਿੰਡੋ ਵਿੱਚ ਖੋਲ੍ਹੋ"
+    },
+    "rcInputCard": {
+      "stale": "ਪੁਰਾਣਾ",
+      "rcInput": "RC ਇਨਪੁੱਟ",
+      "showLess": "ਘੱਟ ਦਿਖਾਓ"
+    },
+    "meshTab": {
+      "meshRX": "ਮੈਸ਼ ਅਤੇ RX",
+      "selfHealingWirelessMeshBetween": "ਗਰਾਊਂਡ ਨੋਡਾਂ ਵਿਚਕਾਰ ਸਵੈ-ਮੁਰੰਮਤ ਕਰਨ ਵਾਲਾ ਵਾਇਰਲੈੱਸ ਮੈਸ਼, ਅਤੇ ਇਸ ਰਾਹੀਂ ਚੱਲਣ ਵਾਲੀ ਵੰਡੀ ਹੋਈ ਰਿਸੀਵ ਸਤ੍ਹਾ। ਇਸ ਨੋਡ ਦੀ ਭੂਮਿਕਾ ਸੈੱਟ ਕਰੋ, ਫਿਰ ਗੁਆਂਢੀ ਨੋਡ, ਗੇਟਵੇ ਅਤੇ ਮਿਲਾਈਆਂ ਸਟ੍ਰੀਮਾਂ ਵੇਖੋ।",
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "physicalUiTab": {
+      "refreshesOncePerSecond": "ਹਰ ਸਕਿੰਟ ਤਾਜ਼ਾ ਹੁੰਦਾ ਹੈ",
+      "forgot": "ਭੁਲਾਇਆ ਗਿਆ ",
+      "noPairedBluetoothDevices": "ਕੋਈ ਜੋੜੇ ਗਏ Bluetooth ਡਿਵਾਈਸ ਨਹੀਂ।"
+    },
+    "nodeStatusHoverCard": {
+      "flightController": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ",
+      "onboardComputer": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ",
+      "groundStation": "ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ"
+    },
+    "servicesPanel": {
+      "services": "ਸੇਵਾਵਾਂ",
+      "noServiceDataAvailable": "ਕੋਈ ਸੇਵਾ ਡਾਟਾ ਉਪਲਬਧ ਨਹੀਂ"
+    },
+    "staleBanner": {
+      "reSubscribeToCloudHeartbeats": "ਕਲਾਊਡ ਹਾਰਟਬੀਟਾਂ ਲਈ ਮੁੜ ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ",
+      "reconnect": "ਮੁੜ ਕਨੈਕਟ ਕਰੋ"
+    },
+    "agentStatusCard": {
+      "controlPlaneRoundTripTime": "ਏਜੰਟ ਤੱਕ ਕੰਟਰੋਲ-ਪਲੇਨ ਰਾਊਂਡ-ਟ੍ਰਿਪ ਸਮਾਂ",
+      "timeSinceTheLastDecoded": "ਆਖਰੀ ਡੀਕੋਡ ਕੀਤੇ MAVLink HEARTBEAT ਤੋਂ ਬਾਅਦ ਦਾ ਸਮਾਂ"
+    },
+    "securitySection": {
+      "httpsGcsExampleCom": "https://gcs.example.com"
+    },
+    "dashboardPinUnlockCard": {
+      "thisGroundStationIsNot": "ਇਹ ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਪੇਅਰ ਨਹੀਂ ਹੈ",
+      "unlockedWithThisNodeApos": "ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਸੈਸ਼ਨ ਲਈ ਇਸ ਨੋਡ ਦੇ ਡੈਸ਼ਬੋਰਡ PIN ਨਾਲ ਅਨਲੌਕ ਕੀਤਾ ਗਿਆ।",
+      "missionControlHoldsNoKey": "Mission Control ਕੋਲ ਇਸ ਨੋਡ ਦੀ ਕੋਈ ਕੁੰਜੀ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਜਦੋਂ ਤੱਕ ਤੁਸੀਂ ਇਸਦਾ ਡੈਸ਼ਬੋਰਡ PIN ਨਹੀਂ ਦਿੰਦੇ, ਇਹ ਸਥਿਤੀ, ਰੇਡੀਓ ਅਤੇ ਨੈੱਟਵਰਕ ਡਾਟਾ ਨਹੀਂ ਦਿਖਾਏਗਾ। ਅਨਲੌਕ ਇਸ ਪੰਨੇ ਦੇ ਰੀਲੋਡ ਹੋਣ ਤੱਕ ਰਹਿੰਦਾ ਹੈ।",
+      "dashboardPIN": "ਡੈਸ਼ਬੋਰਡ PIN"
+    },
+    "requirementsFooter": {
+      "linuxRaspberryPiOSRecommended": "Linux (Raspberry Pi OS ਦੀ ਸਿਫ਼ਾਰਸ਼ ਕੀਤੀ ਜਾਂਦੀ ਹੈ)",
+      "ardupilotOrPX4FlightController": "ArduPilot ਜਾਂ PX4 ਫਲਾਈਟ ਕੰਟਰੋਲਰ"
+    },
+    "fleetNetworkPanel": {
+      "fleetNetwork": "ਫਲੀਟ ਨੈੱਟਵਰਕ"
+    },
+    "pairingConfirm": {
+      "codeGenerated": "ਕੋਡ ਬਣਾਇਆ ਗਿਆ"
+    },
+    "peripheralsTab": {
+      "match": "ਮੇਲ:",
+      "actions": "ਕਾਰਵਾਈਆਂ:",
+      "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ..."
+    },
+    "serviceTable": {
+      "dataStale": "ਡਾਟਾ ਪੁਰਾਣਾ ਹੈ",
+      "restartFailed": "{name} ਨੂੰ ਰੀਸਟਾਰਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ"
+    },
+    "calibrationLauncher": {
+      "sensorCalibration": "ਸੈਂਸਰ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "opensTheCalibrationWizardsIn": "Configure ਟੈਬ ਵਿੱਚ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਵਿਜ਼ਾਰਡ ਖੋਲ੍ਹਦਾ ਹੈ"
+    },
+    "cloudRelayNeedsAnAccount": "ਕਲਾਊਡ ਰਿਲੇ ਲਈ ਖਾਤੇ ਦੀ ਲੋੜ ਹੈ",
+    "signIn": "ਸਾਈਨ ਇਨ ਕਰੋ",
+    "toEnableMAVLinkMessageSigning": "MAVLink ਸੁਨੇਹਾ ਸਾਈਨਿੰਗ ਚਾਲੂ ਕਰਨ ਲਈ, ਡਰੋਨ ਕਨੈਕਟ ਹੋਣ ਤੋਂ ਬਾਅਦ Configure ਅਤੇ ਫਿਰ Security ਖੋਲ੍ਹੋ।"
   },
   "agent": {
     "status": "ਸਥਿਤੀ",
@@ -2825,7 +3266,7 @@
       "nudge": "ਚੁਣੇ ਵੇਅਪੌਇੰਟ ਨੂੰ ਖਿਸਕਾਓ",
       "copy": "ਵੇਅਪੌਇੰਟ ਕਾਪੀ ਕਰੋ",
       "paste": "ਵੇਅਪੌਇੰਟ ਪੇਸਟ ਕਰੋ",
-      "poi": "ਦਿਲਚਸਪੀ ਵਾਲਾ ਸਥਾਨ",
+      "poi": "ਦਿਲਚਸਪੀ ਬਿੰਦੂ ਟੂਲ",
       "outline": "Toggle plan outline",
       "inspector": "Toggle inspector",
       "focusMap": "Toggle both side panels",
@@ -2854,7 +3295,7 @@
     "paletteCategory": "ਪਲੈਨਰ",
     "olderMissionOnAircraft": "ਏਅਰਕ੍ਰਾਫਟ 'ਤੇ ਪੁਰਾਣਾ ਮਿਸ਼ਨ",
     "uploadFailed": "Upload failed",
-    "untitledMission": "Untitled Mission",
+    "untitledMission": "ਬਿਨਾਂ ਸਿਰਲੇਖ ਯੋਜਨਾ",
     "defaultAltitude": "Default Altitude",
     "defaultSpeed": "ਡਿਫਾਲਟ ਗਤੀ",
     "homePosition": "Home Position",
@@ -2950,13 +3391,13 @@
     "spacing": "Spacing",
     "corridorWidth": "Corridor Width",
     "loadMission": "Load Mission",
-    "downloadFromFc": "Download from FC",
+    "downloadFromFc": "ਡਰੋਨ ਤੋਂ ਡਾਊਨਲੋਡ ਕਰੋ",
     "exportMission": "ਮਿਸ਼ਨ ਐਕਸਪੋਰਟ",
     "importMission": "Import Mission",
     "clearMission": "Clear Mission",
     "missionSaved": "Mission saved",
-    "missionUploaded": "Mission uploaded to FC",
-    "missionDownloaded": "Mission downloaded from FC",
+    "missionUploaded": "ਮਿਸ਼ਨ ਡਰੋਨ 'ਤੇ ਅੱਪਲੋਡ ਹੋ ਗਿਆ",
+    "missionDownloaded": "ਮਿਸ਼ਨ ਡਰੋਨ ਤੋਂ ਡਾਊਨਲੋਡ ਹੋ ਗਿਆ",
     "downloadFailed": "Download failed",
     "format": "Format",
     "fileName": "File Name",
@@ -2984,7 +3425,7 @@
     "direction": "Direction",
     "startAngle": "Start Angle",
     "speedMs": "Speed (m/s)",
-    "pathPoints": "Path Points",
+    "pathPoints": "ਮਾਰਗ ਬਿੰਦੂ",
     "drawCorridorHint": "Draw corridor path on map",
     "drawCorridorPath": "Draw Corridor Path",
     "landingPoint": "Landing Point",
@@ -3054,7 +3495,7 @@
     "exportPlanQgc": "Export .plan (QGC)",
     "exportKml": "Export KML",
     "exportCsv": "Export CSV",
-    "discardChanges": "Discard Changes",
+    "discardChanges": "ਕੀ ਇਹ ਯੋਜਨਾ ਸਾਫ਼ ਕਰਨੀ ਹੈ?",
     "relativeHome": "Relative (Home)",
     "absoluteMsl": "Absolute (MSL)",
     "terrainFollowing": "Terrain Following",
@@ -3096,11 +3537,11 @@
     "redo": "Redo",
     "clearAll": "Clear All",
     "keyboardShortcuts": "Keyboard Shortcuts",
-    "discardChangesBody": "This will remove all waypoints and mission data. This action cannot be undone.",
+    "discardChangesBody": "ਖੁੱਲ੍ਹੀ ਯੋਜਨਾ ਵਿੱਚੋਂ ਹਰ ਵੇਅਪੁਆਇੰਟ, ਆਕਾਰ, ਜੀਓਫੈਂਸ ਅਤੇ ਰੈਲੀ ਪੁਆਇੰਟ ਹਟਾ ਦਿੰਦਾ ਹੈ। ਅਣਕੀਤਾ (Ctrl+Z) ਉਹਨਾਂ ਨੂੰ ਵਾਪਸ ਲਿਆਉਂਦਾ ਹੈ, ਅਤੇ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸੁਰੱਖਿਅਤ ਕਾਪੀ ਤੁਹਾਡੇ ਸੇਵ ਕਰਨ ਤੱਕ ਜਿਉਂ ਦੀ ਤਿਉਂ ਰਹਿੰਦੀ ਹੈ।",
     "discard": "Discard",
-    "uploadBlockedErrors": "Fix {count} validation error(s) before uploading",
+    "uploadBlockedErrors": "ਅੱਪਲੋਡ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ {count} ਪ੍ਰਮਾਣਿਕਤਾ ਗਲਤੀ(ਆਂ) ਠੀਕ ਕਰੋ",
     "checklist": {
-      "title": "ਉਡਾਣ ਤੋਂ ਪਹਿਲਾਂ ਦੀ ਚੈੱਕਲਿਸਟ",
+      "title": "ਮਿਸ਼ਨ ਤਿਆਰੀ ਚੈੱਕਲਿਸਟ",
       "ready": "ਤਿਆਰ",
       "progress": "{checked}/{total}",
       "clear": "ਸਾਫ਼ ਕਰੋ",
@@ -3351,28 +3792,28 @@
       "elevationFailed": "ਉਚਾਈ ਡਾਊਨਲੋਡ ਅਸਫਲ: {reason}"
     },
     "commands": {
-      "sendToVehicle": "Send to vehicle",
-      "downloadFromDrone": "Download mission from drone",
+      "sendToVehicle": "ਡਰੋਨ 'ਤੇ ਅੱਪਲੋਡ ਕਰੋ",
+      "downloadFromDrone": "ਡਰੋਨ ਤੋਂ ਮਿਸ਼ਨ ਡਾਊਨਲੋਡ ਕਰੋ",
       "importBoundary": "Import boundary (KML/SHP)",
-      "exportNative": "Export .altmission (lossless)",
+      "exportNative": ".altmission ਨਿਰਯਾਤ ਕਰੋ (ਬਿਨਾਂ ਨੁਕਸਾਨ)",
       "exportWaypoints": "Export .waypoints",
       "exportPlan": "Export .plan (QGC)",
       "exportKml": "Export KML",
-      "exportKmz": "Export KMZ",
+      "exportKmz": "KMZ ਨਿਰਯਾਤ ਕਰੋ",
       "exportCsv": "Export CSV",
       "exportBrief": "Export flight brief (PDF)",
       "copyShareLink": "Copy share link",
       "reverseWaypoints": "Reverse waypoints",
       "transformMission": "Transform mission",
       "simulate": "Simulate in 3D",
-      "discardPlan": "Discard plan",
+      "discardPlan": "ਯੋਜਨਾ ਸਾਫ਼ ਕਰੋ",
       "dock": {
         "altitude": "Show altitude profile",
         "terrain": "Show terrain profile",
         "issues": "Show mission issues",
         "energy": "Show energy estimate",
         "site": "Show site conditions",
-        "checklist": "Show pre-flight checklist"
+        "checklist": "ਮਿਸ਼ਨ ਤਿਆਰੀ ਚੈੱਕਲਿਸਟ ਦਿਖਾਓ"
       },
       "toggleView3d": "Toggle 3D view"
     },
@@ -3407,7 +3848,7 @@
         "acceptRadius": "Accept radius",
         "frame": "Altitude frame",
         "frameRel": "REL",
-        "frameRelTitle": "Relative to home",
+        "frameRelTitle": "ਹੋਮ ਦੇ ਸਾਪੇਖ",
         "frameMsl": "MSL",
         "frameMslTitle": "Above mean sea level",
         "frameTerrain": "Terrain",
@@ -3488,7 +3929,7 @@
         "collapseAction": "Hide action settings",
         "expandAction": "Show action settings",
         "resumeFromHere": "ਇੱਥੋਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ…",
-        "resumeFirstReason": "ਮਿਸ਼ਨ ਇੱਥੋਂ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ, ਇਸ ਲਈ ਆਮ ਵਾਂਗ ਭੇਜੋ"
+        "resumeFirstReason": "ਮਿਸ਼ਨ ਇੱਥੋਂ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ, ਇਸ ਲਈ ਇਸਨੂੰ ਆਮ ਵਾਂਗ ਅੱਪਲੋਡ ਕਰੋ"
       },
       "batch": {
         "hint": "Ctrl-click or Shift-click waypoints to edit several at once.",
@@ -3575,7 +4016,7 @@
       },
       "label": "Inspector",
       "vehicle": {
-        "title": "ਵਾਹਨ",
+        "title": "ਡਰੋਨ",
         "autopilotLabel": "ਆਟੋਪਾਇਲਟ",
         "typeLabel": "ਕਿਸਮ",
         "autopilot": {
@@ -3599,7 +4040,7 @@
         "groundMsl": "{alt} MSL",
         "groundUnknown": "ਜ਼ਮੀਨ ਅਣਜਾਣ",
         "notSet": "ਸੈੱਟ ਨਹੀਂ",
-        "useVehicleHome": "ਵਾਹਨ ਦਾ ਹੋਮ ਵਰਤੋ",
+        "useVehicleHome": "ਡਰੋਨ ਦਾ ਹੋਮ ਵਰਤੋ",
         "transitAlt": "ਟ੍ਰਾਂਜ਼ਿਟ ਉਚਾਈ",
         "transitHint": "ਪਹਿਲੇ ਵੇਅਪੁਆਇੰਟ ਤੋਂ ਪਹਿਲਾਂ ਅਤੇ ਵਾਪਸੀ ਵੇਲੇ ਇਸ ਉਚਾਈ ਤੱਕ ਚੜ੍ਹੋ।",
         "off": "ਬੰਦ"
@@ -3641,52 +4082,53 @@
       "poiItem": "POI {n}",
       "rowMenu": "ਵੇਅਪੁਆਇੰਟ {n} ਦੀਆਂ ਕਾਰਵਾਈਆਂ",
       "resumeFromHere": "ਇੱਥੋਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ…",
-      "resumeFirstReason": "ਯੋਜਨਾ ਇੱਥੋਂ ਹੀ ਸ਼ੁਰੂ ਹੁੰਦੀ ਹੈ; ਇਸਨੂੰ ਆਮ ਵਾਂਗ ਭੇਜੋ"
+      "resumeFirstReason": "ਯੋਜਨਾ ਇੱਥੋਂ ਸ਼ੁਰੂ ਹੁੰਦੀ ਹੈ; ਇਸਨੂੰ ਆਮ ਵਾਂਗ ਅੱਪਲੋਡ ਕਰੋ"
     },
     "bar": {
       "plans": "Plans",
       "plansTitle": "Plan library (Ctrl/Cmd+O)",
       "nameLabel": "Plan name",
-      "vehicle": "Vehicle",
-      "issues": "{count, plural, one {# issue} other {# issues}}",
+      "vehicle": "ਡਰੋਨ",
+      "issues": "{count, plural, one {# ਗਲਤੀ} other {# ਗਲਤੀਆਂ}}",
       "issuesTitle": "Open mission issues",
       "save": "Save",
-      "send": "Send to vehicle",
-      "sending": "Sending…",
-      "sent": "Sent ✓",
-      "fixIssues": "Fix {count, plural, one {# issue} other {# issues}}",
-      "noVehicle": "Connect a vehicle to send",
-      "emptyMission": "Add waypoints to send",
+      "send": "ਡਰੋਨ 'ਤੇ ਅੱਪਲੋਡ ਕਰੋ",
+      "sending": "ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…",
+      "sent": "ਅੱਪਲੋਡ ਹੋ ਗਿਆ ✓",
+      "fixIssues": "{count, plural, one {# ਗਲਤੀ} other {# ਗਲਤੀਆਂ}} ਠੀਕ ਕਰੋ",
+      "noVehicle": "ਅੱਪਲੋਡ ਕਰਨ ਲਈ ਕਨੈਕਟ ਕੀਤਾ ਡਰੋਨ ਚੁਣੋ",
+      "emptyMission": "ਅੱਪਲੋਡ ਕਰਨ ਲਈ ਵੇਅਪੁਆਇੰਟ ਜੋੜੋ",
       "more": "More plan actions",
-      "downloadFromDrone": "Download from drone",
-      "exportNative": "Export (.altmission, lossless)",
-      "exportKmz": "Export (.kmz)",
+      "downloadFromDrone": "ਡਰੋਨ ਤੋਂ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "exportNative": ".altmission ਨਿਰਯਾਤ ਕਰੋ (ਬਿਨਾਂ ਨੁਕਸਾਨ)",
+      "exportKmz": "KMZ ਨਿਰਯਾਤ ਕਰੋ",
       "saveAs": "Save as new plan",
       "reverse": "Reverse waypoints",
       "transform": "Transform mission…",
       "simulate": "Simulate in 3D",
-      "discard": "Discard plan"
+      "discard": "ਯੋਜਨਾ ਸਾਫ਼ ਕਰੋ",
+      "sendingProgress": "ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ {sent}/{total}"
     },
     "send": {
-      "title": "Send to vehicle",
-      "intro": "Choose what to send to the selected vehicle.",
+      "title": "ਡਰੋਨ 'ਤੇ ਅੱਪਲੋਡ ਕਰੋ",
+      "intro": "ਚੁਣੋ ਕਿ ਚੁਣੇ ਗਏ ਡਰੋਨ 'ਤੇ ਕੀ ਅੱਪਲੋਡ ਕਰਨਾ ਹੈ।",
       "mission": "Mission ({count, plural, one {# item} other {# items}})",
       "geofence": "Geofence",
       "rally": "Rally points ({count})",
       "blocked": "{count, plural, one {# issue blocks} other {# issues block}} the mission",
       "reviewIssues": "Review issues",
-      "checklist": "Pre-flight checklist {done}/{total}",
+      "checklist": "ਮਿਸ਼ਨ ਤਿਆਰੀ ਚੈੱਕਲਿਸਟ {done}/{total}",
       "openChecklist": "Open checklist",
-      "nothing": "Nothing to send. Add waypoints, a geofence or rally points first.",
-      "send": "Send",
-      "sending": "Sending…",
+      "nothing": "ਅੱਪਲੋਡ ਕਰਨ ਲਈ ਕੁਝ ਨਹੀਂ। ਪਹਿਲਾਂ ਵੇਅਪੁਆਇੰਟ, ਜੀਓਫੈਂਸ ਜਾਂ ਰੈਲੀ ਪੁਆਇੰਟ ਜੋੜੋ।",
+      "send": "ਅੱਪਲੋਡ ਕਰੋ",
+      "sending": "ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…",
       "cancel": "Cancel",
       "close": "Close",
-      "statusRunning": "Sending",
-      "statusOk": "Sent",
+      "statusRunning": "ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ",
+      "statusOk": "ਅੱਪਲੋਡ ਹੋ ਗਿਆ",
       "statusFailed": "Failed",
-      "target": "Sends to {name}",
-      "targetMismatch": "This plan is assigned to {plan}. Sending goes to {target}.",
+      "target": "{name} 'ਤੇ ਅੱਪਲੋਡ ਹੁੰਦਾ ਹੈ",
+      "targetMismatch": "ਇਹ ਯੋਜਨਾ {plan} ਨੂੰ ਸੌਂਪੀ ਗਈ ਹੈ। ਅੱਪਲੋਡ {target} 'ਤੇ ਜਾਵੇਗਾ।",
       "switchTarget": "Switch to {plan}",
       "missionInFlight": "ਅੱਪਲੋਡ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਮਿਸ਼ਨ ਰੋਕੋ",
       "profileMismatch": "{plan} ਲਈ ਯੋਜਨਾ; ਟੀਚਾ {target} ਹੈ",
@@ -3700,6 +4142,24 @@
         "plane": "ਜਹਾਜ਼",
         "vtol": "VTOL",
         "rover": "ਰੋਵਰ"
+      },
+      "progress": "ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ {sent}/{total}",
+      "flyMission": "ਇਹ ਮਿਸ਼ਨ ਉਡਾਓ",
+      "result": {
+        "noAnswer": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਜਵਾਬ ਨਹੀਂ ਦਿੱਤਾ। ਲਿੰਕ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+        "stalled": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਮਿਸ਼ਨ ਆਈਟਮਾਂ ਮੰਗਣੀਆਂ ਬੰਦ ਕਰ ਦਿੱਤੀਆਂ। ਲਿੰਕ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+        "notConnected": "ਡਰੋਨ ਕਨੈਕਟ ਨਹੀਂ ਹੈ।",
+        "error": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਮਿਸ਼ਨ ਵਿੱਚ ਗਲਤੀ ਦੱਸੀ।",
+        "unsupportedFrame": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਇਸ ਮਿਸ਼ਨ ਵਿੱਚ ਵਰਤੇ ਗਏ ਉਚਾਈ ਹਵਾਲੇ ਨੂੰ ਸਮਰਥਨ ਨਹੀਂ ਦਿੰਦਾ।",
+        "unsupported": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਇਸ ਮਿਸ਼ਨ ਵਿੱਚ ਵਰਤੀ ਗਈ ਕਮਾਂਡ ਨੂੰ ਸਮਰਥਨ ਨਹੀਂ ਦਿੰਦਾ।",
+        "noSpace": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਇੰਨੇ ਲੰਬੇ ਮਿਸ਼ਨ ਲਈ ਥਾਂ ਨਹੀਂ ਹੈ।",
+        "invalid": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੂੰ ਮਿਸ਼ਨ ਵਿੱਚ ਇੱਕ ਅਵੈਧ ਮੁੱਲ ਮਿਲਿਆ।",
+        "invalidParam": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਕਿਸੇ ਮਿਸ਼ਨ ਆਈਟਮ ਦੀ ਸੈਟਿੰਗ ਰੱਦ ਕਰ ਦਿੱਤੀ।",
+        "invalidPosition": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਵੇਪੁਆਇੰਟ ਦੀ ਸਥਿਤੀ ਰੱਦ ਕਰ ਦਿੱਤੀ।",
+        "invalidSequence": "ਮਿਸ਼ਨ ਆਈਟਮਾਂ ਗਲਤ ਕ੍ਰਮ ਵਿੱਚ ਪਹੁੰਚੀਆਂ। ਦੁਬਾਰਾ ਅੱਪਲੋਡ ਕਰਕੇ ਦੇਖੋ।",
+        "denied": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਇਸ ਸਮੇਂ ਮਿਸ਼ਨ ਸਵੀਕਾਰ ਨਹੀਂ ਕਰ ਰਿਹਾ।",
+        "cancelled": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਅੱਪਲੋਡ ਰੱਦ ਕਰ ਦਿੱਤਾ।",
+        "unknown": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਮਿਸ਼ਨ ਰੱਦ ਕਰ ਦਿੱਤਾ (ਕੋਡ {code})।"
       }
     },
     "dock": {
@@ -3711,7 +4171,7 @@
         "issues": "Issues",
         "energy": "Energy",
         "site": "Site",
-        "checklist": "Checklist"
+        "checklist": "ਜਾਂਚ ਸੂਚੀ"
       },
       "collapse": "Collapse",
       "stats": {
@@ -3727,27 +4187,27 @@
         "maxAboveHome": "ਹੋਮ ਤੋਂ ਵੱਧ ਤੋਂ ਵੱਧ {value}",
         "maxAboveHomeTitle": "ਉਡਾਣ ਦੌਰਾਨ ਹੋਮ ਤੋਂ ਸਭ ਤੋਂ ਉੱਚਾ ਬਿੰਦੂ"
       },
-      "issueBadge": "{errors} errors, {warnings} warnings",
+      "issueBadge": "{errors} ਗਲਤੀਆਂ, {warnings} ਚੇਤਾਵਨੀਆਂ",
       "checklistBadge": "{checked} of {total} checked",
       "noWaypoints": "Add waypoints to the plan to see this.",
       "needTwoWaypoints": "Add at least two waypoints to see the terrain profile.",
       "siteEmpty": "Add a waypoint or move the map to see site conditions.",
       "warningCount": "{count, plural, one {# warning} other {# warnings}}",
-      "errorCount": "{count, plural, one {# error} other {# errors}}",
-      "errorWarningCount": "{errors, plural, one {# error} other {# errors}}, {warnings, plural, one {# warning} other {# warnings}}"
+      "errorCount": "{count, plural, one {# ਗਲਤੀ} other {# ਗਲਤੀਆਂ}}",
+      "errorWarningCount": "{errors, plural, one {# ਗਲਤੀ} other {# ਗਲਤੀਆਂ}}, {warnings, plural, one {# ਚੇਤਾਵਨੀ} other {# ਚੇਤਾਵਨੀਆਂ}}"
     },
     "overlays": {
-      "title": "KML overlays",
-      "close": "Close overlay panel",
-      "empty": "No overlays loaded. Add a KML or KMZ file to display on the map.",
+      "title": "ਨਕਸ਼ਾ ਓਵਰਲੇ",
+      "close": "ਓਵਰਲੇ ਪੈਨਲ ਬੰਦ ਕਰੋ",
+      "empty": "ਕੋਈ ਓਵਰਲੇ ਲੋਡ ਨਹੀਂ ਹੈ। ਨਕਸ਼ੇ 'ਤੇ ਦਿਖਾਉਣ ਲਈ KML ਜਾਂ KMZ ਫ਼ਾਈਲ ਜੋੜੋ।",
       "noGeometry": "No geometry found in file.",
       "parseFailed": "Failed to parse file. Check format.",
-      "add": "Add overlay",
-      "hide": "Hide overlay",
-      "show": "Show overlay",
-      "remove": "Remove overlay",
+      "add": "ਓਵਰਲੇ ਜੋੜੋ",
+      "hide": "ਓਵਰਲੇ ਲੁਕਾਓ",
+      "show": "ਓਵਰਲੇ ਦਿਖਾਓ",
+      "remove": "ਓਵਰਲੇ ਹਟਾਓ",
       "features": "{count, plural, one {# feature} other {# features}}",
-      "opacity": "Overlay opacity"
+      "opacity": "ਓਵਰਲੇ ਧੁੰਦਲਾਪਣ"
     },
     "rail": {
       "ariaLabel": "Map tools",
@@ -3755,7 +4215,7 @@
       "drawTools": "Draw tools",
       "markerTools": "Marker tools",
       "patterns": "Patterns",
-      "layers": "Map layers",
+      "layers": "ਨਕਸ਼ਾ ਓਵਰਲੇ",
       "offlineArea": "Download area for offline",
       "gallery": {
         "ariaLabel": "Pattern gallery",
@@ -3801,7 +4261,7 @@
         "tolerance": "ਸਹਿਣਸ਼ੀਲਤਾ",
         "maxClimb": "ਵੱਧ ਤੋਂ ਵੱਧ ਚੜ੍ਹਾਈ",
         "maxDescent": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਤਰਾਈ",
-        "terrainHint": "ਉਚਾਈਆਂ ਹਰ ਵੇਅਪੁਆਇੰਟ ਹੇਠਲੀ ਜ਼ਮੀਨ ਤੋਂ ਹਨ। ਵਾਹਨ ਨੂੰ ਭੂ-ਭਾਗ ਡਾਟਾ ਚਾਹੀਦਾ ਹੈ।",
+        "terrainHint": "ਉਚਾਈਆਂ ਹਰ ਵੇਪੁਆਇੰਟ ਦੇ ਹੇਠਾਂ ਵਾਲੀ ਜ਼ਮੀਨ ਤੋਂ ਹਨ। ਡਰੋਨ ਨੂੰ ਭੂਮੀ ਡਾਟਾ ਚਾਹੀਦਾ ਹੈ।",
         "followHint": "ਸਮੁੰਦਰ ਤਲ ਤੋਂ ਉਚਾਈਆਂ ਜੋ ਹਰ ਲੈੱਗ 'ਤੇ ਜ਼ਮੀਨ ਤੋਂ ਉਚਾਈ ਬਣਾਈ ਰੱਖਦੀਆਂ ਹਨ।",
         "sampling": "ਭੂ-ਭਾਗ ਦੇ ਨਮੂਨੇ ਲਏ ਜਾ ਰਹੇ ਹਨ…",
         "unavailable": "ਇੱਥੇ ਭੂ-ਭਾਗ ਉਪਲਬਧ ਨਹੀਂ। ਹੋਮ ਤੋਂ ਉੱਪਰ ਵਰਤੋ",
@@ -3858,7 +4318,7 @@
       "roiNeedsWaypoint": "ROI ਸੈੱਟ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਵੇਪੁਆਇੰਟ ਜੋੜੋ",
       "missionCleared": "ਮਿਸ਼ਨ ਸਾਫ਼ ਕੀਤਾ",
       "waypointsReversed": "ਵੇਪੁਆਇੰਟਾਂ ਦਾ ਕ੍ਰਮ ਉਲਟਾਇਆ",
-      "missionUploaded": "ਮਿਸ਼ਨ FC 'ਤੇ ਅੱਪਲੋਡ ਹੋਇਆ",
+      "missionUploaded": "ਮਿਸ਼ਨ ਡਰੋਨ 'ਤੇ ਅੱਪਲੋਡ ਹੋ ਗਿਆ",
       "uploadFailedReason": "ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਅਸਫਲ: {reason}",
       "uploadFailed": "ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਅਸਫਲ",
       "resumeUploaded": "WP {n} ਤੋਂ ਮੁੜ ਸ਼ੁਰੂ ਹੋਣ ਵਾਲਾ ਮਿਸ਼ਨ ਅੱਪਲੋਡ ਹੋਇਆ",
@@ -3886,7 +4346,7 @@
       "plannedHome": "ਯੋਜਨਾਬੱਧ ਹੋਮ · {ground}",
       "groundMsl": "{m} ਮੀ MSL",
       "groundUnknown": "ਜ਼ਮੀਨ ਦੀ ਉਚਾਈ ਅਣਜਾਣ",
-      "vehicleHome": "ਵਾਹਨ ਦਾ ਹੋਮ",
+      "vehicleHome": "ਡਰੋਨ ਹੋਮ",
       "useAsPlannedHome": "ਯੋਜਨਾਬੱਧ ਹੋਮ ਵਜੋਂ ਵਰਤੋ",
       "transitAlt": "↑ {m} ਮੀ",
       "clipsTerrain": "ਭੂਮੀ ਨੂੰ {m} ਮੀ ਕੱਟਦਾ ਹੈ",
@@ -3901,6 +4361,74 @@
       "title": "Switch between the 2D map and the 3D view (3)",
       "drawIn2d": "Shapes are drawn on the 2D map.",
       "hint": "Drag a waypoint to move it · Alt+drag to change altitude · Right-drag to tilt"
+    },
+    "issue": {
+      "wpPX4HasNoTerrainAltitude": "WP{v0}: PX4 ਵਿੱਚ ਭੂਮੀ ਉਚਾਈ ਫ੍ਰੇਮ ਨਹੀਂ ਹੈ। ਹੋਮ ਤੋਂ ਉੱਪਰ ਵਰਤੋ, ਜਾਂ ਪੈਟਰਨਾਂ 'ਤੇ ਭੂਮੀ ਦਾ ਪਾਲਣ ਕਰੋ",
+      "terrainFrameWaypointsNeedTerrainData": "ਭੂਮੀ-ਫ੍ਰੇਮ ਵੇਪੁਆਇੰਟਾਂ ਲਈ ਵਾਹਨ 'ਤੇ ਭੂਮੀ ਡੇਟਾ ਚਾਹੀਦਾ ਹੈ, ਪਰ TERRAIN_ENABLE 0 ਹੈ: ਵਾਹਨ RTL 'ਤੇ ਬਦਲ ਜਾਵੇਗਾ",
+      "needsTerrainDataOnTheVehicle": "ਵਾਹਨ 'ਤੇ ਭੂਮੀ ਡੇਟਾ ਚਾਹੀਦਾ ਹੈ (TERRAIN_ENABLE ਅਤੇ SD ਕਾਰਡ ਜਾਂ GCS ਭੂਮੀ)",
+      "geofenceUploadsItemsPX4StoresAt": "ਜੀਓਫੈਂਸ {v0} ਆਈਟਮਾਂ ਅੱਪਲੋਡ ਕਰਦੀ ਹੈ; PX4 ਵੱਧ ਤੋਂ ਵੱਧ {v1} ਸਟੋਰ ਕਰਦਾ ਹੈ",
+      "rallyPointsPX4StoresAtMost": "{v0} ਰੈਲੀ ਪੁਆਇੰਟ; PX4 ਵੱਧ ਤੋਂ ਵੱਧ {v1} ਸਟੋਰ ਕਰਦਾ ਹੈ",
+      "missionUploadsItemsIncludingHomeArduPilot": "ਮਿਸ਼ਨ ਹੋਮ ਸਮੇਤ {v0} ਆਈਟਮਾਂ ਅੱਪਲੋਡ ਕਰਦਾ ਹੈ; ArduPilot ਬੋਰਡ {v1} ਰੱਖਦੇ ਹਨ",
+      "missionUploadsItemsIncludingHomeArduPilot2": "ਮਿਸ਼ਨ ਹੋਮ ਸਮੇਤ {v0} ਆਈਟਮਾਂ ਅੱਪਲੋਡ ਕਰਦਾ ਹੈ। ArduPilot ਬੋਰਡ {v1} ਰੱਖਦੇ ਹਨ: ਆਪਣਾ ਬੋਰਡ ਜਾਂਚੋ",
+      "wpTurnsIsRoundedDownTo": "WP{v0}: {v1} ਚੱਕਰਾਂ ਨੂੰ ਘਟਾ ਕੇ {v2} ਚੱਕਰ ਕੀਤਾ ਜਾਂਦਾ ਹੈ",
+      "wpAMLoiterRadiusIs": "WP{v0}: {v1}m ਲੋਇਟਰ ਰੇਡੀਅਸ 10 m ਦੇ ਕਦਮਾਂ ਵਿੱਚ ਸਟੋਰ ਹੁੰਦਾ ਹੈ",
+      "wpOutsideGeofencePolygon": "WP{v0}: ਜੀਓਫੈਂਸ ਬਹੁਭੁਜ ਤੋਂ ਬਾਹਰ",
+      "wpMFromCenterExceedsM": "WP{v0}: ਕੇਂਦਰ ਤੋਂ {v1}m, {v2}m ਰੇਡੀਅਸ ਤੋਂ ਵੱਧ",
+      "wpOutsideInclusionZone": "WP{v0}: ਸ਼ਾਮਲ ਜ਼ੋਨ ਤੋਂ ਬਾਹਰ",
+      "wpInsideANoFlyExclusion": "WP{v0}: ਨੋ-ਫਲਾਈ ਬਾਹਰੀ ਜ਼ੋਨ ਦੇ ਅੰਦਰ",
+      "geofencePolygonIsSelfIntersectingContainment": "ਜੀਓਫੈਂਸ ਬਹੁਭੁਜ ਆਪਣੇ ਆਪ ਨੂੰ ਕੱਟਦਾ ਹੈ। ਘੇਰੇ ਦੀਆਂ ਜਾਂਚਾਂ ਗਲਤ ਹੋ ਸਕਦੀਆਂ ਹਨ।",
+      "rallyInvalidCoordinates": "ਰੈਲੀ {v0}: ਅਵੈਧ ਕੋਆਰਡੀਨੇਟ",
+      "rallyOutsideGeofencePolygon": "ਰੈਲੀ {v0}: ਜੀਓਫੈਂਸ ਬਹੁਭੁਜ ਤੋਂ ਬਾਹਰ",
+      "rallyOutsideGeofenceCircle": "ਰੈਲੀ {v0}: ਜੀਓਫੈਂਸ ਚੱਕਰ ਤੋਂ ਬਾਹਰ",
+      "rallyOutsideInclusionZone": "ਰੈਲੀ {v0}: ਸ਼ਾਮਲ ਜ਼ੋਨ ਤੋਂ ਬਾਹਰ",
+      "rallyInsideANoFlyExclusion": "ਰੈਲੀ {v0}: ਨੋ-ਫਲਾਈ ਬਾਹਰੀ ਜ਼ੋਨ ਦੇ ਅੰਦਰ",
+      "rallyAltitudeMExceedsFenceCeiling": "ਰੈਲੀ {v0}: ਉਚਾਈ {v1}m ਫੈਂਸ ਸੀਮਾ {v2}m ਤੋਂ ਵੱਧ ਹੈ",
+      "wpMoreThanDOJUMPsOnly": "WP{v0}: {v1} ਤੋਂ ਵੱਧ DO_JUMP। ਜ਼ਿਆਦਾਤਰ ਬੋਰਡਾਂ 'ਤੇ ਸਿਰਫ਼ ਪਹਿਲੇ {v2} ਜੰਪ ਟਰੈਕ ਹੁੰਦੇ ਹਨ",
+      "wpDOJUMPHasNoValid": "WP{v0}: DO_JUMP ਦਾ ਕੋਈ ਵੈਧ ਟੀਚਾ ਵੇਪੁਆਇੰਟ ਨਹੀਂ ਹੈ",
+      "wpDOJUMPTargetsWPBut": "WP{v0}: DO_JUMP ਦਾ ਟੀਚਾ WP{v1} ਹੈ, ਪਰ PX4 ਸਿਰਫ਼ ਪਿਛਲੀ ਆਈਟਮ 'ਤੇ ਵਾਪਸ ਜੰਪ ਕਰਦਾ ਹੈ",
+      "wpDOJUMPRepeatArduPilotNever": "WP{v0}: DO_JUMP ਦੁਹਰਾਓ {v1}: ArduPilot ਇਹ ਜੰਪ ਕਦੇ ਨਹੀਂ ਲੈਂਦਾ (ਸਿਰਫ਼ -1 ਹਮੇਸ਼ਾ ਦੁਹਰਾਉਂਦਾ ਹੈ)",
+      "wpDOJUMPRepeatPX4Rejects": "WP{v0}: DO_JUMP ਦੁਹਰਾਓ {v1}: PX4 -1 ਤੋਂ ਇਲਾਵਾ ਨੈਗੇਟਿਵ ਦੁਹਰਾਓ ਰੱਦ ਕਰਦਾ ਹੈ",
+      "wpDOJUMPLoopsBackTo": "WP{v0}: DO_JUMP ਹਮੇਸ਼ਾ ਲਈ WP{v1} 'ਤੇ ਵਾਪਸ ਲੂਪ ਕਰਦਾ ਹੈ — ਮਿਸ਼ਨ ਕਦੇ ਲੈਂਡਿੰਗ ਤੱਕ ਨਹੀਂ ਪਹੁੰਚਦਾ",
+      "wpDOJUMPRepeatCountIs": "WP{v0}: DO_JUMP ਦੁਹਰਾਓ ਗਿਣਤੀ ਨੈਗੇਟਿਵ ਹੈ — ਜੰਪ ਹਮੇਸ਼ਾ ਦੁਹਰਾਉਂਦਾ ਹੈ",
+      "wpDOJUMPTargetsWPWhich": "WP{v0}: DO_JUMP ਦਾ ਟੀਚਾ WP{v1} ਹੈ, ਜੋ WP{v2} 'ਤੇ ਮਿਸ਼ਨ ਖਤਮ ਹੋਣ ਤੋਂ ਬਾਅਦ ਹੈ",
+      "wpToWPTheStraightLeg": "WP{v0} ਤੋਂ WP{v1}: ਸਿੱਧਾ ਹਿੱਸਾ ਜੀਓਫੈਂਸ ਤੋਂ ਬਾਹਰ ਜਾਂਦਾ ਹੈ",
+      "wpToWPTheStraightLeg2": "WP{v0} ਤੋਂ WP{v1}: ਸਿੱਧਾ ਹਿੱਸਾ ਨੋ-ਫਲਾਈ ਬਾਹਰੀ ਜ਼ੋਨ ਨੂੰ ਪਾਰ ਕਰਦਾ ਹੈ",
+      "wpToWPMAlongThe": "WP{v0} ਤੋਂ WP{v1}: ਹਿੱਸੇ ਦੇ ਨਾਲ {v2} {v3}m (ਘੱਟੋ-ਘੱਟ: {v4}m)",
+      "missionHasNoWaypoints": "ਮਿਸ਼ਨ ਵਿੱਚ ਕੋਈ ਵੇਪੁਆਇੰਟ ਨਹੀਂ ਹੈ",
+      "missionHasOnly1WaypointAdd": "ਮਿਸ਼ਨ ਵਿੱਚ ਸਿਰਫ਼ 1 ਵੇਪੁਆਇੰਟ ਹੈ। ਸਾਰਥਕ ਮਿਸ਼ਨ ਲਈ ਘੱਟੋ-ਘੱਟ 2 ਜੋੜੋ।",
+      "firstWaypointIsNotTAKEOFFArduCopter": "ਪਹਿਲਾ ਵੇਪੁਆਇੰਟ TAKEOFF ਨਹੀਂ ਹੈ। ArduCopter TAKEOFF ਤੋਂ ਬਿਨਾਂ ਜ਼ਮੀਨ 'ਤੇ AUTO ਸ਼ੁਰੂ ਨਹੀਂ ਕਰੇਗਾ",
+      "firstWaypointIsNotTAKEOFFThe": "ਪਹਿਲਾ ਵੇਪੁਆਇੰਟ TAKEOFF ਨਹੀਂ ਹੈ। ਡਰੋਨ ਸਹੀ ਢੰਗ ਨਾਲ ਲਾਂਚ ਨਹੀਂ ਹੋ ਸਕਦਾ।",
+      "wpDuplicateWaypointIdTheMission": "WP{v0}: ਡੁਪਲੀਕੇਟ ਵੇਪੁਆਇੰਟ id \"{v1}\" — ਮਿਸ਼ਨ ਕ੍ਰਮ ਅਸਪਸ਼ਟ ਹੈ",
+      "wpIsAnActionAndMust": "WP{v0}: {v1} ਇੱਕ ਕਾਰਵਾਈ ਹੈ ਅਤੇ ਇਸਨੂੰ ਕਿਸੇ ਵੇਪੁਆਇੰਟ ਨਾਲ ਜੋੜਨਾ ਲਾਜ਼ਮੀ ਹੈ, ਇਕੱਲੇ ਨਹੀਂ ਰੱਖਣਾ",
+      "wpInvalidCoordinates": "WP{v0}: ਅਵੈਧ ਕੋਆਰਡੀਨੇਟ ({v1}, {v2})",
+      "wpDuplicateOfWPMApart": "WP{v0}: WP{v1} ਦਾ ਡੁਪਲੀਕੇਟ ({v2}m ਦੂਰ)",
+      "kmApartMaxKm": "{v0}: {v1}km ਦੂਰ (ਵੱਧ ਤੋਂ ਵੱਧ: {v2}km)",
+      "mLegExceedsTheMLink": "{v0}: {v1}m ਹਿੱਸਾ {v2}m ਲਿੰਕ ਰੇਂਜ ਤੋਂ ਵੱਧ ਹੈ",
+      "wpMFromHomeBeyondThe": "WP{v0}: ਹੋਮ ਤੋਂ {v1}m, {v2}m ਲਿੰਕ ਰੇਂਜ ਤੋਂ ਪਰੇ",
+      "wpMFromHomeOutsideThe": "WP{v0}: ਹੋਮ ਤੋਂ {v1}m, {v2}m ਹੋਮ ਚੱਕਰ ਫੈਂਸ (FENCE_RADIUS) ਤੋਂ ਬਾਹਰ",
+      "wpTurnNeedsAMRadius": "WP{v0}: {v1}° ਮੋੜ ਲਈ {v2}m ਰੇਡੀਅਸ ਚਾਹੀਦਾ ਹੈ ਪਰ ਵਾਹਨ ਦਾ ਘੱਟੋ-ਘੱਟ {v3}m ਹੈ",
+      "rtlAltitudeMAboveHomeClears": "ਹੋਮ ਤੋਂ ਉੱਪਰ RTL ਉਚਾਈ {v0}m ਵਾਪਸੀ ਰਸਤੇ ਦੀ ਸਭ ਤੋਂ ਉੱਚੀ ਭੂਮੀ (WP{v1}, {v2}m MSL) ਤੋਂ ਸਿਰਫ਼ {v3}m ਉੱਪਰ ਹੈ (ਘੱਟੋ-ਘੱਟ: {v4}m)",
+      "wpMFromTheGeofenceBoundary": "WP{v0}: ਜੀਓਫੈਂਸ ਸੀਮਾ ਤੋਂ {v1}m ({v2}m ਚੇਤਾਵਨੀ ਬਫ਼ਰ ਦੇ ਅੰਦਰ)",
+      "wpAltitudeMAboveHomeExceeds": "WP{v0}: ਹੋਮ ਤੋਂ ਉੱਪਰ ਉਚਾਈ {v1}m, {v2}m ਦੀ ਸੀਮਾ ਤੋਂ ਵੱਧ ਹੈ",
+      "wpFrameAltitudeCannotBeCompared": "WP{v0}: ਹੋਮ ਉਚਾਈ ਤੋਂ ਬਿਨਾਂ {v1}-ਫ੍ਰੇਮ ਉਚਾਈ ਦੀ {v2}m ਸੀਮਾ ਨਾਲ ਤੁਲਨਾ ਨਹੀਂ ਹੋ ਸਕਦੀ",
+      "wpAltitudeMAboveHomeIs": "WP{v0}: ਹੋਮ ਤੋਂ ਉੱਪਰ ਉਚਾਈ {v1}m, {v2}m ਦੇ ਫੈਂਸ ਫਲੋਰ ਤੋਂ ਹੇਠਾਂ ਹੈ",
+      "wpHasNoLocation00": "WP{v0}: {v1} ਦਾ ਕੋਈ ਟਿਕਾਣਾ ਨਹੀਂ (0, 0); ਇਸਦਾ ਅਕਸ਼ਾਂਸ਼ ਅਤੇ ਰੇਖਾਂਸ਼ ਸੈੱਟ ਕਰੋ",
+      "wpHasInvalidCoordinates": "WP{v0}: {v1} ਦੇ ਕੋਆਰਡੀਨੇਟ ਗਲਤ ਹਨ",
+      "startsAirborne": "WP1: ਮਿਸ਼ਨ ਹਵਾ ਵਿੱਚ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ ({alt}m, {frame} ਫ੍ਰੇਮ) ਪਰ ਕੋਈ TAKEOFF ਕਮਾਂਡ ਨਹੀਂ ਹੈ",
+      "startsAirbornePx4": "WP1: ਮਿਸ਼ਨ ਹਵਾ ਵਿੱਚ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ ({alt}m, {frame} ਫ੍ਰੇਮ) ਪਰ ਕੋਈ TAKEOFF ਕਮਾਂਡ ਨਹੀਂ ਹੈ। PX4 ਪਹਿਲਾਂ MIS_TAKEOFF_ALT ਤੱਕ ਚੜ੍ਹਦਾ ਹੈ",
+      "homeNotSet": "ਹੋਮ ਦੀ ਭੂਮੀ ਉਚਾਈ ਨਹੀਂ ਹੈ: ਰਿਲੇਟਿਵ-ਫ੍ਰੇਮ ਉਚਾਈਆਂ ਦੀ ਭੂਮੀ ਨਾਲ ਜਾਂਚ ਨਹੀਂ ਹੋ ਸਕਦੀ। ਹੋਮ ਸੈੱਟ ਕਰੋ ਜਾਂ ਉਚਾਈ ਨਮੂਨੇ ਦੀ ਉਡੀਕ ਕਰੋ।",
+      "noLandArduPlane": "ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ LAND ਜਾਂ RTL ਨਹੀਂ ਹੈ। ArduPlane ਮਿਸ਼ਨ ਦੇ ਅੰਤ 'ਤੇ RTL 'ਤੇ ਬਦਲ ਜਾਂਦਾ ਹੈ।",
+      "noLandRover": "ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ RTL ਨਹੀਂ ਹੈ। ਰੋਵਰ ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ 'ਤੇ ਰੁਕਿਆ ਰਹਿੰਦਾ ਹੈ।",
+      "noLandArduCopter": "ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ LAND ਜਾਂ RTL ਨਹੀਂ ਹੈ। ArduCopter ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ 'ਤੇ ਹੋਵਰ ਕਰਦਾ ਹੈ।",
+      "noLandPx4": "ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ LAND ਜਾਂ RTL ਨਹੀਂ ਹੈ। PX4 ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ 'ਤੇ ਲੋਇਟਰ ਕਰਦਾ ਹੈ।",
+      "noLandGeneric": "ਆਖਰੀ ਵੇਅਪੁਆਇੰਟ LAND ਜਾਂ RTL ਨਹੀਂ ਹੈ। ਡਰੋਨ ਅੰਤਿਮ ਵੇਅਪੁਆਇੰਟ 'ਤੇ ਹੋਵਰ ਕਰ ਸਕਦਾ ਹੈ।",
+      "landStartNeedsAutoland": "ਵਾਹਨ ਵਿੱਚ RTL_AUTOLAND = 0 ਹੈ, ਇਸ ਲਈ ਮਿਸ਼ਨ ਵਿੱਚ DO_LAND_START ਹੋਣ 'ਤੇ ArduPlane ਆਰਮ ਕਰਨ ਤੋਂ ਇਨਕਾਰ ਕਰਦਾ ਹੈ। RTL 'ਤੇ ਇਸ ਰਾਹੀਂ ਲੈਂਡ ਕਰਨ ਲਈ RTL_AUTOLAND ਨੂੰ 1 ਜਾਂ 2, ਜਾਂ ਸਿਰਫ਼ ਗੋ-ਅਰਾਊਂਡ ਲਈ 3 ਸੈੱਟ ਕਰੋ",
+      "legTerrainUnchecked": "WP{from} ਤੋਂ WP{to}: ਲੈੱਗ ਦੇ ਨਾਲ ਭੂਮੀ ਦੀ ਜਾਂਚ ਨਹੀਂ ਹੋਈ (ਅਜੇ ਕੋਈ ਜ਼ਮੀਨੀ ਪ੍ਰੋਫਾਈਲ ਜਾਂ ਹੋਮ ਉਚਾਈ ਨਹੀਂ)",
+      "legsTerrainUnchecked": "{count} ਲੈੱਗਾਂ ਦੇ ਨਾਲ ਭੂਮੀ ਦੀ ਜਾਂਚ ਨਹੀਂ ਹੋਈ, WP{from} ਤੋਂ WP{to} ਤੋਂ ਸ਼ੁਰੂ (ਅਜੇ ਕੋਈ ਜ਼ਮੀਨੀ ਪ੍ਰੋਫਾਈਲ ਜਾਂ ਹੋਮ ਉਚਾਈ ਨਹੀਂ)",
+      "terrainUncheckedNoHome": "WP{wp}: ਭੂਮੀ ਕਲੀਅਰੈਂਸ ਦੀ ਜਾਂਚ ਨਹੀਂ ਹੋਈ — ਇਸ ਰਿਲੇਟਿਵ-ਫ੍ਰੇਮ ਉਚਾਈ ਲਈ ਹੋਮ ਉਚਾਈ ਨਹੀਂ ਹੈ",
+      "terrainUnknown": "WP{wp}: ਭੂਮੀ ਅਣਜਾਣ — ਇਸ ਵੇਅਪੁਆਇੰਟ 'ਤੇ ਜ਼ਮੀਨੀ ਉਚਾਈ ਦਾ ਨਮੂਨਾ ਨਹੀਂ, ਕਲੀਅਰੈਂਸ ਦੀ ਜਾਂਚ ਨਹੀਂ ਹੋਈ",
+      "terrainClearanceGround": "WP{v0}: ਭੂਮੀ ਤੋਂ ਸਿਰਫ਼ {v1}m ਉੱਪਰ (ਘੱਟੋ-ਘੱਟ: {v2}m)। ਜ਼ਮੀਨ: {ground}m MSL",
+      "terrainClearanceGroundUnknown": "WP{v0}: ਭੂਮੀ ਤੋਂ ਸਿਰਫ਼ {v1}m ਉੱਪਰ (ਘੱਟੋ-ਘੱਟ: {v2}m)। ਜ਼ਮੀਨ ਅਣਜਾਣ"
     }
   },
   "geofence": {
@@ -3937,7 +4465,64 @@
     "uploadFailed": "Fence upload failed",
     "olderFenceOnAircraft": "Aircraft holds an older fence",
     "maxAltitudeRequired": "Enter a max altitude above 0 m",
-    "clearFenceConfirm": "Delete the fence geometry? Undo restores it."
+    "clearFenceConfirm": "Delete the fence geometry? Undo restores it.",
+    "panel": {
+      "px4Note": "PX4 ਜੀਓਫੈਂਸ ਕਾਰਵਾਈ ਅਤੇ ਸੀਮਾਵਾਂ (GF_ACTION, GF_MAX_HOR_DIST, GF_MAX_VER_DIST) ਫੇਲਸੇਫ ਪੈਨਲ ਵਿੱਚ ਸੈੱਟ ਕੀਤੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।",
+      "savedToRam": "ਜੀਓਫੈਂਸ ਪੈਰਾਮੀਟਰ RAM ਵਿੱਚ ਸੁਰੱਖਿਅਤ ਕੀਤੇ ਗਏ",
+      "saveFailed": "ਕੁਝ ਪੈਰਾਮੀਟਰ ਸੁਰੱਖਿਅਤ ਕਰਨ ਵਿੱਚ ਅਸਫਲ",
+      "breachNone": "ਕੋਈ ਨਹੀਂ",
+      "breachMinAlt": "ਘੱਟੋ-ਘੱਟ ਉਚਾਈ",
+      "breachMaxAlt": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਚਾਈ",
+      "breachBoundary": "ਹੱਦ",
+      "title": "ਜੀਓਫੈਂਸ ਸੰਰਚਨਾ",
+      "subtitle": "ਭੂਗੋਲਿਕ ਹੱਦ ਲਾਗੂ ਕਰਨ ਅਤੇ ਉਲੰਘਣਾ ਕਾਰਵਾਈਆਂ ਨੂੰ ਸੰਰਚਿਤ ਕਰੋ",
+      "enableTitle": "ਜੀਓਫੈਂਸ ਚਾਲੂ",
+      "enableDesc": "ਫੈਂਸ ਲਾਗੂ ਕਰਨ ਲਈ ਮੁੱਖ ਚਾਲੂ ਸਵਿੱਚ",
+      "typeTitle": "ਫੈਂਸ ਕਿਸਮ",
+      "typeDesc": "ਚੁਣੋ ਕਿ ਕਿਹੜੀਆਂ ਫੈਂਸ ਹੱਦਾਂ ਲਾਗੂ ਕਰਨੀਆਂ ਹਨ (ਬਿੱਟਮਾਸਕ)",
+      "circleTitle": "ਗੋਲ ਫੈਂਸ",
+      "circleDesc": "ਹੋਮ ਤੋਂ ਵੱਧ ਤੋਂ ਵੱਧ ਖਿਤਿਜੀ ਦੂਰੀ",
+      "maxRadius": "ਵੱਧ ਤੋਂ ਵੱਧ ਰੇਡੀਅਸ",
+      "warningMargin": "ਚੇਤਾਵਨੀ ਮਾਰਜਿਨ",
+      "altTitle": "ਉਚਾਈ ਫੈਂਸ",
+      "altDesc": "ਉਚਾਈ ਦੀ ਉਪਰਲੀ ਅਤੇ ਹੇਠਲੀ ਸੀਮਾ",
+      "maxAltitude": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਚਾਈ",
+      "minAltitude": "ਘੱਟੋ-ਘੱਟ ਉਚਾਈ",
+      "polygonTitle": "ਬਹੁਭੁਜ ਫੈਂਸ",
+      "polygonDesc": "ਬਹੁਭੁਜ ਹੱਦ ਫੈਂਸ",
+      "polygonVertices": "ਬਹੁਭੁਜ ਸਿਰੇ:",
+      "uploading": "ਅੱਪਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+      "uploadPoints": "ਪੁਆਇੰਟ ਅੱਪਲੋਡ ਕਰੋ",
+      "downloading": "ਡਾਊਨਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+      "downloadPoints": "ਪੁਆਇੰਟ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "removeFromAircraft": "ਏਅਰਕ੍ਰਾਫਟ ਤੋਂ ਹਟਾਓ",
+      "pointsUploaded": "ਫੈਂਸ ਪੁਆਇੰਟ ਅੱਪਲੋਡ ਕੀਤੇ ਗਏ",
+      "olderOnAircraft": "ਏਅਰਕ੍ਰਾਫਟ ਵਿੱਚ ਪੁਰਾਣੀ ਫੈਂਸ ਹੈ",
+      "pointsDownloaded": "ਫੈਂਸ ਪੁਆਇੰਟ ਡਾਊਨਲੋਡ ਕੀਤੇ ਗਏ",
+      "removeTitle": "ਏਅਰਕ੍ਰਾਫਟ ਤੋਂ ਫੈਂਸ ਹਟਾਓ",
+      "removeMessage": "ਇਹ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਸਟੋਰ ਕੀਤੀ ਹਰ ਫੈਂਸ ਹੱਦ ਨੂੰ ਮਿਟਾ ਦਿੰਦਾ ਹੈ। ਏਅਰਕ੍ਰਾਫਟ ਇਸਨੂੰ ਲਾਗੂ ਕਰਨਾ ਬੰਦ ਕਰ ਦੇਵੇਗਾ। ਜਾਰੀ ਰੱਖਣਾ ਹੈ?",
+      "removeConfirm": "ਫੈਂਸ ਹਟਾਓ",
+      "zonesTitle": "ਜ਼ੋਨ",
+      "zonesDesc": "ਸ਼ਾਮਲ (ਅੰਦਰ ਰਹਿਣਾ ਲਾਜ਼ਮੀ) ਅਤੇ ਬਾਹਰਲੇ (ਬਾਹਰ ਰਹਿਣਾ ਲਾਜ਼ਮੀ) ਜ਼ੋਨ",
+      "noZones": "ਕੋਈ ਜ਼ੋਨ ਪਰਿਭਾਸ਼ਿਤ ਨਹੀਂ। ਹੇਠਾਂ ਦਿੱਤੇ ਬਟਨਾਂ ਨਾਲ ਜ਼ੋਨ ਸ਼ਾਮਲ ਕਰੋ।",
+      "incl": "ਸ਼ਾਮਲ",
+      "excl": "ਬਾਹਰ",
+      "zoneType": {
+        "polygon": "ਬਹੁਭੁਜ",
+        "circle": "ਗੋਲਾ"
+      },
+      "points": "{count} ਪੁਆਇੰਟ",
+      "toggleRole": "ਸ਼ਾਮਲ/ਬਾਹਰ ਬਦਲੋ",
+      "removeZone": "ਜ਼ੋਨ ਹਟਾਓ",
+      "inclusion": "ਸ਼ਾਮਲ",
+      "exclusion": "ਬਾਹਰ",
+      "breachActionTitle": "ਉਲੰਘਣਾ ਕਾਰਵਾਈ",
+      "breachActionDesc": "ਫੈਂਸ ਦੀ ਉਲੰਘਣਾ ਹੋਣ 'ਤੇ ਕੀਤੀ ਜਾਣ ਵਾਲੀ ਕਾਰਵਾਈ",
+      "breachActiveTitle": "ਉਲੰਘਣਾ ਸਰਗਰਮ",
+      "breachActiveDesc": "ਮੌਜੂਦਾ ਫੈਂਸ ਉਲੰਘਣਾ ਦੀ ਜਾਣਕਾਰੀ",
+      "breach": "ਉਲੰਘਣਾ: {label}",
+      "totalBreaches": "ਕੁੱਲ ਉਲੰਘਣਾਵਾਂ: {count}"
+    }
   },
   "rally": {
     "title": "Rally Points",
@@ -3965,7 +4550,7 @@
     "msl": "MSL",
     "noData": "No terrain data available",
     "terrainFollowingAgl": "Terrain Following (AGL)",
-    "relativeToTakeoff": "Relative to Takeoff",
+    "relativeToTakeoff": "ਹੋਮ ਦੇ ਸਾਪੇਖ",
     "showRelative": "Show Relative",
     "showTerrain": "Show Terrain",
     "loadingTerrain": "Loading terrain data...",
@@ -4064,7 +4649,7 @@
     "avgSpeed": "Avg Speed",
     "waypointsVisited": "Waypoints Visited",
     "saveToHistory": "Save to History",
-    "missionHasErrors": "Mission has {count, plural, one {# error} other {# errors}}",
+    "missionHasErrors": "ਮਿਸ਼ਨ ਵਿੱਚ {count, plural, one {# ਗਲਤੀ ਹੈ} other {# ਗਲਤੀਆਂ ਹਨ}}",
     "missionHasWarnings": "Mission has {count, plural, one {# warning} other {# warnings}}",
     "editPlan": "Edit Plan",
     "duration": "ਮਿਆਦ",
@@ -4109,7 +4694,6 @@
     "labels": "Labels",
     "cameraTriggers": "Camera triggers",
     "initializing3dView": "Initializing 3D view...",
-    "viewFailed": "3D view failed: {message}",
     "noFlightPlanLoaded": "No flight plan loaded",
     "addWaypointsOrLoadPlan": "Add at least 2 waypoints in the Plan tab or load a plan from the library",
     "emptyTitle": "ਹਾਲੇ ਸਿਮੂਲੇਟ ਕਰਨ ਲਈ ਕੁਝ ਨਹੀਂ",
@@ -4151,10 +4735,14 @@
     "gestureZoom": "Zoom",
     "gestureLook": "Free look",
     "previewSource": "Computed from the planned path, not live telemetry",
-    "notModeled": "Not modeled in the trajectory preview"
+    "notModeled": "Not modeled in the trajectory preview",
+    "viewUnavailable": "ਇਸ ਡਿਵਾਈਸ 'ਤੇ 3D ਦ੍ਰਿਸ਼ ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
+    "switchTo2d": "2D 'ਤੇ ਜਾਓ",
+    "moreIssues": "+{count} ਹੋਰ",
+    "dismissWarning": "ਚੇਤਾਵਨੀ ਖਾਰਜ ਕਰੋ"
   },
   "history": {
-    "title": "Flight Logs",
+    "title": "ਉਡਾਣ ਲੌਗ",
     "noFlights": "No flight records",
     "emptyTitle": "ਅਜੇ ਕੋਈ ਉਡਾਣ ਰਿਕਾਰਡ ਨਹੀਂ ਹੋਈ",
     "emptySubtitle": "ਆਪਣੀ ਪਹਿਲੀ ਰਿਕਾਰਡਿੰਗ ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਡ੍ਰੋਨ ਕਨੈਕਟ ਕਰੋ ਅਤੇ ਆਰਮ ਕਰੋ। ਆਯਾਤ ਕੀਤੇ ਲੌਗ ਅਤੇ ਲਾਈਵ ਰਿਕਾਰਡਿੰਗ ਇੱਥੇ ਦਿਖਾਈ ਦੇਣਗੇ।",
@@ -4220,7 +4808,6 @@
     "statsFlights": "ਉਡਾਣਾਂ",
     "statsHours": "ਘੰਟੇ",
     "statsDistance": "ਦੂਰੀ",
-    "statsBattery": "ਬੈਟਰੀ ਵਰਤੀ",
     "inProgress": "ਚੱਲ ਰਿਹਾ ਹੈ",
     "syncLocalOnly": "ਸਿਰਫ਼ ਸਥਾਨਕ",
     "syncSyncing": "ਸਿੰਕ ਹੋ ਰਿਹਾ ਹੈ…",
@@ -4365,12 +4952,12 @@
       "totalFlights": "ਕੁੱਲ ਉਡਾਣਾਂ",
       "totalHours": "ਕੁੱਲ ਘੰਟੇ",
       "totalDistance": "ਕੁੱਲ ਦੂਰੀ",
-      "totalBattery": "ਕੁੱਲ ਬੈਟਰੀ",
       "averages": "ਔਸਤ",
       "avgDuration": "ਔਸਤ ਸਮਾਂ",
       "avgDistance": "ਔਸਤ ਦੂਰੀ",
       "avgMaxAlt": "ਔਸਤ ਵੱਧ ਉਚਾਈ",
-      "byDrone": "Drone ਅਨੁਸਾਰ"
+      "byDrone": "Drone ਅਨੁਸਾਰ",
+      "avgBattery": "ਪ੍ਰਤੀ ਉਡਾਣ ਔਸਤ ਬੈਟਰੀ"
     },
     "restore": "Restore",
     "deletePermanently": "Delete permanently",
@@ -4379,7 +4966,294 @@
     "logBrowserNoFlights": "Downloaded {bytes}, but no flight was found in the log: it holds no arm-to-disarm flight, or its format is not one this browser reads.",
     "logBrowserDuplicates": "{count} flight(s) from this log were already in history and were left as they are.",
     "syncNotYet": "Not synced yet",
-    "syncPending": "{count} to sync"
+    "syncPending": "{count} to sync",
+    "moveToTrashTitle": "ਰੱਦੀ ਵਿੱਚ ਭੇਜੋ",
+    "emptyTrashTitle": "ਰੱਦੀ ਖਾਲੀ ਕਰੋ",
+    "trashCount": "ਰੱਦੀ ({count})",
+    "importBtn": "ਇੰਪੋਰਟ",
+    "mediaBtn": "ਮੀਡੀਆ",
+    "backupWithTelemetry": "ਟੈਲੀਮੈਟਰੀ ਸਮੇਤ",
+    "backupWithTelemetryTitle": "ਬੈਕਅੱਪ ਵਿੱਚ ਉਡਾਣ ਟੈਲੀਮੈਟਰੀ ਸ਼ਾਮਲ ਕਰੋ, ਤਾਂ ਜੋ ਰੀਸਟੋਰ ਕੀਤੀਆਂ ਉਡਾਣਾਂ ਵਿੱਚ ਰੀਪਲੇਅ, ਚਾਰਟ ਅਤੇ ਐਕਸਪੋਰਟ ਬਣੇ ਰਹਿਣ (ਵੱਡੀ ਫਾਈਲ)",
+    "backupRestoreErrors": "ਰੀਸਟੋਰ ਗਲਤੀਆਂ ਨਾਲ ਪੂਰਾ ਹੋਇਆ:\n{errors}",
+    "backupRestoreDone": "{stores} ਸਟੋਰ ਰੀਸਟੋਰ ਕੀਤੇ, {records} ਰਿਕਾਰਡ ਮਿਲਾਏ ਗਏ।",
+    "dragToResize": "ਆਕਾਰ ਬਦਲਣ ਲਈ ਘਸੀਟੋ",
+    "trashIsEmpty": "ਰੱਦੀ ਖਾਲੀ ਹੈ",
+    "noFlightsMatch": "ਇਹਨਾਂ ਫਿਲਟਰਾਂ ਨਾਲ ਕੋਈ ਉਡਾਣ ਮੇਲ ਨਹੀਂ ਖਾਂਦੀ",
+    "selectFlight": "{drone} ਚੁਣੋ",
+    "dateUnknown": "ਮਿਤੀ ਅਣਜਾਣ",
+    "dateUnknownHint": "ਲੌਗ ਵਿੱਚ ਕੋਈ ਘੜੀ ਦਾ ਸਮਾਂ ਨਹੀਂ ਸੀ",
+    "importedFromDataflash": "ਡਾਟਾਫਲੈਸ਼ ਲੌਗ ਤੋਂ ਇੰਪੋਰਟ ਕੀਤਾ",
+    "syncedToCloud": "ਕਲਾਊਡ ਨਾਲ ਸਿੰਕ ਕੀਤਾ",
+    "statsBatteryAvg": "ਔਸਤ ਬੈਟਰੀ / ਉਡਾਣ",
+    "overviewTab": {
+      "flightInfo": "ਉਡਾਣ ਜਾਣਕਾਰੀ",
+      "drone": "ਡਰੋਨ",
+      "name": "ਨਾਮ",
+      "date": "ਤਾਰੀਖ",
+      "start": "ਸ਼ੁਰੂ",
+      "end": "ਅੰਤ",
+      "place": "ਥਾਂ",
+      "takeoff": "ਉਡਾਣ ਭਰਨਾ",
+      "landing": "ਲੈਂਡਿੰਗ",
+      "landingPlace": "ਲੈਂਡਿੰਗ ਦੀ ਥਾਂ",
+      "metrics": "ਮੈਟ੍ਰਿਕਸ",
+      "duration": "ਮਿਆਦ",
+      "distance": "ਦੂਰੀ",
+      "maxAltitude": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਚਾਈ",
+      "maxSpeed": "ਵੱਧ ਤੋਂ ਵੱਧ ਗਤੀ",
+      "avgSpeed": "ਔਸਤ ਗਤੀ",
+      "waypoints": "ਵੇਪੁਆਇੰਟ",
+      "batteryUsed": "ਵਰਤੀ ਬੈਟਰੀ",
+      "battStart": "ਸ਼ੁਰੂਆਤੀ ਬੈਟਰੀ",
+      "battEnd": "ਅੰਤਿਮ ਬੈਟਰੀ",
+      "missionAdherence": "ਮਿਸ਼ਨ ਪਾਲਣਾ",
+      "geofence": "ਜੀਓਫੈਂਸ",
+      "phases": "ਪੜਾਅ",
+      "conditions": "ਹਾਲਾਤ",
+      "preFlight": "ਉਡਾਣ ਤੋਂ ਪਹਿਲਾਂ",
+      "loadout": "ਸਾਜ਼ੋ-ਸਾਮਾਨ",
+      "batteries": "ਬੈਟਰੀਆਂ",
+      "propSet": "ਪ੍ਰੋਪ ਸੈੱਟ",
+      "motorSet": "ਮੋਟਰ ਸੈੱਟ",
+      "escSet": "ESC ਸੈੱਟ",
+      "camera": "ਕੈਮਰਾ",
+      "gimbal": "ਜਿੰਬਲ",
+      "payload": "ਪੇਲੋਡ",
+      "frame": "ਫਰੇਮ",
+      "rcTX": "RC TX"
+    },
+    "replayTelemetryPanel": {
+      "position": "ਸਥਿਤੀ",
+      "battery": "ਬੈਟਰੀ",
+      "attitude": "ਐਟੀਟਿਊਡ",
+      "flight": "ਉਡਾਣ",
+      "alt": "ਉਚਾਈ",
+      "spd": "ਗਤੀ",
+      "hdg": "ਦਿਸ਼ਾ",
+      "vs": "VS",
+      "bat": "ਬੈਟਰੀ",
+      "volt": "ਵੋਲਟ",
+      "amp": "AMP",
+      "gps": "GPS",
+      "fix": "FIX",
+      "sat": "SAT",
+      "hdop": "HDOP",
+      "roll": "ਰੋਲ",
+      "pitch": "ਪਿੱਚ",
+      "yaw": "ਯੌ",
+      "thr": "THR"
+    },
+    "compareModal": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "map": "ਨਕਸ਼ਾ",
+      "statsDelta": "ਅੰਕੜਿਆਂ ਦਾ ਅੰਤਰ",
+      "locationA": "ਟਿਕਾਣਾ A",
+      "locationB": "ਟਿਕਾਣਾ B",
+      "metric": "ਮੈਟ੍ਰਿਕ",
+      "charts": "ਚਾਰਟ",
+      "altitudeM": "ਉਚਾਈ (m)",
+      "groundSpeedMS": "ਜ਼ਮੀਨੀ ਗਤੀ (m/s)",
+      "batteryRemaining": "ਬਾਕੀ ਬੈਟਰੀ (%)",
+      "vibrationXMS": "ਕੰਪਨ X (m/s²)",
+      "compareFlights": "ਉਡਾਣਾਂ ਦੀ ਤੁਲਨਾ ਕਰੋ",
+      "loadingFrames": "ਫਰੇਮ ਲੋਡ ਹੋ ਰਹੇ ਹਨ…"
+    },
+    "conditionsCard": {
+      "sunrise": "ਸੂਰਜ ਚੜ੍ਹਨਾ",
+      "sunset": "ਸੂਰਜ ਡੁੱਬਣਾ",
+      "sun": "ਸੂਰਜ",
+      "moonPhase": "ਚੰਦਰਮਾ ਦਾ ਪੜਾਅ",
+      "illumination": "ਰੋਸ਼ਨੀ",
+      "moon": "ਚੰਦਰਮਾ",
+      "tempDew": "ਤਾਪਮਾਨ / ਤ੍ਰੇਲ",
+      "wind": "ਹਵਾ",
+      "visibility": "ਦ੍ਰਿਸ਼ਟਤਾ",
+      "ceiling": "ਬੱਦਲਾਂ ਦੀ ਉਚਾਈ",
+      "altimeter": "ਅਲਟੀਮੀਟਰ",
+      "goldenHour": "ਸੁਨਹਿਰੀ ਘੜੀ"
+    },
+    "historyDetailPanel": {
+      "verifySignatureHash": "ਦਸਤਖਤ ਹੈਸ਼ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
+      "unsealToAllowEdits": "ਸੋਧਾਂ ਲਈ ਸੀਲ ਹਟਾਓ",
+      "signAndLockThisRecord": "ਇਸ ਰਿਕਾਰਡ 'ਤੇ ਦਸਤਖਤ ਕਰਕੇ ਲਾਕ ਕਰੋ",
+      "replayFlight": "ਉਡਾਣ ਮੁੜ ਚਲਾਓ",
+      "close": "ਬੰਦ ਕਰੋ",
+      "flightDetailTabs": "ਉਡਾਣ ਵੇਰਵਾ ਟੈਬਾਂ",
+      "sealed": "ਸੀਲਬੰਦ",
+      "verify": "ਪੁਸ਼ਟੀ ਕਰੋ",
+      "unseal": "ਸੀਲ ਖੋਲ੍ਹੋ",
+      "replay": "ਰੀਪਲੇ"
+    },
+    "chartsTab": {
+      "charts": "ਚਾਰਟ",
+      "altitudeM": "ਉਚਾਈ (m)",
+      "speedMS": "ਗਤੀ (m/s)",
+      "battery": "ਬੈਟਰੀ",
+      "attitude": "ਐਟੀਟਿਊਡ (°)",
+      "gpsQuality": "GPS ਗੁਣਵੱਤਾ",
+      "vibrationMS": "ਕੰਪਨ (m/s²)"
+    },
+    "bulkExportModal": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "jurisdiction": "ਅਧਿਕਾਰ ਖੇਤਰ",
+      "regulator": "ਰੈਗੂਲੇਟਰ",
+      "format": "ਫਾਰਮੈਟ",
+      "output": "ਆਉਟਪੁੱਟ",
+      "validation": "ਪ੍ਰਮਾਣਿਕਤਾ",
+      "bulkComplianceExport": "ਬਲਕ ਪਾਲਣਾ ਨਿਰਯਾਤ",
+      "exporting": "ਨਿਰਯਾਤ ਹੋ ਰਿਹਾ ਹੈ",
+      "cancel": "ਰੱਦ ਕਰੋ"
+    },
+    "notesTab": {
+      "nameTags": "ਨਾਮ ਅਤੇ ਟੈਗ",
+      "customName": "ਕਸਟਮ ਨਾਮ",
+      "fieldANorthSurvey": "ਖੇਤ A — ਉੱਤਰੀ ਸਰਵੇਖਣ",
+      "tagsCommaSeparated": "ਟੈਗ (ਕੌਮੇ ਨਾਲ ਵੱਖ ਕੀਤੇ)",
+      "surveyFieldATest": "ਸਰਵੇਖਣ, ਖੇਤ-a, ਟੈਸਟ",
+      "notesMarkdown": "ਨੋਟਸ (markdown)",
+      "addObservationsIncidentsOrContext": "ਇਸ ਉਡਾਣ ਲਈ ਨਿਰੀਖਣ, ਘਟਨਾਵਾਂ ਜਾਂ ਸੰਦਰਭ ਸ਼ਾਮਲ ਕਰੋ…",
+      "thisRecordIsSealedUnseal": "ਇਹ ਰਿਕਾਰਡ ਸੀਲਬੰਦ ਹੈ। ਨਾਮ, ਟੈਗ ਜਾਂ ਨੋਟਸ ਸੋਧਣ ਲਈ ਪੈਨਲ ਹੈਡਰ ਤੋਂ ਸੀਲ ਖੋਲ੍ਹੋ।"
+    },
+    "exportTab": {
+      "telemetry": "ਟੈਲੀਮੈਟਰੀ",
+      "track": "ਟ੍ਰੈਕ",
+      "noPathDataOnThis": "ਇਸ ਉਡਾਣ ਵਿੱਚ ਕੋਈ ਮਾਰਗ ਡਾਟਾ ਨਹੀਂ।",
+      "record": "ਰਿਕਾਰਡ",
+      "compliance": "ਪਾਲਣਾ",
+      "jurisdiction": "ਅਧਿਕਾਰ ਖੇਤਰ",
+      "noTelemetryRecordingAttachedConnect": "ਕੋਈ ਟੈਲੀਮੈਟਰੀ ਰਿਕਾਰਡਿੰਗ ਨੱਥੀ ਨਹੀਂ। ਰਿਕਾਰਡਿੰਗ ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਡਰੋਨ ਕਨੈਕਟ ਅਤੇ ਆਰਮ ਕਰੋ।",
+      "fullFlightRecordIncludingStatsPath": "ਅੰਕੜਿਆਂ, ਰਸਤੇ ਅਤੇ ਮੈਟਾਡਾਟਾ ਸਮੇਤ ਪੂਰਾ FlightRecord।"
+    },
+    "analysisTab": {
+      "healthSummary": "ਸਿਹਤ ਸਾਰ",
+      "avgSats": "ਔਸਤ ਸੈਟੇਲਾਈਟ",
+      "avgHDOP": "ਔਸਤ HDOP",
+      "maxVibRMS": "ਅਧਿਕਤਮ ਕੰਪਨ RMS",
+      "batteryUsed": "ਵਰਤੀ ਬੈਟਰੀ",
+      "noHealthStatsYet": "ਅਜੇ ਕੋਈ ਸਿਹਤ ਅੰਕੜੇ ਨਹੀਂ।",
+      "flags": "ਫਲੈਗ",
+      "theTelemetryRecordingForThis": "ਇਸ ਉਡਾਣ ਦੀ ਟੈਲੀਮੈਟਰੀ ਰਿਕਾਰਡਿੰਗ ਹੁਣ ਸਟੋਰ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਇਸਦਾ ਮੁੜ-ਵਿਸ਼ਲੇਸ਼ਣ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ।"
+    },
+    "statisticsPanel": {
+      "statistics": "ਅੰਕੜੇ",
+      "noTelemetryData": "ਕੋਈ ਟੈਲੀਮੈਟਰੀ ਡਾਟਾ ਨਹੀਂ।",
+      "field": "ਖੇਤਰ",
+      "min": "ਘੱਟੋ-ਘੱਟ",
+      "mean": "ਔਸਤ",
+      "max": "ਵੱਧ ਤੋਂ ਵੱਧ",
+      "std": "ਮਿਆਰੀ ਭਟਕਣ"
+    },
+    "windCard": {
+      "speed": "ਰਫ਼ਤਾਰ",
+      "from": "ਤੋਂ",
+      "samples": "ਨਮੂਨੇ",
+      "method": "ਵਿਧੀ",
+      "windEstimatedFromFC": "ਹਵਾ (FC ਤੋਂ ਅਨੁਮਾਨਿਤ)",
+      "metarWindShownAboveIs": "ਉੱਪਰ ਦਿਖਾਈ METAR ਹਵਾ ਸਭ ਤੋਂ ਨੇੜਲੇ ਸਟੇਸ਼ਨ ਤੋਂ ਹੈ। ਇਹ ਅਨੁਮਾਨ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਤੋਂ ਲਿਆ ਗਿਆ ਹੈ।"
+    },
+    "customChartBuilder": {
+      "customChart": "ਕਸਟਮ ਚਾਰਟ",
+      "buildACustomChartFrom": "ਕਿਸੇ ਵੀ ਟੈਲੀਮੈਟਰੀ ਚੈਨਲ ਅਤੇ ਫੀਲਡ ਤੋਂ ਕਸਟਮ ਚਾਰਟ ਬਣਾਓ।",
+      "addTrace": "ਟ੍ਰੇਸ ਜੋੜੋ",
+      "add": "ਜੋੜੋ",
+      "clear": "ਸਾਫ਼ ਕਰੋ"
+    },
+    "mediaUploader": {
+      "noMatch": "ਕੋਈ ਮੇਲ ਨਹੀਂ",
+      "importMedia": "ਮੀਡੀਆ ਆਯਾਤ ਕਰੋ",
+      "dropPhotosOrVideosHere": "ਫੋਟੋਆਂ ਜਾਂ ਵੀਡੀਓ ਇੱਥੇ ਸੁੱਟੋ, ਜਾਂ ਬ੍ਰਾਊਜ਼ ਕਰਨ ਲਈ ਕਲਿੱਕ ਕਰੋ",
+      "jpegPNGWebPHEICMP4": "JPEG, PNG, WebP, HEIC, MP4, MOV, WebM",
+      "close": "ਬੰਦ ਕਰੋ"
+    },
+    "logBrowser": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "time": "ਸਮਾਂ",
+      "size": "ਆਕਾਰ",
+      "download": "ਡਾਊਨਲੋਡ ਕਰੋ",
+      "thisFlightControllerAposS": "ਇਸ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਦਾ ਫਰਮਵੇਅਰ ਇਸ ਲਿੰਕ ਰਾਹੀਂ ਆਨਬੋਰਡ ਲੌਗ ਡਾਊਨਲੋਡ ਦੀ ਸਹੂਲਤ ਨਹੀਂ ਦਿੰਦਾ।",
+      "downloadCancelledNothingWasImported": "ਡਾਊਨਲੋਡ ਰੱਦ ਕੀਤਾ ਗਿਆ। ਰੱਦ ਕੀਤੇ ਲੌਗ ਤੋਂ ਕੁਝ ਵੀ ਇੰਪੋਰਟ ਨਹੀਂ ਕੀਤਾ ਗਿਆ।"
+    },
+    "overlayModal": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "map": "ਨਕਸ਼ਾ",
+      "stats": "ਅੰਕੜੇ",
+      "metric": "ਮਾਪਦੰਡ"
+    },
+    "importLogModal": {
+      "dropLogFilesHereOr": "ਲੌਗ ਫ਼ਾਈਲਾਂ ਇੱਥੇ ਸੁੱਟੋ, ਜਾਂ ਬ੍ਰਾਊਜ਼ ਕਰਨ ਲਈ ਕਲਿੱਕ ਕਰੋ",
+      "importFlightLogs": "ਉਡਾਣ ਲੌਗ ਆਯਾਤ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "close": "ਬੰਦ ਕਰੋ"
+    },
+    "preflightCard": {
+      "noChecklistCaptured": "ਕੋਈ ਚੈੱਕਲਿਸਟ ਦਰਜ ਨਹੀਂ ਹੋਈ",
+      "fcPrearmWarnings": "FC ਪ੍ਰੀ-ਆਰਮ ਚੇਤਾਵਨੀਆਂ",
+      "checklistComplete": "ਚੈੱਕਲਿਸਟ ਪੂਰੀ",
+      "checklistIncomplete": "ਚੈੱਕਲਿਸਟ ਅਧੂਰੀ"
+    },
+    "adherenceCard": {
+      "waypoints": "ਵੇਅਪੁਆਇੰਟ",
+      "maxXTE": "ਵੱਧ ਤੋਂ ਵੱਧ XTE",
+      "meanXTE": "ਔਸਤ XTE",
+      "deviations": "ਭਟਕਣਾਂ"
+    },
+    "mediaTab": {
+      "media": "ਮੀਡੀਆ",
+      "noMediaLinkedToThis": "ਇਸ ਉਡਾਣ ਨਾਲ ਕੋਈ ਮੀਡੀਆ ਜੁੜਿਆ ਨਹੀਂ। ਫੋਟੋਆਂ ਜਾਂ ਵੀਡੀਓ ਜੋੜਨ ਲਈ ਮੀਡੀਆ ਆਯਾਤ ਕਰੋ ਬਟਨ ਵਰਤੋ।"
+    },
+    "eventsTab": {
+      "events": "ਘਟਨਾਵਾਂ",
+      "noEventsForThisFlight": "ਇਸ ਉਡਾਣ ਲਈ ਕੋਈ ਘਟਨਾ ਨਹੀਂ।",
+      "theTelemetryRecordingForThis": "ਇਸ ਉਡਾਣ ਦੀ ਟੈਲੀਮੈਟਰੀ ਰਿਕਾਰਡਿੰਗ ਹੁਣ ਸਟੋਰ ਨਹੀਂ ਹੈ, ਇਸ ਲਈ ਇਸਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਨਹੀਂ ਹੋ ਸਕਦਾ।"
+    },
+    "replayPlaybackBar": {
+      "skipToStart": "ਸ਼ੁਰੂ ਤੇ ਜਾਓ",
+      "stepBack5s": "5 ਸਕਿੰਟ ਪਿੱਛੇ",
+      "stepForward5s": "5 ਸਕਿੰਟ ਅੱਗੇ",
+      "skipToEnd": "ਅੰਤ ਤੇ ਜਾਓ"
+    },
+    "fleetCoverageModal": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "fleetCoverage": "ਫਲੀਟ ਕਵਰੇਜ"
+    },
+    "replayView": {
+      "loadingRecording": "ਰਿਕਾਰਡਿੰਗ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...",
+      "exitReplay": "ਰੀਪਲੇ ਤੋਂ ਬਾਹਰ ਜਾਓ",
+      "returnToHistory": "ਇਤਿਹਾਸ 'ਤੇ ਵਾਪਸ ਜਾਓ"
+    },
+    "summaryCard": {
+      "summary": "ਸਾਰ",
+      "suggestedTags": "ਸੁਝਾਏ ਟੈਗ"
+    },
+    "vibrationSpectrogramPanel": {
+      "vibrationLevelSpectrum": "ਕੰਪਨ ਪੱਧਰ ਸਪੈਕਟ੍ਰਮ"
+    },
+    "correlationPanel": {
+      "correlation": "ਸਹਿ-ਸੰਬੰਧ",
+      "noOverlappingSamplesTryFields": "ਕੋਈ ਓਵਰਲੈਪਿੰਗ ਸੈਂਪਲ ਨਹੀਂ। ਮਿਲਦੀਆਂ-ਜੁਲਦੀਆਂ ਦਰਾਂ 'ਤੇ ਰਿਕਾਰਡ ਕੀਤੇ ਫੀਲਡ ਅਜ਼ਮਾਓ।"
+    },
+    "cloudSyncBadge": {
+      "signInWithConvexSync": "ਉਡਾਣਾਂ ਨੂੰ ਕਲਾਊਡ ਵਿੱਚ ਰੱਖਣ ਲਈ Convex ਸਿੰਕ ਨਾਲ ਸਾਈਨ ਇਨ ਕਰੋ"
+    },
+    "storageFailureAlerts": {
+      "flightTelemetryCouldNotBe": "ਫਲਾਈਟ ਟੈਲੀਮੈਟਰੀ ਸੇਵ ਨਹੀਂ ਹੋ ਸਕੀ: ਸਟੋਰੇਜ ਭਰੀ ਹੋਈ ਹੈ",
+      "thePlanCouldNotBe": "ਪਲਾਨ ਆਟੋਸੇਵ ਨਹੀਂ ਹੋ ਸਕਿਆ: ਬ੍ਰਾਊਜ਼ਰ ਸਟੋਰੇਜ ਭਰੀ ਹੋਈ ਜਾਂ ਬਲੌਕ ਹੈ। ਇਸਨੂੰ ਸੇਵ ਜਾਂ ਐਕਸਪੋਰਟ ਕਰੋ।"
+    },
+    "fleetCoverageMapInner": {
+      "searchPolygonActive": "ਖੋਜ ਬਹੁਭੁਜ ਸਰਗਰਮ",
+      "clear": "ਸਾਫ਼ ਕਰੋ",
+      "heatmap": "ਹੀਟਮੈਪ",
+      "paths": "ਰਸਤੇ"
+    },
+    "mapTab": {
+      "noPathDataForThis": "ਇਸ ਉਡਾਣ ਲਈ ਕੋਈ ਰਸਤਾ ਡਾਟਾ ਨਹੀਂ"
+    },
+    "uPlotChart": {
+      "noDataForSelectedTraces": "ਚੁਣੇ ਗਏ ਟਰੇਸਾਂ ਲਈ ਕੋਈ ਡਾਟਾ ਨਹੀਂ।"
+    },
+    "replayMap": {
+      "reCenter": "ਮੁੜ-ਕੇਂਦਰਿਤ ਕਰੋ"
+    }
   },
   "library": {
     "title": "FLIGHT PLANS",
@@ -4447,7 +5321,7 @@
     "readProgress": "Reading... {percent}%",
     "readError": "Failed to read parameters",
     "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼",
-    "saveToRam": "Save",
+    "saveToRam": "FC 'ਤੇ ਲਿਖੋ (RAM)",
     "saving": "Saving...",
     "writeToFlash": "Write to Flash",
     "writingFlash": "Writing...",
@@ -4458,24 +5332,27 @@
     "disconnectedTitle": "Flight Controller Disconnected",
     "disconnectedMessage": "Connect a flight controller to access configuration panels.",
     "rebootRequired": "Reboot required for changes to take effect",
-    "rebootNow": "Reboot Now",
+    "rebootNow": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
     "missingParams": "Some optional parameters are not available on this firmware",
     "refresh": "Refresh",
     "pendingFlashCount": "{count, plural, one {1 param} other {{count} params}} modified in RAM, not written to flash",
     "includesCritical": "(includes safety-critical params)",
     "commitAll": "Commit All",
     "connectTo": "Connect to {name} to configure",
-    "connect": "ਜੋੜੋ"
+    "connect": "ਜੋੜੋ",
+    "writeToFcCount": "{n} ਨੂੰ ਫਲਾਈਟ ਕੰਟਰੋਲਰ 'ਤੇ ਲਿਖੋ",
+    "writingProgress": "ਲਿਖਿਆ ਜਾ ਰਿਹਾ ਹੈ {current}/{total}…",
+    "writeToFcHint": "ਬਦਲੇ ਗਏ ਪੈਰਾਮੀਟਰ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੂੰ ਭੇਜੋ"
   },
   "calibration": {
     "title": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
     "accelerometer": "Accelerometer",
     "gyroscope": "Gyroscope",
     "compass": "Compass",
-    "level": "Level",
+    "level": "ਹੋਰਾਈਜ਼ਨ ਲੈਵਲ ਕਰੋ",
     "airspeed": "Airspeed",
     "barometer": "Barometer",
-    "rc": "RC ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+    "rc": "ਰੇਡੀਓ",
     "esc": "ESC ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
     "compassMot": "CompassMot",
     "startCalibration": "Start Calibration",
@@ -4577,7 +5454,7 @@
     "compareTitle": "Parameter Compare",
     "rebootTitle": "Reboot Required",
     "rebootMessage": "Some parameters you changed require a flight controller reboot to take effect. Reboot now?",
-    "rebootConfirmLabel": "Reboot FC",
+    "rebootConfirmLabel": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
     "optionsColumn": "Options",
     "setBitmask": "Set Bitmask",
     "bitmaskTitle": "Set Bitmask — {name}",
@@ -4715,6 +5592,25 @@
       "axisTooltip": "Vibration {axis}: {value} m/s/s (warn: {warn}, crit: {crit})",
       "trend": "Vibration Trend",
       "clip": "Clip: {c0}/{c1}/{c2}"
+    },
+    "rebootRequiredBanner": {
+      "dismiss": "ਖਾਰਜ ਕਰੋ",
+      "rebootFlightController": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
+      "theFlightControllerRestartsAnd": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਮੁੜ ਚਾਲੂ ਹੋਵੇਗਾ ਅਤੇ ਵਾਪਸ ਆਉਣ ਤੱਕ ਲਿੰਕ ਟੁੱਟ ਜਾਵੇਗਾ। ਜਾਰੀ ਰੱਖਣਾ ਹੈ?",
+      "reboot": "ਰੀਬੂਟ"
+    },
+    "trafficPill": {
+      "nearbyTraffic": "ਨੇੜਲਾ ਟ੍ਰੈਫਿਕ"
+    },
+    "gpsSkyView": {
+      "gps1": "GPS1",
+      "gps2": "GPS2"
+    },
+    "armedWriteConfirmDialog": {
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "writeAnyway": "ਫਿਰ ਵੀ ਲਿਖੋ",
+      "parameters": "ਪੈਰਾਮੀਟਰ",
+      "panel": "ਪੈਨਲ:"
     }
   },
   "flightInfo": {
@@ -4884,7 +5780,7 @@
   },
   "fleet": {
     "title": "Fleet",
-    "addDrone": "Add drone",
+    "addDrone": "ਨੋਡ ਜੋੜੋ",
     "expandPanel": "Expand fleet panel",
     "collapsePanel": "Collapse fleet panel",
     "searchDrones": "Search drones...",
@@ -4925,8 +5821,13 @@
     "reconnecting": {
       "title": "Reconnecting",
       "label": "{name}: reconnecting (attempt {attempts})",
-      "stop": "Stop reconnecting"
-    }
+      "stop": "Stop reconnecting",
+      "disconnectedReconnecting": "{name} ਡਿਸਕਨੈਕਟ ਹੋ ਗਿਆ — ਮੁੜ ਕਨੈਕਟ ਹੋ ਰਿਹਾ ਹੈ...",
+      "bleLost": "{name} ਨਾਲ ਬਲੂਟੁੱਥ ਲਿੰਕ ਟੁੱਟ ਗਿਆ। ਇਸਨੂੰ ਕਨੈਕਟ ਡਾਇਲਾਗ ਤੋਂ ਮੁੜ ਕਨੈਕਟ ਕਰੋ।",
+      "reconnected": "{name} ਨਾਲ ਮੁੜ ਕਨੈਕਟ ਹੋ ਗਿਆ",
+      "autoConnected": "{name} ਨਾਲ ਆਪਣੇ-ਆਪ ਕਨੈਕਟ ਹੋ ਗਿਆ"
+    },
+    "overview": "ਫਲੀਟ ਦੀ ਸੰਖੇਪ ਜਾਣਕਾਰੀ"
   },
   "commandPalette": {
     "placeholder": "Type a command...",
@@ -4942,7 +5843,7 @@
     "toggleImmersive": "Toggle Immersive Mode",
     "goToDashboard": "Go to Dashboard",
     "goToPlan": "Go to Mission Planner",
-    "goToHistory": "Go to History",
+    "goToHistory": "ਉਡਾਣ ਲੌਗ 'ਤੇ ਜਾਓ",
     "goToAnalytics": "Go to Analytics",
     "goToConfig": "Go to Config",
     "goToWizard": "Go to Pre-flight Wizard",
@@ -4970,7 +5871,7 @@
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
-    "pairANode": "Pair a Node",
+    "pairANode": "ਨੋਡ ਜੋੜੋ",
     "installAndConnect": "Install the agent, enter this code, and you're connected.",
     "turnAnyDrone": "Turn any drone into a smart drone",
     "mavlinkProxy": "MAVLink Proxy",
@@ -5484,13 +6385,13 @@
     },
     "displayPage": {
       "title": "Display",
-      "description": "Manage the SPI LCD attached to the companion board: live preview, page switcher, calibration, and theme."
+      "description": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਨਾਲ ਜੁੜੀ SPI LCD ਦਾ ਪ੍ਰਬੰਧ ਕਰੋ: ਲਾਈਵ ਪ੍ਰੀਵਿਊ, ਪੇਜ ਸਵਿੱਚਰ, ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਅਤੇ ਥੀਮ।"
     },
     "lcdCameraSwitch": {
       "title": "Cameras",
       "refresh": "Refresh",
       "loading": "Detecting cameras...",
-      "emptyDescription": "No cameras detected. Plug a CSI or USB camera into the companion board and refresh.",
+      "emptyDescription": "ਕੋਈ ਕੈਮਰਾ ਨਹੀਂ ਮਿਲਿਆ। ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਵਿੱਚ CSI ਜਾਂ USB ਕੈਮਰਾ ਲਗਾਓ ਅਤੇ ਰਿਫ੍ਰੈਸ਼ ਕਰੋ।",
       "primaryBadge": "Primary",
       "switchLabel": "Switch primary camera",
       "restarting": "Restarting encoder...",
@@ -5957,6 +6858,113 @@
       "shareTitle": "Share uplink with WiFi clients?",
       "shareMessage": "This installs a NAT rule and routes connected clients' traffic over the active uplink, which can use metered data and can drop your connection while the uplink is reconfigured.",
       "shareConfirm": "Share"
+    },
+    "wifiSection": {
+      "accessPoint": "ਐਕਸੈਸ ਪੁਆਇੰਟ",
+      "n8Characters": "8+ ਅੱਖਰ",
+      "channel": "ਚੈਨਲ",
+      "wifiClient": "WiFi ਕਲਾਇੰਟ",
+      "wifiClientNotAvailableOn": "ਇਸ ਹਾਰਡਵੇਅਰ 'ਤੇ WiFi ਕਲਾਇੰਟ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+      "signal": "ਸਿਗਨਲ",
+      "gateway": "ਗੇਟਵੇ",
+      "notConnectedToAnyNetwork": "ਕਿਸੇ ਨੈੱਟਵਰਕ ਨਾਲ ਕਨੈਕਟ ਨਹੀਂ ਹੈ।",
+      "ssid": "SSID",
+      "adosGS": "ADOS-GS",
+      "ip": "IP",
+      "passphrase": "ਪਾਸਫਰੇਜ਼",
+      "save": "ਸੇਵ ਕਰੋ",
+      "scanNetworks": "ਨੈੱਟਵਰਕ ਸਕੈਨ ਕਰੋ",
+      "leave": "ਛੱਡੋ"
+    },
+    "cellularSection": {
+      "enabled": "ਚਾਲੂ",
+      "state": "ਸਥਿਤੀ",
+      "signal": "ਸਿਗਨਲ",
+      "operator": "ਆਪਰੇਟਰ",
+      "interface": "ਇੰਟਰਫੇਸ",
+      "dataCap": "ਡਾਟਾ ਸੀਮਾ",
+      "capsApplyTo4GOnly": "ਸੀਮਾਵਾਂ ਸਿਰਫ਼ 4G 'ਤੇ ਲਾਗੂ ਹੁੰਦੀਆਂ ਹਨ। WiFi ਅਤੇ Ethernet ਬੇਅੰਤ ਹਨ।",
+      "apn": "APN",
+      "ip": "IP",
+      "configure": "ਕੌਂਫਿਗਰ ਕਰੋ",
+      "dataUsage": "ਡਾਟਾ ਵਰਤੋਂ"
+    },
+    "uplinkPriorityPanel": {
+      "uplinkPriority": "ਅੱਪਲਿੰਕ ਤਰਜੀਹ",
+      "dragARowToReorder": "ਕ੍ਰਮ ਬਦਲਣ ਲਈ ਕਤਾਰ ਨੂੰ ਖਿੱਚੋ। ਅਗਲੇ ਫੇਲਓਵਰ 'ਤੇ ਸਭ ਤੋਂ ਉੱਪਰਲੀ ਐਂਟਰੀ ਚੁਣੀ ਜਾਵੇਗੀ।",
+      "noFailoversRecordedThisSession": "ਇਸ ਸੈਸ਼ਨ ਵਿੱਚ ਕੋਈ ਫੇਲਓਵਰ ਦਰਜ ਨਹੀਂ ਹੋਇਆ।",
+      "shareUplinkWithAPClients": "AP ਕਲਾਇੰਟਾਂ ਨਾਲ ਅੱਪਲਿੰਕ ਸਾਂਝਾ ਕਰੋ",
+      "dragToReorderTheFirst": "ਕ੍ਰਮ ਬਦਲਣ ਲਈ ਘਸੀਟੋ। ਪਹਿਲਾ ਠੀਕ-ਠਾਕ ਅੱਪਲਿੰਕ ਟ੍ਰੈਫਿਕ ਸੰਭਾਲਦਾ ਹੈ।",
+      "last5Failovers": "ਪਿਛਲੇ 5 ਫੇਲਓਵਰ",
+      "routesActiveUplinkTrafficOut": "ਕਿਰਿਆਸ਼ੀਲ ਅੱਪਲਿੰਕ ਟ੍ਰੈਫਿਕ ਨੂੰ ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਐਕਸੈਸ ਪੁਆਇੰਟ ਰਾਹੀਂ ਭੇਜਦਾ ਹੈ। ਉੱਨਤ ਵਿਕਲਪ।"
+    },
+    "joystickCalibrationWizard": {
+      "joystickCalibration": "ਜੌਇਸਟਿਕ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "samplingCenterPosition": "ਕੇਂਦਰੀ ਸਥਿਤੀ ਦਾ ਨਮੂਨਾ ਲਿਆ ਜਾ ਰਿਹਾ ਹੈ...",
+      "recordingAxisRange": "ਧੁਰੇ ਦੀ ਰੇਂਜ ਰਿਕਾਰਡ ਹੋ ਰਹੀ ਹੈ...",
+      "redo": "ਦੁਬਾਰਾ ਕਰੋ",
+      "saveCalibration": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੇਵ ਕਰੋ",
+      "releaseAllSticksAndLeave": "ਸਾਰੀਆਂ ਸਟਿੱਕਾਂ ਛੱਡ ਦਿਓ ਅਤੇ ਉਹਨਾਂ ਨੂੰ ਕੇਂਦਰ ਵਿੱਚ ਰਹਿਣ ਦਿਓ। ਕੰਟਰੋਲਰ ਨੂੰ ਨਾ ਛੂਹੋ।",
+      "moveAllSticksToTheir": "ਸਾਰੀਆਂ ਸਟਿੱਕਾਂ ਨੂੰ ਉਹਨਾਂ ਦੀ ਪੂਰੀ ਰੇਂਜ ਤੱਕ ਹਿਲਾਓ। ਹਰ ਸਟਿੱਕ ਨੂੰ ਚਾਰੇ ਕੋਨਿਆਂ ਤੱਕ ਧੱਕੋ, ਫਿਰ ਕੇਂਦਰ ਵਿੱਚ ਵਾਪਸ ਲਿਆਓ।"
+    },
+    "controllersSection": {
+      "stickControl": "ਸਟਿੱਕ ਕੰਟਰੋਲ",
+      "calibration": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "notCalibrated": "ਕੈਲੀਬ੍ਰੇਟ ਨਹੀਂ ਕੀਤਾ",
+      "letsTheGamepadFlyThe": "ਗੇਮਪੈਡ ਨੂੰ ਚੁਣੇ ਗਏ ਜਹਾਜ਼ ਨੂੰ ਉਡਾਉਣ ਦਿੰਦਾ ਹੈ। ਸਟਿੱਕਾਂ ਰਿਸੀਵਰ ਓਵਰਰਾਈਡ ਵਜੋਂ ਭੇਜੀਆਂ ਜਾਂਦੀਆਂ ਹਨ, ਇਸ ਲਈ ਜਦੋਂ ਤੱਕ ਜਹਾਜ਼ ਆਰਮ ਨਹੀਂ ਹੁੰਦਾ ਅਤੇ ਅਜਿਹੇ ਮੋਡ ਵਿੱਚ ਨਹੀਂ ਹੁੰਦਾ ਜਿੱਥੇ ਪਾਇਲਟ ਸਟਿੱਕਾਂ ਸੰਭਾਲਦਾ ਹੈ, ਕੁਝ ਵੀ ਨਹੀਂ ਭੇਜਿਆ ਜਾਂਦਾ। ਇਸਨੂੰ ਇੱਥੇ ਚਾਲੂ ਕਰਨਾ ਹੀ ਸਟ੍ਰੀਮ ਖੋਲ੍ਹਣ ਦਾ ਇੱਕੋ-ਇੱਕ ਤਰੀਕਾ ਹੈ, ਅਤੇ ਕੰਟਰੋਲਰ ਅਨਪਲੱਗ ਕਰਨ ਨਾਲ ਇਹ ਮੁੜ ਬੰਦ ਹੋ ਜਾਂਦਾ ਹੈ।",
+      "noGamepadIsReportingConnect": "ਕੋਈ ਗੇਮਪੈਡ ਰਿਪੋਰਟ ਨਹੀਂ ਕਰ ਰਿਹਾ। ਇੱਕ ਕਨੈਕਟ ਕਰੋ ਅਤੇ ਕੋਈ ਬਟਨ ਦਬਾਓ।",
+      "calibrated": "ਕੈਲੀਬ੍ਰੇਟ ਕੀਤਾ",
+      "reset": "ਰੀਸੈੱਟ ਕਰੋ"
+    },
+    "modemConfigModal": {
+      "configure4GModem": "4G ਮੋਡਮ ਕੌਂਫਿਗਰ ਕਰੋ",
+      "internet": "ਇੰਟਰਨੈੱਟ",
+      "modemEnabled": "ਮੋਡਮ ਚਾਲੂ ਹੈ",
+      "apn": "APN",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "save": "ਸੇਵ ਕਰੋ"
+    },
+    "bluetoothPairModal": {
+      "pairBluetoothDevice": "ਬਲੂਟੁੱਥ ਡਿਵਾਈਸ ਜੋੜੋ",
+      "scanningForDevices": "ਡਿਵਾਈਸਾਂ ਖੋਜੀਆਂ ਜਾ ਰਹੀਆਂ ਹਨ...",
+      "close": "ਬੰਦ ਕਰੋ",
+      "noGroundStationConnected": "ਕੋਈ ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਕਨੈਕਟ ਨਹੀਂ ਹੈ।",
+      "tapScanToDiscoverNearby": "ਨੇੜਲੇ ਡਿਵਾਈਸ ਲੱਭਣ ਲਈ ਸਕੈਨ 'ਤੇ ਟੈਪ ਕਰੋ।",
+      "scanResults": "ਸਕੈਨ ਨਤੀਜੇ"
+    },
+    "wifiPowersaveCard": {
+      "wifiPowerSave": "WiFi ਪਾਵਰ-ਸੇਵ",
+      "reAsserts": "ਮੁੜ-ਲਾਗੂ",
+      "signal": "ਸਿਗਨਲ",
+      "link": "ਲਿੰਕ",
+      "lastReAssert": "ਆਖਰੀ ਮੁੜ-ਲਾਗੂ"
+    },
+    "adapterStabilityCard": {
+      "adapterStability": "ਅਡੈਪਟਰ ਸਥਿਰਤਾ",
+      "chipset": "ਚਿੱਪਸੈੱਟ",
+      "pinnedMAC": "ਪਿੰਨ ਕੀਤਾ MAC",
+      "currentMAC": "ਮੌਜੂਦਾ MAC",
+      "detectedBy": "ਇਸ ਦੁਆਰਾ ਖੋਜਿਆ"
+    },
+    "videoLinkPanel": {
+      "latency": "ਲੇਟੈਂਸੀ",
+      "encoder": "ਐਨਕੋਡਰ",
+      "radioFEC": "ਰੇਡੀਓ FEC",
+      "channel": "ਚੈਨਲ",
+      "tierLadder": "ਟੀਅਰ ਪੌੜੀ"
+    },
+    "networkPageModals": {
+      "leaveWiFiNetwork": "ਕੀ WiFi ਨੈੱਟਵਰਕ ਛੱਡਣਾ ਹੈ?",
+      "theGroundNodeWillFall": "ਗਰਾਊਂਡ ਨੋਡ ਆਪਣੇ ਐਕਸੈੱਸ-ਪੁਆਇੰਟ ਮੋਡ 'ਤੇ ਵਾਪਸ ਚਲਾ ਜਾਵੇਗਾ।",
+      "leave": "ਛੱਡੋ"
+    },
+    "roleChangeCard": {
+      "changeDeploymentRole": "ਡਿਪਲੌਇਮੈਂਟ ਭੂਮਿਕਾ ਬਦਲੋ",
+      "transitioningServices": "ਸੇਵਾਵਾਂ ਬਦਲੀਆਂ ਜਾ ਰਹੀਆਂ ਹਨ..."
+    },
+    "uplinkPriorityList": {
+      "noUplinksConfigured": "ਕੋਈ ਅੱਪਲਿੰਕ ਕੌਂਫਿਗਰ ਨਹੀਂ ਕੀਤਾ ਗਿਆ।",
+      "active": "ਕਿਰਿਆਸ਼ੀਲ"
     }
   },
   "toast": {
@@ -6046,7 +7054,30 @@
     "inlineMountFailed": "{name} failed to start: {reason}",
     "inlineNeedsNode": "Install this extension on a node to load it here",
     "inlineRetry": "Retry",
-    "inlineCrashed": "This extension stopped responding."
+    "inlineCrashed": "This extension stopped responding.",
+    "pluginInstallProgress": {
+      "dismissInstallProgress": "ਇੰਸਟਾਲ ਪ੍ਰਗਤੀ ਖਾਰਜ ਕਰੋ"
+    },
+    "pluginCrashBanner": {
+      "dismiss": "ਖਾਰਜ ਕਰੋ"
+    },
+    "parameters": {
+      "unconfirmedDefault": "ਡਿਫ਼ੌਲਟ — ਡਰੋਨ ਤੋਂ ਨਹੀਂ ਪੜ੍ਹਿਆ ਗਿਆ",
+      "agentManaged": "ਏਜੰਟ ਦੁਆਰਾ ਪ੍ਰਬੰਧਿਤ — ਇੱਥੇ ਸਿਰਫ਼ ਪੜ੍ਹਨਯੋਗ",
+      "agentUnreachable": "ਇਹ ਬਦਲਾਅ ਲਾਗੂ ਕਰਨ ਲਈ ਏਜੰਟ ਤੱਕ ਨਹੀਂ ਪਹੁੰਚ ਸਕੇ",
+      "enterNumber": "ਕੋਈ ਨੰਬਰ ਦਰਜ ਕਰੋ",
+      "invalidValue": "ਅਵੈਧ ਮੁੱਲ",
+      "cameraListUnavailable": "ਕੈਮਰਾ ਸੂਚੀ ਉਪਲਬਧ ਨਹੀਂ: ਇਸ ਨੋਡ ਦਾ ਰੋਸਟਰ ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ",
+      "loadingCameras": "ਕੈਮਰੇ ਲੋਡ ਹੋ ਰਹੇ ਹਨ…",
+      "cameraAuto": "ਆਟੋ",
+      "cameraAutoPurpose": "ਆਟੋ (ਪਹਿਲਾ {purpose} ਕੈਮਰਾ)"
+    },
+    "stages": {
+      "dragA": "ਖਿੱਚ ਕੇ ਲਿਆਓ",
+      "chooseFile": "ਫ਼ਾਈਲ ਚੁਣੋ",
+      "close": "ਬੰਦ ਕਰੋ",
+      "tryAgain": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    }
   },
   "pluginRegistry": {
     "browse": {
@@ -6946,7 +7977,7 @@
       "reloadFromFc": "FC ਤੋਂ ਮੁੜ-ਲੋਡ",
       "dirty": "ਅਣਸੁਰੱਖਿਅਤ ਤਬਦੀਲੀਆਂ",
       "rebootRequired": "ਰੀਬੂਟ ਜ਼ਰੂਰੀ",
-      "rebootFc": "FC ਰੀਬੂਟ",
+      "rebootFc": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
       "rebootFailed": "FC did not accept the reboot",
       "notConnected": "CAN ਪੈਰਾਮੀਟਰ ਪੜ੍ਹਨ ਜਾਂ ਲਿਖਣ ਲਈ ਡਰੋਨ ਜੋੜੋ.",
       "loading": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਤੋਂ ਪੈਰਾਮੀਟਰ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
@@ -7246,7 +8277,7 @@
       "chip": "ਡਾਟਾ ਰੁਕਿਆ",
       "tooltip": "ਆਖਰੀ ਰੀਡਿੰਗ {ago} ਉੱਤੇ ਰੁਕਿਆ। ਹਾਰਟਬੀਟ ਵਾਪਸ ਆਉਣ ਉੱਤੇ ਵੈਲਿਊਜ਼ ਮੁੜ ਚਾਲੂ ਹੋ ਜਾਂਦੀਆਂ ਹਨ।"
     },
-    "disambiguation": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਨੈਕਟ ਕਰੋ ਆਟੋਪਾਇਲਟ ਨਾਲ ਸਿੱਧਾ USB ਜਾਂ ਆਪਣੇ ਨੈੱਟਵਰਕ ਉੱਤੇ ਗੱਲ ਕਰਦਾ ਹੈ। ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪੇਅਰ ਕਰੋ ਵੀਡੀਓ, ਸਕ੍ਰਿਪਟਾਂ ਅਤੇ 4G ਲਈ ADOS ਏਜੰਟ ਚਲਾਉਂਦਾ ਇੱਕ ਬੋਰਡ ਜੋੜਦਾ ਹੈ।",
+    "disambiguation": "USB ਜਾਂ ਆਪਣੇ ਨੈੱਟਵਰਕ ਰਾਹੀਂ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਨੈਕਟ ਕਰੋ, ਜਾਂ ਵੀਡੀਓ, ਸਕ੍ਰਿਪਟਾਂ ਅਤੇ 4G ਲਈ ADOS ਏਜੰਟ ਚਲਾ ਰਹੇ ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਨੂੰ ਪੇਅਰ ਕਰੋ।",
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
@@ -7390,7 +8421,8 @@
       "configure": "ਵੀਡੀਓ ਸਰੋਤ ਸੰਰਚਿਤ ਕਰੋ",
       "frozenLinkLost": "LINK LOST — PICTURE FROZEN, RECONNECTING",
       "frozenNoFrames": "NO FRAMES — PICTURE FROZEN, RECONNECTING"
-    }
+    },
+    "openMapView": "ਨਕਸ਼ਾ ਦ੍ਰਿਸ਼ ਦਿਖਾਓ"
   },
   "skills": {
     "arm": {
@@ -7553,8 +8585,6 @@
     "rebindButtonFrom": "Rebind from button {button}",
     "pressButton": "Press a button…",
     "clearButton": "Clear button",
-    "applyControllerDefaults": "Apply controller defaults",
-    "controllerDefaultsApplied": "Applied {count} controller default binding(s).",
     "resetToDefaults": "Reset to defaults",
     "resetDone": "Bindings reset to defaults.",
     "reservedChord": "{key} is reserved and cannot be bound.",
@@ -8022,6 +9052,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
+    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -8137,6 +9168,14 @@
       "cancel": "Cancel",
       "nameError": "Enter a name.",
       "urlError": "Enter an rtsp:// or http:// URL."
+    },
+    "confirm": {
+      "removeTitle": "ਕੈਮਰਾ ਹਟਾਓ",
+      "removeMessage": "{name} ਹਟਾਉਣਾ ਹੈ? ਵੀਡੀਓ ਕੁਝ ਸਕਿੰਟਾਂ ਲਈ ਮੁੜ ਸ਼ੁਰੂ ਹੋਵੇਗੀ।",
+      "removeAction": "ਹਟਾਓ",
+      "armedTitle": "ਕੀ ਆਰਮ ਹੋਣ ਦੌਰਾਨ ਵੀਡੀਓ ਮੁੜ ਸ਼ੁਰੂ ਕਰਨੀ ਹੈ?",
+      "armedMessage": "ਇਹ ਡਰੋਨ ਆਰਮ ਹੈ। ਕੈਮਰੇ ਦੀ ਤਬਦੀਲੀ ਸੇਵ ਕਰਨ ਨਾਲ ਇਸਦੀ ਵੀਡੀਓ ਕੁਝ ਸਕਿੰਟਾਂ ਲਈ ਮੁੜ ਸ਼ੁਰੂ ਹੋਵੇਗੀ।",
+      "armedAction": "ਸੇਵ ਕਰੋ ਅਤੇ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ"
     }
   },
   "nodesView": {
@@ -8396,7 +9435,18 @@
     }
   },
   "changelog": {
-    "reactionFailed": "Could not save your reaction. Sign in again and retry."
+    "reactionFailed": "Could not save your reaction. Sign in again and retry.",
+    "changelogNotificationModal": {
+      "whatSNew": "ਨਵਾਂ ਕੀ ਹੈ",
+      "noUpdatesYet": "ਅਜੇ ਕੋਈ ਅੱਪਡੇਟ ਨਹੀਂ।",
+      "gotIt": "ਸਮਝ ਗਿਆ"
+    },
+    "changelogNotificationGate": {
+      "changelogNotification": "changelog-notification"
+    },
+    "changelogBadge": {
+      "community": "ਕਮਿਊਨਿਟੀ"
+    }
   },
   "desktopUpdate": {
     "available": "Version {version} is available.",
@@ -8962,42 +10012,19 @@
       }
     },
     "mapTab": {
-      "title": "Map",
-      "status": "Map status",
-      "noData": "No map data from this node yet. The map appears once the mapping extension publishes its status.",
-      "stale": "Map status is stale",
-      "session": "Session",
-      "noSession": "No capture session",
-      "points": "Points",
-      "area": "Area",
-      "health": "Pose health",
-      "placement": "Compute placement",
-      "memory": "Memory",
+      "title": "ਨਕਸ਼ਾ",
+      "status": "ਨਕਸ਼ੇ ਦੀ ਸਥਿਤੀ",
+      "noData": "ਇਸ ਨੋਡ ਤੋਂ ਅਜੇ ਕੋਈ ਨਕਸ਼ਾ ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ। ਮੈਪਿੰਗ ਐਕਸਟੈਂਸ਼ਨ ਵੱਲੋਂ ਆਪਣੀ ਸਥਿਤੀ ਪ੍ਰਕਾਸ਼ਿਤ ਕਰਨ ਤੋਂ ਬਾਅਦ ਨਕਸ਼ਾ ਦਿਖਾਈ ਦੇਵੇਗਾ।",
+      "noSession": "ਕੋਈ ਕੈਪਚਰ ਸੈਸ਼ਨ ਨਹੀਂ",
+      "health": "ਪੋਜ਼ ਦੀ ਸਿਹਤ",
       "memoryValue": "{used} / {budget} MB",
-      "voxel": "Voxel size",
-      "keyframesDropped": "Keyframes dropped",
-      "upload": "Upload",
-      "stream": "Stream",
-      "navPose": "Navigation pose",
-      "openViewer": "Open 3D viewer",
-      "viewerUnavailable": "The mapping extension's viewer is not installed on this node.",
-      "liveMap": "Live map",
-      "placementOnboard": "On board",
-      "placementStream": "Stream to workstation",
-      "placementPostFlight": "After flight",
-      "placementHybrid": "Hybrid",
-      "uploadIdle": "Idle",
-      "uploadQueued": "Queued",
-      "uploadUploading": "Uploading {pct}%",
-      "uploadDone": "Done",
-      "uploadFailed": "Failed",
-      "streamOff": "Off",
-      "streamConnecting": "Connecting",
-      "streamLive": "Live · {rate}",
-      "streamDegraded": "Degraded · {rate}",
-      "navPoseAlways": "Always",
-      "navPoseCapture": "During capture only",
-      "noPose": "No pose"
+      "navPose": "ਨੈਵੀਗੇਸ਼ਨ ਪੋਜ਼",
+      "openViewer": "3D ਵਿਊਅਰ ਖੋਲ੍ਹੋ",
+      "viewerUnavailable": "ਇਸ ਨੋਡ 'ਤੇ ਮੈਪਿੰਗ ਐਕਸਟੈਂਸ਼ਨ ਦਾ ਵਿਊਅਰ ਇੰਸਟਾਲ ਨਹੀਂ ਹੈ।",
+      "liveMap": "ਲਾਈਵ ਨਕਸ਼ਾ",
+      "navPoseAlways": "ਹਮੇਸ਼ਾ",
+      "navPoseCapture": "ਸਿਰਫ਼ ਕੈਪਚਰ ਦੌਰਾਨ",
+      "noPose": "ਕੋਈ ਪੋਜ਼ ਨਹੀਂ"
     },
     "followSkill": {
       "title": "Follow",
@@ -9018,7 +10045,7 @@
   "aircraftSetup": {
     "title": "Aircraft setup",
     "description": "Calibration, initial tune and the ADOS Pilot hand-over, run by the drone's agent. Each step can be run again on its own.",
-    "noDrone": "Select a drone to set it up.",
+    "noDrone": "ਸੈੱਟਅੱਪ ਕਰਨ ਲਈ ਉੱਪਰੋਂ ਇੱਕ ਡਰੋਨ ਚੁਣੋ।",
     "noAgent": "This drone has no reachable ADOS agent on this network. Use the flight controller pages for direct setup.",
     "loading": "Reading the aircraft setup…",
     "loadError": "Could not read the aircraft setup: {error}",
@@ -9057,14 +10084,15 @@
       "noSteps": "No step results yet.",
       "snapshots": "Parameter snapshots",
       "noSnapshots": "No snapshots yet."
-    }
+    },
+    "settingUp": "{name} ਸੈੱਟਅੱਪ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ",
+    "pickDrone": "ਡਰੋਨ",
+    "pickDronePlaceholder": "ਡਰੋਨ ਚੁਣੋ",
+    "noDronesWithAgent": "ਫਲੀਟ ਵਿੱਚ ਕਿਸੇ ਵੀ ਡਰੋਨ ਕੋਲ ਏਜੰਟ ਨਹੀਂ ਹੈ"
   },
   "flightScreen": {
     "pill": {
-      "aria": "Status: {text}. Open the alert list",
-      "navSource": "Navigation source degraded ({kind})",
-      "storage": "Companion storage {pct}% full",
-      "pilotStale": "ADOS Pilot not answering"
+      "navSource": "Navigation source degraded ({kind})"
     },
     "row": {
       "d": "Distance from home",
@@ -9074,6 +10102,2193 @@
       "agl": "Height above the ground"
     },
     "fly": "Fly",
-    "flyTitle": "Open the flight screen"
+    "flyTitle": "Open the flight screen",
+    "planBanner": {
+      "differs": "ਡਰੋਨ ਵਾਲੀ ਯੋਜਨਾ ਇਸ ਡਿਵਾਈਸ ਦੀ ਯੋਜਨਾ ਨਾਲੋਂ ਵੱਖਰੀ ਹੈ",
+      "load": "ਡਰੋਨ ਤੋਂ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…"
+    }
+  },
+  "operatorRegistry": {
+    "profile": {
+      "pilot": "ਪਾਇਲਟ",
+      "firstName": "ਪਹਿਲਾ ਨਾਮ",
+      "lastName": "ਆਖਰੀ ਨਾਮ",
+      "dateOfBirth": "ਜਨਮ ਮਿਤੀ",
+      "licenseNumber": "ਲਾਇਸੈਂਸ ਨੰਬਰ",
+      "licenseNumberPlaceholder": "ਜਿਵੇਂ RPL-12345",
+      "licenseIssuer": "ਲਾਇਸੈਂਸ ਜਾਰੀਕਰਤਾ",
+      "licenseClass": "ਲਾਇਸੈਂਸ ਸ਼੍ਰੇਣੀ",
+      "licenseExpiry": "ਲਾਇਸੈਂਸ ਮਿਆਦ ਸਮਾਪਤੀ",
+      "priorPicHours": "ਪਿਛਲੇ PIC ਘੰਟੇ",
+      "casaArn": "CASA ARN",
+      "faaTrustId": "FAA TRUST ID",
+      "organisation": "ਸੰਸਥਾ",
+      "operatorName": "ਓਪਰੇਟਰ ਦਾ ਨਾਮ",
+      "operatorCertNumber": "ਓਪਰੇਟਰ ਸਰਟੀਫਿਕੇਟ ਨੰਬਰ",
+      "certIssuer": "ਸਰਟੀਫਿਕੇਟ ਜਾਰੀਕਰਤਾ",
+      "certExpiry": "ਸਰਟੀਫਿਕੇਟ ਮਿਆਦ ਸਮਾਪਤੀ",
+      "address": "ਪਤਾ",
+      "insurance": "ਬੀਮਾ",
+      "insurer": "ਬੀਮਾਕਰਤਾ",
+      "policyNumber": "ਪਾਲਿਸੀ ਨੰਬਰ",
+      "policyExpiry": "ਪਾਲਿਸੀ ਮਿਆਦ ਸਮਾਪਤੀ",
+      "coverageAmount": "ਕਵਰੇਜ ਰਕਮ",
+      "defaults": "ਡਿਫੌਲਟ",
+      "defaultJurisdiction": "ਡਿਫੌਲਟ ਅਧਿਕਾਰ ਖੇਤਰ",
+      "notSet": "ਸੈੱਟ ਨਹੀਂ"
+    },
+    "aircraft": {
+      "title": "ਜਹਾਜ਼",
+      "registeredCount": "{count} ਜਹਾਜ਼ ਰਜਿਸਟਰਡ",
+      "add": "ਜਹਾਜ਼ ਜੋੜੋ",
+      "empty": "ਅਜੇ ਕੋਈ ਜਹਾਜ਼ ਨਹੀਂ। ਆਪਣੇ ਆਪ ਐਂਟਰੀ ਬਣਾਉਣ ਲਈ ਡਰੋਨ ਕਨੈਕਟ ਕਰੋ, ਜਾਂ ਜੋੜੋ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "newName": "ਨਵਾਂ ਜਹਾਜ਼",
+      "colName": "ਨਾਮ",
+      "colReg": "ਰਜਿ.",
+      "colType": "ਕਿਸਮ",
+      "colHours": "ਘੰਟੇ",
+      "colFlights": "ਉਡਾਣਾਂ",
+      "delete": "ਮਿਟਾਓ",
+      "deleteTitle": "ਜਹਾਜ਼ ਮਿਟਾਓ",
+      "deleteMessage": "ਕੀ ਇਸ ਜਹਾਜ਼ ਦਾ ਰਿਕਾਰਡ ਮਿਟਾਉਣਾ ਹੈ?",
+      "name": "ਨਾਮ",
+      "registration": "ਰਜਿਸਟ੍ਰੇਸ਼ਨ",
+      "registrationPlaceholder": "UIN / N-ਨੰਬਰ / EASA ਰਜਿ.",
+      "manufacturer": "ਨਿਰਮਾਤਾ",
+      "model": "ਮਾਡਲ",
+      "serialNumber": "ਸੀਰੀਅਲ ਨੰਬਰ",
+      "remoteIdSerial": "Remote ID ਸੀਰੀਅਲ",
+      "vehicleTypeLabel": "ਵਾਹਨ ਦੀ ਕਿਸਮ",
+      "categoryLabel": "ਸ਼੍ਰੇਣੀ",
+      "mtomKg": "MTOM (ਕਿਲੋ)",
+      "airworthinessCert": "ਉਡਾਣ-ਯੋਗਤਾ ਸਰਟੀਫਿਕੇਟ",
+      "airworthinessExpiry": "ਉਡਾਣ-ਯੋਗਤਾ ਦੀ ਮਿਆਦ",
+      "lastMaintenance": "ਆਖਰੀ ਰੱਖ-ਰਖਾਅ",
+      "vehicleType": {
+        "copter": "ਮਲਟੀਰੋਟਰ",
+        "plane": "ਜਹਾਜ਼",
+        "vtol": "VTOL",
+        "rover": "ਰੋਵਰ",
+        "sub": "ਪਣਡੁੱਬੀ"
+      },
+      "category": {
+        "nano": "ਨੈਨੋ (<250 g)",
+        "micro": "ਮਾਈਕ੍ਰੋ (≤2 kg)",
+        "small": "ਛੋਟਾ (≤25 kg)",
+        "medium": "ਦਰਮਿਆਨਾ (≤150 kg)",
+        "large": "ਵੱਡਾ (>150 kg)"
+      }
+    },
+    "battery": {
+      "title": "ਬੈਟਰੀਆਂ",
+      "packCount": "{count, plural, one {# ਪੈਕ} other {# ਪੈਕ}}",
+      "retiredHidden": "{count} ਸੇਵਾਮੁਕਤ ਲੁਕਾਏ",
+      "showRetired": "ਸੇਵਾਮੁਕਤ ਦਿਖਾਓ",
+      "add": "ਪੈਕ ਜੋੜੋ",
+      "empty": "ਹਾਲੇ ਕੋਈ ਬੈਟਰੀ ਪੈਕ ਰਜਿਸਟਰ ਨਹੀਂ। ਆਪਣਾ ਪਹਿਲਾ ਪੈਕ ਰਜਿਸਟਰ ਕਰਨ ਲਈ ਜੋੜੋ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "newLabel": "ਨਵਾਂ ਬੈਟਰੀ ਪੈਕ",
+      "chemistryOther": "ਹੋਰ",
+      "colLabel": "ਲੇਬਲ",
+      "colChem": "ਕਿਸਮ",
+      "colCells": "ਸੈੱਲ",
+      "colMah": "mAh",
+      "colCycles": "ਚੱਕਰ",
+      "colHealth": "ਸਿਹਤ",
+      "retiredTag": "ਸੇਵਾਮੁਕਤ",
+      "retire": "ਸੇਵਾਮੁਕਤ ਕਰੋ",
+      "retirePack": "ਪੈਕ ਸੇਵਾਮੁਕਤ ਕਰੋ",
+      "delete": "ਮਿਟਾਓ",
+      "deletePack": "ਪੈਕ ਮਿਟਾਓ",
+      "deleteTitle": "ਬੈਟਰੀ ਪੈਕ ਮਿਟਾਓ",
+      "deleteMessage": "ਕੀ ਇਹ ਬੈਟਰੀ ਪੈਕ ਪੱਕੇ ਤੌਰ 'ਤੇ ਮਿਟਾਉਣਾ ਹੈ?",
+      "retireTitle": "ਬੈਟਰੀ ਪੈਕ ਸੇਵਾਮੁਕਤ ਕਰੋ",
+      "retireMessage": "ਕੀ ਇਹ ਪੈਕ ਸੇਵਾਮੁਕਤ ਕਰਨਾ ਹੈ? ਇਹ ਸਰਗਰਮ ਲੋਡਆਊਟ ਚੋਣਕਾਰਾਂ ਤੋਂ ਲੁਕਾ ਦਿੱਤਾ ਜਾਵੇਗਾ।",
+      "label": "ਲੇਬਲ",
+      "serialNumber": "ਸੀਰੀਅਲ ਨੰਬਰ",
+      "chemistry": "ਰਸਾਇਣ ਕਿਸਮ",
+      "cellCount": "ਸੈੱਲ ਗਿਣਤੀ (S)",
+      "capacityMah": "ਸਮਰੱਥਾ (mAh)",
+      "cRating": "C ਰੇਟਿੰਗ",
+      "manufacturer": "ਨਿਰਮਾਤਾ",
+      "model": "ਮਾਡਲ",
+      "purchaseDate": "ਖਰੀਦ ਮਿਤੀ",
+      "lastCharged": "ਆਖਰੀ ਚਾਰਜ",
+      "cycleCount": "ਚੱਕਰ ਗਿਣਤੀ",
+      "healthOverride": "ਸਿਹਤ % ਓਵਰਰਾਈਡ",
+      "healthProjected": "{value} (ਅਨੁਮਾਨਿਤ)"
+    },
+    "equipment": {
+      "title": "ਉਪਕਰਣ",
+      "activeCount": "{count, plural, one {# ਸਰਗਰਮ ਆਈਟਮ} other {# ਸਰਗਰਮ ਆਈਟਮਾਂ}} ਵਿੱਚੋਂ {shown}",
+      "allTypes": "ਸਾਰੀਆਂ ਕਿਸਮਾਂ",
+      "showRetired": "ਰਿਟਾਇਰ ਕੀਤੇ ਦਿਖਾਓ",
+      "add": "ਆਈਟਮ ਜੋੜੋ",
+      "empty": "ਕੋਈ ਉਪਕਰਨ ਰਜਿਸਟਰ ਨਹੀਂ ਹੈ। ਪ੍ਰੋਪੈਲਰ ਸੈੱਟ, ਮੋਟਰ, ESC, ਕੈਮਰਾ, ਗਿੰਬਲ, ਪੇਲੋਡ, ਫਰੇਮ ਜਾਂ RC ਟ੍ਰਾਂਸਮੀਟਰ ਰਜਿਸਟਰ ਕਰਨ ਲਈ ਜੋੜੋ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "newLabel": "ਨਵਾਂ ਉਪਕਰਨ",
+      "colType": "ਕਿਸਮ",
+      "colLabel": "ਲੇਬਲ",
+      "colFitment": "ਫਿਟਮੈਂਟ",
+      "colHours": "ਘੰਟੇ",
+      "colFlights": "ਉਡਾਣਾਂ",
+      "inspectionDue": "ਜਾਂਚ ਬਕਾਇਆ",
+      "retiredTag": "ਰਿਟਾਇਰ",
+      "markInspected": "ਜਾਂਚਿਆ ਮਾਰਕ ਕਰੋ",
+      "retire": "ਰਿਟਾਇਰ ਕਰੋ",
+      "retireItem": "ਆਈਟਮ ਰਿਟਾਇਰ ਕਰੋ",
+      "delete": "ਮਿਟਾਓ",
+      "deleteItem": "ਆਈਟਮ ਮਿਟਾਓ",
+      "deleteTitle": "ਉਪਕਰਨ ਆਈਟਮ ਮਿਟਾਓ",
+      "deleteMessage": "ਕੀ ਇਸ ਉਪਕਰਨ ਆਈਟਮ ਨੂੰ ਪੱਕੇ ਤੌਰ 'ਤੇ ਮਿਟਾਉਣਾ ਹੈ?",
+      "retireTitle": "ਉਪਕਰਨ ਆਈਟਮ ਰਿਟਾਇਰ ਕਰੋ",
+      "retireMessage": "ਕੀ ਇਸ ਆਈਟਮ ਨੂੰ ਰਿਟਾਇਰ ਕਰਨਾ ਹੈ? ਇਹ ਸਰਗਰਮ ਲੋਡਆਊਟ ਚੋਣਕਾਰਾਂ ਤੋਂ ਲੁਕਾ ਦਿੱਤੀ ਜਾਵੇਗੀ।",
+      "typeLabel": "ਕਿਸਮ",
+      "label": "ਲੇਬਲ",
+      "manufacturer": "ਨਿਰਮਾਤਾ",
+      "model": "ਮਾਡਲ",
+      "serialNumber": "ਸੀਰੀਅਲ ਨੰਬਰ",
+      "fitment": "ਫਿਟਮੈਂਟ",
+      "fitmentPlaceholder": "Alpha-1 ਮੋਟਰ 3",
+      "installDate": "ਇੰਸਟਾਲ ਮਿਤੀ",
+      "inspectEvery": "ਹਰ ਵਾਰ ਜਾਂਚ (ਉਡਾਣ ਘੰਟੇ)",
+      "lastInspected": "ਆਖਰੀ ਜਾਂਚ",
+      "totalFlightHours": "ਕੁੱਲ ਉਡਾਣ ਘੰਟੇ",
+      "totalFlights": "ਕੁੱਲ ਉਡਾਣਾਂ",
+      "type": {
+        "prop_set": "ਪ੍ਰੋਪੈਲਰ ਸੈੱਟ",
+        "motor_set": "ਮੋਟਰ ਸੈੱਟ",
+        "esc_set": "ESC ਸੈੱਟ",
+        "camera": "ਕੈਮਰਾ",
+        "gimbal": "ਗਿੰਬਲ",
+        "payload": "ਪੇਲੋਡ",
+        "frame": "ਫਰੇਮ",
+        "rc_tx": "RC ਟ੍ਰਾਂਸਮੀਟਰ"
+      },
+      "typeShort": {
+        "prop_set": "ਪ੍ਰੋਪ",
+        "motor_set": "ਮੋਟਰਾਂ",
+        "esc_set": "ESC",
+        "camera": "ਕੈਮਰਾ",
+        "gimbal": "ਗਿੰਬਲ",
+        "payload": "ਪੇਲੋਡ",
+        "frame": "ਫਰੇਮ",
+        "rc_tx": "RC TX"
+      }
+    }
+  },
+  "fcCalibration": {
+    "wizard": {
+      "status": {
+        "idle": "ਤਿਆਰ",
+        "in_progress": "ਕੈਲੀਬ੍ਰੇਟ ਹੋ ਰਿਹਾ ਹੈ",
+        "waiting_accept": "ਸਮੀਖਿਆ ਕਰੋ ਅਤੇ ਸਵੀਕਾਰ ਕਰੋ",
+        "cal_warning": "ਨਤੀਜਿਆਂ ਦੀ ਸਮੀਖਿਆ ਕਰੋ",
+        "success": "ਪੂਰਾ ਹੋਇਆ",
+        "error": "ਅਸਫਲ"
+      },
+      "beforeYouStart": "ਸ਼ੁਰੂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ",
+      "troubleshooting": "ਸਮੱਸਿਆ ਨਿਵਾਰਨ",
+      "forceSave": "ਆਫਸੈੱਟ ਜ਼ਬਰਦਸਤੀ ਸੇਵ ਕਰੋ",
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "confirmPosition": "ਸਥਿਤੀ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "calibrating": "ਕੈਲੀਬ੍ਰੇਟ ਹੋ ਰਿਹਾ ਹੈ...",
+      "notAvailable": "ਉਪਲਬਧ ਨਹੀਂ",
+      "recalibrate": "ਮੁੜ ਕੈਲੀਬ੍ਰੇਟ ਕਰੋ",
+      "start": "ਸ਼ੁਰੂ ਕਰੋ"
+    }
+  },
+  "fcGimbal": {
+    "title": "ਗਿੰਬਲ",
+    "subtitle": "ਮਾਊਂਟ ਕਿਸਮ, ਐਕਸਿਸ ਸੀਮਾਵਾਂ, RC ਰੇਟ ਅਤੇ ਮੈਨੂਅਲ ਕੰਟਰੋਲ",
+    "px4Note": "PX4 ਗਿੰਬਲ ਇਨਪੁਟ ਲਈ MNT_MODE_IN ਅਤੇ AUX ਕੰਟਰੋਲ ਇਨਪੁਟਾਂ ਲਈ MNT_MAN_* ਵਰਤਦਾ ਹੈ।",
+    "configTitle": "ਗਿੰਬਲ ਸੰਰਚਨਾ",
+    "configDesc": "ਮਾਊਂਟ ਕਿਸਮ ਅਤੇ ਡਿਫਾਲਟ ਵਿਵਹਾਰ",
+    "inputMode": "ਇਨਪੁਟ ਮੋਡ",
+    "mountType": "ਮਾਊਂਟ ਕਿਸਮ",
+    "defaultMode": "ਡਿਫਾਲਟ ਮੋਡ",
+    "axisTitle": "ਐਕਸਿਸ ਸੀਮਾਵਾਂ",
+    "axisDesc": "ਹਰੇਕ ਐਕਸਿਸ ਲਈ ਘੱਟੋ-ਘੱਟ/ਵੱਧ ਤੋਂ ਵੱਧ ਕੋਣ",
+    "axis": {
+      "Pitch": "ਪਿੱਚ",
+      "Roll": "ਰੋਲ",
+      "Yaw": "ਯੌ"
+    },
+    "min": "ਘੱਟੋ-ਘੱਟ",
+    "max": "ਵੱਧ ਤੋਂ ਵੱਧ",
+    "rcRate": "RC ਰੇਟ",
+    "rcTitle": "RC ਇਨਪੁਟ",
+    "rcDesc": "RC ਚੈਨਲਾਂ ਨੂੰ ਗਿੰਬਲ ਐਕਸਿਸ ਕੰਟਰੋਲ ਨਾਲ ਮੈਪ ਕਰੋ",
+    "rcTilt": "ਟਿਲਟ (ਪਿੱਚ) ਇਨਪੁਟ",
+    "rcRoll": "ਰੋਲ ਇਨਪੁਟ",
+    "rcPan": "ਪੈਨ (ਯੌ) ਇਨਪੁਟ",
+    "rcAssignHint": "ਰਿਸੀਵਰ ਪੈਨਲ ਵਿੱਚ ਗਿੰਬਲ ਐਕਸਿਸਾਂ ਨੂੰ RC ਚੈਨਲਾਂ ਨਾਲ ਜੋੜੋ: RCx_OPTION 212 (Mount1 ਰੋਲ), 213 (Mount1 ਪਿੱਚ), 214 (Mount1 ਯੌ)।",
+    "liveTitle": "ਲਾਈਵ ਸਥਿਤੀ",
+    "liveDesc": "ਮੌਜੂਦਾ ਗਿੰਬਲ ਦਿਸ਼ਾ",
+    "mountModeTitle": "ਮਾਊਂਟ ਮੋਡ",
+    "mountModeDesc": "ਸਰਗਰਮ ਮੋਡ ਬਦਲਣ ਲਈ DO_MOUNT_CONFIGURE ਕਮਾਂਡ ਭੇਜੋ",
+    "activeMode": "ਸਰਗਰਮ ਮੋਡ",
+    "setMode": "ਮੋਡ ਸੈੱਟ ਕਰੋ",
+    "manualTitle": "ਮੈਨੂਅਲ ਕੰਟਰੋਲ",
+    "manualDesc": "ਗਿੰਬਲ ਨੂੰ ਨਿਸ਼ਾਨਾ ਬਣਾਓ; ਸਲਾਈਡਰ ਛੱਡਣ 'ਤੇ ਕੋਣ ਭੇਜਿਆ ਜਾਂਦਾ ਹੈ",
+    "pitchAria": "ਗਿੰਬਲ ਪਿੱਚ",
+    "yawAria": "ਗਿੰਬਲ ਯੌ",
+    "center": "ਕੇਂਦਰ",
+    "roiTitle": "ROI ਸੈੱਟ ਕਰੋ",
+    "roiDesc": "ਗਿੰਬਲ ਨੂੰ ਕਿਸੇ GPS ਟਿਕਾਣੇ ਵੱਲ ਕਰੋ",
+    "latitude": "ਅਕਸ਼ਾਂਸ਼",
+    "longitude": "ਰੇਖਾਂਸ਼",
+    "altitude": "ਉਚਾਈ",
+    "setRoi": "ROI ਸੈੱਟ ਕਰੋ"
+  },
+  "fcFailsafe": {
+    "failsafeConfiguration": "ਫੇਲਸੇਫ ਸੰਰਚਨਾ",
+    "configureFailsafeActionsForLoss": "ਕੰਟਰੋਲ, ਬੈਟਰੀ ਅਤੇ GCS ਲਿੰਕ ਗੁਆਚਣ ਲਈ ਫੇਲਸੇਫ ਕਾਰਵਾਈਆਂ ਸੰਰਚਿਤ ਕਰੋ",
+    "radioFailsafe": "ਰੇਡੀਓ ਫੇਲਸੇਫ",
+    "triggeredWhenTheRCThrottle": "ਜਦੋਂ RC ਥ੍ਰੌਟਲ ਚੈਨਲ ਸੀਮਾ ਤੋਂ ਹੇਠਾਂ ਜਾਂਦਾ ਹੈ ਜਾਂ ਰਿਸੀਵਰ ਗੁਆਚ ਜਾਂਦਾ ਹੈ ਤਾਂ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "shortFailsafe": "ਛੋਟਾ ਫੇਲਸੇਫ",
+    "triggeredOnBriefSignalLoss": "ਥੋੜ੍ਹੇ ਸਮੇਂ ਲਈ ਸਿਗਨਲ ਗੁਆਚਣ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "longFailsafe": "ਲੰਬਾ ਫੇਲਸੇਫ",
+    "triggeredOnExtendedSignalLoss": "ਲੰਬੇ ਸਮੇਂ ਲਈ ਸਿਗਨਲ ਗੁਆਚਣ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "throttleFailsafe": "ਥ੍ਰੋਟਲ ਫੇਲਸੇਫ",
+    "triggeredOnRCThrottleLoss": "RC ਥ੍ਰੋਟਲ ਗੁੰਮ ਹੋਣ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "batteryFailsafe": "ਬੈਟਰੀ ਫੇਲਸੇਫ",
+    "triggeredOnLowBatteryVoltage": "ਘੱਟ ਬੈਟਰੀ ਵੋਲਟੇਜ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "batteryFailsafePX4": "ਬੈਟਰੀ ਫੇਲਸੇਫ (PX4)",
+    "actionOnLowAndCritical": "ਘੱਟ ਅਤੇ ਗੰਭੀਰ ਬੈਟਰੀ 'ਤੇ ਕਾਰਵਾਈ",
+    "gcsFailsafe": "GCS ਫੇਲਸੇਫ",
+    "triggeredOnGCSLinkLoss": "GCS ਲਿੰਕ ਟੁੱਟਣ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "ekfCrashFailsafe": "EKF ਅਤੇ ਕਰੈਸ਼ ਫੇਲਸੇਫ",
+    "triggeredOnNavigationVarianceOr": "ਨੈਵੀਗੇਸ਼ਨ ਵੇਰੀਐਂਸ ਜਾਂ ਕਰੈਸ਼ ਪਛਾਣੇ ਜਾਣ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "terrainFailsafe": "ਟੈਰੇਨ ਫੇਲਸੇਫ",
+    "triggeredWhenTerrainDataIs": "ਟੈਰੇਨ-ਫਾਲੋਇੰਗ ਦੌਰਾਨ ਟੈਰੇਨ ਡਾਟਾ ਉਪਲਬਧ ਨਾ ਹੋਣ 'ਤੇ ਚਾਲੂ ਹੁੰਦਾ ਹੈ",
+    "failsafeOptions": "ਫੇਲਸੇਫ ਵਿਕਲਪ",
+    "fsOPTIONSBitmaskAdditionalFailsafe": "FS_OPTIONS ਬਿੱਟਮਾਸਕ — ਵਾਧੂ ਫੇਲਸੇਫ ਵਿਵਹਾਰ",
+    "rcChannelOptions": "RC ਚੈਨਲ ਵਿਕਲਪ",
+    "perChannelRCSwitchFunctions": "ਹਰੇਕ ਚੈਨਲ ਲਈ RC ਸਵਿੱਚ ਫੰਕਸ਼ਨ (RCn_OPTION)",
+    "geofence": "ਜੀਓਫੈਂਸ",
+    "geographicalBoundaryEnforcement": "ਭੂਗੋਲਿਕ ਸੀਮਾ ਲਾਗੂਕਰਨ",
+    "geofencePX4": "ਜੀਓਫੈਂਸ (PX4)",
+    "px4GeofenceActionAndLimits": "PX4 ਜੀਓਫੈਂਸ ਕਾਰਵਾਈ ਅਤੇ ਸੀਮਾਵਾਂ",
+    "throttlePWMThreshold": "ਥ੍ਰੋਟਲ PWM ਹੱਦ",
+    "timeoutS": "ਟਾਈਮਆਊਟ (ਸਕਿੰਟ)",
+    "rcFailsafeTimeoutS": "RC ਫੇਲਸੇਫ ਟਾਈਮਆਊਟ (ਸਕਿੰਟ)",
+    "throttlePWMValue": "ਥ੍ਰੋਟਲ PWM ਮੁੱਲ",
+    "lowVoltageThreshold": "ਘੱਟ ਵੋਲਟੇਜ ਹੱਦ",
+    "lowThreshold": "ਘੱਟ ਹੱਦ",
+    "timeout": "ਟਾਈਮਆਊਟ",
+    "maxAltitude": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਚਾਈ",
+    "maxRadius": "ਵੱਧ ਤੋਂ ਵੱਧ ਘੇਰਾ",
+    "minAltitude": "ਘੱਟੋ-ਘੱਟ ਉਚਾਈ",
+    "radioFailsafeAction": "ਰੇਡੀਓ ਫੇਲਸੇਫ ਕਾਰਵਾਈ",
+    "action": "ਕਾਰਵਾਈ",
+    "voltageSource": "ਵੋਲਟੇਜ ਸਰੋਤ",
+    "lowVoltageAction": "ਘੱਟ ਵੋਲਟੇਜ ਕਾਰਵਾਈ",
+    "batteryFailsafeAction": "ਬੈਟਰੀ ਫੇਲਸੇਫ ਕਾਰਵਾਈ",
+    "gcsFailsafeAction": "GCS ਫੇਲਸੇਫ ਕਾਰਵਾਈ",
+    "ekfFailsafeAction": "EKF ਫੇਲਸੇਫ ਕਾਰਵਾਈ",
+    "crashCheck": "ਕਰੈਸ਼ ਜਾਂਚ",
+    "terrainFollowing": "ਟੈਰੇਨ ਫਾਲੋਇੰਗ",
+    "breachAction": "ਉਲੰਘਣਾ ਕਾਰਵਾਈ",
+    "ekfPosTitle": "EKF ਪੋਜ਼ੀਸ਼ਨ ਫੇਲਸੇਫ (PX4)",
+    "maxEph": "ਵੱਧ ਤੋਂ ਵੱਧ EPH (ਮੀ)",
+    "maxEvh": "ਵੱਧ ਤੋਂ ਵੱਧ EVH (ਮੀ/ਸ)",
+    "throttleHint": "ਜਦੋਂ ਥ੍ਰੋਟਲ PWM ਇਸ ਮੁੱਲ ਤੋਂ ਹੇਠਾਂ ਡਿੱਗਦਾ ਹੈ, ਤਾਂ ਰੇਡੀਓ ਫੇਲਸੇਫ ਕਾਰਵਾਈ ਚਾਲੂ ਹੁੰਦੀ ਹੈ। ਇਸਨੂੰ ਆਪਣੇ RC ਟ੍ਰਾਂਸਮੀਟਰ ਦੇ ਘੱਟੋ-ਘੱਟ ਥ੍ਰੋਟਲ ਆਉਟਪੁੱਟ ਤੋਂ ~10μs ਹੇਠਾਂ ਸੈੱਟ ਕਰੋ।",
+    "px4BattFractionHint": "ਬਾਕੀ ਚਾਰਜ ਦਾ ਹਿੱਸਾ (0.15 = 15 % ਬਾਕੀ), ਵੋਲਟ ਨਹੀਂ।"
+  },
+  "fcPower": {
+    "powerBattery": "ਪਾਵਰ / ਬੈਟਰੀ",
+    "batteryCapacityCurrentSensorCalibration": "ਬੈਟਰੀ ਸਮਰੱਥਾ, ਕਰੰਟ ਸੈਂਸਰ ਕੈਲੀਬ੍ਰੇਸ਼ਨ, ਲਾਈਵ ਸੈੱਲ ਨਿਗਰਾਨੀ",
+    "batterySettings": "ਬੈਟਰੀ ਸੈਟਿੰਗਾਂ",
+    "minCellVoltageV": "ਘੱਟੋ-ਘੱਟ ਸੈੱਲ ਵੋਲਟੇਜ (V)",
+    "maxCellVoltageV": "ਵੱਧ ਤੋਂ ਵੱਧ ਸੈੱਲ ਵੋਲਟੇਜ (V)",
+    "warningCellVoltageV": "ਚੇਤਾਵਨੀ ਸੈੱਲ ਵੋਲਟੇਜ (V)",
+    "capacityMAh": "ਸਮਰੱਥਾ (mAh)",
+    "currentSensorCalibration": "ਕਰੰਟ ਸੈਂਸਰ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+    "battery1Failsafe": "ਬੈਟਰੀ 1 ਫੇਲਸੇਫ",
+    "battery2Settings": "ਬੈਟਰੀ 2 ਸੈਟਿੰਗਾਂ",
+    "battery2Failsafe": "ਬੈਟਰੀ 2 ਫੇਲਸੇਫ",
+    "batteryMonitorType": "ਬੈਟਰੀ ਮਾਨੀਟਰ ਕਿਸਮ",
+    "batteryCapacity": "ਬੈਟਰੀ ਸਮਰੱਥਾ",
+    "ampsPerVolt": "ਐਂਪ ਪ੍ਰਤੀ ਵੋਲਟ",
+    "currentSensorZeroOffset": "ਕਰੰਟ ਸੈਂਸਰ ਜ਼ੀਰੋ ਆਫਸੈੱਟ",
+    "lowVoltage": "ਘੱਟ ਵੋਲਟੇਜ",
+    "criticalVoltage": "ਨਾਜ਼ੁਕ ਵੋਲਟੇਜ",
+    "lowMAhRemaining": "ਘੱਟ mAh ਬਾਕੀ",
+    "criticalMAhRemaining": "ਨਾਜ਼ੁਕ mAh ਬਾਕੀ",
+    "battery2MonitorType": "ਬੈਟਰੀ 2 ਮਾਨੀਟਰ ਕਿਸਮ",
+    "battery2Capacity": "ਬੈਟਰੀ 2 ਸਮਰੱਥਾ",
+    "battery2AmpsPerVolt": "ਬੈਟਰੀ 2 ਐਂਪ ਪ੍ਰਤੀ ਵੋਲਟ",
+    "battery2CurrentSensorZero": "ਬੈਟਰੀ 2 ਕਰੰਟ ਸੈਂਸਰ ਜ਼ੀਰੋ ਆਫਸੈੱਟ",
+    "cellVoltageBelowWhichFailsafe": "ਸੈੱਲ ਵੋਲਟੇਜ ਜਿਸ ਤੋਂ ਹੇਠਾਂ ਫੇਲਸੇਫ ਚਾਲੂ ਹੁੰਦਾ ਹੈ। ਡਿਫੌਲਟ: 3.30V",
+    "fullChargeVoltagePerCell": "ਪ੍ਰਤੀ ਸੈੱਲ ਪੂਰੇ ਚਾਰਜ ਦੀ ਵੋਲਟੇਜ। ਸੈੱਲ ਗਿਣਤੀ ਦੀ ਆਟੋ-ਖੋਜ ਲਈ ਵਰਤੀ ਜਾਂਦੀ ਹੈ। ਡਿਫੌਲਟ: 4.30V",
+    "cellVoltageWarningThresholdDefault": "ਸੈੱਲ ਵੋਲਟੇਜ ਚੇਤਾਵਨੀ ਸੀਮਾ। ਡਿਫੌਲਟ: 3.50V",
+    "batteryCapacityInMAhSet": "mAh ਵਿੱਚ ਬੈਟਰੀ ਸਮਰੱਥਾ। ਆਟੋ-ਖੋਜ ਲਈ 0 ਸੈੱਟ ਕਰੋ।"
+  },
+  "fcPanels": {
+    "bfMotorsPanel": {
+      "motorsESC": "ਮੋਟਰਾਂ ਅਤੇ ESC",
+      "motorConfigurationESCProtocolAnd": "ਮੋਟਰ ਸੰਰਚਨਾ, ESC ਪ੍ਰੋਟੋਕੋਲ, ਅਤੇ ਮੋਟਰ ਟੈਸਟਿੰਗ",
+      "escProtocol": "ESC ਪ੍ਰੋਟੋਕੋਲ",
+      "communicationProtocolBetweenFCAnd": "FC ਅਤੇ ESCs ਵਿਚਕਾਰ ਸੰਚਾਰ ਪ੍ਰੋਟੋਕੋਲ",
+      "protocol": "ਪ੍ਰੋਟੋਕੋਲ",
+      "pwmRate": "PWM ਦਰ",
+      "dshotIsADigitalProtocol": "DShot ਇੱਕ ਡਿਜੀਟਲ ਪ੍ਰੋਟੋਕੋਲ ਹੈ। PWM ਦਰ ਸੈਟਿੰਗ ਲਾਗੂ ਨਹੀਂ ਹੁੰਦੀ।",
+      "throttle": "ਥ੍ਰੋਟਲ",
+      "motorThrottleRangeAndIdle": "ਮੋਟਰ ਥ੍ਰੋਟਲ ਰੇਂਜ ਅਤੇ ਆਈਡਲ ਸੈਟਿੰਗਾਂ",
+      "minThrottle": "ਘੱਟੋ-ਘੱਟ ਥ੍ਰੋਟਲ",
+      "maxThrottle": "ਵੱਧ ਤੋਂ ਵੱਧ ਥ੍ਰੋਟਲ",
+      "minCommand": "ਘੱਟੋ-ਘੱਟ ਕਮਾਂਡ",
+      "motorTest": "ਮੋਟਰ ਟੈਸਟ",
+      "testIndividualMotorsDISARMEDState": "ਹਰੇਕ ਮੋਟਰ ਨੂੰ ਵੱਖਰੇ ਤੌਰ 'ਤੇ ਟੈਸਟ ਕਰੋ। DISARMED ਸਥਿਤੀ ਲੋੜੀਂਦੀ ਹੈ।",
+      "dshotCommands": "DShot ਕਮਾਂਡਾਂ",
+      "beaconSpinDirectionAnd3D": "ਬੀਕਨ, ਘੁੰਮਣ ਦੀ ਦਿਸ਼ਾ, ਅਤੇ 3D ਮੋਡ। DISARMED ਸਥਿਤੀ ਲੋੜੀਂਦੀ ਹੈ।",
+      "timing": "ਟਾਈਮਿੰਗ",
+      "gyroAndPIDLoopRate": "ਗਾਇਰੋ ਅਤੇ PID ਲੂਪ ਦਰ ਸੰਰਚਨਾ",
+      "gyroSyncDenom": "ਜਾਇਰੋ ਸਿੰਕ ਡੀਨੌਮ",
+      "pidProcessDenom": "PID ਪ੍ਰੋਸੈਸ ਡੀਨੌਮ",
+      "gyroSampleRateFC": "ਗਾਇਰੋ ਸੈਂਪਲ ਦਰ (FC)",
+      "effectivePIDLoop": "ਪ੍ਰਭਾਵੀ PID ਲੂਪ",
+      "theFlightControllerDidNot": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਆਪਣੀ ਗਾਇਰੋ ਦਰ ਨਹੀਂ ਦੱਸੀ (MSP API 1.43+ ਲੋੜੀਂਦਾ ਹੈ)।"
+    },
+    "cameraPanel": {
+      "camera": "ਕੈਮਰਾ",
+      "cameraTriggerServoSettingsDistance": "ਕੈਮਰਾ ਟ੍ਰਿਗਰ, ਸਰਵੋ ਸੈਟਿੰਗਾਂ, ਦੂਰੀ-ਅਧਾਰਿਤ ਕੈਪਚਰ",
+      "cameraConfiguration": "ਕੈਮਰਾ ਸੰਰਚਨਾ",
+      "cameraTypeAndTriggerMethod": "ਕੈਮਰੇ ਦੀ ਕਿਸਮ ਅਤੇ ਟ੍ਰਿਗਰ ਵਿਧੀ",
+      "servoTrigger": "ਸਰਵੋ ਟ੍ਰਿਗਰ",
+      "pwmValuesForServoBased": "ਸਰਵੋ-ਅਧਾਰਿਤ ਸ਼ਟਰ ਲਈ PWM ਮੁੱਲ",
+      "servoOffPWM": "ਸਰਵੋ ਬੰਦ PWM",
+      "servoOnPWM": "ਸਰਵੋ ਚਾਲੂ PWM",
+      "pulseDuration": "ਪਲਸ ਮਿਆਦ",
+      "distanceTrigger": "ਦੂਰੀ ਟ੍ਰਿਗਰ",
+      "automaticCaptureAtDistanceIntervals": "ਦੂਰੀ ਅੰਤਰਾਲਾਂ 'ਤੇ ਆਟੋਮੈਟਿਕ ਕੈਪਚਰ",
+      "triggerDistance": "ਟ੍ਰਿਗਰ ਦੂਰੀ",
+      "setTo0ToDisable": "ਦੂਰੀ-ਅਧਾਰਿਤ ਟ੍ਰਿਗਰਿੰਗ ਬੰਦ ਕਰਨ ਲਈ 0 ਸੈੱਟ ਕਰੋ",
+      "surveyHelper": "ਸਰਵੇਖਣ ਸਹਾਇਕ",
+      "calculateTriggerDistanceFromSurvey": "ਸਰਵੇਖਣ ਪੈਰਾਮੀਟਰਾਂ ਤੋਂ ਟ੍ਰਿਗਰ ਦੂਰੀ ਦੀ ਗਣਨਾ ਕਰੋ",
+      "altitude": "ਉਚਾਈ",
+      "cameraFOV": "ਕੈਮਰਾ FOV",
+      "overlap": "ਓਵਰਲੈਪ",
+      "calculatedDistance": "ਗਣਨਾ ਕੀਤੀ ਦੂਰੀ:",
+      "manualTrigger": "ਮੈਨੁਅਲ ਟ੍ਰਿਗਰ",
+      "triggerCameraManually": "ਕੈਮਰਾ ਹੱਥੀਂ ਟ੍ਰਿਗਰ ਕਰੋ",
+      "intervalTrigger": "ਅੰਤਰਾਲ ਟ੍ਰਿਗਰ",
+      "triggerCameraAtAFixed": "ਨਿਸ਼ਚਿਤ ਸਮਾਂ ਅੰਤਰਾਲ 'ਤੇ ਕੈਮਰਾ ਟ੍ਰਿਗਰ ਕਰੋ",
+      "interval": "ਅੰਤਰਾਲ",
+      "apply": "ਲਾਗੂ ਕਰੋ",
+      "triggerCamera": "ਕੈਮਰਾ ਟ੍ਰਿਗਰ ਕਰੋ"
+    },
+    "gpsPanel": {
+      "gpsProtocolAndGPSRescue": "GPS ਪ੍ਰੋਟੋਕੋਲ ਅਤੇ GPS ਰੈਸਕਿਊ (ਘਰ ਵਾਪਸੀ) ਸੰਰਚਨਾ",
+      "gpsProtocol": "GPS ਪ੍ਰੋਟੋਕੋਲ",
+      "provider": "ਪ੍ਰਦਾਤਾ",
+      "sbasMode": "SBAS ਮੋਡ",
+      "autoConfig": "ਆਟੋ ਸੰਰਚਨਾ",
+      "autoBaud": "ਆਟੋ ਬੌਡ",
+      "galileoSupport": "Galileo ਸਹਾਇਤਾ",
+      "gpsRescue": "GPS ਬਚਾਅ",
+      "betaflightReturnToHome": "Betaflight ਘਰ ਵਾਪਸੀ",
+      "maxRescueAngle": "ਵੱਧ ਤੋਂ ਵੱਧ ਰੈਸਕਿਊ ਕੋਣ",
+      "initialAltitude": "ਸ਼ੁਰੂਆਤੀ ਉਚਾਈ",
+      "descentDistance": "ਉਤਰਨ ਦੂਰੀ",
+      "groundSpeed": "ਜ਼ਮੀਨੀ ਗਤੀ",
+      "throttleMin": "ਘੱਟੋ-ਘੱਟ ਥ੍ਰੋਟਲ",
+      "throttleMax": "ਥ੍ਰੋਟਲ ਵੱਧ ਤੋਂ ਵੱਧ",
+      "throttleHover": "ਹੋਵਰ ਥ੍ਰੋਟਲ",
+      "sanityChecks": "ਸੈਨਿਟੀ ਜਾਂਚਾਂ",
+      "minSatellites": "ਘੱਟੋ-ਘੱਟ ਸੈਟੇਲਾਈਟ",
+      "gps": "GPS",
+      "gpsRescueMustAlsoBe": "GPS Rescue ਨੂੰ ਕਿਰਿਆਸ਼ੀਲ ਕਰਨ ਲਈ ਇਸਨੂੰ Modes ਟੈਬ ਵਿੱਚ ਇੱਕ ਮੋਡ ਵਜੋਂ ਵੀ ਯੋਗ ਕਰਨਾ ਪਵੇਗਾ (ਕਿਸੇ AUX ਚੈਨਲ ਨੂੰ ਸੌਂਪੋ)।"
+    },
+    "arduPilotGpsPanel": {
+      "gpsReceiverTypeGNSSConstellations": "GPS ਰਿਸੀਵਰ ਕਿਸਮ, GNSS ਤਾਰਾਮੰਡਲ, ਬਲੈਂਡਿੰਗ, ਅਤੇ ਯਾਅ ਲਈ GPS",
+      "receivers": "ਰਿਸੀਵਰ",
+      "gps1Type": "GPS 1 ਕਿਸਮ",
+      "gps2Type": "GPS 2 ਕਿਸਮ",
+      "autoSwitch": "ਆਟੋ ਸਵਿੱਚ",
+      "primaryGPS": "ਪ੍ਰਾਇਮਰੀ GPS",
+      "blendMask": "ਬਲੈਂਡ ਮਾਸਕ",
+      "constellationsRate": "ਤਾਰਾਮੰਡਲ ਅਤੇ ਦਰ",
+      "updateRate": "ਅੱਪਡੇਟ ਦਰ",
+      "sbasMode": "SBAS ਮੋਡ",
+      "autoConfig": "ਆਟੋ ਸੰਰਚਨਾ",
+      "navFilter": "ਨੈਵ ਫਿਲਟਰ",
+      "minElevation": "ਘੱਟੋ-ਘੱਟ ਉਚਾਈ ਕੋਣ",
+      "gnssConstellations": "GNSS ਤਾਰਾਮੰਡਲ",
+      "gpsForYawAntennaOffsets": "ਯਾਅ ਲਈ GPS ਅਤੇ ਐਂਟੀਨਾ ਆਫ਼ਸੈੱਟ",
+      "movingBaselineType": "ਮੂਵਿੰਗ ਬੇਸਲਾਈਨ ਕਿਸਮ",
+      "driverOptions": "ਡਰਾਈਵਰ ਵਿਕਲਪ",
+      "gps": "GPS",
+      "gpsForYawNeedsA": "GPS-for-yaw ਲਈ ਮੂਵਿੰਗ-ਬੇਸਲਾਈਨ ਰਿਸੀਵਰ ਜੋੜੇ ਦੀ ਲੋੜ ਹੈ (GPS ਕਿਸਮਾਂ 17/18 ਜਾਂ 22/23)। ਐਂਟੀਨਾ ਆਫਸੈੱਟ ਬਾਡੀ ਫਰੇਮ ਵਿੱਚ ਮੁੱਖ ਐਂਟੀਨਾ ਦੀ ਸਥਿਤੀ ਹੈ।"
+    },
+    "rcCalibrationWizard": {
+      "calibrateRCTransmitterStickEndpoints": "RC ਟ੍ਰਾਂਸਮੀਟਰ ਸਟਿੱਕ ਦੇ ਅੰਤ-ਬਿੰਦੂ ਅਤੇ ਟ੍ਰਿਮ ਕੈਲੀਬ੍ਰੇਟ ਕਰੋ। ਸਾਰੀਆਂ ਸਟਿੱਕਾਂ ਅਤੇ ਸਵਿੱਚਾਂ ਨੂੰ ਪੂਰੀ ਹੱਦ ਤੱਕ ਹਿਲਾਓ।",
+      "beforeYouStart": "ਸ਼ੁਰੂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ",
+      "turnOnRCTransmitterAnd": "ਸ਼ੁਰੂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ RC ਟ੍ਰਾਂਸਮੀਟਰ ਚਾਲੂ ਕਰੋ ਅਤੇ ਬਾਈਂਡਿੰਗ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
+      "ensureAllTrimsOnTransmitter": "ਯਕੀਨੀ ਬਣਾਓ ਕਿ ਟ੍ਰਾਂਸਮੀਟਰ ਦੇ ਸਾਰੇ ਟ੍ਰਿਮ ਕੇਂਦਰ ਵਿੱਚ ਹਨ (ਕੋਈ ਸਬ-ਟ੍ਰਿਮ ਨਹੀਂ)",
+      "youWillNeedToMove": "ਤੁਹਾਨੂੰ ਸਾਰੀਆਂ ਸਟਿਕਾਂ ਅਤੇ ਸਵਿੱਚਾਂ ਨੂੰ ਉਹਨਾਂ ਦੀਆਂ ਅੰਤਿਮ ਸੀਮਾਵਾਂ ਤੱਕ ਹਿਲਾਉਣਾ ਪਵੇਗਾ",
+      "writingRCParametersToFlight": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ RC ਪੈਰਾਮੀਟਰ ਲਿਖੇ ਜਾ ਰਹੇ ਹਨ...",
+      "confirmTrimReset": "ਟ੍ਰਿਮ ਰੀਸੈੱਟ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
+      "resetAllTrims": "ਸਾਰੇ ਟ੍ਰਿਮ ਰੀਸੈੱਟ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "start": "ਸ਼ੁਰੂ ਕਰੋ",
+      "resetTrims": "ਟ੍ਰਿਮ ਰੀਸੈੱਟ ਕਰੋ",
+      "next": "ਅੱਗੇ",
+      "save": "ਸੇਵ ਕਰੋ",
+      "saving": "ਸੇਵ ਹੋ ਰਿਹਾ ਹੈ..."
+    },
+    "parameterSearchFilter": {
+      "searchParameters": "ਪੈਰਾਮੀਟਰ ਖੋਜੋ...",
+      "showOnlyParametersYouVe": "ਸਿਰਫ਼ ਉਹ ਪੈਰਾਮੀਟਰ ਦਿਖਾਓ ਜੋ ਤੁਸੀਂ ਇਸ ਸੈਸ਼ਨ ਵਿੱਚ ਬਦਲੇ ਹਨ",
+      "showParametersThatDifferFrom": "ਫਰਮਵੇਅਰ ਡਿਫੌਲਟ ਤੋਂ ਵੱਖਰੇ ਪੈਰਾਮੀਟਰ ਦਿਖਾਓ",
+      "openDetailedDiffViewComparing": "ਮੌਜੂਦਾ ਮੁੱਲਾਂ ਦੀ ਫਰਮਵੇਅਰ ਡਿਫੌਲਟ ਨਾਲ ਤੁਲਨਾ ਕਰਨ ਵਾਲਾ ਵਿਸਤ੍ਰਿਤ ਅੰਤਰ ਦ੍ਰਿਸ਼ ਖੋਲ੍ਹੋ",
+      "showOnlyStarredParameters": "ਸਿਰਫ਼ ਸਟਾਰ ਕੀਤੇ ਪੈਰਾਮੀਟਰ ਦਿਖਾਓ",
+      "downloadAllParametersAsA": "ਸਾਰੇ ਪੈਰਾਮੀਟਰ Mission Planner .param ਫ਼ਾਈਲ ਵਜੋਂ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "export": "ਐਕਸਪੋਰਟ",
+      "downloadAllParametersAsA2": "ਸਾਰੇ ਪੈਰਾਮੀਟਰ QGroundControl .params ਫ਼ਾਈਲ ਵਜੋਂ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "exportQGC": "QGC ਐਕਸਪੋਰਟ",
+      "loadAParamOrParams": ".param ਜਾਂ .params ਫ਼ਾਈਲ ਲੋਡ ਕਰੋ ਅਤੇ ਮੌਜੂਦਾ FC ਮੁੱਲਾਂ ਨਾਲ ਤੁਲਨਾ ਕਰੋ",
+      "compare": "ਤੁਲਨਾ ਕਰੋ",
+      "discardAllUnsavedChangesDoes": "ਸਾਰੀਆਂ ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ ਰੱਦ ਕਰੋ (FC 'ਤੇ ਕੋਈ ਅਸਰ ਨਹੀਂ)",
+      "modified": "ਸੋਧਿਆ ਗਿਆ",
+      "nonDefault": "ਗੈਰ-ਡਿਫਾਲਟ",
+      "viewDiff": "ਅੰਤਰ ਵੇਖੋ",
+      "favorites": "ਮਨਪਸੰਦ",
+      "resetToDefault": "ਡਿਫਾਲਟ 'ਤੇ ਰੀਸੈੱਟ ਕਰੋ"
+    },
+    "exportKeyModal": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "copiedToClipboard": "ਕਲਿੱਪਬੋਰਡ 'ਤੇ ਕਾਪੀ ਹੋ ਗਿਆ",
+      "clearingClipboard": "ਕਲਿੱਪਬੋਰਡ ਸਾਫ਼ ਹੋ ਰਿਹਾ ਹੈ...",
+      "clipboardCleared": "ਕਲਿੱਪਬੋਰਡ ਸਾਫ਼ ਹੋ ਗਿਆ।",
+      "exportSigningKey": "ਸਾਈਨਿੰਗ ਕੁੰਜੀ ਐਕਸਪੋਰਟ ਕਰੋ",
+      "exportingRotatesTheKeyA": "ਐਕਸਪੋਰਟ ਕਰਨ ਨਾਲ ਕੁੰਜੀ ਬਦਲ ਜਾਂਦੀ ਹੈ: ਇੱਕ ਨਵੀਂ 32-ਬਾਈਟ ਕੁੰਜੀ ਬਣਾਈ ਜਾਂਦੀ ਹੈ, ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਦਰਜ ਕੀਤੀ ਜਾਂਦੀ ਹੈ ਅਤੇ ਤੁਹਾਡੇ ਕਲਿੱਪਬੋਰਡ 'ਤੇ ਕਾਪੀ ਹੋ ਜਾਂਦੀ ਹੈ। ਪੁਰਾਣੀ ਕੁੰਜੀ ਤੁਰੰਤ ਕੰਮ ਕਰਨਾ ਬੰਦ ਕਰ ਦਿੰਦੀ ਹੈ।",
+      "theNewKeyNeverAppears": "ਨਵੀਂ ਕੁੰਜੀ ਕਦੇ ਵੀ ਸਕ੍ਰੀਨ 'ਤੇ ਨਹੀਂ ਦਿਖਾਈ ਜਾਂਦੀ। ਇਸ ਨੂੰ 60 ਸਕਿੰਟਾਂ ਦੇ ਅੰਦਰ ਆਪਣੀ ਮੰਜ਼ਿਲ ਵਿੱਚ ਪੇਸਟ ਕਰੋ; ਉਸ ਤੋਂ ਬਾਅਦ ਕਲਿੱਪਬੋਰਡ ਆਪਣੇ ਆਪ ਸਾਫ਼ ਹੋ ਜਾਂਦਾ ਹੈ।",
+      "type": "ਕਿਸਮ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "rotateAndCopy": "ਬਦਲੋ ਅਤੇ ਕਾਪੀ ਕਰੋ",
+      "rotatingKey": "ਕੁੰਜੀ ਬਦਲੀ ਜਾ ਰਹੀ ਹੈ…",
+      "clearNow": "ਹੁਣੇ ਸਾਫ਼ ਕਰੋ",
+      "closeWithoutCopying": "ਕਾਪੀ ਕੀਤੇ ਬਿਨਾਂ ਬੰਦ ਕਰੋ",
+      "copyAgain": "ਦੁਬਾਰਾ ਕਾਪੀ ਕਰੋ",
+      "tryAgain": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "iClearedIt": "ਮੈਂ ਇਸਨੂੰ ਸਾਫ਼ ਕਰ ਦਿੱਤਾ"
+    },
+    "framePanel": {
+      "frameConfiguration": "ਫ੍ਰੇਮ ਸੰਰਚਨਾ",
+      "vehicleFrameClassTypeAnd": "ਵਾਹਨ ਫ੍ਰੇਮ ਕਲਾਸ, ਕਿਸਮ ਅਤੇ ਮੋਟਰ ਲੇਆਉਟ",
+      "notApplicableForThisVehicle": "ਇਸ ਵਾਹਨ ਕਿਸਮ ਲਈ ਲਾਗੂ ਨਹੀਂ",
+      "frameConfigurationIsNotApplicable": "ਫ਼ਿਕਸਡ-ਵਿੰਗ ਜਹਾਜ਼ ਲਈ ਫ੍ਰੇਮ ਸੰਰਚਨਾ ਲਾਗੂ ਨਹੀਂ ਹੁੰਦੀ।",
+      "frameSelection": "ਫ੍ਰੇਮ ਚੋਣ",
+      "roverFrameClassAndMotor": "ਰੋਵਰ ਫ੍ਰੇਮ ਕਲਾਸ ਅਤੇ ਮੋਟਰ ਵਿਵਸਥਾ",
+      "thrusterConfiguration": "ਥ੍ਰਸਟਰ ਸੰਰਚਨਾ",
+      "selectAirframeClassAndConfiguration": "ਏਅਰਫ੍ਰੇਮ ਕਲਾਸ ਅਤੇ ਸੰਰਚਨਾ ਕਿਸਮ ਚੁਣੋ",
+      "motorLayout": "ਮੋਟਰ ਲੇਆਉਟ",
+      "loadingParameters": "ਪੈਰਾਮੀਟਰ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+      "motors": "ਮੋਟਰਾਂ:",
+      "class": "ਸ਼੍ਰੇਣੀ:",
+      "type": "ਕਿਸਮ:",
+      "frameCLASS": "FRAME_CLASS",
+      "frameTYPE": "FRAME_TYPE",
+      "frameCONFIG": "FRAME_CONFIG"
+    },
+    "sensorsPanel": {
+      "sensors": "ਸੈਂਸਰ",
+      "rangefinderOpticalFlowAirspeedBarometer": "ਰੇਂਜਫਾਈਂਡਰ, ਆਪਟੀਕਲ ਫਲੋ, ਏਅਰਸਪੀਡ, ਬੈਰੋਮੀਟਰ ਸੰਰਚਨਾ",
+      "rangefinder": "ਰੇਂਜਫਾਈਂਡਰ",
+      "rangefinderSensors": "ਰੇਂਜਫਾਈਂਡਰ ਸੈਂਸਰ",
+      "ekfRangeConfig": "EKF ਰੇਂਜ ਸੰਰਚਨਾ",
+      "rangeAidEnable": "ਰੇਂਜ ਸਹਾਇਤਾ ਚਾਲੂ",
+      "maxHeightM": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਚਾਈ (m)",
+      "noiseM": "ਸ਼ੋਰ (m)",
+      "minRangeM": "ਘੱਟੋ-ਘੱਟ ਰੇਂਜ (m)",
+      "liveDistance": "ਲਾਈਵ ਦੂਰੀ",
+      "sensorType": "ਸੈਂਸਰ ਕਿਸਮ",
+      "analogPin": "ਐਨਾਲਾਗ ਪਿੰਨ",
+      "minDistance": "ਘੱਟੋ-ਘੱਟ ਦੂਰੀ",
+      "maxDistance": "ਵੱਧ ਤੋਂ ਵੱਧ ਦੂਰੀ",
+      "opticalFlow": "ਆਪਟੀਕਲ ਫਲੋ",
+      "xScaler": "X ਸਕੇਲਰ",
+      "yScaler": "Y ਸਕੇਲਰ",
+      "yawOrientation": "ਯਾਅ ਦਿਸ਼ਾ",
+      "airspeed": "ਏਅਰਸਪੀਡ",
+      "pressureOffset": "ਦਬਾਅ ਆਫਸੈੱਟ",
+      "speedRatio": "ਸਪੀਡ ਅਨੁਪਾਤ",
+      "liveAirspeed": "ਲਾਈਵ ਏਅਰਸਪੀਡ",
+      "barometer": "ਬੈਰੋਮੀਟਰ",
+      "absolutePressure": "ਪੂਰਨ ਦਬਾਅ",
+      "groundTemperature": "ਜ਼ਮੀਨੀ ਤਾਪਮਾਨ",
+      "primaryBarometer": "ਪ੍ਰਾਇਮਰੀ ਬੈਰੋਮੀਟਰ"
+    },
+    "preArmPanel": {
+      "healthCheck": "ਸਿਹਤ ਜਾਂਚ",
+      "sensorStatus": "ਸੈਂਸਰ ਸਥਿਤੀ",
+      "ekfStatus": "EKF ਸਥਿਤੀ",
+      "extendedKalmanFilterVariance": "ਐਕਸਟੈਂਡਡ ਕਾਲਮੈਨ ਫਿਲਟਰ ਵੇਰੀਐਂਸ",
+      "vibration": "ਕੰਪਨ",
+      "accelerometerVibrationLevelsMS": "ਐਕਸੀਲੇਰੋਮੀਟਰ ਕੰਪਨ ਪੱਧਰ (m/s/s)",
+      "positionFixAndSatelliteInfo": "ਸਥਿਤੀ ਫਿਕਸ ਅਤੇ ਸੈਟੇਲਾਈਟ ਜਾਣਕਾਰੀ",
+      "preArmChecks": "ਪ੍ਰੀ-ਆਰਮ ਜਾਂਚਾਂ",
+      "flightReadinessVerification": "ਉਡਾਣ ਤਿਆਰੀ ਪੁਸ਼ਟੀ",
+      "blockers": "ਰੁਕਾਵਟਾਂ",
+      "notes": "ਨੋਟ",
+      "noActiveFlags": "ਕੋਈ ਸਰਗਰਮ ਫਲੈਗ ਨਹੀਂ।",
+      "gps": "GPS",
+      "sensorStatusEKFVibrationGPS": "ਸੈਂਸਰ ਸਥਿਤੀ, EKF, ਵਾਈਬ੍ਰੇਸ਼ਨ, GPS, ਅਤੇ ਪ੍ਰੀ-ਆਰਮ ਜਾਂਚਾਂ"
+    },
+    "ledPanel": {
+      "ledConfiguration": "LED ਸੰਰਚਨਾ",
+      "notificationLEDTypesBrightnessAnd": "ਸੂਚਨਾ LED ਕਿਸਮਾਂ, ਚਮਕ ਅਤੇ ਰੰਗ ਸਰੋਤ",
+      "betaflightLEDStrip": "Betaflight LED ਸਟ੍ਰਿਪ",
+      "ledStripConfigurationForBetaflight": "Betaflight ਲਈ LED ਸਟ੍ਰਿਪ ਸੰਰਚਨਾ",
+      "ledTypes": "LED ਕਿਸਮਾਂ",
+      "selectEnabledLEDHardwareBitmask": "ਚਾਲੂ LED ਹਾਰਡਵੇਅਰ ਚੁਣੋ (ਬਿੱਟਮਾਸਕ)",
+      "stripSettings": "ਸਟ੍ਰਿਪ ਸੈਟਿੰਗਾਂ",
+      "ledCountAndBrightnessLevel": "LED ਗਿਣਤੀ ਅਤੇ ਚਮਕ ਪੱਧਰ",
+      "stripLength": "ਸਟ੍ਰਿਪ ਲੰਬਾਈ",
+      "colourSource": "ਰੰਗ ਸਰੋਤ",
+      "whereTheNotificationLEDTakes": "ਸੂਚਨਾ LED ਆਪਣੇ ਰੰਗ ਕਿੱਥੋਂ ਲੈਂਦੀ ਹੈ",
+      "patternPreview": "ਪੈਟਰਨ ਝਲਕ",
+      "visualRepresentationOfLEDStrip": "LED ਸਟ੍ਰਿਪ ਦੀ ਦ੍ਰਿਸ਼ਟੀਗਤ ਪੇਸ਼ਕਾਰੀ",
+      "betaflightLEDStripUsesPacked": "Betaflight LED ਸਟ੍ਰਿਪ ਪੈਕ ਕੀਤੇ ਸਥਿਤੀ/ਫੰਕਸ਼ਨ/ਰੰਗ ਬਿਟਮਾਸਕ ਵਰਤਦੀ ਹੈ ਜੋ CLI ਰਾਹੀਂ ਸੰਰਚਿਤ ਕਰਨਾ ਬਿਹਤਰ ਹੈ।",
+      "useThe": "ਵਰਤੋ"
+    },
+    "mixerProfilePanel": {
+      "mixerProfiles": "ਮਿਕਸਰ ਪ੍ਰੋਫਾਈਲ",
+      "platformTypeMotorAndServo": "ਪਲੇਟਫਾਰਮ ਕਿਸਮ, ਮੋਟਰ ਅਤੇ ਸਰਵੋ ਗਿਣਤੀ",
+      "activeMixerProfile": "ਸਰਗਰਮ ਮਿਕਸਰ ਪ੍ਰੋਫਾਈਲ",
+      "notReportedByTheFC": "FC ਵੱਲੋਂ ਰਿਪੋਰਟ ਨਹੀਂ ਕੀਤਾ ਗਿਆ",
+      "platform": "ਪਲੇਟਫਾਰਮ",
+      "motorSlotsFCMax": "ਮੋਟਰ ਸਲਾਟ (FC ਅਧਿਕਤਮ)",
+      "servoSlotsFCMax": "ਸਰਵੋ ਸਲਾਟ (FC ਅਧਿਕਤਮ)",
+      "motorDirectionInverted": "ਮੋਟਰ ਦੀ ਦਿਸ਼ਾ ਉਲਟੀ",
+      "motorStopOnLow": "ਘੱਟ ਥ੍ਰੋਟਲ 'ਤੇ ਮੋਟਰ ਰੋਕੋ",
+      "hasFlaps": "ਫਲੈਪ ਹਨ",
+      "appliedPreset": "ਲਾਗੂ ਕੀਤਾ ਪ੍ਰੀਸੈੱਟ",
+      "mixerTables": "ਮਿਕਸਰ ਟੇਬਲ",
+      "motorAndServoMixerRules": "ਮੋਟਰ ਅਤੇ ਸਰਵੋ ਮਿਕਸਰ ਨਿਯਮ",
+      "activeMixerInfo": "ਸਰਗਰਮ ਮਿਕਸਰ ਜਾਣਕਾਰੀ",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ",
+      "theMixerProfileChangedAnd": "ਮਿਕਸਰ ਪ੍ਰੋਫਾਈਲ ਬਦਲ ਗਈ ਹੈ ਅਤੇ ਹੇਠਲੀਆਂ ਟੇਬਲਾਂ ਪਿਛਲੀ ਪ੍ਰੋਫਾਈਲ ਤੋਂ ਪੜ੍ਹੀਆਂ ਗਈਆਂ ਸਨ। ਲਿਖਣ ਤੋਂ ਪਹਿਲਾਂ ਇਨ੍ਹਾਂ ਨੂੰ ਦੁਬਾਰਾ ਪੜ੍ਹੋ।",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ: ਸਥਾਈ ਕਰਨ ਲਈ FC 'ਤੇ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "arduPilotCalibrations": {
+      "setTheReferenceLevelHorizon": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਲਈ ਹਵਾਲਾ ਪੱਧਰ ਦਿਸਹੱਦਾ ਸੈੱਟ ਕਰੋ।",
+      "levelCalibrationSaved": "ਲੈਵਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ",
+      "airspeedCalibration": "ਏਅਰਸਪੀਡ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "arduplaneOnlyCoverThePitot": "ਸਿਰਫ਼ ArduPlane — ਸ਼ੁਰੂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਪਿਟੋ ਟਿਊਬ ਦਾ ਮੂੰਹ ਢੱਕੋ।",
+      "barometerCalibration": "ਬੈਰੋਮੀਟਰ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "resetsGroundPressureReferenceKeep": "ਜ਼ਮੀਨੀ ਦਬਾਅ ਹਵਾਲਾ ਰੀਸੈੱਟ ਕਰਦਾ ਹੈ। ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਦੌਰਾਨ ਵਾਹਨ ਨੂੰ ਸਥਿਰ ਰੱਖੋ।",
+      "pressure": "ਦਬਾਅ",
+      "temp": "ਤਾਪਮਾਨ",
+      "escCalibration": "ESC ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "setESCThrottleEndpointsREMOVE": "ESC ਥ੍ਰੋਟਲ ਸੀਮਾਵਾਂ ਸੈੱਟ ਕਰੋ। ਸ਼ੁਰੂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਸਾਰੇ ਪ੍ਰੋਪੈਲਰ ਹਟਾਓ।",
+      "escCalibrationSaved": "ESC ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ",
+      "compassmotMotorInterference": "CompassMot (ਮੋਟਰ ਦਖਲ)",
+      "measuresMagneticInterferenceFromMotors": "ਵੱਖ-ਵੱਖ ਥ੍ਰੋਟਲ ਪੱਧਰਾਂ 'ਤੇ ਮੋਟਰਾਂ/ESC ਤੋਂ ਚੁੰਬਕੀ ਦਖਲ ਮਾਪਦਾ ਹੈ। ਕੰਪਾਸ ਰੀਡਿੰਗਾਂ ਨੂੰ ਠੀਕ ਕਰਦਾ ਹੈ।",
+      "compassmotCalibrationSaved": "CompassMot ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ"
+    },
+    "telRadioPanel": {
+      "telemetryRadio": "ਟੈਲੀਮੈਟਰੀ ਰੇਡੀਓ",
+      "radioLinkStatusAndSerial": "ਰੇਡੀਓ ਲਿੰਕ ਸਥਿਤੀ ਅਤੇ ਸੀਰੀਅਲ ਪੋਰਟ ਸੰਰਚਨਾ",
+      "linkStatus": "ਲਿੰਕ ਸਥਿਤੀ",
+      "liveRADIOSTATUSTelemetry": "ਲਾਈਵ RADIO_STATUS ਟੈਲੀਮੈਟਰੀ",
+      "localRSSI": "ਲੋਕਲ RSSI",
+      "remoteRSSI": "ਰਿਮੋਟ RSSI",
+      "txBuffer": "TX ਬਫ਼ਰ",
+      "noiseDeviceScale": "ਸ਼ੋਰ (ਡਿਵਾਈਸ ਸਕੇਲ)",
+      "rxErrors": "RX ਗਲਤੀਆਂ",
+      "fixed": "ਠੀਕ ਕੀਤੀਆਂ",
+      "serialPortConfiguration": "ਸੀਰੀਅਲ ਪੋਰਟ ਸੰਰਚਨਾ",
+      "protocolAndBaudRateFor": "ਟੈਲੀਮੈਟਰੀ ਪੋਰਟਾਂ ਲਈ ਪ੍ਰੋਟੋਕੋਲ ਅਤੇ ਬੌਡ ਰੇਟ",
+      "protocol": "ਪ੍ਰੋਟੋਕੋਲ",
+      "baudRate": "ਬੌਡ ਰੇਟ",
+      "systemIdentification": "ਸਿਸਟਮ ਪਛਾਣ",
+      "mavlinkSystemAndGCSIDs": "ਮਲਟੀ-ਵਾਹਨ ਸੈੱਟਅੱਪ ਲਈ MAVLink ਸਿਸਟਮ ਅਤੇ GCS ID"
+    },
+    "signingEnabledSection": {
+      "signingEnabled": "ਸਾਈਨਿੰਗ ਚਾਲੂ ਹੈ",
+      "keyFingerprint": "ਕੁੰਜੀ ਫਿੰਗਰਪ੍ਰਿੰਟ",
+      "enrolled": "ਦਰਜ ਕੀਤਾ",
+      "syncToCloud": "ਕਲਾਊਡ ਨਾਲ ਸਿੰਕ ਕਰੋ",
+      "withAKeyInIts": "ਸਟੋਰ ਵਿੱਚ ਕੁੰਜੀ ਹੋਣ 'ਤੇ, ArduPilot ਬਿਨਾਂ ਸਾਈਨ ਕੀਤੀਆਂ ਕਮਾਂਡਾਂ ਸਿਰਫ਼ ਆਪਣੇ USB ਪੋਰਟ (ਚੈਨਲ 0) 'ਤੇ ਸਵੀਕਾਰ ਕਰਦਾ ਹੈ ਅਤੇ ਹਰ ਹੋਰ ਲਿੰਕ 'ਤੇ ਉਹਨਾਂ ਨੂੰ ਰੱਦ ਕਰਦਾ ਹੈ। ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਇਸ ਦੀ ਜਾਣਕਾਰੀ ਨਹੀਂ ਦਿੰਦਾ, ਇਸ ਲਈ ਪੈਨਲ ਇਸ ਦਾ ਦਾਅਵਾ ਨਹੀਂ ਕਰਦਾ।",
+      "theFlightControllerMayHold": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਨਵੀਂ ਜਾਂ ਪਿਛਲੀ ਕੁੰਜੀ ਹੋ ਸਕਦੀ ਹੈ",
+      "itHasTheNewKey": "ਇਸ ਵਿੱਚ ਨਵੀਂ ਕੁੰਜੀ ਹੈ",
+      "itKeptThePreviousKey": "ਇਸ ਨੇ ਪਿਛਲੀ ਕੁੰਜੀ ਰੱਖੀ",
+      "disableSentTheFlightController": "ਬੰਦ ਕਰਨ ਦੀ ਕਮਾਂਡ ਭੇਜੀ ਗਈ; ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਇਸ ਦੀ ਪੁਸ਼ਟੀ ਨਹੀਂ ਕੀਤੀ",
+      "thisBrowserKeepsTheKey": "ਇਹ ਬ੍ਰਾਊਜ਼ਰ ਕੁੰਜੀ ਰੱਖਦਾ ਹੈ ਅਤੇ ਤੁਹਾਡੀ ਪੁਸ਼ਟੀ ਤੱਕ ਸਾਈਨ ਕਰਦਾ ਰਹਿੰਦਾ ਹੈ। ਜਦੋਂ ਫਲਾਈਟ ਕੰਟਰੋਲਰ USB ਤੋਂ ਇਲਾਵਾ ਕਿਸੇ ਹੋਰ ਲਿੰਕ 'ਤੇ ਬਿਨਾਂ ਸਾਈਨ ਕੀਤੀਆਂ ਕਮਾਂਡਾਂ ਸਵੀਕਾਰ ਕਰਦਾ ਹੈ, ਤਾਂ ਸਾਈਨਿੰਗ ਬੰਦ ਹੈ।",
+      "signingIsOffForgetThe": "ਸਾਈਨਿੰਗ ਬੰਦ ਹੈ: ਕੁੰਜੀ ਭੁਲਾਓ",
+      "itIsStillSigningKeep": "ਇਹ ਅਜੇ ਵੀ ਸਾਈਨ ਕਰ ਰਿਹਾ ਹੈ: ਕੁੰਜੀ ਰੱਖੋ",
+      "rotateKey": "ਕੁੰਜੀ ਬਦਲੋ",
+      "exportKey": "ਕੁੰਜੀ ਐਕਸਪੋਰਟ ਕਰੋ",
+      "disableSigning": "ਸਾਈਨਿੰਗ ਬੰਦ ਕਰੋ"
+    },
+    "geozoneZoneEditor": {
+      "removeZone": "ਜ਼ੋਨ ਹਟਾਓ",
+      "type": "ਕਿਸਮ",
+      "shape": "ਆਕਾਰ",
+      "minAltitudeM": "ਘੱਟੋ-ਘੱਟ ਉਚਾਈ (m)",
+      "maxAltitudeM": "ਵੱਧ ਤੋਂ ਵੱਧ ਉਚਾਈ (m)",
+      "fenceAction": "ਫੈਂਸ ਕਾਰਵਾਈ",
+      "lat": "ਅਕਸ਼ਾਂਸ਼",
+      "lon": "ਲੰਬਕਾਰ",
+      "removeVertex": "ਸਿਰਾ ਹਟਾਓ",
+      "polygonZonesNeedAtLeast": "ਅੱਪਲੋਡ ਤੋਂ ਪਹਿਲਾਂ ਬਹੁਭੁਜ ਜ਼ੋਨਾਂ ਵਿੱਚ ਘੱਟੋ-ਘੱਟ 3 ਸਿਰੇ ਹੋਣੇ ਚਾਹੀਦੇ ਹਨ।",
+      "altitudesRelativeToSeaLevel": "ਸਮੁੰਦਰ ਤਲ ਦੇ ਸਾਪੇਖ ਉਚਾਈਆਂ",
+      "addVertex": "ਸਿਰਾ ਜੋੜੋ"
+    },
+    "portsPanel": {
+      "serialPorts": "ਸੀਰੀਅਲ ਪੋਰਟ",
+      "connectToADroneTo": "ਸੀਰੀਅਲ ਪੋਰਟ ਕੌਂਫਿਗਰ ਕਰਨ ਲਈ ਡਰੋਨ ਨਾਲ ਕਨੈਕਟ ਕਰੋ।",
+      "protocolAndBaudRateFor": "ਹਰ ਸੀਰੀਅਲ ਪੋਰਟ ਲਈ ਪ੍ਰੋਟੋਕੋਲ ਅਤੇ ਬੌਡ ਰੇਟ",
+      "loadingSerialParameters": "ਸੀਰੀਅਲ ਪੈਰਾਮੀਟਰ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+      "saveChanges": "ਬਦਲਾਅ ਸੇਵ ਕਰੋ",
+      "serialPortChangesRequireA": "ਸੀਰੀਅਲ ਪੋਰਟ ਬਦਲਾਅ ਲਾਗੂ ਹੋਣ ਲਈ ਰੀਬੂਟ ਦੀ ਲੋੜ ਹੈ।",
+      "clickQuotReadFromFC": "ਸੀਰੀਅਲ ਪੈਰਾਮੀਟਰ ਲੋਡ ਕਰਨ ਲਈ \"FC ਤੋਂ ਪੜ੍ਹੋ\" 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "px4AutoDetectsPortProtocols": "PX4 ਪੋਰਟ ਪ੍ਰੋਟੋਕੋਲ ਆਪਣੇ ਆਪ ਪਛਾਣਦਾ ਹੈ। ਹੇਠਾਂ ਬੌਡ ਰੇਟ ਕੌਂਫਿਗਰ ਕਰੋ।",
+      "port": "ਪੋਰਟ",
+      "label": "ਲੇਬਲ",
+      "protocol": "ਪ੍ਰੋਟੋਕੋਲ",
+      "baudRate": "ਬੌਡ ਰੇਟ"
+    },
+    "auxModesPanel": {
+      "auxiliaryModes": "ਸਹਾਇਕ ਮੋਡ",
+      "configureModeActivationViaAUX": "AUX ਚੈਨਲ PWM ਰੇਂਜਾਂ ਰਾਹੀਂ ਮੋਡ ਐਕਟੀਵੇਸ਼ਨ ਕੌਂਫਿਗਰ ਕਰੋ",
+      "liveRCChannels": "ਲਾਈਵ RC ਚੈਨਲ",
+      "currentAUXChannelPWMValues": "ਮੌਜੂਦਾ AUX ਚੈਨਲ PWM ਮੁੱਲ",
+      "channel": "ਚੈਨਲ",
+      "addRange": "ਰੇਂਜ ਜੋੜੋ",
+      "addMode": "ਮੋਡ ਜੋੜੋ",
+      "assignANewModeTo": "AUX ਚੈਨਲ ਨੂੰ ਨਵਾਂ ਮੋਡ ਦਿਓ",
+      "mode": "ਮੋਡ",
+      "add": "ਜੋੜੋ",
+      "noModeRangesConfiguredAdd": "ਕੋਈ ਮੋਡ ਰੇਂਜ ਕੌਂਫਿਗਰ ਨਹੀਂ। ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਉੱਪਰ ਮੋਡ ਜੋੜੋ।",
+      "thisConnectionCannotWriteMode": "ਇਹ ਕਨੈਕਸ਼ਨ ਮੋਡ ਰੇਂਜਾਂ ਨਹੀਂ ਲਿਖ ਸਕਦਾ"
+    },
+    "debugPanel": {
+      "debugValues": "ਡੀਬੱਗ ਮੁੱਲ",
+      "table": "ਸਾਰਣੀ",
+      "graph": "ਗ੍ਰਾਫ਼",
+      "exportCSV": "CSV ਨਿਰਯਾਤ ਕਰੋ",
+      "clear": "ਸਾਫ਼ ਕਰੋ",
+      "noDebugValuesReceived": "ਕੋਈ ਡੀਬੱਗ ਮੁੱਲ ਪ੍ਰਾਪਤ ਨਹੀਂ ਹੋਏ",
+      "name": "ਨਾਮ",
+      "value": "ਮੁੱਲ",
+      "type": "ਕਿਸਮ",
+      "lastUpdate": "ਆਖਰੀ ਅੱਪਡੇਟ",
+      "selectValuesAboveToView": "ਗ੍ਰਾਫ਼ ਵੇਖਣ ਲਈ ਉੱਪਰ ਮੁੱਲ ਚੁਣੋ"
+    },
+    "batteryProfilePanel": {
+      "batteryProfiles": "ਬੈਟਰੀ ਪ੍ਰੋਫਾਈਲ",
+      "voltageThresholdsCapacityAndCurrent": "ਵੋਲਟੇਜ ਸੀਮਾਵਾਂ, ਸਮਰੱਥਾ ਅਤੇ ਕਰੰਟ ਸੈਂਸਰ ਸੈਟਿੰਗਾਂ",
+      "activeProfile": "ਸਰਗਰਮ ਪ੍ਰੋਫਾਈਲ",
+      "cellVoltages001V": "ਸੈੱਲ ਵੋਲਟੇਜ (0.01 V)",
+      "capacity": "ਸਮਰੱਥਾ",
+      "capacityUnit": "ਸਮਰੱਥਾ ਇਕਾਈ",
+      "currentSensor": "ਕਰੰਟ ਸੈਂਸਰ",
+      "scaleMVAX10": "ਸਕੇਲ (mV/A x10)",
+      "offsetMA": "ਆਫ਼ਸੈੱਟ (mA)",
+      "voltageSource": "ਵੋਲਟੇਜ ਸਰੋਤ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "actuatorPanel": {
+      "actuatorConfiguration": "ਐਕਚੂਏਟਰ ਕੌਂਫਿਗਰੇਸ਼ਨ",
+      "px4ControlAllocationMotorGeometry": "PX4 ਕੰਟਰੋਲ ਐਲੋਕੇਸ਼ਨ — ਮੋਟਰ ਜਿਓਮੈਟਰੀ ਅਤੇ ਆਉਟਪੁੱਟ ਮੈਪਿੰਗ",
+      "motorGeometry": "ਮੋਟਰ ਜਿਓਮੈਟਰੀ",
+      "rotorCount": "ਰੋਟਰ ਗਿਣਤੀ",
+      "motor": "ਮੋਟਰ",
+      "xFwd": "X (ਅੱਗੇ)",
+      "yRight": "Y (ਸੱਜੇ)",
+      "zDown": "Z (ਹੇਠਾਂ)",
+      "pwmOutputFunctions": "PWM ਆਉਟਪੁੱਟ ਫੰਕਸ਼ਨ",
+      "controlSurfaces": "ਕੰਟਰੋਲ ਸਰਫੇਸ",
+      "surfaceCount": "ਸਰਫੇਸ ਗਿਣਤੀ",
+      "actuatorTest": "ਐਕਚੁਏਟਰ ਟੈਸਟ"
+    },
+    "pX4CalibrationsSection": {
+      "px4OnlyCalibrations": "ਸਿਰਫ਼ PX4 ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "quickLevelPX4": "ਤੁਰੰਤ ਲੈਵਲ (PX4)",
+      "setLevelReferenceFromCurrent": "ਮੌਜੂਦਾ ਦਿਸ਼ਾ-ਸਥਿਤੀ ਤੋਂ ਲੈਵਲ ਹਵਾਲਾ ਸੈੱਟ ਕਰੋ। ਸ਼ੁਰੂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਵਾਹਨ ਨੂੰ ਪੱਧਰਾ ਰੱਖੋ।",
+      "quickLevelCalibrationSaved": "ਤੁਰੰਤ ਲੈਵਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ",
+      "vehicleHeadingTrueDegrees": "ਵਾਹਨ ਦੀ ਹੈਡਿੰਗ (ਸੱਚੀ, ਡਿਗਰੀਆਂ)",
+      "knownHeadingCompassCalibration": "ਜਾਣੀ-ਪਛਾਣੀ ਹੈਡਿੰਗ ਨਾਲ ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "calibrateTheCompassFromThe": "ਵਿਸ਼ਵ ਚੁੰਬਕੀ ਮਾਡਲ ਅਤੇ ਵਾਹਨ ਦੇ ਨੱਕ ਦੀ ਦਿਸ਼ਾ ਵਾਲੀ ਹੈਡਿੰਗ ਤੋਂ ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਟ ਕਰੋ। ਪੋਜ਼ੀਸ਼ਨ ਫਿਕਸ ਲੋੜੀਂਦਾ ਹੈ। ਘੁਮਾਉਣ ਦੀ ਲੋੜ ਨਹੀਂ।",
+      "compassCalibrationSaved": "ਕੰਪਾਸ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ",
+      "thermalCalibration": "ਥਰਮਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "additionalCalibrationOptionsAvailableOn": "PX4 ਫਰਮਵੇਅਰ 'ਤੇ ਵਾਧੂ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਵਿਕਲਪ ਉਪਲਬਧ ਹਨ",
+      "configureAndTriggerThermalCalibration": "ਸੈਂਸਰ ਸੈਕਸ਼ਨ ਦੇ Thermal Cal ਪੈਨਲ ਤੋਂ ਥਰਮਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਕੌਂਫਿਗਰ ਅਤੇ ਟ੍ਰਿਗਰ ਕਰੋ। ਇਹ ਅਗਲੇ ਕੋਲਡ ਬੂਟ 'ਤੇ ਚੱਲਦਾ ਹੈ।"
+    },
+    "importKeyModal": {
+      "close": "ਬੰਦ ਕਰੋ",
+      "signingKeyHex": "ਸਾਈਨਿੰਗ ਕੁੰਜੀ (hex)",
+      "n64LowercaseHexChars": "64 ਛੋਟੇ ਅੱਖਰਾਂ ਵਾਲੇ hex ਅੱਖਰ",
+      "keyImportedSignedCommandsWill": "ਕੁੰਜੀ ਇੰਪੋਰਟ ਹੋ ਗਈ। ਹਸਤਾਖਰਿਤ ਕਮਾਂਡਾਂ ਇਸ ਕੁੰਜੀ ਦੀ ਵਰਤੋਂ ਕਰਨਗੀਆਂ।",
+      "importSigningKey": "ਸਾਈਨਿੰਗ ਕੁੰਜੀ ਇੰਪੋਰਟ ਕਰੋ",
+      "pasteA64CharacterHex": "64-ਅੱਖਰਾਂ ਵਾਲੀ hex MAVLink ਸਾਈਨਿੰਗ ਕੁੰਜੀ ਪੇਸਟ ਕਰੋ। ਮੰਨਿਆ ਜਾਂਦਾ ਹੈ ਕਿ ਕੁੰਜੀ ਪਹਿਲਾਂ ਹੀ ਫਲਾਈਟ ਕੰਟਰੋਲਰ 'ਤੇ ਦਰਜ ਹੈ। ਇੱਥੇ ਕੋਈ ਦਰਜਗੀ ਨਹੀਂ ਹੁੰਦੀ।",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "import": "ਆਯਾਤ ਕਰੋ",
+      "importingKey": "ਕੁੰਜੀ ਆਯਾਤ ਹੋ ਰਹੀ ਹੈ…",
+      "tryAgain": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "blackboxPanel": {
+      "blackbox": "ਬਲੈਕਬਾਕਸ",
+      "flightDataRecordingDeviceAnd": "ਫਲਾਈਟ ਡਾਟਾ ਰਿਕਾਰਡਿੰਗ ਡਿਵਾਈਸ ਅਤੇ ਲੌਗਿੰਗ ਦਰ",
+      "loggingDevice": "ਲੌਗਿੰਗ ਡਿਵਾਈਸ",
+      "device": "ਡਿਵਾਈਸ",
+      "logRate": "ਲੌਗ ਦਰ",
+      "numerator": "ਅੰਸ਼",
+      "denominator": "ਹਰ",
+      "readingStorageInfo": "ਸਟੋਰੇਜ ਜਾਣਕਾਰੀ ਪੜ੍ਹੀ ਜਾ ਰਹੀ ਹੈ...",
+      "downloadLogs": "ਲੌਗ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "erase": "ਮਿਟਾਓ",
+      "downloadingBlackboxLog": "ਬਲੈਕਬਾਕਸ ਲੌਗ ਡਾਊਨਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…"
+    },
+    "adjustmentsPanel": {
+      "adjustments": "ਐਡਜਸਟਮੈਂਟ",
+      "inFlightParameterAdjustmentVia": "RC ਚੈਨਲਾਂ ਰਾਹੀਂ ਉਡਾਣ ਦੌਰਾਨ ਪੈਰਾਮੀਟਰ ਐਡਜਸਟਮੈਂਟ",
+      "liveRCChannels": "ਲਾਈਵ RC ਚੈਨਲ",
+      "currentAUXChannelPWMValues": "ਮੌਜੂਦਾ AUX ਚੈਨਲ PWM ਮੁੱਲ",
+      "noAdjustmentsConfigured": "ਕੋਈ ਐਡਜਸਟਮੈਂਟ ਕੌਂਫਿਗਰ ਨਹੀਂ ਕੀਤੀ ਗਈ।",
+      "whenChannel": "ਜਦੋਂ ਚੈਨਲ",
+      "applyFunction": "ਫੰਕਸ਼ਨ ਲਾਗੂ ਕਰੋ",
+      "viaChannel": "ਚੈਨਲ ਰਾਹੀਂ",
+      "activationRange": "ਐਕਟੀਵੇਸ਼ਨ ਰੇਂਜ",
+      "assignRCChannelRangesTo": "ਉਡਾਣ ਦੌਰਾਨ PID, ਰੇਟ ਅਤੇ ਹੋਰ ਪੈਰਾਮੀਟਰ ਬਦਲਣ ਲਈ RC ਚੈਨਲ ਰੇਂਜਾਂ ਨਿਰਧਾਰਤ ਕਰੋ। ਹਰ ਐਡਜਸਟਮੈਂਟ ਇੱਕ ਸਵਿੱਚ ਚੈਨਲ (ਐਕਟੀਵੇਸ਼ਨ ਰੇਂਜ) ਅਤੇ ਇੱਕ ਐਡਜਸਟਮੈਂਟ ਚੈਨਲ (ਮੁੱਲ) ਨੂੰ ਮੈਪ ਕਰਦਾ ਹੈ।",
+      "addAdjustment": "ਐਡਜਸਟਮੈਂਟ ਜੋੜੋ"
+    },
+    "gpsConfigSection": {
+      "gpsConfiguration": "GPS ਸੰਰਚਨਾ",
+      "antennaPositionOffsetRelativeTo": "ਐਂਟੀਨਾ ਸਥਿਤੀ ਆਫ਼ਸੈੱਟ (IMU ਦੇ ਸਾਪੇਖ)",
+      "notOnThisFirmware": "ਇਸ ਫਰਮਵੇਅਰ 'ਤੇ ਉਪਲਬਧ ਨਹੀਂ",
+      "gnssConstellation": "GNSS ਤਾਰਾਮੰਡਲ",
+      "antennaPositionOffsetsAndConstellation": "ਐਂਟੀਨਾ ਸਥਿਤੀ ਆਫਸੈੱਟ ਅਤੇ ਤਾਰਾਮੰਡਲ ਚੋਣ",
+      "read": "ਪੜ੍ਹੋ",
+      "save": "ਸੇਵ ਕਰੋ"
+    },
+    "px4ControlAllocationPanel": {
+      "controlAllocation": "ਕੰਟਰੋਲ ਵੰਡ",
+      "px4AirframeAllocationMethodRotor": "PX4 ਏਅਰਫ੍ਰੇਮ, ਵੰਡ ਵਿਧੀ, ਰੋਟਰ ਗੁਣਾਂਕ, ਕੰਟਰੋਲ ਸਤਹਾਂ ਅਤੇ ਟਿਲਟ ਸਰਵੋ",
+      "airframe": "ਏਅਰਫ੍ਰੇਮ",
+      "reversibleMotors": "ਉਲਟਣਯੋਗ ਮੋਟਰਾਂ",
+      "rotors": "ਰੋਟਰ",
+      "setARotorCountTo": "ਰੋਟਰ ਗੁਣਾਂਕ ਸੰਰਚਿਤ ਕਰਨ ਲਈ ਰੋਟਰਾਂ ਦੀ ਗਿਣਤੀ ਸੈੱਟ ਕਰੋ।",
+      "controlSurfaces": "ਕੰਟਰੋਲ ਸਤ੍ਹਾਵਾਂ",
+      "tiltServos": "ਟਿਲਟ ਸਰਵੋ",
+      "reversibleMotorsCARREV": "ਉਲਟਣਯੋਗ ਮੋਟਰਾਂ (CA_R_REV)"
+    },
+    "bfMotorTest": {
+      "iConfirmAllPropellersHave": "ਮੈਂ ਪੁਸ਼ਟੀ ਕਰਦਾ ਹਾਂ ਕਿ ਸਾਰੇ ਪ੍ਰੋਪੈਲਰ ਹਟਾ ਦਿੱਤੇ ਗਏ ਹਨ",
+      "motorTestIsNotAvailable": "ਇਸ ਲਿੰਕ 'ਤੇ ਮੋਟਰ ਟੈਸਟ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+      "disarmToTestMotors": "ਮੋਟਰਾਂ ਦੀ ਜਾਂਚ ਲਈ ਡਿਸਆਰਮ ਕਰੋ",
+      "waitingForTheFlightController": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਦੀ ਮੋਟਰ ਆਉਟਪੁੱਟ ਰਿਪੋਰਟ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ।",
+      "masterThrottle": "ਮਾਸਟਰ ਥ੍ਰੋਟਲ",
+      "masterThrottle2": "ਮਾਸਟਰ ਥ੍ਰੋਟਲ",
+      "motorsWillSpinWhenTested": "ਟੈਸਟ ਦੌਰਾਨ ਮੋਟਰਾਂ ਘੁੰਮਣਗੀਆਂ। ਪ੍ਰੋਪੈਲਰ ਨਾ ਹਟਾਉਣ ਨਾਲ ਸੱਟ ਜਾਂ ਨੁਕਸਾਨ ਹੋ ਸਕਦਾ ਹੈ।",
+      "enableMotorTest": "ਮੋਟਰ ਟੈਸਟ ਚਾਲੂ ਕਰੋ",
+      "stopAllMotors": "ਸਾਰੀਆਂ ਮੋਟਰਾਂ ਰੋਕੋ"
+    },
+    "iNavMissionPanel": {
+      "inavMission": "iNav ਮਿਸ਼ਨ",
+      "summaryOfTheMissionIn": "Plan ਟੈਬ ਵਿੱਚ ਜਾਂ FC ਤੋਂ ਪੜ੍ਹੇ ਮਿਸ਼ਨ ਦਾ ਸਾਰ।",
+      "totalWaypoints": "ਕੁੱਲ ਵੇਪੁਆਇੰਟ",
+      "breakdownByAction": "ਕਾਰਵਾਈ ਅਨੁਸਾਰ ਵੇਰਵਾ",
+      "replaceTheCurrentPlan": "ਕੀ ਮੌਜੂਦਾ ਪਲਾਨ ਬਦਲਣਾ ਹੈ?",
+      "replacePlan": "ਪਲਾਨ ਬਦਲੋ",
+      "noMissionLoadedOpenThe": "ਕੋਈ ਮਿਸ਼ਨ ਲੋਡ ਨਹੀਂ ਹੈ। ਮਿਸ਼ਨ ਬਣਾਉਣ ਲਈ ਪਲਾਨ ਟੈਬ ਖੋਲ੍ਹੋ।",
+      "openMissionPlanner": "ਮਿਸ਼ਨ ਪਲਾਨਰ ਖੋਲ੍ਹੋ"
+    },
+    "bfDshotCommands": {
+      "iConfirmAllPropellersHave": "ਮੈਂ ਪੁਸ਼ਟੀ ਕਰਦਾ ਹਾਂ ਕਿ ਸਾਰੇ ਪ੍ਰੋਪੈਲਰ ਹਟਾ ਦਿੱਤੇ ਗਏ ਹਨ",
+      "disarmToSendESCCommands": "ESC ਕਮਾਂਡਾਂ ਭੇਜਣ ਲਈ ਡਿਸਆਰਮ ਕਰੋ।",
+      "spinDirectionMotor": "ਘੁੰਮਣ ਦੀ ਦਿਸ਼ਾ — ਮੋਟਰ",
+      "beepLocate": "ਬੀਪ (ਲੱਭੋ)",
+      "setNormal": "ਸਧਾਰਨ ਸੈੱਟ ਕਰੋ",
+      "setReversed": "ਉਲਟਾ ਸੈੱਟ ਕਰੋ",
+      "enable": "ਯੋਗ ਕਰੋ",
+      "disable": "ਅਯੋਗ ਕਰੋ"
+    },
+    "parameterGrid": {
+      "name": "ਨਾਮ",
+      "description": "ਵੇਰਵਾ",
+      "value": "ਮੁੱਲ",
+      "range": "ਰੇਂਜ",
+      "units": "ਇਕਾਈਆਂ",
+      "type": "ਕਿਸਮ",
+      "ramOnlyNotFlashed": "ਸਿਰਫ਼ RAM ਵਿੱਚ, ਫਲੈਸ਼ ਨਹੀਂ ਕੀਤਾ"
+    },
+    "firmwareArduPilotSection": {
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "loadingBoards": "ਬੋਰਡ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+      "vehicleType": "ਵਾਹਨ ਦੀ ਕਿਸਮ",
+      "version": "ਸੰਸਕਰਣ",
+      "targetBoard": "ਟੀਚਾ ਬੋਰਡ",
+      "loadingManifest": "ਮੈਨੀਫੈਸਟ ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+      "firmwareVersion": "ਫਰਮਵੇਅਰ ਵਰਜਨ"
+    },
+    "rateProfilePanel": {
+      "rateProfiles": "ਰੇਟ ਪ੍ਰੋਫਾਈਲ",
+      "betaflightRateCurveConfiguration": "Betaflight ਰੇਟ ਕਰਵ ਸੰਰਚਨਾ",
+      "ratesType": "ਰੇਟਸ ਕਿਸਮ",
+      "roll": "ਰੋਲ",
+      "pitch": "ਪਿੱਚ",
+      "yaw": "ਯਾਅ",
+      "throttle": "ਥ੍ਰੋਟਲ",
+      "rateCurvePreview": "ਰੇਟ ਕਰਵ ਝਲਕ"
+    },
+    "betaflightConfigPanel": {
+      "configuration": "ਸੰਰਚਨਾ",
+      "featureTogglesArmingSettingsAnd": "ਫੀਚਰ ਟੌਗਲ, ਆਰਮਿੰਗ ਸੈਟਿੰਗਾਂ ਅਤੇ ਬੀਪਰ ਸੰਰਚਨਾ",
+      "enableOrDisableFirmwareFeatures": "ਫਰਮਵੇਅਰ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ ਚਾਲੂ ਜਾਂ ਬੰਦ ਕਰੋ (BF_FEATURE_MASK)",
+      "arming": "ਆਰਮਿੰਗ",
+      "autoDisarmTimeoutAndSmall": "ਆਟੋ-ਡਿਸਆਰਮ ਟਾਈਮਆਊਟ ਅਤੇ ਛੋਟੇ ਕੋਣ ਦੀ ਸੀਮਾ",
+      "autoDisarmDelay": "ਆਟੋ-ਡਿਸਆਰਮ ਦੇਰੀ",
+      "smallAngleLimit": "ਛੋਟੇ ਕੋਣ ਦੀ ਸੀਮਾ",
+      "toggleIndividualBeeperConditionsBF": "ਵਿਅਕਤੀਗਤ ਬੀਪਰ ਸ਼ਰਤਾਂ ਟੌਗਲ ਕਰੋ (BF_BEEPER_DISABLED_MASK ਉਲਟਾ ਹੈ: bit=1 ਅਯੋਗ ਕਰਦਾ ਹੈ)"
+    },
+    "px4ThermalCalPanel": {
+      "thermalCalibration": "ਥਰਮਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "temperatureCompensationForGyroAccel": "ਜਾਇਰੋ, ਐਕਸੈਲ ਅਤੇ ਬੈਰੋ ਲਈ ਤਾਪਮਾਨ ਮੁਆਵਜ਼ਾ (TC_*)",
+      "compensation": "ਮੁਆਵਜ਼ਾ",
+      "runCalibration": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਚਲਾਓ",
+      "minTemp": "ਘੱਟੋ-ਘੱਟ ਤਾਪਮਾਨ",
+      "refTemp": "ਹਵਾਲਾ ਤਾਪਮਾਨ",
+      "maxTemp": "ਵੱਧ ਤੋਂ ਵੱਧ ਤਾਪਮਾਨ"
+    },
+    "pidAnalysisWizard": {
+      "event": "ਘਟਨਾ:",
+      "testTheseSettingsInSITL": "ਉਡਾਣ ਤੋਂ ਪਹਿਲਾਂ ਇਹਨਾਂ ਸੈਟਿੰਗਾਂ ਨੂੰ SITL ਜਾਂ ਕਿਸੇ ਸੁਰੱਖਿਅਤ ਮਾਹੌਲ ਵਿੱਚ ਟੈਸਟ ਕਰੋ।",
+      "noStepResponseEventsDetected": "ਇਸ ਲੌਗ ਵਿੱਚ ਕੋਈ ਸਟੈਪ ਰਿਸਪਾਂਸ ਘਟਨਾ ਨਹੀਂ ਮਿਲੀ।",
+      "saveAsBaseline": "ਬੇਸਲਾਈਨ ਵਜੋਂ ਸੇਵ ਕਰੋ",
+      "saveCurrentAnalysisThenRe": "ਮੌਜੂਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਸੇਵ ਕਰੋ, ਫਿਰ ਤੁਲਨਾ ਲਈ ਟਿਊਨਿੰਗ ਤੋਂ ਬਾਅਦ ਦੁਬਾਰਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ।",
+      "appliedValuesAppearInThe": "ਲਾਗੂ ਕੀਤੇ ਮੁੱਲ ਉੱਪਰ PID ਸਲਾਈਡਰਾਂ ਵਿੱਚ ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ ਵਜੋਂ ਦਿਖਾਈ ਦਿੰਦੇ ਹਨ। ਇਹਨਾਂ ਨੂੰ ਲਿਖਣ ਲਈ \"ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਸੇਵ ਕਰੋ\" ਵਰਤੋ।",
+      "back": "ਪਿੱਛੇ",
+      "next": "ਅੱਗੇ"
+    },
+    "programmingPidPanel": {
+      "programmingPIDs": "ਪ੍ਰੋਗਰਾਮਿੰਗ PIDs",
+      "setpoint": "ਸੈੱਟਪੁਆਇੰਟ",
+      "measurement": "ਮਾਪ",
+      "gains": "ਗੇਨ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "iNavFailsafePanel": {
+      "inavFailsafe": "iNav ਫੇਲਸੇਫ",
+      "whatTheFCDoesWhen": "RC ਲਿੰਕ ਟੁੱਟਣ 'ਤੇ FC ਕੀ ਕਰਦਾ ਹੈ",
+      "failsafeProcedure": "ਫੇਲਸੇਫ ਪ੍ਰਕਿਰਿਆ",
+      "minDistanceCm": "ਘੱਟੋ-ਘੱਟ ਦੂਰੀ (cm)",
+      "procedureInsideMinDistance": "ਘੱਟੋ-ਘੱਟ ਦੂਰੀ ਦੇ ਅੰਦਰ ਪ੍ਰਕਿਰਿਆ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "airframePanel": {
+      "airframeSelection": "ਏਅਰਫ੍ਰੇਮ ਚੋਣ",
+      "px4AirframeConfigurationSYSAUTOSTART": "PX4 ਏਅਰਫ੍ਰੇਮ ਸੰਰਚਨਾ (SYS_AUTOSTART)",
+      "currentAirframe": "ਮੌਜੂਦਾ ਏਅਰਫ੍ਰੇਮ",
+      "changingAirframeRequiresAReboot": "ਏਅਰਫ੍ਰੇਮ ਬਦਲਣ ਲਈ ਰੀਬੂਟ ਲੋੜੀਂਦਾ ਹੈ। ਸਾਰੇ ਪੈਰਾਮੀਟਰ ਏਅਰਫ੍ਰੇਮ ਦੇ ਡਿਫੌਲਟ 'ਤੇ ਰੀਸੈੱਟ ਹੋ ਜਾਣਗੇ।",
+      "searchAirframes": "ਏਅਰਫ੍ਰੇਮ ਖੋਜੋ...",
+      "noAirframesMatchYourSearch": "ਤੁਹਾਡੀ ਖੋਜ ਨਾਲ ਕੋਈ ਏਅਰਫ੍ਰੇਮ ਮੇਲ ਨਹੀਂ ਖਾਂਦਾ।",
+      "customAirframeID": "ਕਸਟਮ ਏਅਰਫ੍ਰੇਮ ID"
+    },
+    "firmwarePx4Section": {
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "release": "ਰਿਲੀਜ਼",
+      "loadingReleases": "ਰਿਲੀਜ਼ਾਂ ਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ...",
+      "px4Release": "PX4 ਰਿਲੀਜ਼",
+      "targetBoard": "ਟੀਚਾ ਬੋਰਡ"
+    },
+    "mavlinkShellPanel": {
+      "mavlinkShell": "MAVLink ਸ਼ੈੱਲ",
+      "px4NuttXConsole": "PX4 NuttX ਕੰਸੋਲ",
+      "copyOutput": "ਆਉਟਪੁੱਟ ਕਾਪੀ ਕਰੋ",
+      "downloadOutput": "ਆਉਟਪੁੱਟ ਡਾਊਨਲੋਡ ਕਰੋ",
+      "clearTerminal": "ਟਰਮੀਨਲ ਸਾਫ਼ ਕਰੋ",
+      "enterNuttXCommand": "NuttX ਕਮਾਂਡ ਦਾਖਲ ਕਰੋ..."
+    },
+    "signingDebugSection": {
+      "debug": "ਡੀਬੱਗ",
+      "keyFingerprint": "ਕੁੰਜੀ ਫਿੰਗਰਪ੍ਰਿੰਟ",
+      "hasBrowserKey": "ਬ੍ਰਾਊਜ਼ਰ ਕੁੰਜੀ ਹੈ",
+      "enrollmentState": "ਦਾਖਲਾ ਸਥਿਤੀ",
+      "previousKeyKept": "ਪਿਛਲੀ ਕੁੰਜੀ ਰੱਖੀ ਗਈ"
+    },
+    "timerGroupDiagram": {
+      "selectBoard": "ਬੋਰਡ ਚੁਣੋ...",
+      "timerGroupLayout": "ਟਾਈਮਰ ਗਰੁੱਪ ਲੇਆਉਟ",
+      "dshotMotor": "DShot ਮੋਟਰ",
+      "pwmServo": "PWM ਸਰਵੋ",
+      "disabledGPIO": "ਅਯੋਗ/GPIO"
+    },
+    "servosPanel": {
+      "servoConfig": "ਸਰਵੋ ਸੰਰਚਨਾ",
+      "travelLimitsCenterPositionAnd": "ਯਾਤਰਾ ਸੀਮਾਵਾਂ, ਕੇਂਦਰੀ ਸਥਿਤੀ ਅਤੇ ਦਰ",
+      "rate": "ਦਰ (%)",
+      "thisPanelAppliesToFixed": "ਇਹ ਪੈਨਲ ਫਿਕਸਡ-ਵਿੰਗ ਅਤੇ ਟ੍ਰਾਈਕਾਪਟਰ ਪਲੇਟਫਾਰਮਾਂ ਲਈ ਹੈ। ਜੁੜਿਆ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਮਲਟੀਰੋਟਰ ਵਜੋਂ ਸੰਰਚਿਤ ਹੈ।",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ : ਸਥਾਈ ਕਰਨ ਲਈ FC 'ਤੇ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "safehomePanel": {
+      "safehomeSlots": "ਸੇਫਹੋਮ ਸਲਾਟ",
+      "latitude": "ਅਕਸ਼ਾਂਸ਼",
+      "longitude": "ਲੰਬਕਾਰ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "outputMappingPanel": {
+      "outputMapping": "ਆਉਟਪੁੱਟ ਮੈਪਿੰਗ",
+      "timerGroupsAndOutputType": "ਟਾਈਮਰ ਸਮੂਹ ਅਤੇ ਆਉਟਪੁੱਟ ਕਿਸਮ ਨਿਰਧਾਰਨ",
+      "timerOutputModes": "ਟਾਈਮਰ ਆਉਟਪੁੱਟ ਮੋਡ",
+      "outputAssignmentsReadOnly": "ਆਉਟਪੁੱਟ ਨਿਰਧਾਰਨ (ਸਿਰਫ਼-ਪੜ੍ਹਨ ਲਈ)",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "geozonePanel": {
+      "geozones": "ਜੀਓਜ਼ੋਨ",
+      "inavPolygonAndCircularNo": "iNav ਬਹੁਭੁਜ ਅਤੇ ਗੋਲ ਨੋ-ਫਲਾਈ ਜਾਂ ਅੰਦਰ-ਰਹੋ ਜ਼ੋਨ",
+      "addZone": "ਜ਼ੋਨ ਜੋੜੋ",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ : ਸਥਾਈ ਕਰਨ ਲਈ FC 'ਤੇ ਲਿਖੋ ਵਰਤੋ।",
+      "readFromFCToLoad": "ਮੌਜੂਦਾ ਜ਼ੋਨ ਲੋਡ ਕਰਨ ਲਈ FC ਤੋਂ ਪੜ੍ਹੋ, ਜਾਂ ਉੱਪਰ ਨਵਾਂ ਜ਼ੋਨ ਜੋੜੋ।"
+    },
+    "controlProfilePanel": {
+      "controlProfiles": "ਕੰਟਰੋਲ ਪ੍ਰੋਫਾਈਲ",
+      "switchTheActiveRateAnd": "ਕਿਰਿਆਸ਼ੀਲ ਰੇਟ ਅਤੇ ਕੰਟਰੋਲ ਪ੍ਰੋਫਾਈਲ ਬਦਲੋ",
+      "activeControlProfile": "ਕਿਰਿਆਸ਼ੀਲ ਕੰਟਰੋਲ ਪ੍ਰੋਫਾਈਲ",
+      "switchActiveControlProfile": "ਕਿਰਿਆਸ਼ੀਲ ਕੰਟਰੋਲ ਪ੍ਰੋਫਾਈਲ ਬਦਲਣੀ ਹੈ?",
+      "switchProfile": "ਪ੍ਰੋਫਾਈਲ ਬਦਲੋ"
+    },
+    "flightModeChannelControls": {
+      "modeSwitchChannel": "ਮੋਡ ਸਵਿੱਚ ਚੈਨਲ",
+      "rcChannelForFlightMode": "ਫਲਾਈਟ ਮੋਡ ਸਵਿੱਚ ਲਈ RC ਚੈਨਲ",
+      "initialBootModeINITIALMODE": "ਸ਼ੁਰੂਆਤੀ ਬੂਟ ਮੋਡ (INITIAL_MODE)",
+      "currentPWM": "ਮੌਜੂਦਾ PWM:",
+      "noModeChannelAssignedSo": "ਕੋਈ ਮੋਡ ਚੈਨਲ ਨਿਰਧਾਰਤ ਨਹੀਂ, ਇਸ ਲਈ ਛੇ ਮੋਡ ਸਲਾਟ ਅਕਿਰਿਆਸ਼ੀਲ ਹਨ।",
+      "px4SetsItsBootMode": "PX4 ਆਪਣਾ ਬੂਟ ਮੋਡ ਇੱਕ ਸਮਰਪਿਤ ਬੂਟ-ਮੋਡ ਪੈਰਾਮੀਟਰ ਨਾਲ ਸੈੱਟ ਕਰਦਾ ਹੈ, ਇਸ ਪੈਨਲ ਤੋਂ ਨਹੀਂ।"
+    },
+    "cliPanel": {
+      "fcConsole": "FC ਕੰਸੋਲ",
+      "export": "ਐਕਸਪੋਰਟ",
+      "clear": "ਸਾਫ਼ ਕਰੋ",
+      "send": "ਭੇਜੋ"
+    },
+    "bfSettingsPanel": {
+      "allSettings": "ਸਾਰੀਆਂ ਸੈਟਿੰਗਾਂ",
+      "everyBetaflightSettingReadAnd": "ਹਰ Betaflight ਸੈਟਿੰਗ, CLI ਰਾਹੀਂ ਪੜ੍ਹੀ ਅਤੇ ਲਿਖੀ ਜਾਂਦੀ ਹੈ",
+      "searchSettings": "ਸੈਟਿੰਗਾਂ ਖੋਜੋ...",
+      "apply": "ਲਾਗੂ ਕਰੋ",
+      "save": "ਸੇਵ ਕਰੋ",
+      "modifiedOnly": "ਸਿਰਫ਼ ਸੋਧੇ ਹੋਏ"
+    },
+    "bfLedStripPanel": {
+      "ledStrip": "LED ਸਟ੍ਰਿਪ",
+      "betaflightPerLEDPositionColor": "Betaflight ਪ੍ਰਤੀ-LED ਸਥਿਤੀ, ਰੰਗ, ਫੰਕਸ਼ਨ ਅਤੇ ਪ੍ਰਭਾਵ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਕੀਤੀਆਂ ਤਬਦੀਲੀਆਂ : ਲਾਗੂ ਕਰਨ ਲਈ Write to FC ਵਰਤੋ।",
+      "noLEDsConfiguredOnThis": "ਇਸ ਸਟ੍ਰਿਪ 'ਤੇ ਕੋਈ LED ਸੰਰਚਿਤ ਨਹੀਂ ਹੈ।",
+      "colourPalette": "ਰੰਗ ਪੈਲੇਟ",
+      "the16HSVColoursThe": "16 HSV ਰੰਗ ਜਿਨ੍ਹਾਂ ਦਾ ਪ੍ਰਤੀ-LED “Color N” ਸੂਚਕਾਂਕ ਹਵਾਲਾ ਦਿੰਦੇ ਹਨ।",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ"
+    },
+    "signingDisabledSection": {
+      "mavlinkSigningIsOff": "MAVLink ਸਾਈਨਿੰਗ ਬੰਦ ਹੈ",
+      "letTheAgentSignIts": "ਏਜੰਟ ਨੂੰ ਆਪਣਾ ਟ੍ਰੈਫਿਕ ਖੁਦ ਸਾਈਨ ਕਰਨ ਦਿਓ (ਕੁੰਜੀ ਨੋਡ 'ਤੇ ਸਟੋਰ ਹੁੰਦੀ ਹੈ)",
+      "withoutThisTheFlightController": "ਇਸ ਤੋਂ ਬਿਨਾਂ, ਸੀਰੀਅਲ ਲਿੰਕ 'ਤੇ ਸਾਈਨਿੰਗ ਚਾਲੂ ਹੋਣ 'ਤੇ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਏਜੰਟ ਦੇ ਆਪਣੇ ਫ੍ਰੇਮ ਛੱਡ ਦਿੰਦਾ ਹੈ: ਸਟ੍ਰੀਮ ਦਰਾਂ, ਪੈਰਾਮੀਟਰ ਸਵੀਪ ਅਤੇ ਸਵਾਰਮ ਕਮਾਂਡਾਂ।",
+      "enableSigning": "ਸਾਈਨਿੰਗ ਚਾਲੂ ਕਰੋ",
+      "importAnExistingKey": "ਮੌਜੂਦਾ ਕੁੰਜੀ ਇੰਪੋਰਟ ਕਰੋ"
+    },
+    "signingPanel": {
+      "noDroneSelected": "ਕੋਈ ਡਰੋਨ ਨਹੀਂ ਚੁਣਿਆ ਗਿਆ।",
+      "mavlinkSigning": "MAVLink ਸਾਈਨਿੰਗ",
+      "hmacSHA256AuthenticationOfEvery": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੂੰ ਭੇਜੀ ਗਈ ਹਰ ਕਮਾਂਡ ਦੀ HMAC-SHA256 ਪ੍ਰਮਾਣਿਕਤਾ।",
+      "privateBrowsingDetectedSigningKeys": "ਪ੍ਰਾਈਵੇਟ ਬ੍ਰਾਊਜ਼ਿੰਗ ਦਾ ਪਤਾ ਲੱਗਾ। ਇਸ ਵਿੰਡੋ ਵਿੱਚ ਦਰਜ ਸਾਈਨਿੰਗ ਕੁੰਜੀਆਂ ਸਿਰਫ਼ ਇਸ ਸੈਸ਼ਨ ਤੱਕ ਸੀਮਿਤ ਹਨ। ਵਿੰਡੋ ਬੰਦ ਹੋਣ 'ਤੇ ਇਹ ਗੁੰਮ ਹੋ ਜਾਣਗੀਆਂ।"
+    },
+    "receiverBindingUI": {
+      "stickTrims": "ਸਟਿੱਕ ਟ੍ਰਿਮ",
+      "trimPreviewRollPitchYaw": "ਟ੍ਰਿਮ ਝਲਕ (ਰੋਲ, ਪਿੱਚ, ਯੌ):",
+      "confirm": "ਪੁਸ਼ਟੀ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "setTrimsToCurrent": "ਟ੍ਰਿਮ ਮੌਜੂਦਾ 'ਤੇ ਸੈੱਟ ਕਰੋ"
+    },
+    "px4ActuatorTest": {
+      "iConfirmAllPropellersHave": "ਮੈਂ ਪੁਸ਼ਟੀ ਕਰਦਾ/ਕਰਦੀ ਹਾਂ ਕਿ ਸਾਰੇ ਪ੍ਰੋਪੈਲਰ ਹਟਾ ਦਿੱਤੇ ਗਏ ਹਨ",
+      "disarmToTestActuators": "ਐਕਚੁਏਟਰ ਟੈਸਟ ਕਰਨ ਲਈ ਡਿਸਆਰਮ ਕਰੋ।",
+      "output": "ਆਉਟਪੁੱਟ",
+      "stop": "ਰੋਕੋ"
+    },
+    "px4PowerSections": {
+      "batterySettings": "ਬੈਟਰੀ ਸੈਟਿੰਗਾਂ",
+      "battery1Source": "ਬੈਟਰੀ 1 ਸਰੋਤ",
+      "capacity": "ਸਮਰੱਥਾ",
+      "cellCount": "ਸੈੱਲ ਗਿਣਤੀ",
+      "internalResistance": "ਅੰਦਰੂਨੀ ਪ੍ਰਤੀਰੋਧ",
+      "capacity1MeansUnknownInternal": "ਸਮਰੱਥਾ -1 ਦਾ ਅਰਥ ਅਣਜਾਣ ਹੈ; ਅੰਦਰੂਨੀ ਪ੍ਰਤੀਰੋਧ -1 ਨਾਲ PX4 ਇਸਦਾ ਅੰਦਾਜ਼ਾ ਲਗਾਉਂਦਾ ਹੈ।",
+      "powerModuleCalibration": "ਪਾਵਰ ਮੋਡੀਊਲ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "voltageDivider": "ਵੋਲਟੇਜ ਡਿਵਾਈਡਰ",
+      "ampsPerVolt": "ਐਂਪ ਪ੍ਰਤੀ ਵੋਲਟ",
+      "currentSensorZeroOffset": "ਕਰੰਟ ਸੈਂਸਰ ਜ਼ੀਰੋ ਆਫ਼ਸੈੱਟ",
+      "batteryFailsafe": "ਬੈਟਰੀ ਫੇਲਸੇਫ",
+      "batteryFailsafeAction": "ਬੈਟਰੀ ਫੇਲਸੇਫ ਕਾਰਵਾਈ"
+    },
+    "pidTuningPanel": {
+      "pidTuning": "PID ਟਿਊਨਿੰਗ",
+      "presetProfiles": "ਪ੍ਰੀਸੈੱਟ ਪ੍ਰੋਫਾਈਲਾਂ",
+      "filterSettings": "ਫਿਲਟਰ ਸੈਟਿੰਗਾਂ",
+      "insGyroAccelLowPass": "INS ਗਾਇਰੋ/ਐਕਸਲ ਲੋ-ਪਾਸ ਫਿਲਟਰ ਅਤੇ ਹਾਰਮੋਨਿਕ ਨੌਚ ਫਿਲਟਰ"
+    },
+    "outputsPanel": {
+      "servoMotorOutputs": "ਸਰਵੋ / ਮੋਟਰ ਆਉਟਪੁੱਟ",
+      "connectToADroneTo": "ਆਉਟਪੁੱਟ ਸੰਰਚਿਤ ਕਰਨ ਲਈ ਡਰੋਨ ਨਾਲ ਕਨੈਕਟ ਕਰੋ।",
+      "outputFunctionAssignmentPWMLimits": "ਆਉਟਪੁੱਟ ਫੰਕਸ਼ਨ ਨਿਰਧਾਰਨ, PWM ਸੀਮਾਵਾਂ ਅਤੇ ਮੋਟਰ ਟੈਸਟ",
+      "save": "ਸੇਵ ਕਰੋ"
+    },
+    "motorTestSection": {
+      "motorTest": "ਮੋਟਰ ਟੈਸਟ",
+      "enableMotorTestSafetyMaster": "ਮੋਟਰ ਟੈਸਟ ਚਾਲੂ ਕਰੋ (ਸੁਰੱਖਿਆ ਮਾਸਟਰ)",
+      "motor": "ਮੋਟਰ",
+      "removePropellersBeforeTestingMotors": "ਮੋਟਰਾਂ ਟੈਸਟ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਪ੍ਰੋਪੈਲਰ ਹਟਾਓ। ਯਕੀਨੀ ਬਣਾਓ ਕਿ ਡਰੋਨ ਸੁਰੱਖਿਅਤ ਬੰਨ੍ਹਿਆ ਹੈ।"
+    },
+    "navConfigPanel": {
+      "navigationConfig": "ਨੈਵੀਗੇਸ਼ਨ ਸੰਰਚਨਾ",
+      "inavPositionHoldAndNavigation": "iNav ਪੋਜ਼ੀਸ਼ਨ ਹੋਲਡ ਅਤੇ ਨੈਵੀਗੇਸ਼ਨ ਸਪੀਡ ਸੈਟਿੰਗਾਂ",
+      "posholdStickMode": "POSHOLD ਸਟਿੱਕ ਮੋਡ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "mcBrakingPanel": {
+      "mcBraking": "MC ਬ੍ਰੇਕਿੰਗ",
+      "multicopterPositionHoldBrakingParameters": "ਮਲਟੀਕਾਪਟਰ ਪੋਜ਼ੀਸ਼ਨ-ਹੋਲਡ ਬ੍ਰੇਕਿੰਗ ਪੈਰਾਮੀਟਰ",
+      "thisPanelAppliesToMultirotor": "ਇਹ ਪੈਨਲ ਮਲਟੀਰੋਟਰ ਪਲੇਟਫਾਰਮਾਂ ਲਈ ਹੈ। ਜੁੜਿਆ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਿਸੇ ਹੋਰ ਪਲੇਟਫਾਰਮ ਵਜੋਂ ਸੰਰਚਿਤ ਹੈ।",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ : ਸਥਾਈ ਕਰਨ ਲਈ FC 'ਤੇ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "geozoneCircleFields": {
+      "centreLat": "ਕੇਂਦਰ ਅਕਸ਼ਾਂਸ਼",
+      "centreLon": "ਕੇਂਦਰ ਦੇਸ਼ਾਂਤਰ",
+      "radiusM": "ਘੇਰਾ (m)",
+      "circularZonesNeedACentre": "ਅੱਪਲੋਡ ਤੋਂ ਪਹਿਲਾਂ ਗੋਲ ਜ਼ੋਨਾਂ ਲਈ ਕੇਂਦਰ ਅਤੇ ਅਰਧ-ਵਿਆਸ ਲੋੜੀਂਦਾ ਹੈ।"
+    },
+    "ezTunePanel": {
+      "ezTune": "EZ ਟਿਊਨ",
+      "simplifiedPIDAndFilterTuning": "ਇਕੀਕ੍ਰਿਤ ਸਲਾਈਡਰਾਂ ਰਾਹੀਂ ਸਰਲ PID ਅਤੇ ਫਿਲਟਰ ਟਿਊਨਿੰਗ।",
+      "enableEZTune": "EZ Tune ਚਾਲੂ ਕਰੋ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "modeSlotRow": {
+      "simpleModeEarthRelativeHeading": "ਸਿੰਪਲ ਮੋਡ — ਧਰਤੀ-ਸਾਪੇਖ ਹੈਡਿੰਗ",
+      "superSimpleModeHomeRelative": "ਸੁਪਰ ਸਿੰਪਲ ਮੋਡ — ਹੋਮ-ਸਾਪੇਖ ਹੈਡਿੰਗ",
+      "resetToFCValues": "FC ਮੁੱਲਾਂ 'ਤੇ ਰੀਸੈੱਟ ਕਰੋ",
+      "active": "ਕਿਰਿਆਸ਼ੀਲ"
+    },
+    "firmwareBoardInfo": {
+      "connectedBoard": "ਕਨੈਕਟ ਕੀਤਾ ਬੋਰਡ",
+      "firmware": "ਫਰਮਵੇਅਰ",
+      "vehicle": "ਵਾਹਨ",
+      "systemID": "ਸਿਸਟਮ ID"
+    },
+    "bfPortsPanel": {
+      "ports": "ਪੋਰਟਾਂ",
+      "betaflightPerUARTFunctionAnd": "Betaflight ਪ੍ਰਤੀ-UART ਫੰਕਸ਼ਨ ਅਤੇ ਬੌਡ ਸੰਰਚਨਾ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੰਭਾਲੀਆਂ ਤਬਦੀਲੀਆਂ : ਇਹਨਾਂ ਨੂੰ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਸੰਭਾਲਣ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।",
+      "savedTheFlightControllerApplies": "ਸੰਭਾਲਿਆ ਗਿਆ। ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਅਗਲੀ ਵਾਰ ਰੀਬੂਟ ਹੋਣ 'ਤੇ ਪੋਰਟ ਤਬਦੀਲੀਆਂ ਲਾਗੂ ਕਰੇਗਾ।",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ"
+    },
+    "bfOsdEditorPanel": {
+      "betaflightOSD": "Betaflight OSD",
+      "videoSystem": "ਵੀਡੀਓ ਸਿਸਟਮ",
+      "osdProfile": "OSD ਪ੍ਰੋਫਾਈਲ:",
+      "save": "ਸੇਵ ਕਰੋ",
+      "uploadFontMcm": "ਫੌਂਟ ਅੱਪਲੋਡ ਕਰੋ (.mcm)"
+    },
+    "subConfigPanel": {
+      "subConfiguration": "Sub ਸੰਰਚਨਾ",
+      "depthHoldPositionControlFailsafes": "ਡੂੰਘਾਈ ਹੋਲਡ, ਪੋਜ਼ੀਸ਼ਨ ਕੰਟਰੋਲ, ਫੇਲਸੇਫ਼ ਅਤੇ ਜੌਇਸਟਿਕ ਬਟਨ",
+      "joystickButtons": "ਜੌਇਸਟਿਕ ਬਟਨ",
+      "shiftedFunctionsHeldWhileThe": "ਸ਼ਿਫਟ ਫੰਕਸ਼ਨ (ਸ਼ਿਫਟ ਬਟਨ ਸਰਗਰਮ ਹੋਣ ਦੌਰਾਨ ਦਬਾਏ ਰੱਖੋ)।"
+    },
+    "streamRatesPanel": {
+      "telemetryStreamRates": "ਟੈਲੀਮੈਟਰੀ ਸਟ੍ਰੀਮ ਦਰਾਂ",
+      "perPortMAVLinkMessageGroup": "ਪ੍ਰਤੀ-ਪੋਰਟ MAVLink ਸੁਨੇਹਾ ਸਮੂਹ ਦਰਾਂ (Hz)",
+      "mavlinkChannel": "MAVLink ਚੈਨਲ",
+      "gcsManagesTelemetryRatesOn": "GCS ਟੈਲੀਮੈਟਰੀ ਰੇਟਾਂ ਦਾ ਪ੍ਰਬੰਧ ਕਰਦਾ ਹੈ। ਕਨੈਕਟ ਹੋਣ, ਲਿੰਕ ਬਹਾਲ ਹੋਣ ਅਤੇ ਫਲਾਈਟ-ਕੰਟਰੋਲਰ ਰੀਬੂਟ 'ਤੇ ਇਹ GCS ਜਿਸ ਚੈਨਲ ਰਾਹੀਂ ਜੁੜਿਆ ਹੈ ਉਸ 'ਤੇ ਆਪਣੇ ਰੇਟਾਂ ਦੀ ਬੇਨਤੀ ਕਰਦਾ ਹੈ। ਇੱਥੇ ਜਾਂ ਏਜੰਟ'ਦੇ ਰਾਊਟਰ ਦੁਆਰਾ ਸੈੱਟ ਰੇਟਾਂ ਨੂੰ ਬਿਨਾਂ ਬਦਲੇ ਰੱਖਣ ਲਈ ਬੰਦ ਕਰੋ।"
+    },
+    "signingHistorySection": {
+      "history": "ਇਤਿਹਾਸ",
+      "signInToCloudSync": "ਇਸ ਡਰੋਨ ਨੂੰ ਕਲਾਊਡ-ਸਿੰਕ ਕਰਨ ਅਤੇ ਇੱਥੇ ਪ੍ਰਤੀ-ਡਰੋਨ ਆਡਿਟ ਲੌਗ ਦਿਖਾਉਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ।",
+      "loadingHistory": "ਇਤਿਹਾਸ ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…",
+      "noSigningEventsRecordedFor": "ਇਸ ਡਰੋਨ ਲਈ ਅਜੇ ਕੋਈ ਸਾਈਨਿੰਗ ਘਟਨਾ ਦਰਜ ਨਹੀਂ ਹੋਈ।"
+    },
+    "rcChannelMapSection": {
+      "rcChannelAssignment": "RC ਚੈਨਲ ਨਿਰਧਾਰਨ",
+      "read": "ਪੜ੍ਹੋ",
+      "save": "ਸੇਵ ਕਰੋ"
+    },
+    "px4GpsPanel": {
+      "gpsConfiguration": "GPS ਸੰਰਚਨਾ",
+      "px4GNSSProtocolSystemsAnd": "PX4 GNSS ਪ੍ਰੋਟੋਕੋਲ, ਸਿਸਟਮ ਅਤੇ u-blox ਸੈੱਟਅੱਪ",
+      "primaryGPS": "ਪ੍ਰਾਇਮਰੀ GPS",
+      "secondaryGPS": "ਸੈਕੰਡਰੀ GPS"
+    },
+    "servoTestSection": {
+      "servoTest": "ਸਰਵੋ ਟੈਸਟ",
+      "enableServoTestSafetyMaster": "ਸਰਵੋ ਟੈਸਟ ਚਾਲੂ ਕਰੋ (ਸੁਰੱਖਿਆ ਮਾਸਟਰ)",
+      "servoTestSendsLivePWM": "ਸਰਵੋ ਟੈਸਟ ਲਾਈਵ PWM ਕਮਾਂਡਾਂ ਭੇਜਦਾ ਹੈ। ਯਕੀਨੀ ਬਣਾਓ ਕਿ ਸਰਵੋ ਦਾ ਹਿੱਲਣਾ ਸੁਰੱਖਿਅਤ ਹੈ।"
+    },
+    "outputTimerGroupConfig": {
+      "timerGroupConflict": "ਟਾਈਮਰ ਸਮੂਹ ਟਕਰਾਅ",
+      "duplicateFunctions": "ਦੁਹਰਾਏ ਫੰਕਸ਼ਨ",
+      "pwmWarnings": "PWM ਚੇਤਾਵਨੀਆਂ"
+    },
+    "globalVariablesPanel": {
+      "globalVariables": "ਗਲੋਬਲ ਵੇਰੀਏਬਲ",
+      "armedOverridesDisabledLiveValues": "ਆਰਮਡ: ਓਵਰਰਾਈਡ ਬੰਦ ਹਨ। ਲਾਈਵ ਮੁੱਲ ਹੇਠਾਂ ਅੱਪਡੇਟ ਹੁੰਦੇ ਹਨ।",
+      "set": "ਸੈੱਟ ਕਰੋ",
+      "settingAValueIsA": "ਮੁੱਲ ਸੈੱਟ ਕਰਨਾ ਇੱਕ ਲਾਈਵ ਰਨਟਾਈਮ ਓਵਰਰਾਈਡ ਹੈ; ਲਾਜਿਕ ਸ਼ਰਤਾਂ ਇਸਨੂੰ ਮੁੜ ਬਦਲ ਸਕਦੀਆਂ ਹਨ, ਅਤੇ ਇਹ EEPROM ਵਿੱਚ ਨਹੀਂ ਲਿਖਿਆ ਜਾਂਦਾ। ਆਰਮਡ ਹੋਣ ਦੌਰਾਨ ਓਵਰਰਾਈਡ ਬਲੌਕ ਹਨ।"
+    },
+    "rateDynamicsPanel": {
+      "rateDynamics": "ਰੇਟ ਡਾਇਨਾਮਿਕਸ",
+      "stickResponseCurveShapingWithin": "ਸਟਿੱਕ-ਪ੍ਰਤੀਕਿਰਿਆ ਕਰਵ ਸ਼ੇਪਿੰਗ, ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵੱਲੋਂ ਦੱਸੀਆਂ ਸੀਮਾਵਾਂ ਦੇ ਅੰਦਰ।",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "navPidPanel": {
+      "navPID": "ਨੈਵ PID",
+      "inavNavigationControllerPIDGains": "iNav ਨੈਵੀਗੇਸ਼ਨ ਕੰਟਰੋਲਰ PID ਗੇਨ",
+      "writeToFC": "FC ਵਿੱਚ ਲਿਖੋ",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਬਦਲਾਅ: ਸਥਾਈ ਕਰਨ ਲਈ FC ਵਿੱਚ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "frameConfigLog": {
+      "configLog": "ਸੰਰਚਨਾ ਲੌਗ",
+      "clearLog": "ਲੌਗ ਸਾਫ਼ ਕਰੋ",
+      "noEventsYetReadFrom": "ਅਜੇ ਕੋਈ ਘਟਨਾ ਨਹੀਂ। ਸ਼ੁਰੂ ਕਰਨ ਲਈ FC ਤੋਂ ਪੜ੍ਹੋ।"
+    },
+    "calibrationLog": {
+      "calibrationLog": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਲੌਗ",
+      "clearLog": "ਲੌਗ ਸਾਫ਼ ਕਰੋ",
+      "noCalibrationMessagesYet": "ਅਜੇ ਕੋਈ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਸੁਨੇਹੇ ਨਹੀਂ"
+    },
+    "columnVisibilityToggle": {
+      "toggleColumns": "ਕਾਲਮ ਟੌਗਲ ਕਰੋ",
+      "columns": "ਕਾਲਮ"
+    },
+    "signingUnsupportedNotice": {
+      "signingNotAvailableOnThis": "ਇਸ ਡਰੋਨ 'ਤੇ ਸਾਈਨਿੰਗ ਉਪਲਬਧ ਨਹੀਂ",
+      "commandsSentToThisDrone": "ਇਸ ਡਰੋਨ ਨੂੰ ਭੇਜੀਆਂ ਕਮਾਂਡਾਂ MAVLink ਪਰਤ 'ਤੇ ਕ੍ਰਿਪਟੋਗ੍ਰਾਫਿਕ ਤੌਰ 'ਤੇ ਪ੍ਰਮਾਣਿਤ ਨਹੀਂ ਹਨ।"
+    },
+    "px4VtolPanel": {
+      "vtolTransition": "VTOL ਟ੍ਰਾਂਜ਼ਿਸ਼ਨ",
+      "px4VTOLTypeTransitionTiming": "PX4 VTOL ਕਿਸਮ, ਟ੍ਰਾਂਜ਼ਿਸ਼ਨ ਸਮਾਂ, ਕਵਾਡ-ਸ਼ੂਟ ਅਤੇ ਏਅਰਫ੍ਰੇਮ-ਵਿਸ਼ੇਸ਼ ਟਿਲਟ/ਥ੍ਰਸਟ",
+      "transition": "ਟ੍ਰਾਂਜ਼ਿਸ਼ਨ"
+    },
+    "px4FlightBehaviorPanel": {
+      "flightBehavior": "ਉਡਾਣ ਵਿਵਹਾਰ",
+      "px4MulticopterSpeedAccelerationAnd": "PX4 ਮਲਟੀਕਾਪਟਰ ਗਤੀ, ਪ੍ਰਵੇਗ ਅਤੇ ਸਥਿਤੀ ਨਿਯੰਤਰਣ (MPC)",
+      "positionVelocityControllers": "ਸਥਿਤੀ ਅਤੇ ਵੇਗ ਕੰਟਰੋਲਰ"
+    },
+    "px4AutotunePanel": {
+      "autotune": "ਆਟੋਟਿਊਨ",
+      "autotuneSettings": "ਆਟੋਟਿਊਨ ਸੈਟਿੰਗਾਂ"
+    },
+    "pidTrackingChart": {
+      "rmsError": "RMS ਗਲਤੀ",
+      "noTrackingData": "ਕੋਈ ਟ੍ਰੈਕਿੰਗ ਡਾਟਾ ਨਹੀਂ"
+    },
+    "pidLiveAnalysis": {
+      "oscillation": "ਦੋਲਨ"
+    },
+    "pidAnalysisSection": {
+      "aiAnalysisAmpTuning": "AI ਵਿਸ਼ਲੇਸ਼ਣ & ਟਿਊਨਿੰਗ",
+      "prev": "ਪਿਛਲਾ",
+      "next": "ਅਗਲਾ"
+    },
+    "displayPortOsdPanel": {
+      "osdPreview": "OSD ਪੂਰਵਦਰਸ਼ਨ",
+      "liveReconstructionOfTheOSD": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਦੁਆਰਾ ਬਣਾਏ OSD ਦੀ ਲਾਈਵ ਪੁਨਰ-ਰਚਨਾ (MSP DisplayPort)। ਫਰੇਮ ਤਾਂ ਹੀ ਆਉਂਦੇ ਹਨ ਜਦੋਂ FC ਇਸ ਕਨੈਕਸ਼ਨ 'ਤੇ MSP DisplayPort ਰਾਹੀਂ ਆਪਣਾ OSD ਭੇਜਣ ਲਈ ਕੌਂਫਿਗਰ ਹੋਵੇ (HD-ਗੌਗਲ / DJI ਸੈੱਟਅੱਪ)। ਕਸਟਮ ਫੌਂਟ ਗਲਿਫ਼ ਬਿੰਦੂ ਵਜੋਂ ਦਿਖਾਏ ਜਾਂਦੇ ਹਨ; ਟੈਕਸਟ ਅਤੇ ਅੰਕੀ ਖੇਤਰ ਜਿਵੇਂ ਭੇਜੇ ਗਏ ਉਵੇਂ ਦਿਖਦੇ ਹਨ।"
+    },
+    "tempSensorsPanel": {
+      "temperatureSensors": "ਤਾਪਮਾਨ ਸੈਂਸਰ",
+      "n1WireAndI2CTemperature": "1-Wire ਅਤੇ I2C ਤਾਪਮਾਨ ਸੈਂਸਰ ਸੰਰਚਨਾ",
+      "noTemperatureSensorsConfiguredOn": "ਇਸ FC 'ਤੇ ਕੋਈ ਤਾਪਮਾਨ ਸੈਂਸਰ ਕੌਂਫਿਗਰ ਨਹੀਂ ਹੈ।"
+    },
+    "flightModesPanel": {
+      "flightModes": "ਫਲਾਈਟ ਮੋਡ",
+      "connectToADroneTo": "ਫਲਾਈਟ ਮੋਡ ਸੰਰਚਿਤ ਕਰਨ ਲਈ ਡਰੋਨ ਨਾਲ ਕਨੈਕਟ ਕਰੋ।",
+      "currentMode": "ਮੌਜੂਦਾ ਮੋਡ:"
+    },
+    "flightModesHeader": {
+      "flightModes": "ਫਲਾਈਟ ਮੋਡ",
+      "read": "ਪੜ੍ਹੋ"
+    },
+    "firmwarePanel": {
+      "flashTool": "ਫਲੈਸ਼ ਟੂਲ"
+    },
+    "calibrationRebootBanner": {
+      "rebootRequired": "ਰੀਬੂਟ ਲੋੜੀਂਦਾ ਹੈ"
+    },
+    "pwmRangeSlider": {
+      "rangeStart": "ਰੇਂਜ ਸ਼ੁਰੂ",
+      "rangeEnd": "ਰੇਂਜ ਅੰਤ"
+    },
+    "bfOsdElementList": {
+      "filterElements": "ਤੱਤ ਫਿਲਟਰ ਕਰੋ...",
+      "resetAll": "ਸਭ ਰੀਸੈੱਟ ਕਰੋ"
+    },
+    "vtolPanel": {
+      "quadplaneVTOL": "ਕਵਾਡਪਲੇਨ / VTOL",
+      "frameTransitionAndTiltTailsitter": "VTOL ਜਹਾਜ਼ਾਂ ਲਈ ਫਰੇਮ, ਟ੍ਰਾਂਜ਼ਿਸ਼ਨ ਅਤੇ ਟਿਲਟ/ਟੇਲਸਿਟਰ ਸੈੱਟਅੱਪ"
+    },
+    "tecsPanel": {
+      "tecsL1Tuning": "TECS / L1 ਟਿਊਨਿੰਗ",
+      "fixedWingTotalEnergyControl": "ਫਿਕਸਡ-ਵਿੰਗ ਕੁੱਲ-ਊਰਜਾ ਕੰਟਰੋਲ ਅਤੇ L1 ਲੇਟਰਲ ਨੈਵੀਗੇਸ਼ਨ"
+    },
+    "waveform-chart": {
+      "waiting": "ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ..."
+    },
+    "sailboatPanel": {
+      "sailboat": "ਸੇਲਬੋਟ",
+      "sailControlAndWindVane": "ਸਮੁੰਦਰੀ ਬਾਦਬਾਨੀ ਵਾਹਨ ਲਈ ਸੇਲ ਕੰਟਰੋਲ ਅਤੇ ਵਿੰਡ-ਵੇਨ ਸੈੱਟਅੱਪ"
+    },
+    "px4FwTuningPanel": {
+      "fixedWingTuning": "ਫਿਕਸਡ-ਵਿੰਗ ਟਿਊਨਿੰਗ",
+      "px4FixedWingRateControllers": "PX4 ਫਿਕਸਡ-ਵਿੰਗ ਰੇਟ ਕੰਟਰੋਲਰ ਅਤੇ TECS ਊਰਜਾ ਕੰਟਰੋਲ"
+    },
+    "payloadPanel": {
+      "gripperPayload": "ਗ੍ਰਿਪਰ / ਪੇਲੋਡ",
+      "servoOrEPMGripperRelease": "ਪਿਕ-ਐਂਡ-ਡ੍ਰੌਪ ਪੇਲੋਡ ਲਈ ਸਰਵੋ ਜਾਂ EPM ਗ੍ਰਿਪਰ ਰਿਲੀਜ਼"
+    },
+    "paramTooltip": {
+      "rebootRequiredAfterChange": "ਬਦਲਾਅ ਤੋਂ ਬਾਅਦ ਰੀਬੂਟ ਲੋੜੀਂਦਾ ਹੈ"
+    },
+    "harmonicNotchPanel": {
+      "harmonicNotchFilter": "ਹਾਰਮੋਨਿਕ ਨੌਚ ਫਿਲਟਰ",
+      "dynamicNotchFilterInFlight": "ਮੋਟਰ-ਫ੍ਰੀਕੁਐਂਸੀ ਵਾਈਬ੍ਰੇਸ਼ਨ ਰੋਕਣ ਲਈ ਡਾਇਨਾਮਿਕ ਨੌਚ ਫਿਲਟਰ + ਉਡਾਣ ਦੌਰਾਨ FFT"
+    },
+    "debug-helpers": {
+      "waitingForData": "ਡਾਟਾ ਦੀ ਉਡੀਕ ਹੋ ਰਹੀ ਹੈ..."
+    },
+    "settingNumberField": {
+      "notOnThisFirmware": "ਇਸ ਫਰਮਵੇਅਰ ਵਿੱਚ ਉਪਲਬਧ ਨਹੀਂ"
+    },
+    "alarmFieldsEditor": {
+      "noAlarmDataReturnedBy": "FC ਤੋਂ ਕੋਈ ਅਲਾਰਮ ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ।"
+    },
+    "ekf3Panel": {
+      "ekf3Estimator": "EKF3 ਐਸਟੀਮੇਟਰ",
+      "extendedKalmanFilterSourceSets": "ਐਕਸਟੈਂਡਡ ਕਾਲਮਨ ਫਿਲਟਰ ਸਰੋਤ ਸੈੱਟ, IMU ਚੋਣ, ਅਤੇ ਮਾਪ ਸ਼ੋਰ",
+      "alternateSourceSetsAmpNoise": "ਵਿਕਲਪਿਕ ਸਰੋਤ ਸੈੱਟ & ਸ਼ੋਰ"
+    },
+    "rate-curve-preview": {
+      "stick": "ਸਟਿੱਕ %"
+    },
+    "bfOsdGrid": {
+      "visibleInOSDProfiles": "OSD ਪ੍ਰੋਫਾਈਲਾਂ ਵਿੱਚ ਦਿਖਾਈ ਦਿੰਦਾ ਹੈ"
+    },
+    "airspeedPanel": {
+      "airspeed": "ਹਵਾਈ ਗਤੀ",
+      "airspeedSensorCalibrationAndThe": "ਏਅਰਸਪੀਡ ਸੈਂਸਰ ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਅਤੇ ਫਿਕਸਡ-ਵਿੰਗ ਸਪੀਡ ਸੀਮਾ"
+    },
+    "adsbPanel": {
+      "adsBAvoidance": "ADS-B ਅਤੇ ਟਕਰਾਅ ਤੋਂ ਬਚਾਅ",
+      "trafficAwarenessADSBPlus": "ਟ੍ਰੈਫਿਕ ਜਾਗਰੂਕਤਾ (ADS-B) ਅਤੇ ਰੁਕਾਵਟ ਤੇ ਟ੍ਰੈਫਿਕ ਤੋਂ ਬਚਾਅ"
+    },
+    "receiverPanel": {
+      "rcReceiver": "RC ਰਿਸੀਵਰ",
+      "connectToADroneTo": "ਰਿਸੀਵਰ ਸੰਰਚਿਤ ਕਰਨ ਲਈ ਡਰੋਨ ਨਾਲ ਕਨੈਕਟ ਕਰੋ।",
+      "channelMappingCalibrationAndPer": "ਚੈਨਲ ਮੈਪਿੰਗ, ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਅਤੇ ਹਰ ਚੈਨਲ ਦੀਆਂ ਸੈਟਿੰਗਾਂ",
+      "liveRCChannels": "ਲਾਈਵ RC ਚੈਨਲ",
+      "channelMapping": "ਚੈਨਲ ਮੈਪਿੰਗ",
+      "roll": "ਰੋਲ",
+      "pitch": "ਪਿੱਚ",
+      "throttle": "ਥ੍ਰੋਟਲ",
+      "yaw": "ਯਾਅ",
+      "rcProtocolRSSI": "RC ਪ੍ਰੋਟੋਕੋਲ ਅਤੇ RSSI",
+      "rssiTYPERSSISource": "RSSI_TYPE — RSSI ਸਰੋਤ",
+      "channelSettings": "ਚੈਨਲ ਸੈਟਿੰਗਾਂ",
+      "min": "ਘੱਟੋ-ਘੱਟ",
+      "max": "ਵੱਧ ਤੋਂ ਵੱਧ",
+      "trim": "ਟ੍ਰਿਮ",
+      "rev": "ਉਲਟ",
+      "rcPROTOCOLSAllowedRCProtocols": "RC_PROTOCOLS — ਮਨਜ਼ੂਰ RC ਪ੍ਰੋਟੋਕੋਲ",
+      "save": "ਸੇਵ ਕਰੋ",
+      "bitmaskOfAllowedRCInput": "ਮਨਜ਼ੂਰ RC ਇਨਪੁਟ ਪ੍ਰੋਟੋਕੋਲਾਂ ਦਾ ਬਿੱਟਮਾਸਕ। ਬਿੱਟ 0 (“All”) ਹਰ ਪ੍ਰੋਟੋਕੋਲ ਸਵੀਕਾਰ ਕਰਦਾ ਹੈ; ਨਹੀਂ ਤਾਂ ਆਪਣੇ ਰਿਸੀਵਰ ਨਾਲ ਮੇਲ ਖਾਂਦੇ ਬਿੱਟ ਸੈੱਟ ਕਰੋ।"
+    },
+    "mavlinkInspectorPanel": {
+      "messageRates": "ਸੁਨੇਹਾ ਦਰਾਂ",
+      "message": "ਸੁਨੇਹਾ",
+      "mavlinkInspector": "MAVLink ਇੰਸਪੈਕਟਰ",
+      "filterIDOrNameComma": "ਫਿਲਟਰ: ID ਜਾਂ ਨਾਮ (ਕੌਮੇ ਨਾਲ ਵੱਖ)",
+      "export": "ਨਿਰਯਾਤ",
+      "clear": "ਸਾਫ਼ ਕਰੋ",
+      "time": "ਸਮਾਂ",
+      "dir": "ਦਿਸ਼ਾ",
+      "name": "ਨਾਮ",
+      "sys": "Sys",
+      "comp": "Comp",
+      "seq": "Seq",
+      "len": "ਲੰਬਾਈ",
+      "payload": "ਪੇਲੋਡ"
+    },
+    "canMonitorPanel": {
+      "canBusMonitor": "CAN ਬੱਸ ਮਾਨੀਟਰ",
+      "clearFrames": "ਫ੍ਰੇਮ ਸਾਫ਼ ਕਰੋ",
+      "totalFrames": "ਕੁੱਲ ਫ੍ਰੇਮ",
+      "framesSec": "ਫ੍ਰੇਮ/ਸਕਿੰਟ",
+      "distinctIDs": "ਵੱਖਰੇ ID",
+      "clickStartToBeginCapturing": "CAN ਫ੍ਰੇਮ ਕੈਪਚਰ ਕਰਨ ਲਈ ਸ਼ੁਰੂ 'ਤੇ ਕਲਿੱਕ ਕਰੋ",
+      "waitingForCANFrames": "CAN ਫ੍ਰੇਮਾਂ ਦੀ ਉਡੀਕ...",
+      "time": "ਸਮਾਂ",
+      "bus": "ਬੱਸ",
+      "node": "ਨੋਡ",
+      "label": "ਲੇਬਲ",
+      "data": "ਡਾਟਾ",
+      "clear": "ਸਾਫ਼ ਕਰੋ",
+      "detectedNodes": "ਖੋਜੇ ਗਏ ਨੋਡ",
+      "mostActiveIDs": "ਸਭ ਤੋਂ ਸਰਗਰਮ IDs"
+    },
+    "vtxPanel": {
+      "videoTransmitterBandChannelAnd": "ਵੀਡੀਓ ਟ੍ਰਾਂਸਮੀਟਰ ਬੈਂਡ, ਚੈਨਲ ਅਤੇ ਪਾਵਰ ਸੰਰਚਨਾ",
+      "vtxType": "VTX ਕਿਸਮ",
+      "detectedByTheFlightController": "ਜੁੜੇ ਡਿਵਾਈਸ ਤੋਂ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਦੁਆਰਾ ਖੋਜਿਆ ਗਿਆ।",
+      "bandChannel": "ਬੈਂਡ / ਚੈਨਲ",
+      "band": "ਬੈਂਡ",
+      "powerSettings": "ਪਾਵਰ ਸੈਟਿੰਗਾਂ",
+      "powerLevel": "ਪਾਵਰ ਪੱਧਰ",
+      "pitMode": "ਪਿਟ ਮੋਡ",
+      "lowPowerOnDisarm": "ਡਿਸਆਰਮ 'ਤੇ ਘੱਟ ਪਾਵਰ",
+      "frequencyOverride": "ਫ੍ਰੀਕੁਐਂਸੀ ਓਵਰਰਾਈਡ",
+      "manualFrequencyMHz": "ਮੈਨੂਅਲ ਫ੍ਰੀਕੁਐਂਸੀ (MHz)",
+      "vtx": "VTX",
+      "setTo0ToUse": "ਉੱਪਰ ਦਿੱਤੀ ਬੈਂਡ/ਚੈਨਲ ਚੋਣ ਵਰਤਣ ਲਈ 0 ਸੈੱਟ ਕਰੋ। 0 ਤੋਂ ਇਲਾਵਾ ਕੋਈ ਵੀ ਮੁੱਲ ਬੈਂਡ/ਚੈਨਲ ਨੂੰ ਓਵਰਰਾਈਡ ਕਰਦਾ ਹੈ।"
+    },
+    "paramCompare": {
+      "filterParams": "ਪੈਰਾਮੀਟਰ ਫਿਲਟਰ ਕਰੋ...",
+      "parameter": "ਪੈਰਾਮੀਟਰ",
+      "fcValue": "FC ਮੁੱਲ",
+      "fileValue": "ਫ਼ਾਈਲ ਮੁੱਲ",
+      "status": "ਸਥਿਤੀ",
+      "loadAParamFileTo": "ਮੌਜੂਦਾ FC ਪੈਰਾਮੀਟਰਾਂ ਨਾਲ ਤੁਲਨਾ ਕਰਨ ਲਈ .param ਫ਼ਾਈਲ ਲੋਡ ਕਰੋ",
+      "loadParamFile": ".param ਫਾਈਲ ਲੋਡ ਕਰੋ",
+      "selectAll": "ਸਭ ਚੁਣੋ",
+      "selectNone": "ਕੋਈ ਨਾ ਚੁਣੋ",
+      "noParametersMatchTheCurrent": "ਮੌਜੂਦਾ ਫਿਲਟਰ ਨਾਲ ਕੋਈ ਪੈਰਾਮੀਟਰ ਮੇਲ ਨਹੀਂ ਖਾਂਦਾ।"
+    },
+    "writeConfirmDialog": {
+      "confirmParameterWrite": "ਪੈਰਾਮੀਟਰ ਲਿਖਣ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
+      "parameter": "ਪੈਰਾਮੀਟਰ",
+      "old": "ਪੁਰਾਣਾ",
+      "new": "ਨਵਾਂ",
+      "thisBatchIncludesFlightSafety": "ਇਸ ਬੈਚ ਵਿੱਚ ਫਲਾਈਟ-ਸੁਰੱਖਿਆ ਪੈਰਾਮੀਟਰ ਸ਼ਾਮਲ ਹਨ। ਲਿਖਣ ਤੋਂ ਪਹਿਲਾਂ ਧਿਆਨ ਨਾਲ ਸਮੀਖਿਆ ਕਰੋ।",
+      "flightSafety": "ਫਲਾਈਟ ਸੁਰੱਖਿਆ",
+      "iUnderstandThisChangeAffects": "ਮੈਂ ਸਮਝਦਾ/ਸਮਝਦੀ ਹਾਂ ਕਿ ਇਹ ਤਬਦੀਲੀ ਫਲਾਈਟ ਸੁਰੱਖਿਆ ਨੂੰ ਪ੍ਰਭਾਵਿਤ ਕਰਦੀ ਹੈ",
+      "cancel": "ਰੱਦ ਕਰੋ"
+    },
+    "disconnectGuard": {
+      "uncommittedParameterChanges": "ਗੈਰ-ਕਮਿਟ ਕੀਤੀਆਂ ਪੈਰਾਮੀਟਰ ਤਬਦੀਲੀਆਂ",
+      "parameter": "ਪੈਰਾਮੀਟਰ",
+      "old": "ਪੁਰਾਣਾ",
+      "new": "ਨਵਾਂ",
+      "commitToFlashDisconnect": "ਫਲੈਸ਼ ਵਿੱਚ ਕਮਿਟ ਕਰੋ ਅਤੇ ਡਿਸਕਨੈਕਟ ਕਰੋ",
+      "discardDisconnect": "ਰੱਦ ਕਰੋ ਅਤੇ ਡਿਸਕਨੈਕਟ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "includesSafetyCriticalParametersFailsafe": "ਸੁਰੱਖਿਆ-ਨਾਜ਼ੁਕ ਪੈਰਾਮੀਟਰ ਸ਼ਾਮਲ ਹਨ (ਫੇਲਸੇਫ, ਬੈਟਰੀ, ਮੋਟਰ, ਆਰਮਿੰਗ)।"
+    },
+    "servoMappingTable": {
+      "function": "ਫੰਕਸ਼ਨ",
+      "min": "ਘੱਟੋ-ਘੱਟ",
+      "max": "ਵੱਧ ਤੋਂ ਵੱਧ",
+      "trim": "ਟ੍ਰਿਮ",
+      "rev": "ਉਲਟ",
+      "current": "ਮੌਜੂਦਾ",
+      "disabledByTimerGroupConflict": "ਟਾਈਮਰ ਗਰੁੱਪ ਟਕਰਾਅ ਕਾਰਨ ਅਯੋਗ"
+    },
+    "paramRestoreDialog": {
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "connectTheFlightControllerTo": "ਤੁਲਨਾ ਅਤੇ ਰੀਸਟੋਰ ਕਰਨ ਲਈ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਕਨੈਕਟ ਕਰੋ।",
+      "nothingToRestoreEveryValue": "ਰੀਸਟੋਰ ਕਰਨ ਲਈ ਕੁਝ ਨਹੀਂ: ਹਰ ਮੁੱਲ ਪਹਿਲਾਂ ਹੀ ਮੇਲ ਖਾਂਦਾ ਹੈ।",
+      "name": "ਨਾਮ",
+      "now": "ਹੁਣ",
+      "restore": "ਰੀਸਟੋਰ ਕਰੋ",
+      "readingCurrentParameters": "ਮੌਜੂਦਾ ਪੈਰਾਮੀਟਰ ਪੜ੍ਹੇ ਜਾ ਰਹੇ ਹਨ…"
+    },
+    "inboundSigningSection": {
+      "inboundVerification": "ਆਉਣ ਵਾਲੀ ਤਸਦੀਕ",
+      "noMAVLinkLinkIsOpen": "ਇਸ ਡਰੋਨ ਲਈ ਕੋਈ MAVLink ਲਿੰਕ ਖੁੱਲ੍ਹਾ ਨਹੀਂ ਹੈ।",
+      "link": "ਲਿੰਕ",
+      "verified": "ਤਸਦੀਕਸ਼ੁਦਾ",
+      "failed": "ਅਸਫਲ",
+      "unsigned": "ਬਿਨਾਂ ਦਸਤਖਤ"
+    },
+    "servoMixerTable": {
+      "targetCh": "ਟੀਚਾ ਚੈਨਲ",
+      "inputSource": "ਇਨਪੁਟ ਸਰੋਤ",
+      "rate": "ਦਰ",
+      "speed": "ਗਤੀ",
+      "condition": "ਸ਼ਰਤ",
+      "addServoRule": "ਸਰਵੋ ਨਿਯਮ ਜੋੜੋ"
+    },
+    "calibrationDiffTable": {
+      "parameter": "ਪੈਰਾਮੀਟਰ",
+      "before": "ਪਹਿਲਾਂ",
+      "after": "ਬਾਅਦ",
+      "change": "ਤਬਦੀਲੀ",
+      "parametersChangedDuringCalibration": "ਕੈਲੀਬ੍ਰੇਸ਼ਨ ਦੌਰਾਨ ਬਦਲੇ ਪੈਰਾਮੀਟਰ",
+      "dismiss": "ਖਾਰਜ ਕਰੋ"
+    },
+    "paramDefaultsDiff": {
+      "filterParams": "ਪੈਰਾਮੀਟਰ ਫਿਲਟਰ ਕਰੋ...",
+      "parameter": "ਪੈਰਾਮੀਟਰ",
+      "current": "ਮੌਜੂਦਾ",
+      "default": "ਡਿਫ਼ਾਲਟ",
+      "diff": "ਅੰਤਰ"
+    },
+    "motorMixerTable": {
+      "throttle": "ਥ੍ਰੋਟਲ",
+      "roll": "ਰੋਲ",
+      "pitch": "ਪਿੱਚ",
+      "yaw": "ਯਾਅ",
+      "addMotorRule": "ਮੋਟਰ ਨਿਯਮ ਜੋੜੋ"
+    },
+    "lcProgrammingPanel": {
+      "programmingJS": "ਪ੍ਰੋਗਰਾਮਿੰਗ (JS)",
+      "writeExpressionsAndCompileThem": "ਐਕਸਪ੍ਰੈਸ਼ਨ ਲਿਖੋ ਅਤੇ ਉਨ੍ਹਾਂ ਨੂੰ ਲੌਜਿਕ ਕੰਡੀਸ਼ਨਾਂ ਵਿੱਚ ਕੰਪਾਈਲ ਕਰੋ। ਲੋਡ ਕਰਨ 'ਤੇ ਇਹ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਦੇ ਖਾਲੀ ਸਲਾਟਾਂ ਵਿੱਚ ਰੱਖੇ ਜਾਂਦੇ ਹਨ, ਵਰਤੋਂ ਵਿੱਚ ਪਈਆਂ ਸਾਰੀਆਂ ਕੰਡੀਸ਼ਨਾਂ ਜਿਵੇਂ ਹਨ ਰਹਿੰਦੀਆਂ ਹਨ; ਲੌਜਿਕ ਕੰਡੀਸ਼ਨ ਐਡੀਟਰ ਵਿੱਚ ਇਨ੍ਹਾਂ ਦੀ ਸਮੀਖਿਆ ਕਰੋ ਅਤੇ ਉੱਥੋਂ FC 'ਤੇ ਲਿਖੋ।",
+      "compile": "ਕੰਪਾਈਲ ਕਰੋ",
+      "loadIntoLogicConditions": "ਲੌਜਿਕ ਕੰਡੀਸ਼ਨਾਂ ਵਿੱਚ ਲੋਡ ਕਰੋ"
+    },
+    "customOsdElementsPanel": {
+      "customOSD": "ਕਸਟਮ OSD",
+      "visible": "ਦਿਖਣਯੋਗ",
+      "text": "ਟੈਕਸਟ",
+      "reset": "ਰੀਸੈੱਟ"
+    },
+    "bfLedModeColors": {
+      "modeColours": "ਮੋਡ ਰੰਗ",
+      "specialColours": "ਖ਼ਾਸ ਰੰਗ",
+      "colourAuxChannel": "ਰੰਗ aux ਚੈਨਲ",
+      "paletteColourUsedPerFlight": "ਹਰ ਫਲਾਈਟ ਮੋਡ ਅਤੇ ਦਿਸ਼ਾ ਲਈ ਵਰਤਿਆ ਪੈਲੇਟ ਰੰਗ।"
+    },
+    "bfReceiverPanel": {
+      "receiver": "ਰਿਸੀਵਰ",
+      "betaflightRCInputReceiverConfig": "Betaflight RC ਇਨਪੁੱਟ, ਰਿਸੀਵਰ ਸੰਰਚਨਾ ਅਤੇ ਚੈਨਲ ਮੈਪ",
+      "liveChannels": "ਲਾਈਵ ਚੈਨਲ",
+      "noLiveRCDataCheck": "ਕੋਈ ਲਾਈਵ RC ਡਾਟਾ ਨਹੀਂ। ਟ੍ਰਾਂਸਮੀਟਰ ਅਤੇ ਲਿੰਕ ਦੀ ਜਾਂਚ ਕਰੋ।",
+      "configuration": "ਸੰਰਚਨਾ",
+      "serialRXProvider": "ਸੀਰੀਅਲ RX ਪ੍ਰਦਾਤਾ",
+      "validPulseMinS": "ਵੈਧ ਪਲਸ ਘੱਟੋ-ਘੱਟ (µs)",
+      "stickCenterS": "ਸਟਿੱਕ ਕੇਂਦਰ (µs)",
+      "validPulseMaxS": "ਵੈਧ ਪਲਸ ਵੱਧੋ-ਵੱਧ (µs)",
+      "minCheckS": "ਘੱਟੋ-ਘੱਟ ਜਾਂਚ (µs)",
+      "maxCheckS": "ਵੱਧੋ-ਵੱਧ ਜਾਂਚ (µs)",
+      "spektrumSatBind": "Spektrum ਸੈਟ ਬਾਈਂਡ",
+      "fpvCamAngle": "FPV ਕੈਮ ਕੋਣ (°)",
+      "airModeThreshold": "ਏਅਰ-ਮੋਡ ਸੀਮਾ (%)",
+      "usbHIDType": "USB HID ਕਿਸਮ",
+      "rcSmoothing": "RC ਸਮੂਦਿੰਗ",
+      "rcSmoothing2": "RC ਸਮੂਦਿੰਗ",
+      "setpointCutoffHz0Auto": "ਸੈੱਟਪੁਆਇੰਟ ਕਟਆਫ਼ (Hz, 0=ਆਟੋ)",
+      "throttleCutoffHz0Auto": "ਥ੍ਰੋਟਲ ਕਟਆਫ਼ (Hz, 0=ਆਟੋ)",
+      "autoFactorRPY": "ਆਟੋ ਫੈਕਟਰ RPY",
+      "autoFactorThrottle": "ਆਟੋ ਫੈਕਟਰ ਥ੍ਰੋਟਲ",
+      "channelMap": "ਚੈਨਲ ਮੈਪ",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ",
+      "savedTheFlightControllerSwitches": "ਸੇਵ ਹੋ ਗਿਆ। ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਅਗਲੀ ਵਾਰ ਰੀਬੂਟ ਹੋਣ 'ਤੇ ਨਵੇਂ ਸੀਰੀਅਲ RX ਪ੍ਰੋਵਾਈਡਰ 'ਤੇ ਬਦਲ ਜਾਵੇਗਾ।"
+    },
+    "firmwareBetaflightSection": {
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "loadingTargets": "ਟਾਰਗੇਟ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+      "release": "ਰਿਲੀਜ਼",
+      "radioProtocol": "ਰੇਡੀਓ ਪ੍ਰੋਟੋਕੋਲ",
+      "telemetryProtocol": "ਟੈਲੀਮੈਟਰੀ ਪ੍ਰੋਟੋਕੋਲ",
+      "motorProtocol": "ਮੋਟਰ ਪ੍ਰੋਟੋਕੋਲ",
+      "osdOptions": "OSD ਵਿਕਲਪ",
+      "otherOptions": "ਹੋਰ ਵਿਕਲਪ",
+      "statusCheckFailedRetrying": "ਸਥਿਤੀ ਜਾਂਚ ਅਸਫਲ, ਮੁੜ ਕੋਸ਼ਿਸ਼ ਹੋ ਰਹੀ ਹੈ...",
+      "theBuildIsStillRunning": "ਬਿਲਡ ਅਜੇ ਚੱਲ ਰਿਹਾ ਹੈ। ਸਥਿਤੀ ਜਾਂਚਾਂ 5 ਮਿੰਟ ਬਾਅਦ ਬੰਦ ਹੋ ਗਈਆਂ।",
+      "targetBoard": "ਟਾਰਗੇਟ ਬੋਰਡ",
+      "firmwareVersion": "ਫਰਮਵੇਅਰ ਵਰਜਨ",
+      "customCloudBuild": "ਕਸਟਮ ਕਲਾਊਡ ਬਿਲਡ",
+      "buildFirmwareWithSpecificFeatures": "ਖਾਸ ਫੀਚਰ ਚਾਲੂ ਕਰਕੇ ਫਰਮਵੇਅਰ ਬਿਲਡ ਕਰੋ (ਰੇਡੀਓ ਪ੍ਰੋਟੋਕੋਲ, ਟੈਲੀਮੈਟਰੀ ਆਦਿ)",
+      "retryBuild": "ਬਿਲਡ ਦੁਬਾਰਾ ਕਰੋ",
+      "checkAgain": "ਦੁਬਾਰਾ ਜਾਂਚੋ"
+    },
+    "pidComparisonSection": {
+      "autotune": "ਆਟੋਟਿਊਨ",
+      "liveAttitudeResponse": "ਲਾਈਵ ਐਟੀਟਿਊਡ ਪ੍ਰਤੀਕਿਰਿਆ",
+      "roll": "ਰੋਲ",
+      "pitch": "ਪਿੱਚ",
+      "yaw": "ਯਾਅ",
+      "beforeAfter": "ਪਹਿਲਾਂ / ਬਾਅਦ",
+      "param": "ਪੈਰਾਮ",
+      "before": "ਪਹਿਲਾਂ",
+      "current": "ਮੌਜੂਦਾ",
+      "delta": "ਅੰਤਰ",
+      "noChangesFromSnapshot": "ਸਨੈਪਸ਼ਾਟ ਤੋਂ ਕੋਈ ਬਦਲਾਅ ਨਹੀਂ",
+      "px4GainMultipliers": "PX4 ਗੇਨ ਮਲਟੀਪਲਾਇਰ",
+      "overallRateControllerGainScaling": "ਕੁੱਲ ਰੇਟ ਕੰਟਰੋਲਰ ਗੇਨ ਸਕੇਲਿੰਗ। ਡਿਫੌਲਟ 1.0। ਪ੍ਰਤੀਕਿਰਿਆ ਨੂੰ ਨਰਮ ਕਰਨ ਲਈ ਘਟਾਓ।",
+      "snapshotCurrent": "ਮੌਜੂਦਾ ਦਾ ਸਨੈਪਸ਼ਾਟ"
+    },
+    "servoCalibrationSection": {
+      "minPWM": "ਘੱਟੋ-ਘੱਟ PWM",
+      "trimPWM": "ਟ੍ਰਿਮ PWM",
+      "maxPWM": "ਵੱਧ ਤੋਂ ਵੱਧ PWM",
+      "testPWM": "ਟੈਸਟ PWM:",
+      "servoEndpointCalibration": "ਸਰਵੋ ਐਂਡਪੁਆਇੰਟ ਕੈਲੀਬ੍ਰੇਸ਼ਨ",
+      "enableOutputTestPropsRemoved": "ਆਉਟਪੁੱਟ ਟੈਸਟ ਚਾਲੂ ਕਰੋ (ਪ੍ਰੋਪ ਹਟਾਏ ਹੋਏ)",
+      "output": "ਆਉਟਪੁੱਟ",
+      "function": "ਫੰਕਸ਼ਨ",
+      "range": "ਰੇਂਜ",
+      "travel": "ਟ੍ਰੈਵਲ",
+      "test": "ਟੈਸਟ",
+      "setMinMaxTrimPWM": "ਹਰ ਸਰਵੋ ਆਉਟਪੁੱਟ ਲਈ ਘੱਟੋ-ਘੱਟ/ਵੱਧ ਤੋਂ ਵੱਧ/ਟ੍ਰਿਮ PWM ਅਤੇ ਯਾਤਰਾ ਰੇਂਜ ਸੈੱਟ ਕਰੋ। ਫੈਲਾਉਣ ਲਈ ਕਤਾਰ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "read": "ਪੜ੍ਹੋ",
+      "save": "ਸੇਵ ਕਰੋ"
+    },
+    "iNavOsdPanel": {
+      "osdINav": "OSD (iNav)",
+      "osdLayoutSummaryAlarmsAnd": "OSD ਲੇਆਉਟ ਸਾਰ, ਅਲਾਰਮ ਅਤੇ ਡਿਸਪਲੇ ਤਰਜੀਹਾਂ।",
+      "layouts": "ਲੇਆਉਟ",
+      "layoutCount": "ਲੇਆਉਟ ਗਿਣਤੀ",
+      "itemsPerLayout": "ਪ੍ਰਤੀ ਲੇਆਉਟ ਆਈਟਮਾਂ",
+      "noLayoutData": "ਕੋਈ ਲੇਆਉਟ ਡਾਟਾ ਨਹੀਂ।",
+      "alarms": "ਅਲਾਰਮ",
+      "preferences": "ਤਰਜੀਹਾਂ",
+      "font": "ਫੌਂਟ",
+      "saveAlarms": "ਅਲਾਰਮ ਸੇਵ ਕਰੋ",
+      "savePrefs": "ਤਰਜੀਹਾਂ ਸੇਵ ਕਰੋ",
+      "unsavedChangesUseTheSave": "ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ : ਸਥਾਈ ਕਰਨ ਲਈ ਉੱਪਰ ਦਿੱਤੇ ਸੇਵ ਬਟਨ ਵਰਤੋ।",
+      "osdFontToTheFlight": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਲਈ OSD ਫੌਂਟ (ਐਨਾਲਾਗ OSD)।",
+      "uploadFontMcm": "ਫੌਂਟ ਅੱਪਲੋਡ ਕਰੋ (.mcm)"
+    },
+    "firmwareCommonSections": {
+      "dfuDeviceConnected": "DFU ਡਿਵਾਈਸ ਕਨੈਕਟ ਹੈ",
+      "fcConnectedViaMAVLink": "FC MAVLink ਰਾਹੀਂ ਕਨੈਕਟ ਹੈ",
+      "noConnection": "ਕੋਈ ਕਨੈਕਸ਼ਨ ਨਹੀਂ",
+      "firmwareStack": "ਫਰਮਵੇਅਰ ਸਟੈਕ",
+      "flashMethod": "ਫਲੈਸ਼ ਵਿਧੀ",
+      "noDFUDevicesDetectedUse": "ਕੋਈ DFU ਡਿਵਾਈਸ ਨਹੀਂ ਮਿਲੀ। ਲੱਭਣ ਲਈ ਉੱਪਰ ਸਕੈਨ ਬਟਨ ਵਰਤੋ।",
+      "yourFCIsConnectedVia": "ਤੁਹਾਡਾ FC MAVLink ਰਾਹੀਂ ਕਨੈਕਟ ਹੈ। DFU ਫਲੈਸ਼ਿੰਗ ਲਈ, BOOT ਬਟਨ ਦਬਾ ਕੇ ਰੱਖਦੇ ਹੋਏ ਡਿਸਕਨੈਕਟ ਕਰਕੇ ਦੁਬਾਰਾ ਕਨੈਕਟ ਕਰੋ।",
+      "scanForDFU": "DFU ਲਈ ਸਕੈਨ ਕਰੋ",
+      "connectYourFCInDFU": "ਆਪਣੇ FC ਨੂੰ DFU ਮੋਡ ਵਿੱਚ ਕਨੈਕਟ ਕਰੋ: USB ਲਗਾਉਂਦੇ ਸਮੇਂ BOOT ਦਬਾ ਕੇ ਰੱਖੋ, ਫਿਰ ਸਕੈਨ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।"
+    },
+    "pidComparisonView": {
+      "noBaselineSavedYet": "ਅਜੇ ਕੋਈ ਬੇਸਲਾਈਨ ਸੇਵ ਨਹੀਂ ਕੀਤੀ",
+      "beforeVsAfter": "ਪਹਿਲਾਂ ਬਨਾਮ ਬਾਅਦ",
+      "before": "ਪਹਿਲਾਂ",
+      "after": "ਬਾਅਦ",
+      "overallScore": "ਕੁੱਲ ਸਕੋਰ",
+      "rollTracking": "ਰੋਲ ਟ੍ਰੈਕਿੰਗ",
+      "pitchTracking": "ਪਿੱਚ ਟ੍ਰੈਕਿੰਗ",
+      "yawTracking": "ਯੌ ਟ੍ਰੈਕਿੰਗ",
+      "motorHealth": "ਮੋਟਰ ਸਿਹਤ",
+      "issuesLowerBetter": "ਸਮੱਸਿਆਵਾਂ (ਘੱਟ = ਬਿਹਤਰ)",
+      "saveCurrentAnalysisAsBaseline": "ਮੌਜੂਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਨੂੰ ਬੇਸਲਾਈਨ ਵਜੋਂ ਸੇਵ ਕਰੋ, ਫਿਰ ਟਿਊਨਿੰਗ ਬਦਲਾਵਾਂ ਤੋਂ ਬਾਅਦ ਮੁੜ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ"
+    },
+    "osdPreferencesEditor": {
+      "videoSystem": "ਵੀਡੀਓ ਸਿਸਟਮ",
+      "units": "ਇਕਾਈਆਂ",
+      "energyUnit": "ਊਰਜਾ ਇਕਾਈ",
+      "crosshairsStyle": "ਕ੍ਰਾਸਹੇਅਰ ਸ਼ੈਲੀ",
+      "leftSidebar": "ਖੱਬੀ ਸਾਈਡਬਾਰ",
+      "rightSidebar": "ਸੱਜੀ ਸਾਈਡਬਾਰ",
+      "adsBWarningStyle": "ADS-B ਚੇਤਾਵਨੀ ਸ਼ੈਲੀ",
+      "voltageDecimals": "ਵੋਲਟੇਜ ਦਸ਼ਮਲਵ",
+      "reverseAHIRoll": "AHI ਰੋਲ ਉਲਟਾਓ",
+      "sidebarScrollArrows": "ਸਾਈਡਬਾਰ ਸਕ੍ਰੋਲ ਤੀਰ",
+      "noPreferenceDataReturnedBy": "FC ਤੋਂ ਕੋਈ ਤਰਜੀਹ ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ।"
+    },
+    "pidLogUploader": {
+      "logLoaded": "ਲੌਗ ਲੋਡ ਹੋਇਆ",
+      "duration": "ਮਿਆਦ",
+      "size": "ਆਕਾਰ",
+      "gyroRate": "ਜਾਇਰੋ ਦਰ",
+      "dropBinLogFileHere": ".bin ਲੌਗ ਫ਼ਾਈਲ ਇੱਥੇ ਸੁੱਟੋ",
+      "uploadADifferentLog": "ਕੋਈ ਹੋਰ ਲੌਗ ਅੱਪਲੋਡ ਕਰੋ",
+      "ardupilotDataFlashBinaryLog": "ArduPilot DataFlash ਬਾਈਨਰੀ ਲੌਗ",
+      "browseFiles": "ਫਾਈਲਾਂ ਬ੍ਰਾਊਜ਼ ਕਰੋ",
+      "loadSampleLog": "ਨਮੂਨਾ ਲੌਗ ਲੋਡ ਕਰੋ"
+    },
+    "pidAiRecommendations": {
+      "param": "ਪੈਰਾਮ",
+      "current": "ਮੌਜੂਦਾ",
+      "suggested": "ਸੁਝਾਇਆ",
+      "applies": "ਲਾਗੂ ਹੁੰਦਾ ਹੈ",
+      "delta": "ਅੰਤਰ",
+      "analyzingTuneQuality": "ਟਿਊਨ ਗੁਣਵੱਤਾ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ...",
+      "noRecommendationsYet": "ਅਜੇ ਕੋਈ ਸਿਫ਼ਾਰਸ਼ ਨਹੀਂ",
+      "clickQuotGetAISuggestions": "ਆਪਣੀ ਟਿਊਨ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰਨ ਲਈ \"AI ਸੁਝਾਅ ਪ੍ਰਾਪਤ ਕਰੋ\" 'ਤੇ ਕਲਿੱਕ ਕਰੋ",
+      "apply": "ਲਾਗੂ ਕਰੋ"
+    },
+    "fwApproachPanel": {
+      "fwApproach": "FW ਪਹੁੰਚ",
+      "fixedWingLandingApproachConfiguration": "ਫਿਕਸਡ-ਵਿੰਗ ਲੈਂਡਿੰਗ ਪਹੁੰਚ ਸੰਰਚਨਾ, ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਵਿੱਚ ਹਰ ਪਹੁੰਚ ਲਈ ਇੱਕ ਸਲਾਟ।",
+      "approachAltCm": "ਪਹੁੰਚ ਉਚਾਈ (cm)",
+      "landAltCm": "ਲੈਂਡ ਉਚਾਈ (cm)",
+      "approachDirection": "ਪਹੁੰਚ ਦਿਸ਼ਾ",
+      "landHeading1Deg0": "ਲੈਂਡ ਹੈਡਿੰਗ 1 (ਡਿਗਰੀ, 0 = ਬੰਦ)",
+      "landHeading2Deg0": "ਲੈਂਡ ਹੈਡਿੰਗ 2 (ਡਿਗਰੀ, 0 = ਬੰਦ)",
+      "altitudeReference": "ਉਚਾਈ ਹਵਾਲਾ",
+      "thisPanelAppliesToFixed": "ਇਹ ਪੈਨਲ ਫਿਕਸਡ-ਵਿੰਗ ਅਤੇ ਟ੍ਰਾਈਕਾਪਟਰ ਪਲੇਟਫਾਰਮਾਂ ਲਈ ਹੈ। ਜੁੜਿਆ ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਮਲਟੀਰੋਟਰ ਵਜੋਂ ਕੌਂਫਿਗਰ ਹੈ।"
+    },
+    "sensorGraphPanel": {
+      "sensorGraphs": "ਸੈਂਸਰ ਗ੍ਰਾਫ਼",
+      "connectADroneToView": "ਸੈਂਸਰ ਡਾਟਾ ਵੇਖਣ ਲਈ ਡਰੋਨ ਕਨੈਕਟ ਕਰੋ",
+      "vibration": "ਕੰਪਨ",
+      "imuVibrationLevelsMS": "IMU ਕੰਪਨ ਪੱਧਰ (m/s/s)",
+      "ekfStatus": "EKF ਸਥਿਤੀ",
+      "extendedKalmanFilterVariance": "ਐਕਸਟੈਂਡਡ ਕਾਲਮੈਨ ਫਿਲਟਰ ਵੇਰੀਅੰਸ",
+      "gyroscope": "ਜਾਇਰੋਸਕੋਪ",
+      "angularRateDegS": "ਕੋਣੀ ਦਰ (deg/s)",
+      "accelerometer": "ਐਕਸੀਲੇਰੋਮੀਟਰ",
+      "linearAccelerationMSU00b2": "ਰੇਖੀ ਪ੍ਰਵੇਗ (m/s\\u00b2)",
+      "magnetometer": "ਮੈਗਨੇਟੋਮੀਟਰ",
+      "magneticFieldMGauss": "ਚੁੰਬਕੀ ਖੇਤਰ (mGauss)"
+    },
+    "liveBatteryDisplay": {
+      "liveBattery": "ਲਾਈਵ ਬੈਟਰੀ",
+      "voltage": "ਵੋਲਟੇਜ",
+      "current": "ਕਰੰਟ",
+      "remaining": "ਬਾਕੀ",
+      "consumed": "ਖਪਤ",
+      "cellVoltages": "ਸੈੱਲ ਵੋਲਟੇਜ",
+      "noLiveBatteryDataFrom": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਤੋਂ ਕੋਈ ਲਾਈਵ ਬੈਟਰੀ ਡਾਟਾ ਨਹੀਂ"
+    },
+    "compassPreflightChecks": {
+      "compassPreFlightChecks": "ਕੰਪਾਸ ਪ੍ਰੀ-ਫਲਾਈਟ ਜਾਂਚਾਂ",
+      "enabled": "ਸਮਰੱਥ",
+      "fix": "ਠੀਕ ਕਰੋ"
+    },
+    "pidAnalysisSummary": {
+      "tuneScore": "ਟਿਊਨ ਸਕੋਰ",
+      "noiseLevel": "ਸ਼ੋਰ ਪੱਧਰ",
+      "issues": "ਸਮੱਸਿਆਵਾਂ",
+      "allClear": "ਸਭ ਠੀਕ"
+    },
+    "logicConditionsPanel": {
+      "logicConditions": "ਤਰਕ ਸ਼ਰਤਾਂ",
+      "writeToFC": "FC 'ਤੇ ਲਿਖੋ",
+      "armedEditsDisabledLiveStatus": "ਆਰਮਡ: ਸੋਧ ਅਯੋਗ। ਲਾਈਵ ਸਥਿਤੀ ਹੇਠਾਂ ਦਿਖਾਈ ਦਿੰਦੀ ਹੈ।",
+      "unsavedChangesUseWriteTo": "ਅਣਸੇਵ ਤਬਦੀਲੀਆਂ: ਸਥਾਈ ਕਰਨ ਲਈ FC 'ਤੇ ਲਿਖੋ ਵਰਤੋ।"
+    },
+    "compass-display": {
+      "angularRateRadS": "ਕੋਣੀ ਦਰ (rad/s)",
+      "hardIronOffsets": "ਹਾਰਡ-ਆਇਰਨ ਆਫ਼ਸੈੱਟ",
+      "softIronDiagonal": "ਸਾਫ਼ਟ-ਆਇਰਨ ਵਿਕਰਣ",
+      "softIronOffDiagonal": "ਸਾਫ਼ਟ-ਆਇਰਨ ਗੈਰ-ਵਿਕਰਣ"
+    },
+    "rcChannelBar": {
+      "min": "ਘੱਟੋ-ਘੱਟ",
+      "trim": "ਟ੍ਰਿਮ",
+      "max": "ਵੱਧ ਤੋਂ ਵੱਧ",
+      "range": "ਰੇਂਜ"
+    },
+    "arduPilotNonGpsPanel": {
+      "nonGPSPositioning": "ਬਿਨਾਂ-GPS ਪੋਜ਼ੀਸ਼ਨਿੰਗ",
+      "ekf3SourceSetsAndExternal": "EKF3 ਸਰੋਤ ਸੈੱਟ ਅਤੇ ਬਾਹਰੀ ਨੈਵ / ਬੀਕਨ ਬੈਕਐਂਡ",
+      "externalNavigationVISO": "ਬਾਹਰੀ ਨੈਵੀਗੇਸ਼ਨ (VISO)",
+      "beaconBCN": "ਬੀਕਨ (BCN)"
+    },
+    "arduPilotHeliPanel": {
+      "helicopter": "ਹੈਲੀਕਾਪਟਰ",
+      "swashplateRotorSpeedControlAnd": "ਸਵੈਸ਼ਪਲੇਟ, ਰੋਟਰ ਸਪੀਡ ਕੰਟਰੋਲ ਅਤੇ ਆਟੋਰੋਟੇਸ਼ਨ"
+    },
+    "geozoneMapEditor": {
+      "circularZonesUseTheForm": "ਗੋਲ ਜ਼ੋਨ ਉੱਪਰ ਦਿੱਤੇ ਫਾਰਮ ਐਡੀਟਰ ਦੀ ਵਰਤੋਂ ਕਰਦੇ ਹਨ।",
+      "startDraw": "ਡਰਾਅ ਸ਼ੁਰੂ ਕਰੋ",
+      "undoVertex": "ਵਰਟੈਕਸ ਵਾਪਸ ਲਓ",
+      "finish": "ਮੁਕੰਮਲ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "commitToZone": "ਜ਼ੋਨ ਵਿੱਚ ਲਾਗੂ ਕਰੋ",
+      "noVerticesYetClickLdquo": "ਅਜੇ ਕੋਈ ਵਰਟੈਕਸ ਨਹੀਂ। “ਡਰਾਅ ਸ਼ੁਰੂ ਕਰੋ” 'ਤੇ ਕਲਿੱਕ ਕਰੋ, ਫਿਰ ਵਰਟੈਕਸ ਜੋੜਨ ਲਈ ਨਕਸ਼ੇ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।",
+      "clickToAddVerticesDouble": "ਵਰਟੈਕਸ ਜੋੜਨ ਲਈ ਕਲਿੱਕ ਕਰੋ। ਬੰਦ ਕਰਨ ਲਈ ਡਬਲ-ਕਲਿੱਕ ਕਰੋ, ਪਹਿਲੇ ਵਰਟੈਕਸ 'ਤੇ ਸੱਜਾ-ਕਲਿੱਕ ਕਰੋ ਜਾਂ Enter ਦਬਾਓ। Esc ਡਰਾਅ ਰੱਦ ਕਰਦਾ ਹੈ। Backspace ਆਖਰੀ ਵਰਟੈਕਸ ਹਟਾਉਂਦਾ ਹੈ।"
+    },
+    "aiSuggestionsGate": {
+      "getAISuggestions": "AI ਸੁਝਾਅ ਲਓ",
+      "signInForAISuggestions": "AI ਸੁਝਾਵਾਂ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ",
+      "freeAccountRequiredAIAnalysis": "ਮੁਫ਼ਤ ਖਾਤਾ ਲੋੜੀਂਦਾ ਹੈ। ਬੀਟਾ ਦੌਰਾਨ AI ਵਿਸ਼ਲੇਸ਼ਣ ਦੀ ਦਰ ਸੀਮਤ ਹੈ।"
+    },
+    "osdElementGrid": {
+      "osdElements": "OSD ਤੱਤ",
+      "copy": "ਕਾਪੀ ਕਰੋ",
+      "paste": "ਪੇਸਟ ਕਰੋ",
+      "resetToDefault": "ਡਿਫਾਲਟ 'ਤੇ ਰੀਸੈੱਟ ਕਰੋ"
+    },
+    "osdScreenPreview": {
+      "grid": "ਗਰਿੱਡ",
+      "live": "ਲਾਈਵ",
+      "dragElementsToRepositionClick": "ਸਥਿਤੀ ਬਦਲਣ ਲਈ ਤੱਤਾਂ ਨੂੰ ਖਿੱਚੋ। ਦਿੱਖ ਬਦਲਣ ਲਈ ਸਾਈਡਬਾਰ ਵਿੱਚ ਤੱਤਾਂ 'ਤੇ ਕਲਿੱਕ ਕਰੋ।"
+    },
+    "keyAgeNudge": {
+      "rotateNow": "ਹੁਣੇ ਬਦਲੋ",
+      "remindMeIn30Days": "30 ਦਿਨਾਂ ਵਿੱਚ ਯਾਦ ਕਰਾਓ"
+    },
+    "enrollmentProgress": {
+      "retry": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "cancel": "ਰੱਦ ਕਰੋ"
+    },
+    "firmwareBackupRestore": {
+      "backupParameters": "ਪੈਰਾਮੀਟਰਾਂ ਦਾ ਬੈਕਅੱਪ",
+      "restoreParameters": "ਪੈਰਾਮੀਟਰ ਰੀਸਟੋਰ ਕਰੋ"
+    },
+    "gnssConstellationEditor": {
+      "receiverDefault": "ਰਿਸੀਵਰ ਡਿਫੌਲਟ"
+    },
+    "pidStepResponseChart": {
+      "noStepResponseData": "ਕੋਈ ਸਟੈਪ ਰਿਸਪਾਂਸ ਡਾਟਾ ਨਹੀਂ"
+    },
+    "pidMotorChart": {
+      "noMotorData": "ਕੋਈ ਮੋਟਰ ਡਾਟਾ ਨਹੀਂ"
+    },
+    "pidFFTChart": {
+      "noFFTData": "ਕੋਈ FFT ਡਾਟਾ ਨਹੀਂ"
+    },
+    "favoritesQuickAccess": {
+      "favorites": "ਮਨਪਸੰਦ"
+    },
+    "firmwareFcWizard": {
+      "dismiss": "ਖਾਰਜ ਕਰੋ"
+    }
+  },
+  "diagnostics": {
+    "ringBufferPanel": {
+      "ringBuffers": "ਰਿੰਗ ਬਫ਼ਰ",
+      "noRingBuffersTracked": "ਕੋਈ ਰਿੰਗ ਬਫ਼ਰ ਟ੍ਰੈਕ ਨਹੀਂ ਕੀਤਾ ਗਿਆ",
+      "buffer": "ਬਫ਼ਰ",
+      "count": "ਗਿਣਤੀ",
+      "cap": "ਸਮਰੱਥਾ",
+      "fill": "ਭਰਾਈ",
+      "bar": "ਬਾਰ"
+    },
+    "messageRatePanel": {
+      "messageRates": "ਸੁਨੇਹਾ ਦਰਾਂ",
+      "noMessageTraffic": "ਕੋਈ ਸੁਨੇਹਾ ਟ੍ਰੈਫ਼ਿਕ ਨਹੀਂ",
+      "messageName": "ਸੁਨੇਹੇ ਦਾ ਨਾਮ",
+      "rateHz": "ਦਰ (Hz)",
+      "bar": "ਬਾਰ",
+      "connectADroneToSee": "ਹਰ ਸੁਨੇਹਾ-ਕਿਸਮ ਦੀ ਦਰ ਵੇਖਣ ਲਈ ਡਰੋਨ ਕਨੈਕਟ ਕਰੋ"
+    },
+    "eventTimeline": {
+      "eventTimeline": "ਘਟਨਾ ਸਮਾਂਰੇਖਾ",
+      "noEventsRecorded": "ਕੋਈ ਘਟਨਾ ਦਰਜ ਨਹੀਂ ਹੋਈ",
+      "filter": "ਫਿਲਟਰ",
+      "all": "ਸਾਰੇ",
+      "none": "ਕੋਈ ਨਹੀਂ",
+      "eventsLikeArmDisarmMode": "ਆਰਮ/ਡਿਸਆਰਮ, ਮੋਡ ਬਦਲਾਅ, ਗਲਤੀਆਂ ਅਤੇ ਪੈਰਾਮੀਟਰ ਲਿਖਤਾਂ ਵਰਗੀਆਂ ਘਟਨਾਵਾਂ ਇੱਥੇ ਦਿਖਾਈ ਦੇਣਗੀਆਂ"
+    },
+    "frameInspector": {
+      "frameInspector": "ਫ਼ਰੇਮ ਨਿਰੀਖਕ",
+      "noFramesCaptured": "ਕੋਈ ਫ਼ਰੇਮ ਕੈਪਚਰ ਨਹੀਂ ਹੋਇਆ",
+      "rawMAVLinkFrameHexDump": "ਕੱਚਾ MAVLink ਫ੍ਰੇਮ ਹੈਕਸ ਡੰਪ ਇੱਥੇ ਦਿਖਾਈ ਦੇਵੇਗਾ"
+    },
+    "diagnosticsPanel": {
+      "diagnostics": "ਡਾਇਗਨੌਸਟਿਕਸ",
+      "clearAll": "ਸਭ ਸਾਫ਼ ਕਰੋ"
+    },
+    "commandQueuePanel": {
+      "commandQueue": "ਕਮਾਂਡ ਕਤਾਰ",
+      "noPendingCommands": "ਕੋਈ ਬਕਾਇਆ ਕਮਾਂਡ ਨਹੀਂ"
+    },
+    "performancePanel": {
+      "performance": "ਕਾਰਗੁਜ਼ਾਰੀ"
+    }
+  },
+  "configUi": {
+    "controlsSettings": {
+      "controller": "ਕੰਟਰੋਲਰ",
+      "action": "ਕਾਰਵਾਈ",
+      "moveToControl": "ਕੰਟਰੋਲ ਲਈ ਹਿਲਾਓ",
+      "stickMode": "ਸਟਿੱਕ ਮੋਡ",
+      "none": "ਕੋਈ ਨਹੀਂ",
+      "close": "ਬੰਦ ਕਰੋ"
+    },
+    "rpcTraceTable": {
+      "node": "ਨੋਡ",
+      "filterByNode": "ਨੋਡ ਮੁਤਾਬਕ ਫ਼ਿਲਟਰ ਕਰੋ",
+      "type": "ਕਿਸਮ",
+      "filterByType": "ਕਿਸਮ ਮੁਤਾਬਕ ਫ਼ਿਲਟਰ ਕਰੋ"
+    },
+    "diagnosticsSection": {
+      "toggle": "ਟੌਗਲ ਕਰੋ",
+      "refresh": "ਤਾਜ਼ਾ ਕਰੋ"
+    },
+    "nodeBrowserSection": {
+      "close": "ਬੰਦ ਕਰੋ"
+    },
+    "operatorProfileEditor": {
+      "smallPart107A2STS": "ਛੋਟਾ / Part 107 / A2 / STS-01",
+      "reocOALUCPart107": "ReOC / OA / LUC / Part 107 Waiver",
+      "dgcaFAAEASACAAUK": "DGCA / FAA / EASA / CAA UK",
+      "usd1000000": "USD 1,000,000"
+    },
+    "controlsSettingsCards": {
+      "doneSticksReleased": "ਹੋ ਗਿਆ (ਸਟਿੱਕਾਂ ਛੱਡੀਆਂ)",
+      "start": "ਸ਼ੁਰੂ ਕਰੋ"
+    },
+    "languageSection": {
+      "github": "GitHub"
+    }
+  },
+  "appPages": {
+    "configInput": {
+      "controllers": "ਕੰਟਰੋਲਰ",
+      "gameControllersJoysticksAndHOTAS": "ਗਰਾਊਂਡ ਸਟੇਸ਼ਨ ਏਜੰਟ ਜਾਂ ਸਿੱਧੇ ਤੁਹਾਡੇ ਬ੍ਰਾਊਜ਼ਰ ਨਾਲ ਜੁੜੇ ਗੇਮ ਕੰਟਰੋਲਰ, ਜੌਇਸਟਿਕ ਅਤੇ HOTAS ਡਿਵਾਈਸਾਂ।",
+      "devices": "ਡਿਵਾਈਸਾਂ",
+      "setAPrimaryControllerTo": "ਡਰੋਨ ਨੂੰ ਸਟਿੱਕ ਇਨਪੁਟ ਭੇਜਣ ਲਈ ਇੱਕ ਪ੍ਰਾਇਮਰੀ ਕੰਟਰੋਲਰ ਸੈੱਟ ਕਰੋ।",
+      "name": "ਨਾਮ",
+      "device": "ਡਿਵਾਈਸ",
+      "connection": "ਕਨੈਕਸ਼ਨ",
+      "status": "ਸਥਿਤੀ",
+      "action": "ਕਾਰਵਾਈ",
+      "pairedBluetoothDevices": "ਜੋੜੀਆਂ ਗਈਆਂ ਬਲੂਟੁੱਥ ਡਿਵਾਈਸਾਂ",
+      "browserInput": "ਬ੍ਰਾਊਜ਼ਰ ਇਨਪੁਟ",
+      "browserControllersOnlyFeedSticks": "ਬ੍ਰਾਊਜ਼ਰ ਕੰਟਰੋਲਰ ਸਿਰਫ਼ ਉਦੋਂ ਤੱਕ ਸਟਿੱਕ ਇਨਪੁਟ ਭੇਜਦੇ ਹਨ ਜਦੋਂ ਤੱਕ ਇਹ ਟੈਬ ਖੁੱਲ੍ਹੀ ਹੈ।",
+      "primaryControllerUpdated": "ਪ੍ਰਾਇਮਰੀ ਕੰਟਰੋਲਰ ਅੱਪਡੇਟ ਹੋ ਗਿਆ।",
+      "failedToUpdatePrimaryController": "ਪ੍ਰਾਇਮਰੀ ਕੰਟਰੋਲਰ ਅੱਪਡੇਟ ਕਰਨ ਵਿੱਚ ਅਸਫਲ।",
+      "forgot": "ਭੁਲਾਇਆ ਗਿਆ: ",
+      "scanBluetooth": "ਬਲੂਟੁੱਥ ਸਕੈਨ ਕਰੋ",
+      "primary": "ਪ੍ਰਾਇਮਰੀ",
+      "setAsPrimary": "ਪ੍ਰਾਇਮਰੀ ਵਜੋਂ ਸੈੱਟ ਕਰੋ",
+      "noPairedBluetoothDevices": "ਕੋਈ ਜੋੜੀ ਗਈ ਬਲੂਟੁੱਥ ਡਿਵਾਈਸ ਨਹੀਂ।",
+      "forget": "ਭੁਲਾਓ",
+      "calibrateAndTuneControllersConnected": "Web Gamepad API ਰਾਹੀਂ ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਨਾਲ ਸਿੱਧੇ ਜੁੜੇ ਕੰਟਰੋਲਰਾਂ ਨੂੰ ਕੈਲੀਬ੍ਰੇਟ ਅਤੇ ਟਿਊਨ ਕਰੋ।"
+    },
+    "community": {
+      "communityNavigation": "ਕਮਿਊਨਿਟੀ ਨੈਵੀਗੇਸ਼ਨ",
+      "communitylayout": "CommunityLayout",
+      "failedToLoadCommunityData": "ਕਮਿਊਨਿਟੀ ਡਾਟਾ ਲੋਡ ਕਰਨ ਵਿੱਚ ਅਸਫਲ",
+      "retry": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "convexclientprovider": {
+      "authBridge": "auth-bridge"
+    },
+    "globalerror": {
+      "somethingWentWrong": "ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ",
+      "tryAgain": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "error": {
+      "somethingWentWrong": "ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ",
+      "tryAgain": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "configPlugins": {
+      "pluginsPageFailedToRender": "ਪਲੱਗਇਨ ਪੰਨਾ ਰੈਂਡਰ ਨਹੀਂ ਹੋ ਸਕਿਆ",
+      "tryAgain": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    }
+  },
+  "shared": {
+    "rthallconfirmdialog": {
+      "returnToHomeAllDrones": "ਘਰ ਵਾਪਸੀ — ਸਾਰੇ ਡਰੋਨ",
+      "thisWillCommandALLActive": "ਇਹ ਸਾਰੇ ਸਰਗਰਮ ਡਰੋਨਾਂ ਨੂੰ ਤੁਰੰਤ ਆਪਣੀਆਂ ਘਰ ਸਥਿਤੀਆਂ 'ਤੇ ਵਾਪਸ ਜਾਣ ਦਾ ਹੁਕਮ ਦੇਵੇਗਾ। ਇਹ ਕਾਰਵਾਈ ਵਾਪਸ ਨਹੀਂ ਲਈ ਜਾ ਸਕਦੀ।",
+      "rthAll": "ਸਾਰੇ RTH"
+    },
+    "slcanModeBanner": {
+      "dismiss": "ਖਾਰਜ ਕਰੋ",
+      "resumeMAVLinkWhenTheFlash": "ਫਲੈਸ਼ ਪੂਰੀ ਹੋਣ 'ਤੇ MAVLink ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ।"
+    },
+    "timeSeriesChart": {
+      "waitingForData": "ਡਾਟਾ ਦੀ ਉਡੀਕ..."
+    },
+    "multiSeriesChart": {
+      "waitingForData": "ਡਾਟਾ ਦੀ ਉਡੀਕ..."
+    }
+  },
+  "ui": {
+    "select": {
+      "noMatchesFound": "ਕੋਈ ਮੇਲ ਨਹੀਂ ਮਿਲਿਆ"
+    }
+  },
+  "onboarding": {
+    "introStep": {
+      "mission": "Mission",
+      "control": "Control"
+    },
+    "languageStep": {
+      "missionControl": "Mission Control"
+    },
+    "themeWorkspacePreview": {
+      "missionControl": "Mission Control"
+    }
+  },
+  "optionLabels": {
+    "accelLPFHz": "ਐਕਸਲ LPF (Hz)",
+    "accelerometer": "ਐਕਸਲੇਰੋਮੀਟਰ",
+    "acroPitchRate": "ACRO ਪਿੱਚ ਦਰ",
+    "acroRollPitchRate": "ACRO ਰੋਲ/ਪਿੱਚ ਦਰ",
+    "acroRollRate": "ACRO ਰੋਲ ਦਰ",
+    "acroYawRate": "ACRO ਯਾਅ ਦਰ",
+    "adosDroneAgent": "ADOS ਡਰੋਨ ਏਜੰਟ",
+    "adosGroundAgent": "ADOS ਗਰਾਊਂਡ ਏਜੰਟ",
+    "adsB": "ADS-B",
+    "aggressiveness": "ਹਮਲਾਵਰਤਾ",
+    "apPeriphCANNodes": "AP_Periph (CAN ਨੋਡ)",
+    "arducopterMultirotor": "ArduCopter (ਮਲਟੀਰੋਟਰ)",
+    "ardupilot": "ArduPilot",
+    "arduplaneFixedWing": "ArduPlane (ਫਿਕਸਡ ਵਿੰਗ)",
+    "arduroverGroundVehicle": "ArduRover (ਜ਼ਮੀਨੀ ਵਾਹਨ)",
+    "ardusubSubmarine": "ArduSub (ਪਣਡੁੱਬੀ)",
+    "auto": "ਆਟੋ",
+    "axisRatio": "ਧੁਰਾ ਅਨੁਪਾਤ",
+    "back": "ਪਿੱਛੇ",
+    "barometer": "ਬੈਰੋਮੀਟਰ",
+    "beeper": "ਬੀਪਰ",
+    "betaflight": "Betaflight",
+    "bit0ContinueIfInAutoModeOnRCFailsafe": "ਬਿੱਟ 0 — RC ਫੇਲਸੇਫ ਸਮੇਂ ਆਟੋ ਮੋਡ ਵਿੱਚ ਹੋਣ 'ਤੇ ਜਾਰੀ ਰੱਖੋ",
+    "bit1ContinueIfInAutoModeOnGCSFailsafe": "ਬਿੱਟ 1 — GCS ਫੇਲਸੇਫ ਸਮੇਂ ਆਟੋ ਮੋਡ ਵਿੱਚ ਹੋਣ 'ਤੇ ਜਾਰੀ ਰੱਖੋ",
+    "bit2ContinueIfInGuidedModeOnRCFailsafe": "ਬਿੱਟ 2 — RC ਫੇਲਸੇਫ ਸਮੇਂ ਗਾਈਡਡ ਮੋਡ ਵਿੱਚ ਹੋਣ 'ਤੇ ਜਾਰੀ ਰੱਖੋ",
+    "bit3ContinueIfLandingOnAnyFailsafe": "ਬਿੱਟ 3 — ਕਿਸੇ ਵੀ ਫੇਲਸੇਫ ਸਮੇਂ ਲੈਂਡਿੰਗ ਹੋ ਰਹੀ ਹੋਵੇ ਤਾਂ ਜਾਰੀ ਰੱਖੋ",
+    "bit4ContinueIfInPilotControlledModeOnGCSFailsafe": "ਬਿੱਟ 4 — GCS ਫੇਲਸੇਫ ਸਮੇਂ ਪਾਇਲਟ-ਨਿਯੰਤਰਿਤ ਮੋਡ ਵਿੱਚ ਹੋਣ 'ਤੇ ਜਾਰੀ ਰੱਖੋ",
+    "bit5ReleaseGripper": "ਬਿੱਟ 5 — ਗ੍ਰਿੱਪਰ ਛੱਡੋ",
+    "blackbox": "ਬਲੈਕਬਾਕਸ",
+    "brushed": "ਬ੍ਰਸ਼ਡ",
+    "calibrateAtNextPowerUp": "ਅਗਲੀ ਵਾਰ ਪਾਵਰ-ਅੱਪ 'ਤੇ ਕੈਲੀਬ੍ਰੇਟ ਕਰੋ",
+    "cameraCapture": "ਕੈਮਰਾ ਕੈਪਚਰ",
+    "cameraTrigger": "ਕੈਮਰਾ ਟ੍ਰਿਗਰ",
+    "constantMax": "ਸਥਿਰ ਅਧਿਕਤਮ",
+    "constantMin": "ਸਥਿਰ ਘੱਟੋ-ਘੱਟ",
+    "coverPitot": "ਪਿਟੋ ਢੱਕੋ",
+    "coverThePitotTubeOpeningToSealItFromAirflow": "ਪਿਟੋ ਟਿਊਬ ਦੇ ਮੂੰਹ ਨੂੰ ਢੱਕ ਕੇ ਹਵਾ ਦੇ ਵਹਾਅ ਤੋਂ ਬੰਦ ਕਰੋ",
+    "cruiseSpeedMS": "ਕਰੂਜ਼ ਗਤੀ (m/s)",
+    "cruiseThrottle": "ਕਰੂਜ਼ ਥ੍ਰੋਟਲ (%)",
+    "customOSDText": "ਕਸਟਮ OSD ਟੈਕਸਟ",
+    "damping": "ਡੈਂਪਿੰਗ",
+    "disabled": "ਅਯੋਗ",
+    "disabledNoMotorOutput": "ਅਯੋਗ (ਕੋਈ ਮੋਟਰ ਆਉਟਪੁੱਟ ਨਹੀਂ)",
+    "dronecan": "DroneCAN",
+    "dshot150": "DShot150",
+    "dshot300": "DShot300",
+    "dshot600": "DShot600",
+    "enabled": "ਯੋਗ",
+    "escSensor": "ESC ਸੈਂਸਰ",
+    "expo": "ਐਕਸਪੋ",
+    "extendedStatusSysBatteryGPS": "ਵਿਸਤ੍ਰਿਤ ਸਥਿਤੀ (sys, ਬੈਟਰੀ, GPS)",
+    "extra1Attitude": "ਵਾਧੂ 1 (ਐਟੀਟਿਊਡ)",
+    "extra2VFRHUD": "ਵਾਧੂ 2 (VFR HUD)",
+    "extra3AHRSWindStatus": "ਵਾਧੂ 3 (AHRS, ਹਵਾ, ਸਥਿਤੀ)",
+    "filterCutoff": "ਫਿਲਟਰ ਕਟਆਫ",
+    "frskyHubTelemetry": "FrSky Hub ਟੈਲੀਮੈਟਰੀ",
+    "frskyOSD": "FrSky OSD",
+    "gimbal": "ਗਿੰਬਲ",
+    "gimbalPitch": "ਗਿੰਬਲ ਪਿੱਚ",
+    "gimbalRoll": "ਗਿੰਬਲ ਰੋਲ",
+    "gimbalYaw": "ਗਿੰਬਲ ਯਾਅ",
+    "gps": "GPS",
+    "gripper": "ਗ੍ਰਿਪਰ",
+    "gyroLPFHz": "ਗਾਇਰੋ LPF (Hz)",
+    "gyroscope": "ਗਾਇਰੋਸਕੋਪ",
+    "hottTelemetry": "HoTT ਟੈਲੀਮੈਟਰੀ",
+    "ibusTelemetry": "IBUS ਟੈਲੀਮੈਟਰੀ",
+    "icEngineChoke": "IC ਇੰਜਣ ਚੋਕ",
+    "icEngineIgnition": "IC ਇੰਜਣ ਇਗਨੀਸ਼ਨ",
+    "icEngineStarter": "IC ਇੰਜਣ ਸਟਾਰਟਰ",
+    "icEngineThrottle": "IC ਇੰਜਣ ਥ੍ਰੋਟਲ",
+    "keepStill": "ਸਥਿਰ ਰੱਖੋ",
+    "keepTheVehiclePerfectlyStillOnALevelSurface": "ਵਾਹਨ ਨੂੰ ਪੱਧਰੀ ਸਤ੍ਹਾ 'ਤੇ ਪੂਰੀ ਤਰ੍ਹਾਂ ਸਥਿਰ ਰੱਖੋ",
+    "keepVehicleStillInCurrentEnvironmentDoNotCoverBarometer": "ਵਾਹਨ ਨੂੰ ਮੌਜੂਦਾ ਮਾਹੌਲ ਵਿੱਚ ਸਥਿਰ ਰੱਖੋ — ਬੈਰੋਮੀਟਰ ਨੂੰ ਨਾ ਢੱਕੋ",
+    "landingGear": "ਲੈਂਡਿੰਗ ਗੀਅਰ",
+    "landingGearWheel": "ਲੈਂਡਿੰਗ ਗੀਅਰ ਪਹੀਆ",
+    "led": "LED",
+    "leftSide": "ਖੱਬਾ ਪਾਸਾ",
+    "level": "ਪੱਧਰ",
+    "levelSurface": "ਪੱਧਰੀ ਸਤ੍ਹਾ",
+    "lidar": "LIDAR",
+    "ltmTelemetry": "LTM ਟੈਲੀਮੈਟਰੀ",
+    "mavlinkTelemetry": "MAVLink ਟੈਲੀਮੈਟਰੀ",
+    "maxStartTemp": "ਵੱਧ ਤੋਂ ਵੱਧ ਸ਼ੁਰੂਆਤੀ ਤਾਪਮਾਨ",
+    "maxThrottle": "ਵੱਧ ਤੋਂ ਵੱਧ ਥ੍ਰੋਟਲ",
+    "maxTurnAccelG": "ਵੱਧ ਤੋਂ ਵੱਧ ਮੋੜ ਐਕਸਲ (g)",
+    "minStartTemp": "ਘੱਟੋ-ਘੱਟ ਸ਼ੁਰੂਆਤੀ ਤਾਪਮਾਨ",
+    "minThrottle": "ਘੱਟੋ-ਘੱਟ ਥ੍ਰੋਟਲ",
+    "motors": "ਮੋਟਰਾਂ",
+    "motorsWillSpinStayClearInterferenceIsMeasuredAtVariousThrottleLevels": "ਮੋਟਰਾਂ ਘੁੰਮਣਗੀਆਂ — ਦੂਰ ਰਹੋ। ਦਖਲ ਨੂੰ ਵੱਖ-ਵੱਖ ਥ੍ਰੋਟਲ ਪੱਧਰਾਂ 'ਤੇ ਮਾਪਿਆ ਜਾਂਦਾ ਹੈ",
+    "msp": "MSP",
+    "multishot": "MultiShot",
+    "n0Auto": "0 — ਆਟੋ",
+    "n0BlueROV1": "0 — BlueROV1",
+    "n0Default": "0 — ਡਿਫਾਲਟ",
+    "n0Disabled": "0 — ਅਯੋਗ",
+    "n0FirstGPS": "0 — ਪਹਿਲਾ GPS",
+    "n0None": "0 — ਕੋਈ ਨਹੀਂ",
+    "n0Off": "0 — ਬੰਦ",
+    "n0Portable": "0 — ਪੋਰਟੇਬਲ",
+    "n0RelativeToAlternateGPS": "0 — ਬਦਲਵੇਂ GPS ਦੇ ਸਾਪੇਖ",
+    "n0Retract": "0 — ਅੰਦਰ ਖਿੱਚੋ",
+    "n0Undefined": "0 — ਪਰਿਭਾਸ਼ਿਤ ਨਹੀਂ",
+    "n0UsePrimary": "0 — ਪ੍ਰਾਇਮਰੀ ਵਰਤੋ",
+    "n100Ms10Hz": "100 ms — 10 Hz",
+    "n10SBFSeptentrio": "10 — SBF (Septentrio)",
+    "n10Xacti": "10 — Xacti",
+    "n115200": "115200",
+    "n11GSOFTrimble": "11 — GSOF (Trimble)",
+    "n11Viewpro": "11 — Viewpro",
+    "n125Ms8Hz": "125 ms — 8 Hz",
+    "n12Topotek": "12 — Topotek",
+    "n13CADDX": "13 — CADDX",
+    "n13ERB": "13 — ERB",
+    "n14MAV": "14 — MAV",
+    "n14XFRobot": "14 — XFRobot",
+    "n15NOVA": "15 — NOVA",
+    "n16HemisphereNMEA": "16 — Hemisphere NMEA",
+    "n17UBloxMovingBaselineBase": "17 — uBlox ਮੂਵਿੰਗ ਬੇਸਲਾਈਨ ਬੇਸ",
+    "n18UBloxMovingBaselineRover": "18 — uBlox ਮੂਵਿੰਗ ਬੇਸਲਾਈਨ ਰੋਵਰ",
+    "n19200": "19200",
+    "n19MSP": "19 — MSP",
+    "n1AnalogPin": "1 — ਐਨਾਲਾਗ ਪਿੰਨ",
+    "n1Auto": "1 — ਆਟੋ",
+    "n1EGNOS": "1 — EGNOS",
+    "n1Enabled": "1 — ਚਾਲੂ",
+    "n1Neutral": "1 — ਨਿਊਟਰਲ",
+    "n1Omni3": "1 — Omni3",
+    "n1On": "1 — ਚਾਲੂ",
+    "n1OnInBand": "1 — ਚਾਲੂ (ਇਨ-ਬੈਂਡ)",
+    "n1OnboardFlash": "1 — ਆਨਬੋਰਡ ਫਲੈਸ਼",
+    "n1RelativeToCustomBase": "1 — ਕਸਟਮ ਬੇਸ ਦੇ ਸਾਪੇਖ",
+    "n1Rover": "1 — ਰੋਵਰ",
+    "n1SecondGPS": "1 — ਦੂਜਾ GPS",
+    "n1SerialGPSesOnly": "1 — ਸਿਰਫ਼ ਸੀਰੀਅਲ GPS",
+    "n1Servo": "1 — ਸਰਵੋ",
+    "n1UseBest": "1 — ਸਭ ਤੋਂ ਵਧੀਆ ਵਰਤੋ",
+    "n1Vectored": "1 — ਵੈਕਟਰਡ",
+    "n200Ms5Hz": "200 ms — 5 Hz",
+    "n20AllyStar": "20 — AllyStar",
+    "n21ExternalAHRS": "21 — ਬਾਹਰੀ AHRS",
+    "n22DroneCANMovingBaselineBase": "22 — DroneCAN ਮੂਵਿੰਗ ਬੇਸਲਾਈਨ ਬੇਸ",
+    "n230400": "230400",
+    "n23DRSolo": "2 — 3DR Solo",
+    "n23DroneCANMovingBaselineRover": "23 — DroneCAN ਮੂਵਿੰਗ ਬੇਸਲਾਈਨ ਰੋਵਰ",
+    "n24UnicoreNMEA": "24 — Unicore NMEA",
+    "n25UnicoreMovingBaselineNMEA": "25 — Unicore ਮੂਵਿੰਗ ਬੇਸਲਾਈਨ NMEA",
+    "n26SBFDualAntenna": "26 — SBF ਦੋਹਰਾ ਐਂਟੀਨਾ",
+    "n2Blend": "2 — ਮਿਸ਼ਰਣ",
+    "n2Boat": "2 — ਕਿਸ਼ਤੀ",
+    "n2FailsafeOnly": "2 — ਸਿਰਫ਼ ਫੇਲਸੇਫ",
+    "n2MAVLinkTargeting": "2 — MAVLink ਟਾਰਗੇਟਿੰਗ",
+    "n2NoChange": "2 — ਕੋਈ ਬਦਲਾਅ ਨਹੀਂ",
+    "n2OmniX": "2 — OmniX",
+    "n2OnOutBand": "2 — ਚਾਲੂ (ਆਊਟ-ਬੈਂਡ)",
+    "n2RCChannelPWM": "2 — RC ਚੈਨਲ PWM",
+    "n2SDCard": "2 — SD ਕਾਰਡ",
+    "n2SerialDroneCAN": "2 — ਸੀਰੀਅਲ + DroneCAN",
+    "n2Stationary": "2 — ਸਥਿਰ",
+    "n2UBlox": "2 — uBlox",
+    "n2UntilFirstArm": "2 — ਪਹਿਲੇ ਆਰਮ ਤੱਕ",
+    "n2Vectored6DOF": "2 — ਵੈਕਟਰਡ 6DOF",
+    "n2WAAS": "2 — WAAS",
+    "n38400": "38400",
+    "n3AlexmosSerial": "3 — Alexmos ਸੀਰੀਅਲ",
+    "n3BalanceBot": "3 — BalanceBot",
+    "n3ClearConfigUBloxOnly": "3 — ਸੰਰਚਨਾ ਸਾਫ਼ ਕਰੋ (ਸਿਰਫ਼ uBlox)",
+    "n3MSAS": "3 — MSAS",
+    "n3OmniPlus": "3 — OmniPlus",
+    "n3Pedestrian": "3 — ਪੈਦਲ",
+    "n3RCTargeting": "3 — RC ਟਾਰਗੇਟਿੰਗ",
+    "n3ReceiverProtocolCRSFELRSSBUS": "3 — ਰਿਸੀਵਰ ਪ੍ਰੋਟੋਕੋਲ (CRSF/ELRS, SBUS, ...)",
+    "n3SerialPort": "3 — ਸੀਰੀਅਲ ਪੋਰਟ",
+    "n3Vectored6DOF90": "3 — ਵੈਕਟਰਡ 6DOF 90",
+    "n460800": "460800",
+    "n4Automotive": "4 — ਆਟੋਮੋਟਿਵ",
+    "n4GAGAN": "4 — GAGAN",
+    "n4GPSPoint": "4 — GPS ਬਿੰਦੂ",
+    "n4Omni3Mecanum": "4 — Omni3Mecanum",
+    "n4PWMInputPin": "4 — PWM ਇਨਪੁਟ ਪਿੰਨ",
+    "n4SToRM32MAVLink": "4 — SToRM32 MAVLink",
+    "n4SimpleROV3": "4 — SimpleROV-3",
+    "n4UsePrimaryIf3DFixOrBetter": "4 — 3D ਫਿਕਸ ਜਾਂ ਬਿਹਤਰ ਹੋਵੇ ਤਾਂ ਪ੍ਰਾਇਮਰੀ ਵਰਤੋ",
+    "n57600": "57600",
+    "n5NMEA": "5 — NMEA",
+    "n5None": "5 — ਕੋਈ ਨਹੀਂ",
+    "n5SToRM32Serial": "5 — SToRM32 ਸੀਰੀਅਲ",
+    "n5Sea": "5 — ਸਮੁੰਦਰ",
+    "n5SimpleROV4": "5 — SimpleROV-4",
+    "n5SysIDTarget": "5 — SysID ਟਾਰਗੇਟ",
+    "n5TelemetryRadioRSSI": "5 — ਟੈਲੀਮੈਟਰੀ ਰੇਡੀਓ RSSI",
+    "n6Airborne1g": "6 — ਹਵਾਈ <1g",
+    "n6HomeLocation": "6 — ਹੋਮ ਟਿਕਾਣਾ",
+    "n6MAVLinkGremsyAVT": "6 — MAVLink (Gremsy/AVT)",
+    "n6SiRF": "6 — SiRF",
+    "n6SimpleROV5": "6 — SimpleROV-5",
+    "n7Airborne2g": "7 — ਹਵਾਈ <2g",
+    "n7BrushlessPWM": "7 — BrushlessPWM",
+    "n7Custom": "7 — ਕਸਟਮ",
+    "n7HIL": "7 — HIL",
+    "n8Airborne4g": "8 — Airborne <4g",
+    "n8Siyi": "8 — Siyi",
+    "n8SwiftNav": "8 — SwiftNav",
+    "n921600": "921600",
+    "n9600": "9600",
+    "n9DroneCAN": "9 — DroneCAN",
+    "n9Scripting": "9 — ਸਕ੍ਰਿਪਟਿੰਗ",
+    "noseDown": "ਨੱਕ ਹੇਠਾਂ",
+    "noseUp": "ਨੱਕ ਉੱਪਰ",
+    "notchAttenuationDB": "ਨੌਚ ਐਟੀਨਿਊਏਸ਼ਨ (dB)",
+    "notchBWHz": "ਨੌਚ BW (Hz)",
+    "notchEnable": "ਨੌਚ ਚਾਲੂ",
+    "notchFreqHz": "ਨੌਚ ਫ੍ਰੀਕੁਐਂਸੀ (Hz)",
+    "notchMode": "ਨੌਚ ਮੋਡ",
+    "notchReference": "ਨੌਚ ਹਵਾਲਾ",
+    "off": "ਬੰਦ",
+    "oneshot125": "OneShot125",
+    "oneshot42": "OneShot42",
+    "parachute": "ਪੈਰਾਸ਼ੂਟ",
+    "parameters": "ਪੈਰਾਮੀਟਰ",
+    "pinio": "PINIO",
+    "placeVehicleInOpenAreaEnsureGPSFixRemoveNearbyMetalObjects": "ਵਾਹਨ ਨੂੰ ਖੁੱਲ੍ਹੇ ਖੇਤਰ ਵਿੱਚ ਰੱਖੋ। GPS ਫਿਕਸ ਯਕੀਨੀ ਬਣਾਓ। ਨੇੜਲੀਆਂ ਧਾਤੂ ਵਸਤੂਆਂ ਹਟਾਓ",
+    "placeVehicleLevelOnAFlatSurface": "ਵਾਹਨ ਨੂੰ ਸਮਤਲ ਸਤ੍ਹਾ 'ਤੇ ਪੱਧਰਾ ਰੱਖੋ",
+    "placeVehicleOnAPerfectlyLevelSurface": "ਵਾਹਨ ਨੂੰ ਪੂਰੀ ਤਰ੍ਹਾਂ ਪੱਧਰੀ ਸਤ੍ਹਾ 'ਤੇ ਰੱਖੋ",
+    "placeVehicleUpsideDown": "ਵਾਹਨ ਨੂੰ ਉਲਟਾ ਰੱਖੋ",
+    "pointTheNoseStraightDown": "ਨੱਕ ਨੂੰ ਸਿੱਧਾ ਹੇਠਾਂ ਵੱਲ ਕਰੋ",
+    "pointTheNoseStraightUp": "ਨੱਕ ਨੂੰ ਸਿੱਧਾ ਉੱਪਰ ਵੱਲ ਕਰੋ",
+    "position": "ਸਥਿਤੀ",
+    "ppsInput": "PPS ਇਨਪੁੱਟ",
+    "proshot1000": "ProShot1000",
+    "pwm": "PWM",
+    "px4": "PX4",
+    "rate": "ਦਰ",
+    "rawController": "ਕੱਚਾ ਕੰਟਰੋਲਰ",
+    "rawSensorsIMUPressure": "ਕੱਚੇ ਸੈਂਸਰ (IMU, ਦਬਾਅ)",
+    "rcChannelsServoOutput": "RC ਚੈਨਲ ਅਤੇ ਸਰਵੋ ਆਉਟਪੁੱਟ",
+    "rcFlaps": "RC ਫਲੈਪ",
+    "rcPitch": "RC ਪਿੱਚ",
+    "rcRoll": "RC ਰੋਲ",
+    "rcThrottle": "RC ਥ੍ਰੋਟਲ",
+    "rcYaw": "RC ਯਾਅ",
+    "rcdevice": "RCDevice",
+    "removeALLPROPELLERSDisconnectBatteryEnsureESCsArePoweredOff": "ਸਾਰੇ ਪ੍ਰੋਪੈਲਰ ਹਟਾਓ। ਬੈਟਰੀ ਡਿਸਕਨੈਕਟ ਕਰੋ। ਯਕੀਨੀ ਬਣਾਓ ਕਿ ESC ਬੰਦ ਹਨ",
+    "requiredRise": "ਲੋੜੀਂਦਾ ਵਾਧਾ",
+    "response": "ਪ੍ਰਤੀਕਿਰਿਆ",
+    "rightSide": "ਸੱਜਾ ਪਾਸਾ",
+    "rotate": "ਘੁਮਾਓ",
+    "rotateVehicleSoLeftSideFacesDown": "ਵਾਹਨ ਨੂੰ ਘੁਮਾਓ ਤਾਂ ਜੋ ਖੱਬਾ ਪਾਸਾ ਹੇਠਾਂ ਵੱਲ ਹੋਵੇ",
+    "rotateVehicleSoRightSideFacesDown": "ਵਾਹਨ ਨੂੰ ਘੁਮਾਓ ਤਾਂ ਜੋ ਸੱਜਾ ਪਾਸਾ ਹੇਠਾਂ ਵੱਲ ਹੋਵੇ",
+    "rpmInput": "RPM ਇਨਪੁੱਟ",
+    "runTest": "ਟੈਸਟ ਚਲਾਓ",
+    "safety": "ਸੁਰੱਖਿਆ",
+    "serialRX": "ਸੀਰੀਅਲ RX",
+    "servos": "ਸਰਵੋ",
+    "setThrottleToMaximumAndConnectBattery": "ਥ੍ਰੋਟਲ ਨੂੰ ਵੱਧ ਤੋਂ ਵੱਧ 'ਤੇ ਰੱਖੋ ਅਤੇ ਬੈਟਰੀ ਜੋੜੋ",
+    "setThrottleToMinimumWaitForConfirmationBeeps": "ਥ੍ਰੋਟਲ ਨੂੰ ਘੱਟੋ-ਘੱਟ 'ਤੇ ਰੱਖੋ — ਪੁਸ਼ਟੀ ਬੀਪਾਂ ਦੀ ਉਡੀਕ ਕਰੋ",
+    "setup": "ਸੈੱਟਅੱਪ",
+    "slowlyRotateTheVehicleInAllOrientationsRollPitchAndYaw": "ਵਾਹਨ ਨੂੰ ਹੌਲੀ-ਹੌਲੀ ਸਾਰੀਆਂ ਦਿਸ਼ਾਵਾਂ ਵਿੱਚ ਘੁਮਾਓ — ਰੋਲ, ਪਿੱਚ ਅਤੇ ਯੌ",
+    "smartportTelemetry": "SmartPort ਟੈਲੀਮੈਟਰੀ",
+    "snappiness": "ਫੁਰਤੀ",
+    "stability": "ਸਥਿਰਤਾ",
+    "stabilize": "ਸਥਿਰ ਕਰੋ",
+    "steeringAngleP": "ਸਟੀਅਰਿੰਗ ਕੋਣ P",
+    "vtxMSP": "VTX (MSP)",
+    "vtxSmartAudio": "VTX (SmartAudio)",
+    "vtxTramp": "VTX (Tramp)",
+    "waitForBeep": "ਬੀਪ ਦੀ ਉਡੀਕ ਕਰੋ",
+    "waitForESCBeepSequenceHighLowTones": "ESC ਬੀਪ ਲੜੀ ਦੀ ਉਡੀਕ ਕਰੋ (ਉੱਚੀ-ਨੀਵੀਂ ਧੁਨੀ)",
+    "waypointSpeedMS": "ਵੇਪੁਆਇੰਟ ਗਤੀ (m/s)"
+  },
+  "agentErrors": {
+    "E_ARMED": "ਡਰੋਨ ਆਰਮ ਹੋਣ ਕਾਰਨ ਇਨਕਾਰ ਕੀਤਾ ਗਿਆ। ਇਸਨੂੰ ਡਿਸਆਰਮ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "E_PROFILE_MISMATCH": "ਇਹ ਨੋਡ ਉਹ ਪ੍ਰੋਫਾਈਲ ਨਹੀਂ ਚਲਾ ਰਿਹਾ ਜਿਸ ਨਾਲ ਇਹ ਸੈਟਿੰਗ ਸੰਬੰਧਿਤ ਹੈ।",
+    "E_BAD_REQUEST": "ਡਰੋਨ ਨੇ ਮੁੱਲ ਰੱਦ ਕਰ ਦਿੱਤਾ। ਇਸਨੂੰ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "E_WRITE_DISABLED": "ਡਰੋਨ 'ਤੇ ਇਸ ਸੈਟਿੰਗ ਵਿੱਚ ਬਦਲਾਅ ਬੰਦ ਹਨ।",
+    "E_MISSING_SSID": "ਨੈੱਟਵਰਕ ਦਾ ਨਾਮ ਦਰਜ ਕਰੋ।",
+    "E_WIFI_JOIN_FAILED": "ਡਰੋਨ ਉਸ ਨੈੱਟਵਰਕ ਨਾਲ ਜੁੜ ਨਹੀਂ ਸਕਿਆ। ਨਾਮ ਅਤੇ ਪਾਸਵਰਡ ਜਾਂਚੋ।",
+    "E_WIFI_LEAVE_FAILED": "ਡਰੋਨ ਉਸ ਨੈੱਟਵਰਕ ਨੂੰ ਛੱਡ ਨਹੀਂ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "E_WIFI_AUTOCONNECT_FAILED": "ਡਰੋਨ ਉਸ ਨੈੱਟਵਰਕ ਲਈ ਆਟੋ-ਕਨੈਕਟ ਬਦਲ ਨਹੀਂ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "E_WIFI_STATUS_UNAVAILABLE": "ਡਰੋਨ ਇਸ ਵੇਲੇ ਆਪਣੀ Wi-Fi ਸਥਿਤੀ ਨਹੀਂ ਪੜ੍ਹ ਸਕਦਾ।",
+    "E_AP_APPLY_FAILED": "ਡਰੋਨ ਹੌਟਸਪੌਟ ਸੈਟਿੰਗਾਂ ਲਾਗੂ ਨਹੀਂ ਕਰ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "E_RECORDING_ACTIVE": "ਪਹਿਲਾਂ ਰਿਕਾਰਡਿੰਗ ਬੰਦ ਕਰੋ।"
   }
 }

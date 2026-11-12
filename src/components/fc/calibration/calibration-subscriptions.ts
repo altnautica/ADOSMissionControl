@@ -24,7 +24,8 @@ export function subscribeToCalibrationStatus(
   setter: React.Dispatch<React.SetStateAction<CalibrationState>>,
   stepCount: number,
   calType: string,
-  toast: (msg: string, status?: "success" | "warning" | "error" | "info") => void,
+  /** Announces a calibration that finished (`ok`) or failed; the caller words it. */
+  notify: (calType: string, ok: boolean) => void,
   isPx4 = false,
 ) {
   cleanupSubs(manager, calType);
@@ -89,7 +90,7 @@ export function subscribeToCalibrationStatus(
           needsReboot: rebootTypes.includes(calType),
         };
       });
-      toast(`${calType.charAt(0).toUpperCase() + calType.slice(1)} calibration complete`, "success");
+      notify(calType, true);
       useDiagnosticsStore.getState().logCalibration(calType, "success");
       cleanupSubs(manager, calType);
       return;
@@ -104,7 +105,7 @@ export function subscribeToCalibrationStatus(
         return;
       }
       setter((prev) => ({ ...prev, status: "error", message: text, waitingForConfirm: false }));
-      toast(`${calType.charAt(0).toUpperCase() + calType.slice(1)} calibration failed`, "error");
+      notify(calType, false);
       useDiagnosticsStore.getState().logCalibration(calType, "failed");
       cleanupSubs(manager, calType);
       return;
@@ -158,7 +159,7 @@ export function subscribeToCalibrationStatus(
             needsReboot: rebootTypes.includes(calType),
           };
         });
-        toast(`${calType.charAt(0).toUpperCase() + calType.slice(1)} calibration complete`, "success");
+        notify(calType, true);
         useDiagnosticsStore.getState().logCalibration(calType, "success");
       }
     }, 5000);
@@ -180,7 +181,7 @@ export function subscribeToCalibrationStatus(
           needsReboot: rebootTypes.includes(calType),
         };
       });
-      toast(`${calType.charAt(0).toUpperCase() + calType.slice(1)} calibration complete`, "success");
+      notify(calType, true);
       useDiagnosticsStore.getState().logCalibration(calType, "success");
     }, 8000);
     addSub(manager, calType, fastUnsub);
@@ -208,6 +209,6 @@ export function subscribeToCalibrationStatus(
   // Compass-specific: MAG_CAL_PROGRESS + MAG_CAL_REPORT (ArduPilot). PX4 compass
   // reports via the [cal] STATUSTEXT parser, so the MAG stall detector stays off there.
   if (calType === "compass") {
-    subscribeCompassCalibration(manager, protocol, setter, calType, toast, isPx4);
+    subscribeCompassCalibration(manager, protocol, setter, calType, notify, isPx4);
   }
 }

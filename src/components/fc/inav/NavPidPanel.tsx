@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Settings2, Upload } from "lucide-react";
@@ -49,6 +50,7 @@ const readNavPid = (p: DroneProtocol) => readSettingGroup(p.settings!, SPECS);
 const writeNavPid = (p: DroneProtocol, g: SettingGroup<string>) => writeSettingGroup(p.settings!, SPECS, g);
 
 export function NavPidPanel() {
+  const tr = useTranslations("fcPanels.navPidPanel");
   const {
     values: group, setValues, loading, error, hasLoaded, dirty,
     connected, isArmed, lockMessage, read, write,
@@ -71,8 +73,8 @@ export function NavPidPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Nav PID"
-          subtitle="iNav navigation controller PID gains"
+          title={tr("navPID")}
+          subtitle={tr("inavNavigationControllerPIDGains")}
           icon={<Settings2 size={16} />}
           loading={loading}
           loadProgress={null}
@@ -91,14 +93,14 @@ export function NavPidPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={write}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 

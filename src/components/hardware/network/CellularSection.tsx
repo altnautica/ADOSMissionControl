@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DataUsageBar } from "@/components/hardware/DataUsageBar";
 import { HintChip } from "@/components/hardware/HintChip";
@@ -27,13 +28,14 @@ interface Props {
 }
 
 export function CellularSection({ modem, onConfigure }: Props) {
+  const tk = useTranslations("hardware.cellularSection");
   const dataCap = dataCapFromModem(modem);
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-medium text-text-primary">4G Modem</h2>
         <Button variant="secondary" size="sm" onClick={onConfigure} disabled={!modem}>
-          Configure
+          {tk("configure")}
         </Button>
       </div>
 
@@ -42,18 +44,18 @@ export function CellularSection({ modem, onConfigure }: Props) {
       ) : (
         <div className="flex flex-col gap-3">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-            <StatRow label="Enabled" value={modem.enabled ? "yes" : "no"} />
-            <StatRow label="State" value={modem.state ?? NOT_REPORTED} />
+            <StatRow label={tk("enabled")} value={modem.enabled ? "yes" : "no"} />
+            <StatRow label={tk("state")} value={modem.state ?? NOT_REPORTED} />
             <StatRow
-              label="Signal"
+              label={tk("signal")}
               value={modem.signal_quality !== null ? `${modem.signal_quality}%` : NOT_REPORTED}
             />
-            <StatRow label="Operator" value={modem.operator || NOT_REPORTED} />
+            <StatRow label={tk("operator")} value={modem.operator || NOT_REPORTED} />
             <StatRow label="APN" value={modem.apn ?? NOT_REPORTED} />
-            <StatRow label="Interface" value={modem.iface ?? NOT_REPORTED} />
+            <StatRow label={tk("interface")} value={modem.iface ?? NOT_REPORTED} />
             <StatRow label="IP" value={modem.ip ?? NOT_REPORTED} />
             <StatRow
-              label="Data cap"
+              label={tk("dataCap")}
               value={modem.cap_mb !== null ? `${modem.cap_mb} MB` : "none"}
             />
           </dl>
@@ -62,9 +64,9 @@ export function CellularSection({ modem, onConfigure }: Props) {
             <div className="mt-1">
               <div className="mb-1 flex items-center gap-2">
                 <span className="text-xs uppercase tracking-wide text-text-secondary">
-                  Data usage
+                  {tk("dataUsage")}
                 </span>
-                <HintChip>Caps apply to 4G only. WiFi and Ethernet are uncapped.</HintChip>
+                <HintChip>{tk("capsApplyTo4GOnly")}</HintChip>
               </div>
               <DataUsageBar
                 usedMb={dataCap.used_mb}

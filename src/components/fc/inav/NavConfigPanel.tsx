@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -49,6 +50,7 @@ const readNavConfig = (p: DroneProtocol) => readSettingGroup(p.settings!, SPECS)
 const writeNavConfig = (p: DroneProtocol, g: SettingGroup<NavKey>) => writeSettingGroup(p.settings!, SPECS, g);
 
 export function NavConfigPanel() {
+  const tr = useTranslations("fcPanels.navConfigPanel");
   const {
     values: group, setValues, loading, error, hasLoaded, dirty,
     connected, isArmed, lockMessage, read, write,
@@ -69,8 +71,8 @@ export function NavConfigPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Navigation Config"
-          subtitle="iNav position hold and navigation speed settings"
+          title={tr("navigationConfig")}
+          subtitle={tr("inavPositionHoldAndNavigation")}
           icon={<Navigation size={16} />}
           loading={loading}
           loadProgress={null}
@@ -89,14 +91,14 @@ export function NavConfigPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={write}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
@@ -112,7 +114,7 @@ export function NavConfigPanel() {
               />
             ))}
             <Select
-              label="POSHOLD stick mode"
+              label={tr("posholdStickMode")}
               options={enumOptionsFor(USER_CONTROL_OPTIONS, group.values.userControlMode)}
               value={String(group.values.userControlMode)}
               onChange={(v) => update("userControlMode", parseInt(v))}

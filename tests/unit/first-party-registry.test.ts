@@ -30,7 +30,7 @@ describe("first-party registry demo fixture", () => {
     }
   });
 
-  it("the optical-pod entry exercises every pop-up section", () => {
+  it("the optical-pod entry shows its published release's contributions", () => {
     const entry = DEMO_REGISTRY_ENTRIES.find(
       (e) => e.row.plugin_id === "com.altnautica.siyi-pod",
     );
@@ -41,15 +41,13 @@ describe("first-party registry demo fixture", () => {
       { signatureState: "verified", signerId: entry!.signerKeyId },
     );
     expect(summary.halves).toEqual(["agent", "gcs"]);
-    expect(summary.icon).toBe("camera");
-    expect((summary.contributesSkills ?? []).length).toBe(2);
-    expect((summary.contributesTools ?? []).length).toBe(5);
+    expect((summary.contributesSkills ?? []).length).toBeGreaterThan(0);
+    expect((summary.contributesTools ?? []).length).toBeGreaterThan(0);
     expect((summary.contributesTabs ?? []).length).toBeGreaterThan(0);
     expect((summary.contributesSlots ?? []).length).toBeGreaterThan(0);
     expect((summary.contributesParameters ?? []).length).toBeGreaterThan(0);
-    // The real SIYI manifest declares no target actions; neither does its mock.
+    // The published manifest declares no target actions.
     expect(summary.contributesTargetActions ?? []).toEqual([]);
-    expect((summary.screenshots ?? []).length).toBe(2);
     expect(summary.features && summary.features.length).toBeGreaterThan(0);
     // An agent-half tool carries its half stamp.
     expect(

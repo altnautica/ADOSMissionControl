@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
@@ -21,6 +22,7 @@ interface ServoTestSectionProps {
 }
 
 export function ServoTestSection({ protocol, isHardBlocked, hardBlockMessage, outputs, gpioOutputs }: ServoTestSectionProps) {
+  const tr = useTranslations("fcPanels.servoTestSection");
   const [servoTestEnabled, setServoTestEnabled] = useState(false);
   const [servoTestValues, setServoTestValues] = useState<number[]>(
     () => Array.from({ length: OUTPUT_COUNT }, () => 1500),
@@ -53,16 +55,16 @@ export function ServoTestSection({ protocol, isHardBlocked, hardBlockMessage, ou
   );
 
   return (
-    <Card title="Servo Test">
+    <Card title={tr("servoTest")}>
       <div className="space-y-3">
         <div className="flex items-center gap-2 p-2 bg-status-warning/10 border border-status-warning/20">
           <AlertTriangle size={14} className="text-status-warning shrink-0" />
           <span className="text-[10px] text-status-warning">
-            Servo test sends live PWM commands. Ensure servos are safe to move.
+            {tr("servoTestSendsLivePWM")}
           </span>
         </div>
 
-        <Toggle label="Enable servo test (safety master)" checked={servoTestEnabled} onChange={setServoTestEnabled} disabled={isHardBlocked} />
+        <Toggle label={tr("enableServoTestSafetyMaster")} checked={servoTestEnabled} onChange={setServoTestEnabled} disabled={isHardBlocked} />
 
         {isHardBlocked && (
           <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">

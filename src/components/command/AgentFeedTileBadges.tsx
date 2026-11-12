@@ -107,7 +107,7 @@ export function TileBadges({
                 : t("noLink")}
           </Badge>
           {pairedShort && (
-            <Badge variant="neutral" className="font-mono normal-case tracking-normal">
+            <Badge variant="neutral" className="font-mono">
               {t("paired")} {pairedShort}
             </Badge>
           )}

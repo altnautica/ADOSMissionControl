@@ -8,6 +8,7 @@
  * or an export backup).
  */
 
+import { useTranslations } from "next-intl";
 import { ShieldOff } from "lucide-react";
 import { EnrollmentProgress } from "../EnrollmentProgress";
 import { FcSection } from "@/components/fc/shared/FcSection";
@@ -36,11 +37,12 @@ export function SigningDisabledSection({
   agentHoldsKey,
   onAgentHoldsKeyChange,
 }: SigningDisabledSectionProps) {
+  const tr = useTranslations("fcPanels.signingDisabledSection");
   return (
     <FcSection>
       <div className="flex items-center gap-2 text-text-primary">
         <ShieldOff size={16} aria-hidden="true" />
-        <span className="font-medium">MAVLink signing is off</span>
+        <span className="font-medium">{tr("mavlinkSigningIsOff")}</span>
       </div>
       <p className="text-sm text-text-tertiary">
         Enable signing to require a 32-byte HMAC key on every command sent to this drone.{" "}
@@ -57,11 +59,9 @@ export function SigningDisabledSection({
           onChange={(e) => onAgentHoldsKeyChange(e.target.checked)}
         />
         <span>
-          Let the agent sign its own traffic (stores the key on the node)
+          {tr("letTheAgentSignIts")}
           <span className="block text-xs text-text-tertiary">
-            Without this, the flight controller drops the agent&apos;s own frames once
-            signing is on over a serial link: stream rates, the parameter sweep and
-            swarm commands.
+            {tr("withoutThisTheFlightController")}
           </span>
         </span>
       </label>
@@ -80,7 +80,7 @@ export function SigningDisabledSection({
             onClick={onEnable}
             disabled={busy}
           >
-            Enable signing
+            {tr("enableSigning")}
           </button>
           <button
             type="button"
@@ -88,7 +88,7 @@ export function SigningDisabledSection({
             onClick={onImport}
             disabled={busy}
           >
-            Import an existing key
+            {tr("importAnExistingKey")}
           </button>
         </div>
       )}

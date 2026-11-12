@@ -12,6 +12,7 @@ import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamEnums } from "../shared/ParamEnumSelect";
 import { GnssConstellationEditor } from "./GnssConstellationEditor";
 import { AP_GPS_RENAMED, resolveApGpsName, type ApGpsRenamedField } from "./ap-gps-constants";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const OFFSET_FIELDS: readonly { field: ApGpsRenamedField; label: string }[] = [
   { field: "posX", label: "Forward (X)" },
@@ -26,6 +27,7 @@ const GPS_CONFIG_PARAMS: readonly string[] = [
 ];
 
 export function GpsConfigSection() {
+  const tr = useTranslations("fcPanels.gpsConfigSection");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName } = useParamLabel();
   const { bitmaskBits } = useParamEnums(useParamMetadataMap());
@@ -35,7 +37,7 @@ export function GpsConfigSection() {
     hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: GPS_CONFIG_PARAMS, optionalParams: GPS_CONFIG_PARAMS, panelId: "gps-config", autoLoad: false });
   const t = useTranslations("fcToasts.sensors");
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit(
     { saveAllToRam, commitToFlash, revertAll },
     { saved: t("gpsConfigSaved"), flash: { successMessage: t("writtenToFlash") } },
   );
@@ -50,14 +52,14 @@ export function GpsConfigSection() {
     <div className="border border-border-default bg-bg-secondary p-4 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium text-text-primary">GPS Configuration</h3>
+          <h3 className="text-sm font-medium text-text-primary">{tr("gpsConfiguration")}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Antenna position offsets and constellation selection
+            {tr("antennaPositionOffsetsAndConstellation")}
           </p>
         </div>
         {!hasLoaded && connected && (
           <Button variant="secondary" size="sm" onClick={refresh} loading={loading}>
-            Read
+            {tr("read")}
           </Button>
         )}
       </div>
@@ -66,7 +68,7 @@ export function GpsConfigSection() {
         <>
           {/* GPS Antenna Offset */}
           <div>
-            <h4 className="text-xs font-medium text-text-secondary mb-2">Antenna Position Offset (relative to IMU)</h4>
+            <h4 className="text-xs font-medium text-text-secondary mb-2">{tr("antennaPositionOffsetRelativeTo")}</h4>
             <p className="text-[10px] text-text-tertiary mb-2">
               Coordinate system: X = forward (positive), Y = right (positive), Z = down (positive). Meters.
             </p>
@@ -88,7 +90,7 @@ export function GpsConfigSection() {
                         <span className="text-[9px] text-text-tertiary font-mono">{param}</span>
                       </>
                     ) : (
-                      <span className="text-[10px] text-text-tertiary">Not on this firmware</span>
+                      <span className="text-[10px] text-text-tertiary">{tr("notOnThisFirmware")}</span>
                     )}
                   </div>
                 );
@@ -98,7 +100,7 @@ export function GpsConfigSection() {
 
           {/* GPS Constellation Selection */}
           <div>
-            <h4 className="text-xs font-medium text-text-secondary mb-2">GNSS Constellation</h4>
+            <h4 className="text-xs font-medium text-text-secondary mb-2">{tr("gnssConstellation")}</h4>
             {gnssModeName ? (
               <GnssConstellationEditor
                 paramName={paramName(gnssModeName)}
@@ -107,7 +109,7 @@ export function GpsConfigSection() {
                 onChange={(v) => setLocalValue(gnssModeName, v)}
               />
             ) : (
-              <p className="text-[10px] text-text-tertiary">Not on this firmware</p>
+              <p className="text-[10px] text-text-tertiary">{tr("notOnThisFirmware")}</p>
             )}
           </div>
 
@@ -120,11 +122,11 @@ export function GpsConfigSection() {
               disabled={!hasDirty || saving}
               loading={saving}
             >
-              Save
+              {tr("save")}
             </Button>
             {hasRamWrites && (
-              <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} onClick={handleFlash}>
-                Write to Flash
+              <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} loading={flashing} onClick={handleFlash}>
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
           </div>

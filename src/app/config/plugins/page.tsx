@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
@@ -11,21 +10,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import { useLanNodePluginLists } from "@/hooks/use-node-plugin-list";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
-import { cn } from "@/lib/utils";
-
-/** One row in the fleet-wide installed-by-node table (cloud + local-first merged). */
-interface InstalledRow {
-  /** Stable list key. */
-  key: string;
-  /** Convex install id when this came from the cloud (links to detail). */
-  cloudId?: string;
-  pluginId: string;
-  name: string;
-  version: string;
-  status: string;
-  /** Where it landed: a drone wire id, or null for a GCS-level install. */
-  deviceId: string | null;
-}
+import { InstalledItem, type InstalledRow } from "./installed-item";
 
 /** All installs on one node (or the GCS-only bucket), for the fleet-wide
  * "what is installed where" table below. */
@@ -182,45 +167,6 @@ export default function PluginsIndexPage() {
   );
 }
 
-function InstalledItem({ install }: { install: InstalledRow }) {
-  const t = useTranslations("plugins");
-  const scopeLabel = install.deviceId ? t("scopeDrone") : t("scopeGcs");
-  const body = (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-text-primary">
-            {install.name}
-          </span>
-          <span className="text-xs text-text-tertiary">v{install.version}</span>
-        </div>
-        <code className="block truncate text-xs text-text-tertiary">
-          {install.pluginId}
-        </code>
-      </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <span className="rounded-md border border-border-default bg-bg-tertiary px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-tertiary">
-          {scopeLabel}
-        </span>
-        <StatusPill status={install.status} />
-      </div>
-    </div>
-  );
-  // Cloud rows link to their detail page (permission grant/revoke, events —
-  // management, not install); a local-only row has no detail route yet, so
-  // it renders inert (still visible in the list).
-  return install.cloudId ? (
-    <Link
-      href={`/config/plugins/${install.cloudId}`}
-      className="block transition-colors hover:bg-bg-tertiary"
-    >
-      {body}
-    </Link>
-  ) : (
-    body
-  );
-}
-
 function EmptyState() {
   const t = useTranslations("plugins");
   return (
@@ -228,27 +174,5 @@ function EmptyState() {
       <p className="text-sm text-text-primary">{t("emptyTitle")}</p>
       <p className="mt-1 text-xs text-text-tertiary">{t("emptyBlurb")}</p>
     </div>
-  );
-}
-
-function StatusPill({ status }: { status: string }) {
-  const palette: Record<string, string> = {
-    installed: "border-text-secondary/30 bg-bg-tertiary text-text-tertiary",
-    enabled: "border-accent-primary/40 bg-accent-primary/10 text-accent-primary",
-    running:
-      "border-status-success/40 bg-status-success/10 text-status-success",
-    disabled: "border-text-secondary/30 bg-bg-tertiary text-text-tertiary",
-    crashed: "border-status-error/40 bg-status-error/10 text-status-error",
-    removed: "border-text-secondary/30 bg-bg-tertiary text-text-tertiary",
-  };
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium capitalize",
-        palette[status] ?? palette.disabled,
-      )}
-    >
-      {status}
-    </span>
   );
 }

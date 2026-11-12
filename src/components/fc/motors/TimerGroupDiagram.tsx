@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import type { BoardProfile, TimerGroupConflict } from "@/lib/board-profiles";
 import { getOutputProtocol, UNKNOWN_BOARD, getBoardProfileListGrouped, getBoardProfileByName } from "@/lib/board-profiles";
@@ -73,6 +74,7 @@ export function TimerGroupDiagram({
   conflicts,
   onBoardOverride,
 }: TimerGroupDiagramProps) {
+  const tr = useTranslations("fcPanels.timerGroupDiagram");
   const [expanded, setExpanded] = useState(true);
   const [selectedBoardName, setSelectedBoardName] = useState("");
 
@@ -106,7 +108,7 @@ export function TimerGroupDiagram({
                 onBoardOverride(getBoardProfileByName(v));
               }
             }}
-            placeholder="Select board..."
+            placeholder={tr("selectBoard")}
             searchable
             options={boardGroups}
             className="text-[10px]"
@@ -126,7 +128,7 @@ export function TimerGroupDiagram({
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <Cpu size={12} className="text-text-secondary" />
         <span className="text-[11px] font-medium text-text-primary">
-          Timer Group Layout
+          {tr("timerGroupLayout")}
         </span>
         <span className="text-[10px] text-text-tertiary">
           {board.name} — {board.outputCount} outputs, {board.timerGroups.length} groups
@@ -226,15 +228,15 @@ export function TimerGroupDiagram({
           <div className="flex items-center gap-3 mt-2 text-[9px] text-text-tertiary">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-status-error" />
-              DShot Motor
+              {tr("dshotMotor")}
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-accent-primary" />
-              PWM Servo
+              {tr("pwmServo")}
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary/40" />
-              Disabled/GPIO
+              {tr("disabledGPIO")}
             </span>
           </div>
         </div>

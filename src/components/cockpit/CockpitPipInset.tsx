@@ -19,8 +19,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, RefreshCw, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { X } from "lucide-react";
 
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { usePipVideo } from "@/hooks/use-pip-video";
@@ -30,6 +29,7 @@ import { streamRoleLabel, useVideoStreamsStore } from "@/stores/video-streams-st
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import { CockpitDemoStream } from "@/components/cockpit/CockpitDemoStream";
+import { PipStatusOverlay } from "@/components/cockpit/PipStatusOverlay";
 
 interface CockpitPipInsetProps {
   droneId: string;
@@ -54,7 +54,6 @@ export function clampToBounds(
 }
 
 export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
-  const tPip = useTranslations("cockpit.pip");
   const demo = useDemoMode();
   const pipId = useVideoStreamsStore((s) => s.pipStreamIdByDrone[droneId]);
   const streams = useVideoStreamsStore((s) => s.streamsByDrone[droneId]);
@@ -291,39 +290,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
               playsInline
               className="absolute inset-0 h-full w-full object-cover"
             />
-            {/* A failed / connecting inset shows its state instead of a silent
-                black rectangle (mirrors the main VideoCanvas placeholder). */}
-            {pipStatus !== "live" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bg-primary/70">
-                {pipStatus === "error" ? (
-                  <>
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-status-error">
-                      {specString("cockpit.pip.no_signal")}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={pipRetry}
-                      aria-label={specString("video.state.retry")}
-                      className="flex min-h-12 min-w-12 items-center justify-center gap-1 border border-border-default px-3 text-[9px] font-mono text-text-secondary transition-colors hover:border-accent-primary hover:text-accent-primary"
-                    >
-                      <RefreshCw size={9} aria-hidden="true" />
-                      {specString("video.state.retry")}
-                    </button>
-                  </>
-                ) : (
-                  <Loader2
-                    size={16}
-                    className="animate-spin text-text-tertiary"
-                    aria-label={pipStatus === "lost" ? tPip("reconnecting") : specString("cockpit.pip.connecting")}
-                  />
-                )}
-                {pipStatus === "lost" && (
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-status-warning">
-                    {tPip("reconnecting")}
-                  </span>
-                )}
-              </div>
-            )}
+            {pipStatus !== "live" && <PipStatusOverlay status={pipStatus} onRetry={pipRetry} />}
           </>
         )}
       </div>

@@ -59,6 +59,7 @@ function fmtTimestamp(secs: number): string {
 }
 
 export function LogBrowser({ open, onClose }: LogBrowserProps) {
+  const tq = useTranslations("history.logBrowser");
   const t = useTranslations("history");
   const selectedDrone = useDroneManager((s) => s.getSelectedDrone());
   const armState = useDroneStore((s) => s.armState);
@@ -191,7 +192,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
           <button
             onClick={onClose}
             className="text-text-tertiary hover:text-text-primary transition-colors p-1"
-            aria-label="Close"
+            aria-label={tq("close")}
           >
             <X size={14} />
           </button>
@@ -215,7 +216,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
           {!isMockOrDemo && !canListLogs && (
             <div className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-[11px] text-text-secondary flex items-start gap-2">
               <AlertTriangle size={12} className="text-status-warning mt-0.5 shrink-0" />
-              This flight controller&apos;s firmware does not offer onboard log download over this link.
+              {tq("thisFlightControllerAposS")}
             </div>
           )}
 
@@ -244,8 +245,8 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
                     <tr className="border-b border-border-default">
                       <th className="px-2 py-1.5 w-[24px]" />
                       <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">ID</th>
-                      <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">Time</th>
-                      <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">Size</th>
+                      <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">{tq("time")}</th>
+                      <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{tq("size")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -275,7 +276,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
           )}
 
           {progress && (
-            <Card title="Download" padding={true}>
+            <Card title={tq("download")} padding={true}>
               <p className="text-[11px] text-text-secondary mb-2">
                 {t("logBrowserDownloading", {
                   received: fmtBytes(progress.received),
@@ -304,7 +305,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
 
           {cancelled && (
             <div className="rounded border border-border-default bg-bg-tertiary px-3 py-2 text-[11px] text-text-secondary">
-              Download cancelled. Nothing was imported from the cancelled log.
+              {tq("downloadCancelledNothingWasImported")}
             </div>
           )}
 

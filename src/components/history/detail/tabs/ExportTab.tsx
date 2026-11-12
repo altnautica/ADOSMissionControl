@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ function fileBaseFor(record: FlightRecord): string {
 }
 
 export function ExportTab({ record, matchedRecording }: ExportTabProps) {
+  const tq = useTranslations("history.exportTab");
   const [busy, setBusy] = useState<string | null>(null);
   const operator = useOperatorProfileStore((s) => s.profile);
   const aircraftIndex = useAircraftRegistryStore((s) => s.aircraft);
@@ -128,7 +130,7 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <Card title="Telemetry" padding={true}>
+      <Card title={tq("telemetry")} padding={true}>
         {matchedRecording ? (
           <div className="flex flex-col gap-2">
             <p className="text-[10px] text-text-secondary">
@@ -166,12 +168,12 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
           </div>
         ) : (
           <p className="text-[10px] text-text-tertiary">
-            No telemetry recording attached. Connect and arm a drone to start recording.
+            {tq("noTelemetryRecordingAttachedConnect")}
           </p>
         )}
       </Card>
 
-      <Card title="Track" padding={true}>
+      <Card title={tq("track")} padding={true}>
         {record.path && record.path.length > 0 ? (
           <div className="flex flex-col gap-2">
             <p className="text-[10px] text-text-secondary">
@@ -189,14 +191,14 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
             </div>
           </div>
         ) : (
-          <p className="text-[10px] text-text-tertiary">No path data on this flight.</p>
+          <p className="text-[10px] text-text-tertiary">{tq("noPathDataOnThis")}</p>
         )}
       </Card>
 
-      <Card title="Record" padding={true}>
+      <Card title={tq("record")} padding={true}>
         <div className="flex flex-col gap-2">
           <p className="text-[10px] text-text-secondary">
-            Full FlightRecord including stats, path, and metadata.
+            {tq("fullFlightRecordIncludingStatsPath")}
           </p>
           <div className="flex gap-2">
             <Button
@@ -219,10 +221,10 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
         </div>
       </Card>
 
-      <Card title="Compliance" padding={true}>
+      <Card title={tq("compliance")} padding={true}>
         <div className="flex flex-col gap-2">
           <Select
-            label="Jurisdiction"
+            label={tq("jurisdiction")}
             value={jurisdiction}
             onChange={(v) => setJurisdiction(v as JurisdictionCode)}
             options={jurisdictionOptions}

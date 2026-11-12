@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { MemoryStick, HardDrive, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,7 @@ function SystemBreakdown({
   resources: SystemResources;
   stale: boolean;
 }) {
+  const tq = useTranslations("command.memoryPanel");
   const total = resources.memory_total_mb;
   const used = resources.memory_used_mb;
   const available = resources.memory_available_mb;
@@ -106,7 +108,7 @@ function SystemBreakdown({
   return (
     <div className="space-y-4">
       <MemBar
-        label="Memory"
+        label={tq("memory")}
         percent={usedPercent}
         detail={`${mb(used)} USED / ${mb(available)} AVAIL / ${mb(total)} TOTAL MB`}
         stale={stale}
@@ -118,7 +120,7 @@ function SystemBreakdown({
       )}
       {swapTotal != null && swapTotal > 0 && (
         <MemBar
-          label="Swap"
+          label={tq("swap")}
           percent={swapPercent}
           detail={`${mb(swapUsed)} / ${swapTotal.toFixed(0)} MB`}
           stale={stale}
@@ -209,6 +211,7 @@ function PerServiceBreakdown({
 }
 
 export function MemoryPanel() {
+  const tq = useTranslations("command.memoryPanel");
   const resources = useAgentSystemStore((s) => s.resources);
   const services = useAgentSystemStore((s) => s.services);
   const freshness = useFreshness();
@@ -217,13 +220,13 @@ export function MemoryPanel() {
   if (!resources) return null;
 
   return (
-    <CollapsibleSection title="Memory" icon={MemoryStick} defaultOpen={true}>
+    <CollapsibleSection title={tq("memory")} icon={MemoryStick} defaultOpen={true}>
       <div className="space-y-5">
         <div>
           <div className="flex items-center gap-1.5 mb-3">
             <HardDrive size={12} className="text-text-tertiary" />
             <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">
-              System
+              {tq("system")}
             </span>
           </div>
           <SystemBreakdown resources={resources} stale={stale} />
@@ -237,7 +240,7 @@ export function MemoryPanel() {
           <div className="flex items-center gap-1.5 mb-3">
             <Server size={12} className="text-text-tertiary" />
             <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">
-              Per service
+              {tq("perService")}
             </span>
           </div>
           <PerServiceBreakdown

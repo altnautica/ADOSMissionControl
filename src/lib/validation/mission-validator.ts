@@ -20,9 +20,7 @@
  * @license GPL-3.0-only
  */
 
-import type { AltitudeFrame, PlanVehicleProfile, Waypoint } from "@/lib/types";
-import type { FenceZone } from "@/stores/geofence-store";
-import type { RallyPoint } from "@/stores/rally-store";
+import type { Waypoint } from "@/lib/types";
 import { bearing } from "@/lib/telemetry-utils";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { isActionCommand } from "@/lib/mission/command-classes";
@@ -34,104 +32,18 @@ import {
 } from "@/lib/mission/altitude-frame";
 import { haversineDistance } from "@/lib/geo/distance";
 import { legFenceIssues } from "./leg-fence";
-import { isPositionedFlown, legTerrainIssues, type LegGroundProfiles } from "./leg-terrain";
+import { isPositionedFlown, legTerrainIssues } from "./leg-terrain";
 import { jumpIssues } from "./jump-rules";
-import { autopilotIssues, effectiveWaypoints, isArduCopter, noLandMessage } from "./autopilot-rules";
+import { autopilotIssues, effectiveWaypoints, isArduCopter, noLandMessage, noLandText } from "./autopilot-rules";
 import { fenceAndRallyIssues, fenceItemCount, waypointFenceIssues } from "./fence-rules";
 import { waypointIssues } from "./waypoint-rules";
-
-/** How much a mission issue matters. */
-export type ValidationSeverity =
-  /** Do not fly: the mission is unsafe or will not execute as drawn. */
-  | "blocking"
-  /** Look at this: the mission is flyable but something is worth checking. */
-  | "advisory";
-
-/** A single validation issue. */
-export interface ValidationIssue {
-  severity: ValidationSeverity;
-  code: string;
-  message: string;
-  waypointIndex?: number;
-  waypointId?: string;
-  /**
-   * For a leg issue: the leg runs from `waypointId` to `toWaypointId`, with the
-   * worst clearance (metres, may be negative) found `alongM` metres along it.
-   */
-  leg?: { toWaypointId: string; clearanceM: number; alongM: number };
-}
-
-/** Complete validation result. */
-export interface ValidationResult {
-  /** True when nothing blocking was found. Advisories do not affect this. */
-  valid: boolean;
-  /** Advisory issues. */
-  warnings: ValidationIssue[];
-  /** Blocking issues. */
-  errors: ValidationIssue[];
-}
+import type { ValidationIssue, ValidationOptions, ValidationResult } from "./issue-types";
 
 /** Commands that end a mission, after which later items never execute. */
 const TERMINAL_COMMANDS: Record<string, true> = { LAND: true, VTOL_LAND: true, RTL: true };
 
 /** Commands that launch the vehicle. */
 const TAKEOFF_COMMANDS: Record<string, true> = { TAKEOFF: true, VTOL_TAKEOFF: true };
-
-/** Options for mission validation. */
-export interface ValidationOptions {
-  geofence?: {
-    polygonPoints?: [number, number][];
-    circleCenter?: [number, number];
-    circleRadius?: number;
-    /**
-     * Fence ceiling in metres ABOVE HOME (`FENCE_ALT_MAX` semantics). Waypoint
-     * altitudes are normalised into that datum before comparison.
-     */
-    maxAltitude?: number;
-    /** Fence floor in metres above home (`FENCE_ALT_MIN`). Below this = blocking. */
-    minAltitude?: number;
-    /** Multi-zone inclusion/exclusion fences (independent of the primary fence). */
-    zones?: FenceZone[];
-  };
-  /** Hard ceiling in metres above home, same datum as the fence ceiling. */
-  maxAltitude?: number;
-  maxDistanceBetweenWps?: number;
-  /** Minimum AGL clearance in meters. Defaults to 5m. */
-  minTerrainClearance?: number;
-  /** Rally points to validate (containment + altitude band). */
-  rally?: RallyPoint[];
-  /**
-   * The plan's planned home. `groundElevation` (terrain MSL at home) is the
-   * datum every `relative`-frame altitude resolves against; without it a
-   * relative mission cannot be checked against terrain and the rule says so.
-   * Absent: the plan's launch point stands in for the position, and the
-   * launch waypoint's own terrain sample for the ground.
-   */
-  home?: { lat?: number; lon?: number; groundElevation?: number };
-  /** Mission default altitude frame for waypoints carrying none. */
-  defaultFrame?: AltitudeFrame;
-  /** Mission default speed: the upload writes a speed item for it. */
-  defaultSpeed?: number;
-  /** RTL return altitude in metres above home, when configured. */
-  rtlAltitude?: number;
-  /** Usable command/telemetry link range in metres, when configured. */
-  linkRangeM?: number;
-  /** Vehicle limits that make a drawn path un-flyable. */
-  vehicle?: {
-    /** Minimum turn radius in metres (fixed wing / VTOL in forward flight). */
-    minTurnRadiusM?: number;
-  };
-  /** Autopilot and vehicle class the plan is written for; absent = rules common to all autopilots only. */
-  profile?: PlanVehicleProfile;
-  /** The connected ArduPilot vehicle's TERRAIN_ENABLE; absent when unknown. */
-  terrainEnabled?: boolean;
-  /** The connected ArduPlane's RTL_AUTOLAND; absent when unknown. */
-  rtlAutoland?: number;
-  /** Radius of ArduPilot's home-centred circle fence (`FENCE_RADIUS`), metres. */
-  homeCircleRadiusM?: number;
-  /** Ground AMSL sampled along each flown leg, keyed `${fromId}>${toId}`. */
-  legGroundProfiles?: LegGroundProfiles;
-}
 
 /**
  * Largest circular-arc radius that fits between two legs meeting at a vertex.
@@ -174,6 +86,7 @@ export function validateMission(
       severity: "blocking",
       code: "EMPTY_MISSION",
       message: "Mission has no waypoints",
+      text: { key: "missionHasNoWaypoints" },
     });
     return { valid: false, warnings, errors };
   }
@@ -202,6 +115,7 @@ export function validateMission(
       severity: "advisory",
       code: "TOO_FEW_WAYPOINTS",
       message: "Mission has only 1 waypoint. Add at least 2 for a meaningful mission.",
+      text: { key: "missionHasOnly1WaypointAdd" },
       waypointIndex: 0,
       waypointId: waypoints[0].id,
     });
@@ -216,15 +130,17 @@ export function validateMission(
     // PX4 climbs to MIS_TAKEOFF_ALT by itself first, so there it is advisory.
     const startsAirborne = (resolved[0].agl ?? resolved[0].aboveHome ?? waypoints[0].alt) > 0;
     const airborne = `WP1: mission starts airborne (${Math.round(waypoints[0].alt)}m, ${resolved[0].frame} frame) with no TAKEOFF command`;
+    const airborneParams = { alt: Math.round(waypoints[0].alt), frame: resolved[0].frame };
     if (startsAirborne && profile?.autopilot === "px4") {
-      warnings.push({ severity: "advisory", code: "MISSING_TAKEOFF", message: `${airborne}. PX4 climbs to MIS_TAKEOFF_ALT first`, ...first });
+      warnings.push({ severity: "advisory", code: "MISSING_TAKEOFF", message: `${airborne}. PX4 climbs to MIS_TAKEOFF_ALT first`, text: { key: "startsAirbornePx4", params: airborneParams }, ...first });
     } else if (startsAirborne) {
-      errors.push({ severity: "blocking", code: "MISSING_TAKEOFF", message: airborne, ...first });
+      errors.push({ severity: "blocking", code: "MISSING_TAKEOFF", message: airborne, text: { key: "startsAirborne", params: airborneParams }, ...first });
     } else if (isArduCopter(profile)) {
       errors.push({
         severity: "blocking",
         code: "NO_TAKEOFF",
         message: "First waypoint is not TAKEOFF. ArduCopter will not start AUTO on the ground without a TAKEOFF",
+        text: { key: "firstWaypointIsNotTAKEOFFArduCopter" },
         ...first,
       });
     } else {
@@ -232,6 +148,7 @@ export function validateMission(
         severity: "advisory",
         code: "NO_TAKEOFF",
         message: "First waypoint is not TAKEOFF. The drone may not launch correctly.",
+        text: { key: "firstWaypointIsNotTAKEOFFThe" },
         ...first,
       });
     }
@@ -245,6 +162,7 @@ export function validateMission(
         severity: "advisory",
         code: "NO_LAND",
         message: noLandMessage(profile),
+        text: noLandText(profile),
         waypointIndex: waypoints.length - 1,
         waypointId: waypoints[waypoints.length - 1].id,
       });
@@ -262,6 +180,7 @@ export function validateMission(
         severity: "blocking",
         code: "DUPLICATE_SEQUENCE",
         message: `WP${i + 1}: duplicate waypoint id "${id}" — the mission sequence is ambiguous`,
+        text: { key: "wpDuplicateWaypointIdTheMission", params: { v0: i + 1, v1: id } },
         waypointIndex: i,
         waypointId: id,
       });
@@ -278,6 +197,7 @@ export function validateMission(
       code: "HOME_NOT_SET",
       message:
         "No home terrain elevation: relative-frame altitudes cannot be checked against terrain. Set home or wait for an elevation sample.",
+      text: { key: "homeNotSet" },
     });
   }
 
@@ -299,6 +219,7 @@ export function validateMission(
         severity: "blocking",
         code: "ACTION_AS_NAV",
         message: `WP${i + 1}: ${wp.command} is an action and must be attached to a waypoint, not placed on its own`,
+        text: { key: "wpIsAnActionAndMust", params: { v0: i + 1, v1: wp.command } },
         waypointIndex: i,
         waypointId: wp.id,
       });
@@ -310,6 +231,7 @@ export function validateMission(
         severity: "blocking",
         code: "INVALID_COORDS",
         message: `WP${i + 1}: Invalid coordinates (${wp.lat.toFixed(4)}, ${wp.lon.toFixed(4)})`,
+        text: { key: "wpInvalidCoordinates", params: { v0: i + 1, v1: wp.lat.toFixed(4), v2: wp.lon.toFixed(4) } },
         waypointIndex: i,
         waypointId: wp.id,
       });
@@ -340,6 +262,7 @@ export function validateMission(
           severity: "advisory",
           code: "DUPLICATE_WAYPOINT",
           message: `WP${i + 1}: Duplicate of WP${prevPositioned + 1} (${dist.toFixed(1)}m apart)`,
+          text: { key: "wpDuplicateOfWPMApart", params: { v0: i + 1, v1: prevPositioned + 1, v2: dist.toFixed(1) } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -349,6 +272,7 @@ export function validateMission(
           severity: "advisory",
           code: "EXCESSIVE_DISTANCE",
           message: `${legName}: ${(dist / 1000).toFixed(1)}km apart (max: ${(maxDist / 1000).toFixed(0)}km)`,
+          text: { key: "kmApartMaxKm", params: { v0: legName, v1: (dist / 1000).toFixed(1), v2: (maxDist / 1000).toFixed(0) } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -358,6 +282,7 @@ export function validateMission(
           severity: "advisory",
           code: "LEG_EXCEEDS_LINK_RANGE",
           message: `${legName}: ${Math.round(dist)}m leg exceeds the ${Math.round(options.linkRangeM)}m link range`,
+          text: { key: "mLegExceedsTheMLink", params: { v0: legName, v1: Math.round(dist), v2: Math.round(options.linkRangeM) } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -374,6 +299,7 @@ export function validateMission(
           severity: "advisory",
           code: "OUTSIDE_LINK_RANGE",
           message: `WP${i + 1}: ${Math.round(fromHome)}m from home, beyond the ${Math.round(options.linkRangeM)}m link range`,
+          text: { key: "wpMFromHomeBeyondThe", params: { v0: i + 1, v1: Math.round(fromHome), v2: Math.round(options.linkRangeM) } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -384,6 +310,7 @@ export function validateMission(
           severity: "blocking",
           code: "OUTSIDE_HOME_CIRCLE_FENCE",
           message: `WP${i + 1}: ${Math.round(fromHome)}m from home, outside the ${Math.round(circle)}m home circle fence (FENCE_RADIUS)`,
+          text: { key: "wpMFromHomeOutsideThe", params: { v0: i + 1, v1: Math.round(fromHome), v2: Math.round(circle) } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -411,6 +338,7 @@ export function validateMission(
             severity: "advisory",
             code: "TURN_RADIUS_TOO_TIGHT",
             message: `WP${i + 1}: ${Math.round(change)}° turn needs a ${Math.round(feasible)}m radius but the vehicle minimum is ${Math.round(minRadius)}m`,
+            text: { key: "wpTurnNeedsAMRadius", params: { v0: i + 1, v1: Math.round(change), v2: Math.round(feasible), v3: Math.round(minRadius) } },
             waypointIndex: i,
             waypointId: wp.id,
           });
@@ -456,6 +384,7 @@ export function validateMission(
           severity: "blocking",
           code: "RTL_ALTITUDE_LOW",
           message: `RTL altitude ${Math.round(options.rtlAltitude)}m above home clears the highest terrain on the return path (WP${highestIndex + 1}, ${Math.round(highestGround)}m MSL) by only ${Math.round(clearance)}m (min: ${minClearance}m)`,
+          text: { key: "rtlAltitudeMAboveHomeClears", params: { v0: Math.round(options.rtlAltitude), v1: highestIndex + 1, v2: Math.round(highestGround), v3: Math.round(clearance), v4: minClearance } },
           waypointIndex: highestIndex,
           waypointId: waypoints[highestIndex].id,
         });

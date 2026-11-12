@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 export default function CommunityError({
@@ -16,6 +17,7 @@ export default function CommunityError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const tk = useTranslations("appPages.community");
   useEffect(() => {
     console.error("[community-error-boundary]", error);
   }, [error]);
@@ -24,7 +26,7 @@ export default function CommunityError({
     <div className="flex items-center justify-center min-h-[40vh] p-8">
       <div className="max-w-md w-full text-center space-y-4">
         <h2 className="text-base font-semibold text-text-primary">
-          Failed to load community data
+          {tk("failedToLoadCommunityData")}
         </h2>
         <p className="text-sm text-text-secondary">
           {error.message || "Could not connect to the backend."}
@@ -33,7 +35,7 @@ export default function CommunityError({
           onClick={reset}
           className="px-4 py-2 text-sm font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 transition-colors"
         >
-          Retry
+          {tk("retry")}
         </button>
       </div>
     </div>

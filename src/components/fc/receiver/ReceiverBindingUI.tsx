@@ -39,6 +39,7 @@ export function ReceiverBindingUI({
   currentParams,
   onWritten,
 }: ReceiverBindingUIProps) {
+  const tr = useTranslations("fcPanels.receiverBindingUI");
   const { toast } = useToast();
   const t = useTranslations("fcToasts.receiver");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -84,10 +85,10 @@ export function ReceiverBindingUI({
 
   return (
     <>
-      <Card title="Stick Trims">
+      <Card title={tr("stickTrims")}>
         {showTrimPreview ? (
           <div className="p-2 bg-bg-tertiary border border-border-default space-y-2">
-            <p className="text-[10px] font-medium text-text-secondary">Trim Preview (Roll, Pitch, Yaw):</p>
+            <p className="text-[10px] font-medium text-text-secondary">{tr("trimPreviewRollPitchYaw")}</p>
             <div className="space-y-0.5">
               {trimTargets.map(({ role, ch }) => {
                 const current = channels[ch - 1] ?? 0;
@@ -112,10 +113,10 @@ export function ReceiverBindingUI({
                 disabled={!hasRcData || isHardBlocked}
                 onClick={handleSetTrims}
               >
-                Confirm
+                {tr("confirm")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setShowTrimPreview(false)}>
-                Cancel
+                {tr("cancel")}
               </Button>
             </div>
           </div>
@@ -128,7 +129,7 @@ export function ReceiverBindingUI({
               disabled={!hasRcData || isHardBlocked}
               onClick={() => setShowTrimPreview(true)}
             >
-              Set Trims to Current
+              {tr("setTrimsToCurrent")}
             </Button>
             <span className="text-[10px] text-text-tertiary">
               {hasRcData ? "Sets Roll/Pitch/Yaw trims to live stick positions" : "No live RC data — ensure transmitter is on and bound."}

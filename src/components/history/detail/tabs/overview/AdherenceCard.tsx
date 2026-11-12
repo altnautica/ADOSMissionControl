@@ -6,6 +6,7 @@
  * @module components/history/detail/tabs/overview/AdherenceCard
  */
 
+import { useTranslations } from "next-intl";
 import { MapPin } from "lucide-react";
 import type { MissionAdherence } from "@/lib/types";
 import { Row } from "./shared";
@@ -17,6 +18,7 @@ export function AdherenceCard({
   adherence: MissionAdherence;
   missionName?: string;
 }) {
+  const tq = useTranslations("history.adherenceCard");
   const reachedPct =
     adherence.totalWaypoints > 0
       ? Math.round((adherence.waypointsReached / adherence.totalWaypoints) * 100)
@@ -40,20 +42,20 @@ export function AdherenceCard({
       )}
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <Row
-          label="Waypoints"
+          label={tq("waypoints")}
           value={`${adherence.waypointsReached}/${adherence.totalWaypoints} (${reachedPct}%)`}
         />
         <Row
-          label="Max XTE"
+          label={tq("maxXTE")}
           value={`${adherence.maxCrossTrackErrorM} m`}
         />
         <Row
-          label="Mean XTE"
+          label={tq("meanXTE")}
           value={`${adherence.meanCrossTrackErrorM} m`}
         />
         {adherence.deviationSegments && adherence.deviationSegments.length > 0 && (
           <Row
-            label="Deviations"
+            label={tq("deviations")}
             value={`${adherence.deviationSegments.length}`}
           />
         )}

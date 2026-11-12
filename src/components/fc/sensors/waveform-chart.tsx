@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ScaledImuCallback } from "@/lib/protocol/types/callbacks";
 import { CHART_GRID, CHART_TICK } from "../chart-theme";
 
@@ -69,12 +70,13 @@ export function WaveformChart({
   color: string;
   height?: number;
 }) {
+  const tr = useTranslations("fcPanels.waveform-chart");
   if (data.length < 2) {
     return (
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-mono text-text-tertiary w-4">{label}</span>
         <div className="flex-1 bg-bg-tertiary/30 rounded flex items-center justify-center" style={{ height }}>
-          <span className="text-[9px] text-text-tertiary">Waiting...</span>
+          <span className="text-[9px] text-text-tertiary">{tr("waiting")}</span>
         </div>
         <span className="text-[9px] font-mono text-text-tertiary w-16 text-right">{"\u2014"} {unit}</span>
       </div>

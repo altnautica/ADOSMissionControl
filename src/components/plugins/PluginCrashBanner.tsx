@@ -27,6 +27,7 @@ const WINDOW_MS = 5 * 60 * 1000;
 const REFRESH_MS = 30 * 1000;
 
 export function PluginCrashBanner() {
+  const tq = useTranslations("plugins.pluginCrashBanner");
   const t = useTranslations("plugins");
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -74,7 +75,7 @@ export function PluginCrashBanner() {
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => setDismissedKey(dismissKey)}
-          aria-label="Dismiss"
+          aria-label={tq("dismiss")}
           className="text-text-tertiary hover:text-text-secondary"
         >
           <X size={14} />

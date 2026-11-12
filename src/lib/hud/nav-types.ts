@@ -82,6 +82,8 @@ export interface NavState {
   obstacleRateHz: number | null;
   minObstacleM: number | null;
   gpsFix: number | null;
+  /** Age of the newest pose in ms (`pose_age_ms`), null while none. */
+  poseAgeMs: number | null;
 }
 
 /** The world-engine pose: rotation `R` (row-major 3×3) and translation `t`
@@ -279,6 +281,7 @@ export function parseNavState(raw: unknown): NavState | null {
     obstacleRateHz: num(raw.obstacle_rate_hz),
     minObstacleM: num(raw.min_obstacle_m),
     gpsFix: int(raw.gps_fix),
+    poseAgeMs: num(raw.pose_age_ms),
   };
 }
 

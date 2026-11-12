@@ -374,7 +374,8 @@ describe("DronePluginsList failure reason", () => {
     ]);
     const reasons = screen.getAllByTestId("plugin-failure-reason");
     expect(reasons).toHaveLength(1);
-    expect(reasons[0].textContent).toBe(`Stopped by the node: ${TAMPERED}`);
+    // A tamper refusal reads as one sentence, never the raw code and path.
+    expect(reasons[0].textContent).toBe("Files changed since install — reinstall");
     expect(reasons[0].closest("li")?.dataset.pluginId).toBe("com.example.tampered");
   });
 
@@ -418,7 +419,7 @@ describe("DronePluginsList failure reason", () => {
     try {
       renderList("charlie-3");
       const reason = screen.getByTestId("plugin-failure-reason");
-      expect(reason.textContent).toContain("tampered: ");
+      expect(reason.textContent).toBe("Files changed since install — reinstall");
       expect(reason.closest("li")?.dataset.pluginId).toBe("com.altnautica.siyi-pod");
     } finally {
       useSettingsStore.setState({ demoMode: false } as never);

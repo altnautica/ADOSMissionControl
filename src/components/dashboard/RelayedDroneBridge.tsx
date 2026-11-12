@@ -182,7 +182,9 @@ export function RelayedDroneBridge() {
         e.nodeId,
         {
           deviceId: e.deviceId,
-          name: e.realName || `Agent ${e.deviceId.slice(0, 8)}`,
+          // No name: leave the known one; the fleet projection supplies the
+          // placeholder, so a nameless source never overwrites a real name.
+          name: e.realName || undefined,
           profile: relayedProfile,
           agentIdentityKnown: e.agentIdentityKnown,
           reachedVia: e.reachedVia,

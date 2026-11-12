@@ -20,6 +20,9 @@ export type LogDownloadProgressCallback = (receivedBytes: number, totalBytes: nu
 /** Progress callback for FTP file download. totalBytes is 0 when the size is unknown. */
 export type FtpDownloadProgressCallback = (receivedBytes: number, totalBytes: number) => void;
 
+/** Progress callback for a mission upload: items sent so far out of the total. */
+export type MissionUploadProgressCallback = (sentItems: number, totalItems: number) => void;
+
 /** Fence zone role: inclusion = stay inside, exclusion = stay outside. */
 export type FenceRole = "inclusion" | "exclusion";
 

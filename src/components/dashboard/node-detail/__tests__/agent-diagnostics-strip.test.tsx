@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../tests/helpers/intl-wrapper";
 import { AgentDiagnosticsView } from "../AgentDiagnosticsStrip";
 import { parseAgentDiagnostics, type DiagnosticsSource } from "@/lib/agent/agent-diagnostics";
 import { DEMO_STATUS_EXTRAS } from "@/mock/agent/status-extras";

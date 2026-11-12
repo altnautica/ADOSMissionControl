@@ -21,6 +21,7 @@ import layoutJson from "../cockpit-spec/layout.json";
 import { BATTERY_CRITICAL_PCT, batteryLowPct, batteryReading, type BatteryHealthInput, type FcBatteryInput } from "./battery";
 import type { FcStatusText, PilotState, ReadinessItem } from "./cockpit-frames";
 import { CHIP_STALE_AFTER_MS } from "./flight-state";
+import type { NavSourceKind, NavSourceResult } from "./nav-source";
 import { hasSpecText, specText } from "./spec-text";
 
 /** On-board storage use that warns, and that is critical (percent). */
@@ -178,6 +179,12 @@ export interface PillInputs {
   fcFailsafe?: boolean;
   /** Why (`failsafe_cause`: `fc`, `rc_or_failsafe`); null reads as `fc`. */
   failsafeCause?: string | null;
+  /** The arm state; null while unknown (the drone may be airborne): the
+   *  pre-flight items are hidden. Omitted: not known to this surface. */
+  armed?: boolean | null;
+  /** The resolved nav source (`resolveNavSource`): a `warn` or `crit` tone
+   *  raises one `nav_source_degraded` item. */
+  navSource?: Pick<NavSourceResult, "kind" | "quality" | "tone"> | null;
 }
 
 /** The pill's failsafe inputs from a pilot state. */
@@ -194,10 +201,19 @@ export function failsafeText(cause: string | null | undefined): string {
 }
 
 /** The pilot holds for a lost controller while armed and airborne (spec
- *  `status_pill.controller_rule`). */
+ *  `status_pill.controller_rule`). An unknown arm state is possibly airborne. */
 export function controllerLost(p: Pick<PilotState, "holdReason" | "armed" | "landed"> | null): boolean {
-  return p !== null && p.holdReason === "controller-lost" && p.armed && !p.landed;
+  return p !== null && p.holdReason === "controller-lost" && p.armed !== false && p.landed !== true;
 }
+
+/** The source word of a nav source kind (`nav_source.*`). */
+const NAV_SOURCE_KEY: Readonly<Record<NavSourceKind, string | null>> = {
+  gps: "nav_source.gps",
+  ext: "nav_source.ext_nav",
+  flow: "nav_source.flow",
+  dr: "nav_source.dr",
+  stale: null,
+};
 
 /** The pill source of an alert id. */
 export function alertSource(id: string): PillSource {
@@ -232,8 +248,20 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
   if (i.controllerLost && !pilotStale) {
     out.push({ id: "controller_lost", source: "controller", severity: "warning", text: specText("alert.controller_lost") });
   }
-  for (const item of i.preflightFailing ?? []) {
+  // Pre-flight items are a ground surface: hidden while the arm state is
+  // unknown, since the drone may be airborne.
+  for (const item of i.armed === null ? [] : (i.preflightFailing ?? [])) {
     out.push({ id: `preflight:${item.id}`, source: "preflight", severity: "warning", text: specText("alert.preflight_failing", { item: item.label }) });
+  }
+  const nav = i.navSource;
+  const navKey = nav ? NAV_SOURCE_KEY[nav.kind] : null;
+  if (nav && navKey && (nav.tone === "warn" || nav.tone === "crit")) {
+    out.push({
+      id: "nav_source_degraded",
+      source: "nav_source",
+      severity: nav.tone === "crit" ? "critical" : "warning",
+      text: specText("alert.nav_source_degraded", { source: specText(navKey) }),
+    });
   }
   if (i.prearm && i.prearm.length > 0) {
     const text = i.prearm[i.prearm.length - 1].replace(/^(PreArm|Arm):\s*/, "");

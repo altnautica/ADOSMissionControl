@@ -32,4 +32,9 @@ describe("computeAggregateKpis", () => {
     const kpis = computeAggregateKpis([flight({}), flight({})]);
     expect(kpis.avgDistanceKm).toBeNull();
   });
+
+  it("averages battery used per flight rather than adding percentages", () => {
+    const kpis = computeAggregateKpis([flight({ batteryUsed: 40 }), flight({ batteryUsed: 60 }), flight({})]);
+    expect(kpis.avgBatteryUsed).toBe(50);
+  });
 });

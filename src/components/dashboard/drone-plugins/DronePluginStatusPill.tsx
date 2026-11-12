@@ -4,7 +4,8 @@
  * @module DronePluginStatusPill
  * @description Lifecycle pill rendered on the per-drone plugin card.
  * Color-coded per the management UX spec (running green, enabled
- * blue, disabled grey, crashed red).
+ * blue, disabled grey, crashed red). "Stopped" is a plugin the node itself
+ * stopped (a tamper refusal, a revoked signer), which is not a crash.
  *
  * @license GPL-3.0-only
  */
@@ -18,6 +19,7 @@ export type DronePluginStatusLabel =
   | "enabled"
   | "disabled"
   | "crashed"
+  | "stopped"
   | "installed";
 
 interface DronePluginStatusPillProps {
@@ -30,6 +32,7 @@ const PALETTE: Record<DronePluginStatusLabel, string> = {
   enabled: "border-accent-primary/40 bg-accent-primary/10 text-accent-primary",
   disabled: "border-text-secondary/30 bg-bg-tertiary text-text-tertiary",
   crashed: "border-status-error/40 bg-status-error/10 text-status-error",
+  stopped: "border-status-error/40 bg-status-error/10 text-status-error",
   installed: "border-text-secondary/30 bg-bg-tertiary text-text-tertiary",
 };
 

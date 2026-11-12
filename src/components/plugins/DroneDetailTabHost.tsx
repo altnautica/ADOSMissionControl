@@ -145,7 +145,7 @@ export function DroneDetailTabHeaders({
               if (onNavigate?.(e.key)) e.preventDefault();
             }}
             className={cn(
-              "self-stretch flex items-center px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
+              "self-stretch flex items-center px-2.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 -mb-px border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
               selected
                 ? "text-accent-primary border-accent-primary"
                 : "text-text-secondary hover:text-text-primary border-transparent",
@@ -251,9 +251,16 @@ export function DroneDetailTabBody({
         contributions={activeSlot}
         className={cn(
           "flex flex-col",
-          // Let the iframe own the remaining space only when there is one;
-          // params-only plugins shouldn't reserve a tall empty region.
-          hasParameters ? "min-h-0" : "flex-1 min-h-0 overflow-hidden",
+          // Alone, the iframe owns the panel. Below a parameters block it
+          // still takes the remaining space but never less than a readable
+          // height, and the panel scrolls; without the floor it fell back to
+          // the browser's 150 px default and clipped the plugin's page.
+          // Params-only plugins reserve no empty region.
+          !hasParameters
+            ? "flex-1 min-h-0 overflow-hidden"
+            : activeSlot.length > 0
+              ? "flex-1 shrink-0 min-h-[480px]"
+              : "min-h-0",
         )}
         iframeClassName="flex-1 w-full"
       />

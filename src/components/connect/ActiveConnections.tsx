@@ -88,12 +88,13 @@ function DroneRow({
           variant="danger"
           size="sm"
           icon={<Unplug size={12} />}
+          aria-label={t("disconnectNamed", { name: drone.name })}
           onClick={(e) => {
             e.stopPropagation();
             onDisconnect();
           }}
         >
-          &times;
+          {t("disconnect")}
         </Button>
       </div>
     </div>

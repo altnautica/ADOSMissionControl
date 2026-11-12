@@ -9,6 +9,8 @@
 
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Sliders, Upload } from "lucide-react";
@@ -35,6 +37,8 @@ async function writeEzTune(protocol: DroneProtocol, values: INavEzTune): Promise
 // ── Component ─────────────────────────────────────────────────
 
 export function EzTunePanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.ezTunePanel");
   const {
     values, setValues, loading, error, hasLoaded, dirty,
     connected, isArmed, lockMessage, read, write,
@@ -59,8 +63,8 @@ export function EzTunePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="EZ Tune"
-          subtitle="Simplified PID and filter tuning via unified sliders."
+          title={tr("ezTune")}
+          subtitle={tr("simplifiedPIDAndFilterTuning")}
           icon={<Sliders size={16} />}
           loading={loading}
           loadProgress={null}
@@ -79,7 +83,7 @@ export function EzTunePanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={write}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
@@ -88,11 +92,11 @@ export function EzTunePanel() {
           <div className="border border-border-default rounded p-4 space-y-4">
             {dirty && (
               <p className="text-[10px] font-mono text-status-warning">
-                Unsaved changes : use Write to FC to persist.
+                {tr("unsavedChangesUseWriteTo")}
               </p>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-text-secondary">Enable EZ Tune</span>
+              <span className="text-[11px] text-text-secondary">{tr("enableEZTune")}</span>
               <button
                 onClick={handleToggle}
                 className={`text-[11px] px-3 py-1 rounded border ${
@@ -105,7 +109,7 @@ export function EzTunePanel() {
               </button>
             </div>
 
-            {EZ_TUNE_FIELDS.map((f) => (
+            {ol(EZ_TUNE_FIELDS).map((f) => (
               <div key={f.key} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-text-secondary">{f.label}</span>

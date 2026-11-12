@@ -12,6 +12,8 @@ import { render, screen } from "@testing-library/react";
 import messages from "../../../../locales/en.json";
 import { DroneFlightsTab } from "../DroneFlightsTab";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 vi.mock("@/stores/history-store", () => ({
   useHistoryStore: (sel: (s: unknown) => unknown) =>
     sel({

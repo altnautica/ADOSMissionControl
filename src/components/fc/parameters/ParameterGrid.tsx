@@ -35,6 +35,7 @@ const ROW_HEIGHT = 32;
 const HEADER_CLASS = "px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap text-xs";
 
 export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel }: ParameterGridProps) {
+  const tr = useTranslations("fcPanels.parameterGrid");
   const t = useTranslations("parameters");
   const [editingParam, setEditingParam] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -121,13 +122,13 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
         >
           <div className="px-1" />
           {vis.index && <div className={HEADER_CLASS}>#</div>}
-          {vis.name && <div className={HEADER_CLASS}>Name</div>}
-          {vis.description && <div className={HEADER_CLASS}>Description</div>}
-          {vis.value && <div className={HEADER_CLASS}>Value</div>}
+          {vis.name && <div className={HEADER_CLASS}>{tr("name")}</div>}
+          {vis.description && <div className={HEADER_CLASS}>{tr("description")}</div>}
+          {vis.value && <div className={HEADER_CLASS}>{tr("value")}</div>}
           {vis.options && <div className={HEADER_CLASS}>{t("optionsColumn")}</div>}
-          {vis.range && <div className={HEADER_CLASS}>Range</div>}
-          {vis.units && <div className={HEADER_CLASS}>Units</div>}
-          {vis.type && <div className={HEADER_CLASS}>Type</div>}
+          {vis.range && <div className={HEADER_CLASS}>{tr("range")}</div>}
+          {vis.units && <div className={HEADER_CLASS}>{tr("units")}</div>}
+          {vis.type && <div className={HEADER_CLASS}>{tr("type")}</div>}
         </div>
 
         {/* Body */}
@@ -209,7 +210,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                             <button onClick={() => !readOnly && startEdit(param)} title={readOnly ? "Read-only parameter" : outOfRange && meta?.range ? `Out of range: expected ${meta.range.min} .. ${meta.range.max}` : isPendingRam && !isModified ? "Written to RAM — not yet committed to flash" : undefined} className={cn("flex-1 h-6 px-1.5 text-left font-mono transition-colors flex items-center gap-1 min-w-0", readOnly ? "text-text-tertiary cursor-not-allowed" : outOfRange ? "text-status-warning border border-status-warning/60 bg-status-warning/5 cursor-pointer hover:bg-bg-tertiary" : isModified ? "text-status-warning border border-status-warning/40 cursor-pointer hover:bg-bg-tertiary" : isPendingRam ? "text-status-serious border border-status-serious/40 cursor-pointer hover:bg-bg-tertiary" : "text-text-primary border border-transparent cursor-pointer hover:bg-bg-tertiary")}>
                               <span className="truncate">{formatParamDisplayValue(displayValue, meta)}</span>
                               {outOfRange && <span className="text-[10px]" title={`Range: ${meta?.range?.min} .. ${meta?.range?.max}`}>!</span>}
-                              {isPendingRam && !isModified && <span className="flex-shrink-0" title="RAM only, not flashed"><HardDrive size={10} className="text-status-serious" /></span>}
+                              {isPendingRam && !isModified && <span className="flex-shrink-0" title={tr("ramOnlyNotFlashed")}><HardDrive size={10} className="text-status-serious" /></span>}
                             </button>
                             {!readOnly && meta?.increment && !hasEnum && !hasBitmask && (
                               <div className="flex flex-col">

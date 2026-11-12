@@ -75,7 +75,7 @@ vi.mock("../surfaces", () => ({
         ? ["overview", "logs", "agent"]
         : ctx.drone.profile === "ground-station"
           ? ["overview", "cockpit", "radio", "mesh", "logs", "agent"]
-          : ["overview", "flight", "cockpit", "configure", "logs", "agent"];
+          : ["overview", "cockpit", "configure", "logs", "agent"];
     return ids.map((id) => ({
       id,
       labelKey: id,

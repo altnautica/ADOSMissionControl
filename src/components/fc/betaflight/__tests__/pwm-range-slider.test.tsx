@@ -3,7 +3,8 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../tests/helpers/intl-wrapper";
 import { PwmRangeSlider, nearestThumb } from "../PwmRangeSlider";
 
 function renderSlider(start: number, end: number) {

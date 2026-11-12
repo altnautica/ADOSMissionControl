@@ -57,9 +57,9 @@ function mount(html: string): HTMLElement {
 describe("flight-screen chrome tokens", () => {
   it("publishes the panel background, critical text and STOP fill from tokens.json", () => {
     const vars = chromeVars(1) as Record<string, string>;
-    expect(tokens.chrome.panel_bg).toBe("#080A0EC8");
+    expect(tokens.chrome.panel_bg).toBe("#0B0D12EB");
     expect(vars["--fs-bg"]).toBe(rgb(tokens.chrome.panel_bg));
-    expect(vars["--fs-bg"]).toBe("rgb(8 10 14 / 0.784)");
+    expect(vars["--fs-bg"]).toBe("rgb(11 13 18 / 0.922)");
     expect(vars["--fs-text-crit"]).toBe(rgb(tokens.chrome.text_critical));
     expect(vars["--fs-text-crit"]).toBe("rgb(255 138 128 / 1.000)");
     expect(vars["--fs-stop-bg"]).toBe("rgb(200 30 30 / 1.000)");

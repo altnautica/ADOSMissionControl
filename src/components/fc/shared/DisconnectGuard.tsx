@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useRef } from "react";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { isCriticalParam } from "@/lib/protocol/critical-params";
@@ -35,6 +36,7 @@ export function DisconnectGuard({
   onDiscardAndDisconnect,
   onCancel,
 }: DisconnectGuardProps) {
+  const tl = useTranslations("fcPanels.disconnectGuard");
   const pendingWrites = useParamSafetyStore((s) => s.pendingWrites);
   const hasCritical = useParamSafetyStore((s) => s.hasCriticalPending());
   const pendingCount = pendingWrites.size;
@@ -56,7 +58,7 @@ export function DisconnectGuard({
       onClose={onCancel}
       // Hardcoded English title: no locale key exists for it, so the literal
       // is passed through unchanged rather than pointing at an invented key.
-      title="Uncommitted Parameter Changes"
+      title={tl("uncommittedParameterChanges")}
       role="alertdialog"
       initialFocusRef={cancelRef}
       size="sm"
@@ -67,13 +69,13 @@ export function DisconnectGuard({
       footer={
         <>
           <Button variant="primary" size="sm" onClick={onCommitAndDisconnect}>
-            Commit to Flash & Disconnect
+            {tl("commitToFlashDisconnect")}
           </Button>
           <Button variant="danger" size="sm" onClick={onDiscardAndDisconnect}>
-            Discard & Disconnect
+            {tl("discardDisconnect")}
           </Button>
           <Button ref={cancelRef} variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
+            {tl("cancel")}
           </Button>
         </>
       }
@@ -96,10 +98,10 @@ export function DisconnectGuard({
           <table className="w-full text-[10px]">
             <thead className="sticky top-0 bg-bg-secondary">
               <tr className="border-b border-border-default">
-                <th className="px-2 py-1 text-left font-semibold text-text-secondary">Parameter</th>
-                <th className="px-2 py-1 text-right font-semibold text-text-secondary">Old</th>
+                <th className="px-2 py-1 text-left font-semibold text-text-secondary">{tl("parameter")}</th>
+                <th className="px-2 py-1 text-right font-semibold text-text-secondary">{tl("old")}</th>
                 <th className="px-2 py-1 text-center text-text-tertiary">{"\u2192"}</th>
-                <th className="px-2 py-1 text-right font-semibold text-text-secondary">New</th>
+                <th className="px-2 py-1 text-right font-semibold text-text-secondary">{tl("new")}</th>
               </tr>
             </thead>
             <tbody>
@@ -136,7 +138,7 @@ export function DisconnectGuard({
         {hasCritical && (
           <div className="p-2 bg-status-error/10 border border-status-error/20">
             <p className="text-[10px] text-status-error font-medium">
-              Includes safety-critical parameters (failsafe, battery, motor, arming).
+              {tl("includesSafetyCriticalParametersFailsafe")}
             </p>
           </div>
         )}

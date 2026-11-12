@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import {
   MousePointer2, MapPin, Pentagon, Circle, Ruler, Undo2, Redo2, HelpCircle,
   ArrowUpFromLine, ArrowDownToLine, CircleDot, Crosshair, Flag, Target,
-  Layers, CloudDownload, MapPinned, Shapes,
+  Layers, CloudDownload, MapPinned, Shapes, ChevronRight,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Popover } from "@/components/ui/popover";
@@ -115,8 +115,9 @@ const RailButton = forwardRef<
 
 /**
  * A rail button standing for a group of tools. The face arms the group's
- * last-used tool; the corner chevron opens a flyout listing every tool in the
- * group with its shortcut.
+ * last-used tool; the strip on its right edge (or a right-click on the face)
+ * opens a flyout listing every tool in the group with its shortcut. The strip
+ * is 16 × 32 px on screen with a 32 × 48 px hit area.
  */
 function SplitTool({
   tools,
@@ -139,7 +140,14 @@ function SplitTool({
   const face = tools.find((tool) => tool.id === lastUsed) ?? tools[0];
 
   return (
-    <div ref={anchorRef} className="relative">
+    <div
+      ref={anchorRef}
+      className="relative flex items-center"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setOpen(true);
+      }}
+    >
       <RailButton
         active={groupActive}
         onClick={() => onToolChange(face.id)}
@@ -154,11 +162,13 @@ function SplitTool({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="absolute bottom-0 right-0 flex h-3 w-3 items-end justify-end cursor-pointer text-text-tertiary hover:text-text-primary"
+        className={cn(
+          "relative flex h-8 w-4 items-center justify-center rounded-md cursor-pointer text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary focus-ring",
+          "after:absolute after:-inset-y-2 after:left-0 after:-right-4",
+          open && "text-text-primary",
+        )}
       >
-        <svg width="5" height="5" viewBox="0 0 5 5" aria-hidden="true">
-          <path d="M5 0V5H0Z" fill="currentColor" />
-        </svg>
+        <ChevronRight size={12} aria-hidden="true" />
       </button>
       <Popover anchorRef={anchorRef} open={open} onOpenChange={setOpen} side="right" align="start" ariaLabel={groupLabel}>
         <ul className="flex w-52 flex-col p-1">

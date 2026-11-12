@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -37,6 +38,7 @@ const PROFILE_OPTIONS = [
 ];
 
 export function MixerProfilePanel() {
+  const tr = useTranslations("fcPanels.mixerProfilePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -142,8 +144,8 @@ export function MixerProfilePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-6">
         <PanelHeader
-          title="Mixer Profiles"
-          subtitle="Platform type, motor and servo counts"
+          title={tr("mixerProfiles")}
+          subtitle={tr("platformTypeMotorAndServo")}
           icon={<Settings2 size={16} />}
           loading={profileLoading}
           loadProgress={null}
@@ -156,34 +158,34 @@ export function MixerProfilePanel() {
         {profileLoaded && mixer && (
           <div className="space-y-4">
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-text-tertiary font-mono">Active mixer profile</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tr("activeMixerProfile")}</span>
               <Select
                 label=""
                 options={PROFILE_OPTIONS}
                 value={activeProfile === null ? "" : String(activeProfile)}
-                placeholder="Not reported by the FC"
+                placeholder={tr("notReportedByTheFC")}
                 disabled={isArmed}
                 onChange={(v) => handleSwitchProfile(parseInt(v))}
               />
             </div>
             <div className="border border-border-default rounded p-3 space-y-2">
               <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">
-                Active mixer info
+                {tr("activeMixerInfo")}
               </p>
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                <span className="text-text-tertiary">Platform</span>
+                <span className="text-text-tertiary">{tr("platform")}</span>
                 <span className="text-text-primary">{platformLabel}</span>
-                <span className="text-text-tertiary">Motor slots (FC max)</span>
+                <span className="text-text-tertiary">{tr("motorSlotsFCMax")}</span>
                 <span className="text-text-primary">{mixer.maxSupportedMotors}</span>
-                <span className="text-text-tertiary">Servo slots (FC max)</span>
+                <span className="text-text-tertiary">{tr("servoSlotsFCMax")}</span>
                 <span className="text-text-primary">{mixer.maxSupportedServos}</span>
-                <span className="text-text-tertiary">Motor direction inverted</span>
+                <span className="text-text-tertiary">{tr("motorDirectionInverted")}</span>
                 <span className="text-text-primary">{mixer.motorDirectionInverted ? "Yes" : "No"}</span>
-                <span className="text-text-tertiary">Motor stop on low</span>
+                <span className="text-text-tertiary">{tr("motorStopOnLow")}</span>
                 <span className="text-text-primary">{mixer.motorstopOnLow ? "Yes" : "No"}</span>
-                <span className="text-text-tertiary">Has flaps</span>
+                <span className="text-text-tertiary">{tr("hasFlaps")}</span>
                 <span className="text-text-primary">{mixer.hasFlaps ? "Yes" : "No"}</span>
-                <span className="text-text-tertiary">Applied preset</span>
+                <span className="text-text-tertiary">{tr("appliedPreset")}</span>
                 <span className="text-text-primary">{mixer.appliedMixerPreset}</span>
               </div>
             </div>
@@ -191,8 +193,8 @@ export function MixerProfilePanel() {
         )}
 
         <PanelHeader
-          title="Mixer Tables"
-          subtitle="Motor and servo mixer rules"
+          title={tr("mixerTables")}
+          subtitle={tr("motorAndServoMixerRules")}
           icon={<Settings2 size={16} />}
           loading={mixerLoading}
           loadProgress={null}
@@ -217,7 +219,7 @@ export function MixerProfilePanel() {
               }
               onClick={handleMixerWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
@@ -228,14 +230,13 @@ export function MixerProfilePanel() {
 
         {tablesStale && (
           <p className="text-[10px] font-mono text-status-warning">
-            The mixer profile changed and the tables below were read from the previous profile. Read them
-            again before writing.
+            {tr("theMixerProfileChangedAnd")}
           </p>
         )}
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes: use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 

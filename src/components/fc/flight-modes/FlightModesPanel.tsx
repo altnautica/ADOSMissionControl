@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
@@ -17,6 +18,7 @@ import { useFlightModeParams } from "./use-flight-mode-params";
 import { MODE_PWM_RANGES } from "./flight-mode-constants";
 
 export function FlightModesPanel() {
+  const tr = useTranslations("fcPanels.flightModesPanel");
   const protocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { toast } = useToast();
@@ -99,9 +101,9 @@ export function FlightModesPanel() {
     return (
       <div className="flex-1 p-6">
         <div className="max-w-2xl space-y-4">
-          <h2 className="text-sm font-semibold text-text-primary">Flight Modes</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{tr("flightModes")}</h2>
           <Card>
-            <p className="text-xs text-text-tertiary">Connect to a drone to configure flight modes.</p>
+            <p className="text-xs text-text-tertiary">{tr("connectToADroneTo")}</p>
           </Card>
         </div>
       </div>
@@ -126,7 +128,7 @@ export function FlightModesPanel() {
         <div className="bg-bg-secondary border border-border-default p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-text-tertiary uppercase tracking-wider">Current Mode:</span>
+              <span className="text-[10px] text-text-tertiary uppercase tracking-wider">{tr("currentMode")}</span>
               <span className="text-sm font-mono font-bold text-accent-primary">
                 {heartbeatMode}
               </span>

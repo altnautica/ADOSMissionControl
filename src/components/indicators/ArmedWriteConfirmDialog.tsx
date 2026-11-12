@@ -24,6 +24,7 @@ import { Modal } from "@/components/ui/modal";
  * write.
  */
 export function ArmedWriteConfirmDialog() {
+  const tk = useTranslations("indicators.armedWriteConfirmDialog");
   const open = useArmedConfirmStore((s) => s.open);
   const context = useArmedConfirmStore((s) => s.context);
   const confirm = useArmedConfirmStore((s) => s.confirm);
@@ -48,10 +49,10 @@ export function ArmedWriteConfirmDialog() {
       footer={
         <>
           <Button ref={cancelRef} variant="secondary" size="sm" onClick={cancel}>
-            Cancel
+            {tk("cancel")}
           </Button>
           <Button variant="danger" size="sm" onClick={confirm}>
-            Write Anyway
+            {tk("writeAnyway")}
           </Button>
         </>
       }
@@ -69,7 +70,7 @@ export function ArmedWriteConfirmDialog() {
 
           <div className="mt-3 border border-border-default rounded bg-bg-secondary p-2">
             <div className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1">
-              Parameters
+              {tk("parameters")}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {preview.map((name) => (
@@ -89,7 +90,7 @@ export function ArmedWriteConfirmDialog() {
           </div>
 
           <p className="mt-3 text-[10px] text-text-tertiary">
-            Panel: <span className="font-mono">{context.panelId}</span>
+            {tk("panel")} <span className="font-mono">{context.panelId}</span>
           </p>
         </div>
       </div>

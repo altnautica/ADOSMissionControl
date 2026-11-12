@@ -57,7 +57,7 @@ const SAR_SEARCH_A: PathWaypoint[] = [
 ];
 
 /**
- * Path 3: Foxtrot : iNav quadcopter survey loop (SW Bangalore offset).
+ * Path 3: Lima-12 : helicopter survey loop (SW Bangalore offset).
  */
 const INAV_QUAD_LOOP: PathWaypoint[] = [
   { lat: 12.925, lon: 77.600, alt: 50, speed: 6 },
@@ -98,16 +98,6 @@ const BOAT_WATER_LOOP: PathWaypoint[] = [
   { lat: 12.928, lon: 77.652, alt: 0, speed: 2 },
 ];
 
-/**
- * Path 7: Kilo-11 : submarine depth loop (negative alt = depth below surface).
- */
-const SUB_DEPTH_LOOP: PathWaypoint[] = [
-  { lat: 12.932, lon: 77.652, alt: -5, speed: 1.5 },
-  { lat: 12.933, lon: 77.653, alt: -6, speed: 1.5 },
-  { lat: 12.932, lon: 77.654, alt: -5, speed: 1.5 },
-  { lat: 12.931, lon: 77.653, alt: -4, speed: 1.5 },
-];
-
 export const FLIGHT_PATHS: PathWaypoint[][] = [
   PATROL_LOOP_A,
   SURVEY_GRID_A,
@@ -116,7 +106,6 @@ export const FLIGHT_PATHS: PathWaypoint[][] = [
   INAV_FW_CIRCUIT,
   ROVER_GROUND_LOOP,
   BOAT_WATER_LOOP,
-  SUB_DEPTH_LOOP,
 ];
 
 /**

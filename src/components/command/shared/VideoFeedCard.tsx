@@ -52,6 +52,7 @@ interface VideoFeedCardProps {
 }
 
 export function VideoFeedCard({ className, onPopOut, droneId, downlink = false }: VideoFeedCardProps) {
+  const tq = useTranslations("command.videoFeedCard");
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
@@ -437,7 +438,7 @@ export function VideoFeedCard({ className, onPopOut, droneId, downlink = false }
             <button
               onClick={handleSnapshot}
               className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
-              title="Capture screenshot"
+              title={tq("captureScreenshot")}
             >
               <Camera className="w-3.5 h-3.5" />
             </button>
@@ -460,7 +461,7 @@ export function VideoFeedCard({ className, onPopOut, droneId, downlink = false }
             <button
               onClick={handlePip}
               className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
-              title="Picture in picture"
+              title={tq("pictureInPicture")}
             >
               <PictureInPicture2 className="w-3.5 h-3.5" />
             </button>
@@ -480,7 +481,7 @@ export function VideoFeedCard({ className, onPopOut, droneId, downlink = false }
         <button
           onClick={handleRetry}
           className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
-          title="Reconnect video"
+          title={tq("reconnectVideo")}
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
@@ -488,7 +489,7 @@ export function VideoFeedCard({ className, onPopOut, droneId, downlink = false }
           <button
             onClick={onPopOut}
             className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
-            title="Pop out video"
+            title={tq("popOutVideo")}
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>

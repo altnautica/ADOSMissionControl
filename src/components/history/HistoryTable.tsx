@@ -3,20 +3,13 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { formatKilometres } from "@/lib/i18n/format";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate, formatDuration } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Cloud, CloudOff, HardDrive } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, Cloud, CloudOff, HardDrive, X } from "lucide-react";
+import { FlightDuration, FlightStatusBadge } from "./FlightStatus";
 
 const PAGE_SIZE = 20;
-
-const statusVariant: Record<string, "success" | "warning" | "error" | "neutral"> = {
-  completed: "success",
-  aborted: "warning",
-  emergency: "error",
-  in_progress: "neutral",
-};
 
 export type SortKey =
   | "date"
@@ -39,6 +32,10 @@ interface HistoryTableProps {
   sortDir: SortDir;
   onSortChange: (key: SortKey) => void;
   compact?: boolean;
+  /** Showing the trash: an empty list reads "Trash is empty". */
+  trashMode?: boolean;
+  /** Clears search and filters; offered when no flight matches them. */
+  onResetFilters?: () => void;
 }
 
 interface SortHeaderProps {
@@ -75,6 +72,8 @@ export function HistoryTable({
   sortDir,
   onSortChange,
   compact = false,
+  trashMode = false,
+  onResetFilters,
 }: HistoryTableProps) {
   const t = useTranslations("history");
   const locale = useLocale();
@@ -124,6 +123,24 @@ export function HistoryTable({
             </tr>
           </thead>
           <tbody>
+            {records.length === 0 && (
+              <tr>
+                <td colSpan={compact ? 6 : 10} className="px-3 py-8 text-center text-text-secondary">
+                  {trashMode ? (
+                    t("trashIsEmpty")
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <span>{t("noFlightsMatch")}</span>
+                      {onResetFilters && (
+                        <Button variant="secondary" size="sm" icon={<X size={14} />} onClick={onResetFilters}>
+                          {t("reset")}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </td>
+              </tr>
+            )}
             {pageRecords.map((rec) => {
               const checked = selectedIds.has(rec.id);
               return (
@@ -145,7 +162,7 @@ export function HistoryTable({
                         const ev = e.nativeEvent as MouseEvent;
                         onToggleSelect(rec.id, ev.shiftKey);
                       }}
-                      aria-label={`Select ${rec.droneName}`}
+                      aria-label={t("selectFlight", { drone: rec.droneName })}
                     />
                   </td>
                   <td className="px-1 py-2 text-center">
@@ -155,7 +172,7 @@ export function HistoryTable({
                     {rec.customName ? (
                       <span className="text-text-primary">{rec.customName}</span>
                     ) : rec.startTimeUnknown ? (
-                      <span className="text-text-tertiary" title="The log carried no clock time">Date unknown</span>
+                      <span className="text-text-tertiary" title={t("dateUnknownHint")}>{t("dateUnknown")}</span>
                     ) : (
                       formatDate(rec.startTime ?? rec.date)
                     )}
@@ -168,7 +185,7 @@ export function HistoryTable({
                           <HardDrive
                             size={10}
                             className="text-text-tertiary"
-                            aria-label="Imported from dataflash log"
+                            aria-label={t("importedFromDataflash")}
                           />
                         )}
                       </span>
@@ -183,7 +200,7 @@ export function HistoryTable({
                     </div>
                   </td>
                   <td className="px-3 py-2 text-text-primary font-mono">
-                    {formatDuration(rec.duration)}
+                    <FlightDuration record={rec} />
                   </td>
                   {!compact && (
                     <>
@@ -194,9 +211,7 @@ export function HistoryTable({
                     </>
                   )}
                   <td className="px-3 py-2">
-                    <Badge variant={statusVariant[rec.status] ?? "neutral"} size="sm">
-                      {rec.status}
-                    </Badge>
+                    <FlightStatusBadge status={rec.status} size="sm" />
                   </td>
                   {!compact && (
                     <td className="px-3 py-2 text-text-primary font-mono">
@@ -204,7 +219,7 @@ export function HistoryTable({
                     </td>
                   )}
                   {!compact && (
-                    <td className="px-1 py-2 text-center" title={rec.cloudSynced ? "Synced to cloud" : "Local only"}>
+                    <td className="px-1 py-2 text-center" title={rec.cloudSynced ? t("syncedToCloud") : t("syncLocalOnly")}>
                       {rec.cloudSynced ? (
                         <Cloud size={11} className="inline text-status-success" />
                       ) : (

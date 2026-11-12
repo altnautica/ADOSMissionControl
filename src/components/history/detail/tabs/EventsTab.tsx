@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,14 +32,15 @@ function fmtOffset(ms: number): string {
 }
 
 export function EventsTab({ record }: EventsTabProps) {
+  const tq = useTranslations("history.eventsTab");
   const reanalysis = useReanalysis(record);
   const events = record.events ?? [];
 
   if (events.length === 0) {
     return (
-      <Card title="Events" padding={true}>
+      <Card title={tq("events")} padding={true}>
         <p className="text-[10px] text-text-tertiary mb-2">
-          No events for this flight.
+          {tq("noEventsForThisFlight")}
         </p>
         {record.recordingId && (
           <Button
@@ -53,7 +55,7 @@ export function EventsTab({ record }: EventsTabProps) {
         )}
         {reanalysis.recordingMissing && (
           <p className="text-[10px] text-text-tertiary mt-2">
-            The telemetry recording for this flight is no longer stored, so it cannot be analyzed.
+            {tq("theTelemetryRecordingForThis")}
           </p>
         )}
       </Card>
@@ -61,7 +63,7 @@ export function EventsTab({ record }: EventsTabProps) {
   }
 
   return (
-    <Card title="Events" padding={true}>
+    <Card title={tq("events")} padding={true}>
       <ul className="flex flex-col divide-y divide-border-default">
         {events
           .slice()

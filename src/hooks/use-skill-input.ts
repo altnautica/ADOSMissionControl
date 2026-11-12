@@ -30,9 +30,10 @@ import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useControlsStore } from "@/stores/controls-store";
 import { activateBound, buildSkillContext } from "@/lib/skills";
-import { canonicalChord } from "@/lib/skills/chord";
+import { canonicalChord, isReservedGamepadButton } from "@/lib/skills/chord";
 import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
 import type { SkillActivateArgs, SkillContext } from "@/lib/skills/types";
+import { cockpitOwnsKeyboard } from "@/hooks/use-cockpit-input";
 
 /** True when the event originates from an editable field — never dispatch. */
 export function isTextTarget(target: EventTarget | null): boolean {
@@ -111,7 +112,7 @@ export function useSkillInput(): void {
     if (!enabled) return;
 
     function handleKey(e: KeyboardEvent): void {
-      if (isTextTarget(e.target)) return;
+      if (isTextTarget(e.target) || !cockpitOwnsKeyboard()) return;
 
       const chord = canonicalChord(e);
       if (!chord) return;
@@ -153,7 +154,9 @@ export function useSkillInput(): void {
         const isDown = buttons[i] ?? false;
         // Off->on edge only: holding a bound button never re-fires the skill,
         // while the bitmask keeps reporting the held state to the FC.
-        if (isDown && !wasDown && loadout) {
+        // A button the controller spec binds belongs to the cockpit; a
+        // binding saved before it was reserved never fires a skill on top.
+        if (isDown && !wasDown && loadout && !isReservedGamepadButton(i)) {
           const slot = loadout.slots.find(
             (s) => s.gamepadButton === i && s.skillId !== null,
           );

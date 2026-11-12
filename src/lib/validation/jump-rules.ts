@@ -13,7 +13,7 @@
  */
 
 import type { PlanVehicleProfile, Waypoint } from "@/lib/types";
-import type { ValidationIssue } from "./mission-validator";
+import type { ValidationIssue } from "./issue-types";
 
 /** DO_JUMPs ArduPilot tracks on most boards; larger boards track 100. */
 export const ARDUPILOT_TRACKED_JUMPS = 15;
@@ -46,6 +46,7 @@ export function jumpIssues(
           severity: "advisory",
           code: "JUMP_TRACKING_LIMIT",
           message: `WP${i + 1}: more than ${ARDUPILOT_TRACKED_JUMPS} DO_JUMPs. Only the first ${ARDUPILOT_TRACKED_JUMPS} jumps are tracked on most boards`,
+          text: { key: "wpMoreThanDOJUMPsOnly", params: { v0: i + 1, v1: ARDUPILOT_TRACKED_JUMPS, v2: ARDUPILOT_TRACKED_JUMPS } },
           ...at,
         });
       }
@@ -56,6 +57,7 @@ export function jumpIssues(
           severity: "blocking",
           code: "INVALID_JUMP_TARGET",
           message: `WP${i + 1}: DO_JUMP has no valid target waypoint`,
+          text: { key: "wpDOJUMPHasNoValid", params: { v0: i + 1 } },
           ...at,
         });
         continue;
@@ -70,6 +72,7 @@ export function jumpIssues(
           severity: "blocking",
           code: "JUMP_FORWARD_UNSUPPORTED",
           message: `WP${i + 1}: DO_JUMP targets WP${targetIndex + 1}, but PX4 only jumps back to an earlier item`,
+          text: { key: "wpDOJUMPTargetsWPBut", params: { v0: i + 1, v1: targetIndex + 1 } },
           ...at,
         });
       }
@@ -79,6 +82,7 @@ export function jumpIssues(
           severity: "blocking",
           code: "JUMP_NEVER_TAKEN",
           message: `WP${i + 1}: DO_JUMP repeat ${repeat}: ArduPilot never takes this jump (only -1 repeats forever)`,
+          text: { key: "wpDOJUMPRepeatArduPilotNever", params: { v0: i + 1, v1: repeat } },
           ...at,
         });
       } else if (repeat < -1 && px4) {
@@ -86,6 +90,7 @@ export function jumpIssues(
           severity: "blocking",
           code: "JUMP_REPEAT_INVALID",
           message: `WP${i + 1}: DO_JUMP repeat ${repeat}: PX4 rejects a negative repeat other than -1`,
+          text: { key: "wpDOJUMPRepeatPX4Rejects", params: { v0: i + 1, v1: repeat } },
           ...at,
         });
       } else if (backwards && repeat < 0) {
@@ -95,6 +100,7 @@ export function jumpIssues(
           severity: "blocking",
           code: "JUMP_LOOP_NO_EXIT",
           message: `WP${i + 1}: DO_JUMP loops back to WP${targetIndex + 1} forever — the mission never reaches a landing`,
+          text: { key: "wpDOJUMPLoopsBackTo", params: { v0: i + 1, v1: targetIndex + 1 } },
           ...at,
         });
       } else if (repeat < 0) {
@@ -102,6 +108,7 @@ export function jumpIssues(
           severity: "advisory",
           code: "JUMP_REPEAT_FOREVER",
           message: `WP${i + 1}: DO_JUMP repeat count is negative — the jump repeats forever`,
+          text: { key: "wpDOJUMPRepeatCountIs", params: { v0: i + 1 } },
           ...at,
         });
       }
@@ -111,6 +118,7 @@ export function jumpIssues(
           severity: "advisory",
           code: "UNREACHABLE_JUMP_TARGET",
           message: `WP${i + 1}: DO_JUMP targets WP${targetIndex + 1}, which sits after the mission ends at WP${firstTerminalIndex + 1}`,
+          text: { key: "wpDOJUMPTargetsWPWhich", params: { v0: i + 1, v1: targetIndex + 1, v2: firstTerminalIndex + 1 } },
           ...at,
         });
       }

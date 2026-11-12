@@ -25,6 +25,7 @@ import { ProgressBar } from "../progress-bar";
 import { Table } from "../table";
 import { Tabs } from "../tabs";
 import { Toggle } from "../toggle";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 describe("Button", () => {
   it("defaults to type=button so it cannot submit a surrounding form", () => {
@@ -33,7 +34,7 @@ describe("Button", () => {
     const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
     renderWithIntl(
       <form onSubmit={onSubmit}>
-        <Button>Save to RAM</Button>
+        <Button><SaveBarLabel k="saveToRam" /></Button>
       </form>,
     );
     const button = screen.getByRole("button", { name: "Save to RAM" });

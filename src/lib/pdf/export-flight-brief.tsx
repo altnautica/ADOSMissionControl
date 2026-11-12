@@ -73,18 +73,11 @@ export function computeBriefStats(
 }
 
 /**
- * Turn a mission name into a filesystem-safe slug for the `.pdf` file name.
- * Lower-cased, non-alphanumeric runs collapsed to single hyphens, edges
- * trimmed, capped, and never empty.
+ * The brief's `.pdf` file name: the plan name, as every other plan export
+ * names its file, with the same "mission" fallback for an unnamed plan.
  */
-export function slugifyMissionName(name: string): string {
-  const slug = (name ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64)
-    .replace(/-+$/g, "");
-  return slug || "flight-brief";
+export function flightBriefFileName(name: string | undefined): string {
+  return `${name?.trim() || "mission"}.pdf`;
 }
 
 /** Build the display-ready waypoint rows for the document table. */
@@ -135,5 +128,5 @@ export async function exportFlightBrief(input: FlightBriefInput): Promise<void> 
     />,
   ).toBlob();
 
-  downloadBlob(blob, `${slugifyMissionName(name)}.pdf`);
+  downloadBlob(blob, flightBriefFileName(name));
 }

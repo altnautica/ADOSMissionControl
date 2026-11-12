@@ -18,7 +18,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
-import { render, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import messages from "../../../../../locales/en.json";
 
@@ -75,6 +75,10 @@ const setStatus =
   vi.fn(async (_args: { installId: string; status: string }) => null);
 const removeInstall = vi.fn(async (_args: { installId: string }) => null);
 const toast = vi.fn();
+const cancelCommand = vi.fn(async (_args: { commandId: string }) => ({ cancelled: true }));
+const lanEnable = vi.fn(async (_id: string) => undefined);
+let armed = false;
+let lanAgent: { agentUrl: string; apiKey: string } | null = null;
 
 // The card builds three mutations; route each to its recorder by the
 // function reference it was constructed with (order-independent across
@@ -89,12 +93,29 @@ vi.mock("convex/react", () => ({
     }
     if (name.includes("setStatus")) return setStatus;
     if (name.includes("removeInstall")) return removeInstall;
+    if (name.includes("cancelCommand")) return cancelCommand;
     return enqueueCommand;
   },
 }));
 
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast }),
+}));
+
+vi.mock("@/hooks/use-armed-lock", () => ({
+  useArmedLock: () => ({ isArmed: armed }),
+}));
+
+vi.mock("@/lib/agent/resolve-agent", () => ({
+  resolveLanAgent: () => lanAgent,
+}));
+
+vi.mock("@/lib/agent/plugin-client", () => ({
+  PluginAgentClient: class {
+    enable = lanEnable;
+    disable = vi.fn(async () => undefined);
+    remove = vi.fn(async () => ({ warning: null }));
+  },
 }));
 
 vi.mock("@/hooks/use-convex-skip-query", () => ({
@@ -136,6 +157,10 @@ describe("DronePluginCard cloud command ACK", () => {
     setStatus.mockClear();
     removeInstall.mockClear();
     toast.mockClear();
+    cancelCommand.mockClear();
+    lanEnable.mockClear();
+    armed = false;
+    lanAgent = null;
     cleanup();
   });
 
@@ -195,9 +220,11 @@ describe("DronePluginCard cloud command ACK", () => {
   });
 
   it("falls back to a generic reason when a failed ACK carries no message", async () => {
-    const { getByText, rerender } = renderCard(makeInstall({ status: "running" }));
+    const { getByText, getByRole, rerender } = renderCard(makeInstall({ status: "running" }));
 
     fireEvent.click(getByText("Disable"));
+    // Disable asks first.
+    fireEvent.click(within(getByRole("alertdialog")).getByText("Disable"));
     await waitFor(() => expect(enqueueCommand).toHaveBeenCalledTimes(1));
     expect(enqueueCommand.mock.calls[0][0]).toMatchObject({
       command: "plugin.disable",
@@ -219,24 +246,88 @@ describe("DronePluginCard cloud command ACK", () => {
     expect(setStatus).not.toHaveBeenCalled();
   });
 
-  it("reports success for an agent-reported row without touching the cloud record", async () => {
+  it("drives a node reachable on the LAN straight from its plugin API", async () => {
+    lanAgent = { agentUrl: "http://drone.local:8080", apiKey: "k" };
     const install = makeInstall({ installId: "agent:com.example.alpha", status: "disabled" });
-    const { getByText, queryByText, rerender } = renderCard(install);
+    const { getByText, queryByText } = renderCard(install);
     // No cloud install record, so no cloud configure page either.
     expect(queryByText("Configure")).toBeNull();
 
     fireEvent.click(getByText("Enable"));
-    await waitFor(() => expect(enqueueCommand).toHaveBeenCalledTimes(1));
-
-    commandRow = { _id: "cmd-1", status: "completed", result: { success: true, message: "ok" } };
-    rerender(
-      <NextIntlClientProvider locale="en" messages={messages}>
-        <DronePluginCard install={install} />
-      </NextIntlClientProvider>,
-    );
-
     await waitFor(() => expect(toast).toHaveBeenCalledWith("Example Alpha enabled", "success"));
+    expect(lanEnable).toHaveBeenCalledWith("com.example.alpha");
+    expect(enqueueCommand).not.toHaveBeenCalled();
     expect(setStatus).not.toHaveBeenCalled();
-    expect(toast).not.toHaveBeenCalledWith(expect.stringContaining("failed"), "error");
+  });
+
+  it("says the drone is unreachable for a node-only row with no LAN reach", async () => {
+    const install = makeInstall({ installId: "lan:com.example.alpha", status: "disabled" });
+    const { getByText } = renderCard(install);
+
+    fireEvent.click(getByText("Enable"));
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        `Enable failed: ${messages.dronePlugins.nodeUnreachable}`,
+        "error",
+      ),
+    );
+    expect(enqueueCommand).not.toHaveBeenCalled();
+  });
+
+  it("relays with a 30 s delivery window", async () => {
+    const { getByText } = renderCard(makeInstall({ status: "disabled" }));
+    fireEvent.click(getByText("Enable"));
+    await waitFor(() => expect(enqueueCommand).toHaveBeenCalledTimes(1));
+    expect(enqueueCommand.mock.calls[0][0]).toMatchObject({ ttlMs: 30_000 });
+  });
+
+  it("asks before disabling, and notes an armed drone", async () => {
+    armed = true;
+    const { getByText, getByRole } = renderCard(makeInstall({ status: "running" }));
+
+    fireEvent.click(getByText("Disable"));
+    const dialog = getByRole("alertdialog");
+    expect(dialog.textContent).toContain(messages.dronePlugins.disableArmedNote);
+    expect(enqueueCommand).not.toHaveBeenCalled();
+  });
+
+  it("says it is waiting for the node, and cancels the untaken command", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      commandRow = { _id: "cmd-1", status: "pending" };
+      const { getByText, findByTestId, queryByTestId } = renderCard(
+        makeInstall({ status: "disabled" }),
+      );
+      fireEvent.click(getByText("Enable"));
+      await waitFor(() => expect(enqueueCommand).toHaveBeenCalledTimes(1));
+      expect(queryByTestId("plugin-command-waiting")).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(3_000);
+      const waiting = await findByTestId("plugin-command-waiting");
+      fireEvent.click(within(waiting).getByText(messages.dronePlugins.cancelCommand));
+      await waitFor(() => expect(cancelCommand).toHaveBeenCalledWith({ commandId: "cmd-1" }));
+      await waitFor(() => expect(queryByTestId("plugin-command-waiting")).toBeNull());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives up once the delivery window closes untaken", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      commandRow = { _id: "cmd-1", status: "pending" };
+      const { getByText } = renderCard(makeInstall({ status: "disabled" }));
+      fireEvent.click(getByText("Enable"));
+      await waitFor(() => expect(enqueueCommand).toHaveBeenCalledTimes(1));
+      await vi.advanceTimersByTimeAsync(30_000);
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith(
+          `Enable failed: ${messages.dronePlugins.notPickedUp}`,
+          "error",
+        ),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

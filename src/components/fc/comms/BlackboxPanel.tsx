@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { Database, Save, HardDrive, Download, Trash2, Loader2 } from "lucide-react";
+import { Database, Download, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   blackboxParamNames, DEVICE_OPTIONS, RATE_PRESETS,
@@ -22,7 +23,11 @@ import {
 import { downloadBlob } from "@/lib/download";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 export function BlackboxPanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.blackboxPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.comms");
@@ -39,7 +44,7 @@ export function BlackboxPanel() {
     refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: blackboxParamNames, panelId: "blackbox", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
@@ -113,16 +118,16 @@ export function BlackboxPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="Blackbox" subtitle="Flight data recording device and logging rate" icon={<Database size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
+        <PanelHeader title={tr("blackbox")} subtitle={tr("flightDataRecordingDeviceAnd")} icon={<Database size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
 
-        <FcSection icon={<Database size={14} />} title="Logging Device">
-          <Select label="Device" options={DEVICE_OPTIONS} value={p("BF_BLACKBOX_DEVICE")} onChange={(v) => set("BF_BLACKBOX_DEVICE", v)} />
+        <FcSection icon={<Database size={14} />} title={tr("loggingDevice")}>
+          <Select label={tr("device")} options={ol(DEVICE_OPTIONS)} value={p("BF_BLACKBOX_DEVICE")} onChange={(v) => set("BF_BLACKBOX_DEVICE", v)} />
         </FcSection>
 
-        <FcSection icon={<Database size={14} />} title="Log Rate" actions={<span className="text-[10px] font-mono text-accent-primary ml-auto">{rateNum}/{rateDenom} = {ratePercentage}% of PID loop</span>}>
+        <FcSection icon={<Database size={14} />} title={tr("logRate")} actions={<span className="text-[10px] font-mono text-accent-primary ml-auto">{rateNum}/{rateDenom} = {ratePercentage}% of PID loop</span>}>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Numerator" type="number" step="1" min="1" max="32" value={p("BF_BLACKBOX_RATE_NUM", "1")} onChange={(e) => set("BF_BLACKBOX_RATE_NUM", e.target.value)} />
-            <Input label="Denominator" type="number" step="1" min="1" max="32" value={p("BF_BLACKBOX_RATE_DENOM", "1")} onChange={(e) => set("BF_BLACKBOX_RATE_DENOM", e.target.value)} />
+            <Input label={tr("numerator")} type="number" step="1" min="1" max="32" value={p("BF_BLACKBOX_RATE_NUM", "1")} onChange={(e) => set("BF_BLACKBOX_RATE_NUM", e.target.value)} />
+            <Input label={tr("denominator")} type="number" step="1" min="1" max="32" value={p("BF_BLACKBOX_RATE_DENOM", "1")} onChange={(e) => set("BF_BLACKBOX_RATE_DENOM", e.target.value)} />
           </div>
           <div className="flex flex-wrap gap-1.5 mt-1">
             {RATE_PRESETS.map((preset) => {
@@ -134,7 +139,7 @@ export function BlackboxPanel() {
 
         {deviceType > 0 && deviceType <= 2 && (
           <FcSection icon={<Database size={14} />} title={deviceType === 1 ? "Flash Storage" : "SD Card Storage"}>
-            {flashLoading && (<div className="flex items-center gap-2 py-4"><Loader2 size={14} className="animate-spin text-accent-primary" /><span className="text-xs text-text-secondary">Reading storage info...</span></div>)}
+            {flashLoading && (<div className="flex items-center gap-2 py-4"><Loader2 size={14} className="animate-spin text-accent-primary" /><span className="text-xs text-text-secondary">{tr("readingStorageInfo")}</span></div>)}
             {!flashLoading && flashInfo && (
               <>
                 <div>
@@ -142,13 +147,13 @@ export function BlackboxPanel() {
                   <div className="h-3 bg-bg-tertiary overflow-hidden"><div className={cn("h-full transition-all", usagePercent > 90 ? "bg-status-error" : usagePercent > 70 ? "bg-status-warning" : "bg-accent-primary")} style={{ width: `${usagePercent}%` }} /></div>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
-                  <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={handleDownload} loading={downloading} disabled={flashInfo.usedSize === 0 || erasing}>Download Logs</Button>
-                  <Button variant="secondary" size="sm" icon={<Trash2 size={12} />} onClick={handleErase} loading={erasing} disabled={flashInfo.usedSize === 0 || downloading}>Erase</Button>
+                  <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={handleDownload} loading={downloading} disabled={flashInfo.usedSize === 0 || erasing}>{tr("downloadLogs")}</Button>
+                  <Button variant="secondary" size="sm" icon={<Trash2 size={12} />} onClick={handleErase} loading={erasing} disabled={flashInfo.usedSize === 0 || downloading}>{tr("erase")}</Button>
                 </div>
                 {downloading && (
                   <div className="mt-2">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] text-text-tertiary">Downloading blackbox log…</span>
+                      <span className="text-[10px] text-text-tertiary">{tr("downloadingBlackboxLog")}</span>
                       <span className="text-[10px] font-mono text-accent-primary">{downloadProgress}%</span>
                     </div>
                     <div className="h-2 bg-bg-tertiary overflow-hidden">
@@ -166,12 +171,16 @@ export function BlackboxPanel() {
           </FcSection>
         )}
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

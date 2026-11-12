@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { Sparkles, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ function requestSignIn() {
 }
 
 export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateProps) {
+  const tk = useTranslations("fcPanels.aiSuggestionsGate");
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const convexAvailable = useConvexAvailable();
@@ -64,7 +66,7 @@ export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateP
         onClick={onRequestAi}
         disabled={!connected}
       >
-        Get AI Suggestions
+        {tk("getAISuggestions")}
       </Button>
     );
   }
@@ -73,7 +75,7 @@ export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateP
   if (isLoading) {
     return (
       <Button variant="primary" size="sm" icon={<Sparkles size={12} />} disabled>
-        Get AI Suggestions
+        {tk("getAISuggestions")}
       </Button>
     );
   }
@@ -88,10 +90,10 @@ export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateP
           icon={<Lock size={12} />}
           onClick={requestSignIn}
         >
-          Sign in for AI Suggestions
+          {tk("signInForAISuggestions")}
         </Button>
         <p className="text-[9px] text-text-tertiary text-center max-w-[280px]">
-          Free account required. AI analysis is rate-limited during beta.
+          {tk("freeAccountRequiredAIAnalysis")}
         </p>
       </div>
     );
@@ -127,7 +129,7 @@ export function AiSuggestionsGate({ onRequestAi, connected }: AiSuggestionsGateP
         onClick={onRequestAi}
         disabled={!connected}
       >
-        Get AI Suggestions
+        {tk("getAISuggestions")}
       </Button>
       {remaining !== null && weeklyLimit !== null && (
         <p className="text-[9px] text-text-tertiary">

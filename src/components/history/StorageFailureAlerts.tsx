@@ -9,24 +9,26 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
 import { onRecordingStorageFailure } from "@/lib/telemetry-recorder";
 import { onAutoSaveFailure } from "@/lib/mission-io";
 
 export function StorageFailureAlerts() {
+  const tk = useTranslations("history.storageFailureAlerts");
   const { toast } = useToast();
   useEffect(() => {
     const offRecording = onRecordingStorageFailure(() => {
-      toast("Flight telemetry could not be saved: storage is full", "error");
+      toast(tk("flightTelemetryCouldNotBe"), "error");
     });
     const offAutoSave = onAutoSaveFailure(() => {
-      toast("The plan could not be autosaved: browser storage is full or blocked. Save or export it.", "warning");
+      toast(tk("thePlanCouldNotBe"), "warning");
     });
     return () => {
       offRecording();
       offAutoSave();
     };
-  }, [toast]);
+  }, [toast, tk]);
   return null;
 }

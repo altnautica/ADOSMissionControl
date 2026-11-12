@@ -153,12 +153,12 @@ export function subscribePluginEvent(
 /**
  * Host-owned event namespaces. Bus events reach an iframe with the topic as
  * the envelope method, so a bus topic in one of these namespaces would read to
- * the plugin as a host push (a token, theme, config or telemetry frame). The
- * handlers refuse to publish them and never deliver them.
+ * the plugin as a host push (a token, theme, config, camera list or telemetry
+ * frame). The handlers refuse to publish them and never deliver them.
  */
 const RESERVED_TOPIC_PREFIXES = [
   "telemetry.", "perception.", "theme.", "capability.", "config.",
-  "lifecycle.", "video.overlay.", "i18n.",
+  "lifecycle.", "video.overlay.", "i18n.", "cameras.",
 ] as const;
 
 export function isReservedEventTopic(topic: string): boolean {
@@ -184,6 +184,20 @@ export function agentStateOrigin(pluginId: string, droneId: string): string {
  */
 export function isAgentStateOrigin(origin: string): boolean {
   return origin.startsWith(AGENT_STATE_ORIGIN_PREFIX);
+}
+
+/**
+ * The payload a plugin's agent-published report goes out with on the bus: the
+ * agent's own payload with the agent's report time (`ts_ms`, as recorded in
+ * the plugin's state sidecar) on it, so the plugin ages the report from when
+ * the drone made it rather than from when it arrived. A non-object payload has
+ * nowhere to carry the time and goes out unchanged.
+ */
+export function agentStatePayload(payload: unknown, tsMs: number): unknown {
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload;
+  }
+  return { ...(payload as Record<string, unknown>), ts_ms: tsMs };
 }
 
 /** Aggregate bus stats. For diagnostics and tests. */

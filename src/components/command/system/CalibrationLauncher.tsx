@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Activity, Compass, RotateCw, Radio, ArrowRight } from "lucide-react";
 
 import { useSettingsStore } from "@/stores/settings-store";
@@ -28,6 +29,7 @@ const CALIBRATION_TILES: { label: string; icon: typeof Activity }[] = [
 ];
 
 export function CalibrationLauncher() {
+  const tk = useTranslations("command.calibrationLauncher");
   const setLastActivePanel = useSettingsStore((s) => s.setLastActivePanel);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
 
@@ -41,7 +43,7 @@ export function CalibrationLauncher() {
   return (
     <div className="border border-border-default rounded-lg p-4 bg-bg-secondary">
       <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-        Sensor Calibration
+        {tk("sensorCalibration")}
       </h4>
       <div className="flex flex-wrap gap-2">
         {CALIBRATION_TILES.map(({ label, icon: Icon }) => (
@@ -58,7 +60,7 @@ export function CalibrationLauncher() {
         ))}
       </div>
       <p className="text-[10px] text-text-tertiary mt-2">
-        Opens the calibration wizards in the Configure tab
+        {tk("opensTheCalibrationWizardsIn")}
       </p>
     </div>
   );

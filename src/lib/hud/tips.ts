@@ -31,8 +31,10 @@ export interface TipsState {
 
 /** What is on screen now. */
 export interface TipsContext {
-  armed: boolean;
-  airborne: boolean;
+  /** Null while unknown: possibly airborne, so no tip shows and a shown tip
+   *  hides without being marked seen. */
+  armed: boolean | null;
+  airborne: boolean | null;
   flightScreen: boolean;
   sheetOrMenuOpen: boolean;
   tourVisible: boolean;

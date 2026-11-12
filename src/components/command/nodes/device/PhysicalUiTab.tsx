@@ -54,6 +54,7 @@ export function demoUi(seed: UiConfig | null, profile: PanelProfile): UiConfig |
 }
 
 export function PhysicalUiTab({ nodeDeviceId, profile }: PhysicalUiTabProps) {
+  const tk = useTranslations("command.physicalUiTab");
   // The transport is this node's own connection, never the ambient one: the
   // focused connection lags the render on a node switch, so reading it would
   // load (and later write) the previously shown node.
@@ -127,7 +128,7 @@ export function PhysicalUiTab({ nodeDeviceId, profile }: PhysicalUiTabProps) {
     const current = writeClient();
     if (!current) return;
     const ok = await forgetBluetooth(current, mac);
-    if (ok) toast("Forgot " + name, "info");
+    if (ok) toast(tk("forgot") + name, "info");
   };
 
   const sendOled = async (update: { brightness?: number }) => {
@@ -190,7 +191,7 @@ export function PhysicalUiTab({ nodeDeviceId, profile }: PhysicalUiTabProps) {
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-medium text-text-primary">{t("oled.title")}</h2>
-          <HintChip>Refreshes once per second</HintChip>
+          <HintChip>{tk("refreshesOncePerSecond")}</HintChip>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -266,7 +267,7 @@ export function PhysicalUiTab({ nodeDeviceId, profile }: PhysicalUiTabProps) {
         </div>
         {pairedDevices.length === 0 ? (
           <div className="py-4 text-center text-sm text-text-secondary">
-            No paired Bluetooth devices.
+            {tk("noPairedBluetoothDevices")}
           </div>
         ) : (
           <ul className="flex flex-col gap-1">

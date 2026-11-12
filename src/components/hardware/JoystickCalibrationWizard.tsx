@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronRight, RotateCcw, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ function AxisBar({ label, raw, calibrated }: { label: string; raw: number; calib
 }
 
 export function JoystickCalibrationWizard({ onClose }: Props) {
+  const tq = useTranslations("hardware.joystickCalibrationWizard");
   const [step, setStep] = useState<Step>("center");
   const padAxes = useInputStore((s) => s.padAxes);
   const setCalibration = useInputStore((s) => s.setCalibration);
@@ -177,7 +179,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
       onClose={onClose}
       // Hardcoded English title: no locale key exists for it, so the literal
       // is passed through unchanged rather than pointing at an invented key.
-      title="Joystick Calibration"
+      title={tq("joystickCalibration")}
       size="sm"
       // A backdrop click mid-sampling would throw away the samples already
       // collected, and the hand-rolled overlay never dismissed on one. Escape
@@ -198,7 +200,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary border border-border-default rounded hover:border-accent-primary hover:text-accent-primary transition-colors focus-ring"
               >
                 <RotateCcw size={12} aria-hidden="true" />
-                Redo
+                {tq("redo")}
               </button>
               <button
                 type="button"
@@ -206,7 +208,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:opacity-90 transition-opacity focus-ring"
               >
                 <Save size={12} aria-hidden="true" />
-                Save Calibration
+                {tq("saveCalibration")}
               </button>
             </>
           )}
@@ -233,7 +235,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
         {step === "center" && (
           <>
             <p className="text-xs text-text-secondary">
-              Release all sticks and leave them centered. Do not touch the controller.
+              {tq("releaseAllSticksAndLeave")}
             </p>
             {sampling && (
               <div className="space-y-2">
@@ -243,7 +245,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-text-tertiary text-center">Sampling center position...</p>
+                <p className="text-[10px] text-text-tertiary text-center">{tq("samplingCenterPosition")}</p>
               </div>
             )}
             <div className="space-y-2">
@@ -257,7 +259,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
         {step === "range" && (
           <>
             <p className="text-xs text-text-secondary">
-              Move all sticks to their full range. Push each stick to all four corners, then return to center.
+              {tq("moveAllSticksToTheir")}
             </p>
             {sampling && (
               <div className="space-y-2">
@@ -267,7 +269,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-text-tertiary text-center">Recording axis range...</p>
+                <p className="text-[10px] text-text-tertiary text-center">{tq("recordingAxisRange")}</p>
               </div>
             )}
             <div className="space-y-2">

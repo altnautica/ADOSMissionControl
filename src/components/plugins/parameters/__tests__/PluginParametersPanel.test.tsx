@@ -55,8 +55,9 @@ vi.mock("@/components/vision/ModelPicker", () => ({
 
 import { PluginParametersPanel } from "../PluginParametersPanel";
 import { resetPluginLocaleCache } from "@/lib/plugins/plugin-locale";
+import enMessages from "../../../../../locales/en.json";
 
-const DEFAULT_NOTE = "Default — not read from drone";
+const DEFAULT_NOTE = enMessages.plugins.parameters.unconfirmedDefault;
 
 function numberParam(): ParsedParameterContribution {
   return {
@@ -82,7 +83,7 @@ function renderPanel(
   locale = "en",
 ) {
   return render(
-    <NextIntlClientProvider locale={locale} messages={{}}>
+    <NextIntlClientProvider locale={locale} messages={enMessages}>
       <PluginParametersPanel
         droneId="drone-1"
         pluginId="com.example.followme"
@@ -209,5 +210,42 @@ describe("PluginParametersPanel — status honesty", () => {
     await waitFor(() => expect(input.value).toBe("8"));
     expect(screen.getByText(DEFAULT_NOTE)).toBeTruthy();
     expect(toastMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PluginParametersPanel — plugin locale words", () => {
+  beforeEach(() => {
+    resetPluginLocaleCache();
+    getLocaleMock.mockReset();
+    reachMock.mockReturnValue({ hostUrl: "http://node.example.com:8080", apiKey: "k", peerDeviceId: null });
+  });
+
+  it("labels controls and enum options from the plugin bundle", async () => {
+    getLocaleMock.mockResolvedValue({
+      "settings.followMode": "Follow mode",
+      "follow_mode.orbit": "Orbit",
+    });
+    renderPanel([
+      {
+        key: "follow_mode",
+        schema: { type: "string", enum: ["follow", "orbit"], default: "orbit" },
+        binding: "plugin.config",
+        ui: { label: "settings.followMode" },
+      },
+    ]);
+    expect(await screen.findByText("Follow mode")).toBeTruthy();
+    expect(screen.queryByText("settings.followMode")).toBeNull();
+    // The selected option shows its bundle word, not the raw value.
+    expect(screen.getAllByText("Orbit").length).toBeGreaterThan(0);
+  });
+
+  it("shows the host notes in the app language, not hard-coded English", () => {
+    reachMock.mockReturnValue(null);
+    render(
+      <NextIntlClientProvider locale="de" messages={{ plugins: { parameters: { unconfirmedDefault: "Standard" } } }}>
+        <PluginParametersPanel droneId="drone-1" pluginId="com.example.followme" parameters={[numberParam()]} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Standard")).toBeTruthy();
   });
 });

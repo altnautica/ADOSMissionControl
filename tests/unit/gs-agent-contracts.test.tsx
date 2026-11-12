@@ -7,7 +7,8 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/intl-wrapper";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
 import { normaliseGroundStationStatus } from "@/lib/api/ground-station/status";

@@ -26,6 +26,7 @@ import type { DroneProtocol } from "@/lib/protocol/types";
 import { datumPatternFor } from "@/lib/planner-mode";
 import { useDrawingComplete } from "./use-drawing-complete";
 import { usePatternApply } from "./use-pattern-apply";
+import { useDescribeUploadFailure } from "@/components/planner/use-describe-upload-failure";
 
 interface ActionsDeps {
   waypoints: Waypoint[];
@@ -156,6 +157,7 @@ export function usePlannerActions(deps: ActionsDeps) {
     toast,
   } = deps;
   const t = useTranslations("planner.toast");
+  const describeUploadFailure = useDescribeUploadFailure();
 
   const handleMapClick = useCallback(
     (lat: number, lon: number) => {
@@ -427,11 +429,12 @@ export function usePlannerActions(deps: ActionsDeps) {
       toast(message, "success");
       return { success: true, message };
     }
-    const reason = useMissionStore.getState().uploadError;
+    const { uploadError, uploadErrorCode } = useMissionStore.getState();
+    const reason = describeUploadFailure(uploadErrorCode, uploadError);
     const message = reason ? t("uploadFailedReason", { reason }) : t("uploadFailed");
     toast(message, "error");
     return { success: false, message };
-  }, [uploadMission, waypoints, defaultAlt, defaultSpeed, toast, t]);
+  }, [uploadMission, waypoints, defaultAlt, defaultSpeed, toast, t, describeUploadFailure]);
 
   const handleDrawingComplete = useDrawingComplete(toast);
   const { handlePatternApply, applyPatternConfirmed } = usePatternApply({

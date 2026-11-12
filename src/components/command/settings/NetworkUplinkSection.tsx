@@ -29,6 +29,7 @@ import type { NetworkStatus } from "@/lib/api/ground-station/types";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
 import { ConfigToggleField } from "./ConfigFields";
 import { HotspotApFields } from "./HotspotApFields";
 import { InfoNote, PollFailureNote, Section } from "./Section";
@@ -56,6 +57,7 @@ export function NetworkUplinkSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const tRisk = useTranslations("hardware.connectionRisk");
   const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
   const agent = useNodeDirectAgent(nodeDeviceId);
@@ -144,12 +146,12 @@ export function NetworkUplinkSection({
         setNet((n) => (n ? { ...n, priority: res.priority } : n));
         toast(t("applied"), "success");
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+        toast(describeAgentError(err, t("applyFailed")), "error");
       } finally {
         setSavingPriority(false);
       }
     },
-    [api, savingPriority, net, toast, t],
+    [api, savingPriority, net, toast, t, describeAgentError],
   );
 
   const onShareToggle = useCallback(
@@ -173,12 +175,12 @@ export function NetworkUplinkSection({
           toast(t("applied"), "success");
         }
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+        toast(describeAgentError(err, t("applyFailed")), "error");
       } finally {
         setSavingShare(false);
       }
     },
-    [api, savingShare, toast, t],
+    [api, savingShare, toast, t, describeAgentError],
   );
 
   if (!isGroundStation) {

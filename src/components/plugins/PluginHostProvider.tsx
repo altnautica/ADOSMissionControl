@@ -13,6 +13,12 @@ export type InlineMountState =
   | { status: "ready"; bundle: InlineBundle }
   | { status: "error"; message: string; retry: () => void };
 
+/** Where an iframe contribution's bundle load stands while its blob is not
+ * ready. Absent once the blob is ready and the iframe mounts. */
+export type FrameLoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string; retry: () => void };
+
 /**
  * One renderable plugin contribution at a specific slot. The host
  * orchestrator hands these to `<PluginSlot>`, which mounts a
@@ -32,6 +38,8 @@ export interface PluginSlotContribution {
   isolation?: GcsIsolation;
   /** The module load behind an `inline` contribution. */
   inline?: InlineMountState;
+  /** The bundle load behind an iframe contribution whose blob is not ready. */
+  frame?: FrameLoadState;
   /** Capability ids the operator has granted for this plugin. */
   grantedCapabilities: ReadonlySet<string>;
   /** Per-method dispatchers wired to host services. */
@@ -109,6 +117,7 @@ export function PluginHostProvider({
         bundleUrl: c.bundleUrl,
         isolation: c.isolation,
         inline: c.inline,
+        frame: c.frame,
         grantedCapabilities: c.grantedCapabilities,
         handlers: c.handlers,
         iframeClassName: c.iframeClassName,

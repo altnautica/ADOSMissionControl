@@ -3,8 +3,8 @@
 /**
  * @module PairingPrompt
  * @description Initial setup state. Spinner while the agent generates a
- * pairing code, plus the sign-in required prompt when Convex is available
- * but the user is signed out.
+ * pairing code or while a deep-link code is being claimed, plus the sign-in
+ * required prompt when Convex is available but the user is signed out.
  * @license GPL-3.0-only
  */
 
@@ -20,8 +20,24 @@ interface SignInProps {
   onSignIn: () => void;
 }
 
-export function PairingPrompt(props: SetupProps | SignInProps) {
+interface ClaimingProps {
+  variant: "claiming";
+  code: string;
+}
+
+export function PairingPrompt(props: SetupProps | SignInProps | ClaimingProps) {
   const t = useTranslations("command");
+
+  if (props.variant === "claiming") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6" role="status">
+        <Loader2 size={24} className="animate-spin text-accent-primary" />
+        <p className="text-xs text-text-secondary">
+          {t("pairing.claiming", { code: props.code })}
+        </p>
+      </div>
+    );
+  }
 
   if (props.variant === "sign-in") {
     return (
@@ -31,7 +47,7 @@ export function PairingPrompt(props: SetupProps | SignInProps) {
         </div>
         <div className="space-y-1 max-w-sm">
           <p className="text-sm font-medium text-text-primary">
-            Cloud relay needs an account
+            {t("cloudRelayNeedsAnAccount")}
           </p>
           <p className="text-xs text-text-tertiary leading-relaxed">
             Generating a cross-network pair code links the node to your
@@ -44,7 +60,7 @@ export function PairingPrompt(props: SetupProps | SignInProps) {
           onClick={props.onSignIn}
           className="px-4 py-1.5 text-xs font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 transition-colors"
         >
-          Sign in
+          {t("signIn")}
         </button>
       </div>
     );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback, useRef } from "react";
 import { Monitor, Eye, Grid3x3 } from "lucide-react";
 import type { OsdElement, VideoFormat } from "./ap-osd-elements";
@@ -32,6 +33,7 @@ export function OsdScreenPreview({
   onLivePreviewChange,
   onElementMove,
 }: OsdScreenPreviewProps) {
+  const tk = useTranslations("fcPanels.osdScreenPreview");
   const GRID_ROWS = FORMAT_ROWS[videoFormat];
   const [dragElement, setDragElement] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -71,14 +73,14 @@ export function OsdScreenPreview({
           className={`flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer ${showGrid ? "text-accent-primary" : "text-text-tertiary"}`}
         >
           <Grid3x3 size={10} />
-          Grid
+          {tk("grid")}
         </button>
         <button
           onClick={() => onLivePreviewChange(!livePreview)}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer ${livePreview ? "text-accent-primary" : "text-text-tertiary"}`}
         >
           <Eye size={10} />
-          Live
+          {tk("live")}
         </button>
       </div>
 
@@ -145,7 +147,7 @@ export function OsdScreenPreview({
       </div>
 
       <p className="text-[10px] text-text-tertiary mt-3">
-        Drag elements to reposition. Click elements in sidebar to toggle visibility.
+        {tk("dragElementsToRepositionClick")}
       </p>
     </div>
   );

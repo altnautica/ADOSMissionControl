@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Gauge, Save, RotateCcw, HardDrive, Move, Zap } from "lucide-react";
+import { Gauge, Move, Zap } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field { param: string; label: string; min: number; max: number; step: number }
 
@@ -51,6 +53,7 @@ const POSITION: Field[] = [
 const ALL_FIELDS = [...SPEED, ...ACCEL, ...POSITION];
 
 export function Px4FlightBehaviorPanel() {
+  const tr = useTranslations("fcPanels.px4FlightBehaviorPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -67,7 +70,7 @@ export function Px4FlightBehaviorPanel() {
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: Field) => {
     const value = params.get(f.param) ?? 0;
@@ -99,7 +102,7 @@ export function Px4FlightBehaviorPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="Flight Behavior" subtitle="PX4 multicopter speed, acceleration, and position control (MPC)"
+        <PanelHeader title={tr("flightBehavior")} subtitle={tr("px4MulticopterSpeedAccelerationAnd")}
           icon={<Gauge size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -109,19 +112,24 @@ export function Px4FlightBehaviorPanel() {
         <div className="border border-border-default bg-bg-secondary">
           <button onClick={() => setShowPos((v) => !v)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
             <Move size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Position & Velocity Controllers</h2>
+            <h2 className="text-sm font-medium text-text-primary">{tr("positionVelocityControllers")}</h2>
             <span className="text-[10px] text-text-tertiary ml-auto">{showPos ? "▾" : "▸"}</span>
           </button>
           {showPos && <div className="px-4 pb-4 space-y-3">{POSITION.map(renderField)}</div>}
         </div>
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

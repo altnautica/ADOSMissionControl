@@ -24,6 +24,7 @@ import type { ModemDetailStatus, ModemView } from "@/lib/api/ground-station/type
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
 import { ApplyTextField } from "./ApplyTextField";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
 import { InfoNote, PollFailureNote, ReadRow, Section } from "./Section";
@@ -62,6 +63,7 @@ export function CellularSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const tRisk = useTranslations("hardware.connectionRisk");
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
   const agent = useNodeDirectAgent(nodeDeviceId);
@@ -152,12 +154,12 @@ export function CellularSection({
         await writeModem({ enabled });
         toast(t("applied"), "success");
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+        toast(describeAgentError(err, t("applyFailed")), "error");
       } finally {
         setTogglePending(false);
       }
     },
-    [togglePending, writeModem, toast, t],
+    [togglePending, writeModem, toast, t, describeAgentError],
   );
 
   const applyText = useCallback(
@@ -166,11 +168,11 @@ export function CellularSection({
         await writeModem(update);
         toast(t("applied"), "success");
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+        toast(describeAgentError(err, t("applyFailed")), "error");
         throw err;
       }
     },
-    [writeModem, toast, t],
+    [writeModem, toast, t, describeAgentError],
   );
 
   // Only a ground station runs a modem manager; the page is not offered

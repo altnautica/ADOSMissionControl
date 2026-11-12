@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Activity } from "lucide-react";
 import { ParamFieldsPanel, type ParamSection } from "../shared/ParamFieldsPanel";
 
@@ -31,11 +32,12 @@ const SECTIONS: ParamSection[] = [
 ];
 
 export function HarmonicNotchPanel() {
+  const tr = useTranslations("fcPanels.harmonicNotchPanel");
   return (
     <ParamFieldsPanel
       panelId="notch"
-      title="Harmonic Notch Filter"
-      subtitle="Dynamic notch filter + in-flight FFT to reject motor-frequency vibration"
+      title={tr("harmonicNotchFilter")}
+      subtitle={tr("dynamicNotchFilterInFlight")}
       icon={<Activity size={16} />}
       sectionIcon={<Activity size={14} />}
       sections={SECTIONS}

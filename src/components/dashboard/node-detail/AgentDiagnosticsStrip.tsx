@@ -14,6 +14,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Cpu } from "lucide-react";
 import {
@@ -57,6 +58,7 @@ function identitySummary(d: AgentDiagnostics): string {
 
 /** The rows and banners for one diagnostics reading. Exported for tests. */
 export function AgentDiagnosticsView({ diagnostics }: { diagnostics: AgentDiagnostics }) {
+  const tq = useTranslations("dashboard.agentDiagnosticsStrip");
   const d = diagnostics;
   const rows: Array<[string, string]> = [
     ["FC system id", identitySummary(d)],
@@ -95,14 +97,14 @@ export function AgentDiagnosticsView({ diagnostics }: { diagnostics: AgentDiagno
       {d.encoderForcedSoftware === true && (
         <span
           className="inline-flex w-fit items-center gap-1 border border-status-warning/40 bg-status-warning/5 px-2 py-0.5 text-[11px] text-status-warning"
-          title="The hardware encoder failed; video is encoded on the CPU"
+          title={tq("theHardwareEncoderFailedVideo")}
         >
           <Cpu size={12} aria-hidden="true" />
-          Software encode
+          {tq("softwareEncode")}
         </span>
       )}
       <details className="text-xs">
-        <summary className="cursor-pointer text-text-tertiary">Agent command path</summary>
+        <summary className="cursor-pointer text-text-tertiary">{tq("agentCommandPath")}</summary>
         <dl className="mt-1 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5">
           {rows.map(([label, value]) => (
             <div key={label} className="contents">

@@ -45,7 +45,7 @@ import type { LayerEngine } from "@/lib/cockpit/layers/engine";
 import { designateTarget } from "@/lib/skills/target-actions";
 import { reticleBox, setReticleSelect, useDesignateReticle } from "@/lib/cockpit/designate-reticle";
 import { DOUBLE_CLICK_MS, focusOrder } from "@/lib/vision/target-interaction";
-import { frameToScreen, type ScreenRect } from "@/lib/vision/target-geometry";
+import { frameToScreen } from "@/lib/vision/target-geometry";
 import { layoutTargets, tagFontPx, type GlyphLayout } from "@/lib/vision/target-layout";
 import type { DrawItem } from "@/lib/vision/target-state";
 import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
@@ -54,22 +54,12 @@ import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import { useVideoStore } from "@/stores/video-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import type { DetectionBox } from "@/stores/vision-detections-store";
-import layoutSpec from "@/lib/cockpit-spec/layout.json";
 
 import { DetectorStateTag } from "@/components/vision/DetectorStateTag";
 import { TargetActionPopup } from "@/components/vision/TargetActionPopup";
+import { TargetHits, type HitLayout } from "./TargetHits";
 
-type HitLayout = GlyphLayout & { hit: ScreenRect };
-
-/** The smallest hit area a target takes (`layout.json` `touch_target.min`). */
-const HIT_MIN = layoutSpec.touch_target.min;
-
-/** A target's hit rect grown about its centre to at least {@link HIT_MIN}. */
-export function padHit(r: ScreenRect): ScreenRect {
-  const w = Math.max(r.w, HIT_MIN);
-  const h = Math.max(r.h, HIT_MIN);
-  return { x: r.x - (w - r.w) / 2, y: r.y - (h - r.h) / 2, w, h };
-}
+export { padHit } from "./TargetHits";
 
 export interface TargetControllerProps {
   droneId: string;
@@ -266,29 +256,7 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
 
   return (
     <>
-      {hits.map((l) => {
-        const hit = padHit(l.hit);
-        return (
-          <button
-            key={l.key}
-            type="button"
-            className="tgt-hit"
-            // Out of the Tab sequence so the chrome comes first; the boxes are
-            // reached with `[` / `]` and opened with Enter.
-            tabIndex={-1}
-            data-target-interactive
-            data-kind={l.kind}
-            data-key={l.key}
-            aria-label={l.item.topTag?.text ?? l.item.detection?.classLabel ?? l.kind}
-            style={{ left: hit.x, top: hit.y, width: hit.w, height: hit.h }}
-            onClick={(e) => onHitClick(e, l.item)}
-            onPointerEnter={() => setHoverKey(l.key)}
-            onPointerLeave={() => setHoverKey(null)}
-            onFocus={() => setHoverKey(l.key)}
-            onBlur={() => setHoverKey(null)}
-          />
-        );
-      })}
+      <TargetHits hits={hits} onHitClick={onHitClick} onHover={setHoverKey} />
       {selection && (
         <div
           className="tgt-select"

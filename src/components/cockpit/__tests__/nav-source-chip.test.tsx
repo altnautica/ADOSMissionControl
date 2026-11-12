@@ -121,6 +121,7 @@ describe("NavSourceChip", () => {
       obstacleRateHz: null,
       minObstacleM: null,
       gpsFix: null,
+      poseAgeMs: null,
     });
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
     renderChip();
@@ -175,6 +176,7 @@ describe("NavSourceChip", () => {
       obstacleRateHz: null,
       minObstacleM: null,
       gpsFix: null,
+      poseAgeMs: null,
     });
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
     renderChip();

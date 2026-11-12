@@ -11,6 +11,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { Lightbulb, Upload } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -30,6 +31,7 @@ const FUNCTION_OPTIONS = BF_LED_FUNCTIONS.map((label, i) => ({ value: String(i),
 const COLOR_OPTIONS = Array.from({ length: BF_LED_COLOR_COUNT }, (_, i) => ({ value: String(i), label: `Color ${i}` }));
 
 export function BfLedStripPanel() {
+  const tr = useTranslations("fcPanels.bfLedStripPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
@@ -131,8 +133,8 @@ export function BfLedStripPanel() {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <PanelHeader
-        title="LED Strip"
-        subtitle="Betaflight per-LED position, color, function, and effects"
+        title={tr("ledStrip")}
+        subtitle={tr("betaflightPerLEDPositionColor")}
         icon={<Lightbulb size={16} />}
         loading={loading}
         loadProgress={null}
@@ -148,13 +150,13 @@ export function BfLedStripPanel() {
             title={isArmed ? lockMessage : undefined}
             onClick={write}
           >
-            Write to FC
+            {tr("writeToFC")}
           </Button>
         )}
       </PanelHeader>
 
-      {dirty && <p className="text-[10px] font-mono text-status-warning py-1">Unsaved changes : use Write to FC to apply.</p>}
-      {hasLoaded && leds.length === 0 && <p className="text-xs text-text-tertiary py-4">No LEDs configured on this strip.</p>}
+      {dirty && <p className="text-[10px] font-mono text-status-warning py-1">{tr("unsavedChangesUseWriteTo")}</p>}
+      {hasLoaded && leds.length === 0 && <p className="text-xs text-text-tertiary py-4">{tr("noLEDsConfiguredOnThis")}</p>}
 
       {hasLoaded && (
         <div className="space-y-2 mt-2">
@@ -193,8 +195,8 @@ export function BfLedStripPanel() {
 
       {hasLoaded && colors.length > 0 && (
         <div className="mt-6 space-y-2">
-          <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Colour Palette</h3>
-          <p className="text-[10px] text-text-tertiary">The 16 HSV colours the per-LED &ldquo;Color N&rdquo; indices reference.</p>
+          <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tr("colourPalette")}</h3>
+          <p className="text-[10px] text-text-tertiary">{tr("the16HSVColoursThe")}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-3xl">
             {colors.map((c, idx) => (
               <div key={idx} className="border border-border-default p-2 flex items-center gap-2">

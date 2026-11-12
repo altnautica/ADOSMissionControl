@@ -39,6 +39,7 @@ export function FirmwareBackupRestore({
   onMessage,
   onParamBackupChecked,
 }: FirmwareBackupRestoreProps) {
+  const tk = useTranslations("fcPanels.firmwareBackupRestore");
   const { toast } = useToast();
   const t = useTranslations("fcToasts.firmware");
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
@@ -107,7 +108,7 @@ export function FirmwareBackupRestore({
         className="flex items-center gap-2 px-4 py-2 text-xs border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
       >
         <Download size={14} />
-        Backup Parameters
+        {tk("backupParameters")}
       </button>
 
       <button
@@ -117,7 +118,7 @@ export function FirmwareBackupRestore({
         className="flex items-center gap-2 px-4 py-2 text-xs border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
       >
         <Upload size={14} />
-        Restore Parameters
+        {tk("restoreParameters")}
       </button>
 
       <ParamRestoreDialog

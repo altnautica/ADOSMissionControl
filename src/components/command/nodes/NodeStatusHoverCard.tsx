@@ -92,8 +92,8 @@ function HostMetrics({
   const t = useTranslations("telemetryStrip");
   return (
     <div className="grid grid-cols-3 gap-1.5">
-      <Metric label={t("cpu")} value={fmtPct(cpu)} />
-      <Metric label={t("mem")} value={fmtPct(mem)} />
+      <Metric label="CPU" value={fmtPct(cpu)} />
+      <Metric label="MEM" value={fmtPct(mem)} />
       <Metric label={t("temp")} value={temp != null ? `${Math.round(temp)}°` : "—"} />
     </div>
   );
@@ -251,6 +251,7 @@ function DroneBody({
   running: number;
   total: number;
 }) {
+  const tq = useTranslations("command.nodeStatusHoverCard");
   const link = fcLinkState({
     fcConnected: node.fcConnected,
     fcVariant: node.fcVariant,
@@ -280,7 +281,7 @@ function DroneBody({
     <>
       {node.reachedVia && <RelayReachSection node={node} status={status} />}
       <section className="space-y-1">
-        <SectionLabel>Flight controller</SectionLabel>
+        <SectionLabel>{tq("flightController")}</SectionLabel>
         <p className="flex items-center gap-1.5 text-[11px] text-text-primary">
           <StatusDot status={link.level} size="xs" /> {link.label}
         </p>
@@ -298,7 +299,7 @@ function DroneBody({
       {hasCompanion ? (
         <section className="space-y-2 border-t border-border-default pt-2">
           <div>
-            <SectionLabel>Onboard computer</SectionLabel>
+            <SectionLabel>{tq("onboardComputer")}</SectionLabel>
             <p className="text-[10px] text-text-tertiary">
               {node.board ?? "Companion"}
               {node.tier != null ? ` · Tier ${node.tier}` : ""}
@@ -349,6 +350,7 @@ function GroundStationBody({
   total: number;
   hasHostMetrics: boolean;
 }) {
+  const tq = useTranslations("command.nodeStatusHoverCard");
   const t = useTranslations("nodeConsole");
   const roleLabel = t(`role.${groundRoleKey(node.role)}`);
   const peer = status?.peerDeviceId;
@@ -360,7 +362,7 @@ function GroundStationBody({
   return (
     <section className="space-y-2">
       <div>
-        <SectionLabel>Ground station</SectionLabel>
+        <SectionLabel>{tq("groundStation")}</SectionLabel>
         <p className="text-[11px] text-text-primary">
           {roleLabel}
           {node.board ? ` · ${node.board}` : ""}

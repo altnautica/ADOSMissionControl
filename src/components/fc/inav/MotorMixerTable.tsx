@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMixerStore } from "@/stores/mixer-store";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
@@ -22,6 +23,7 @@ interface MotorMixerTableProps {
 }
 
 export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) {
+  const tl = useTranslations("fcPanels.motorMixerTable");
   const motorRules = useMixerStore((s) => s.motorRules);
   const motorSlots = useMixerStore((s) => s.motorSlots);
   const setMotorRule = useMixerStore((s) => s.setMotorRule);
@@ -39,10 +41,10 @@ export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) 
             <thead>
               <tr className="text-text-tertiary border-b border-border-default">
                 <th className="text-left py-1 pr-2">#</th>
-                <th className="text-left py-1 pr-2">Throttle</th>
-                <th className="text-left py-1 pr-2">Roll</th>
-                <th className="text-left py-1 pr-2">Pitch</th>
-                <th className="text-left py-1 pr-2">Yaw</th>
+                <th className="text-left py-1 pr-2">{tl("throttle")}</th>
+                <th className="text-left py-1 pr-2">{tl("roll")}</th>
+                <th className="text-left py-1 pr-2">{tl("pitch")}</th>
+                <th className="text-left py-1 pr-2">{tl("yaw")}</th>
                 <th className="py-1" />
               </tr>
             </thead>
@@ -97,7 +99,7 @@ export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) 
           title={isArmed ? lockMessage : undefined}
           onClick={() => addMotorRule({ throttle: 1, roll: 0, pitch: 0, yaw: 0 })}
         >
-          Add motor rule
+          {tl("addMotorRule")}
         </Button>
       )}
     </div>

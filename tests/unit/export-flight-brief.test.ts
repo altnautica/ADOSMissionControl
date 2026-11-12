@@ -1,8 +1,8 @@
 /**
  * @module export-flight-brief.test
  * @description Tests for the pure parts of the flight-brief PDF export: the
- * plan-statistics derivation (`computeBriefStats`), the file-name slug
- * (`slugifyMissionName`), and the waypoint-row builder (`buildBriefRows`). The
+ * plan-statistics derivation (`computeBriefStats`), the file name
+ * (`flightBriefFileName`), and the waypoint-row builder (`buildBriefRows`). The
  * actual `pdf().toBlob()` render needs a DOM/worker and is exercised in the app,
  * not here.
  * @license GPL-3.0-only
@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeBriefStats,
-  slugifyMissionName,
+  flightBriefFileName,
   buildBriefRows,
   DEFAULT_CRUISE_SPEED_MPS,
 } from "@/lib/pdf/export-flight-brief";
@@ -111,29 +111,17 @@ describe("computeBriefStats", () => {
   });
 });
 
-describe("slugifyMissionName", () => {
-  it("lower-cases and hyphenates", () => {
-    expect(slugifyMissionName("Perimeter Sweep")).toBe("perimeter-sweep");
+describe("flightBriefFileName", () => {
+  it("uses the plan name, as the other plan exports do", () => {
+    expect(flightBriefFileName("Matterhorn SAR — Three-Pattern Search")).toBe(
+      "Matterhorn SAR — Three-Pattern Search.pdf",
+    );
   });
 
-  it("collapses runs of non-alphanumeric characters to single hyphens", () => {
-    expect(slugifyMissionName("Field  A / North_West!!")).toBe("field-a-north-west");
-  });
-
-  it("trims leading and trailing separators", () => {
-    expect(slugifyMissionName("  --Survey--  ")).toBe("survey");
-  });
-
-  it("falls back to a stable default for empty or symbol-only names", () => {
-    expect(slugifyMissionName("")).toBe("flight-brief");
-    expect(slugifyMissionName("///")).toBe("flight-brief");
-    expect(slugifyMissionName("   ")).toBe("flight-brief");
-  });
-
-  it("caps very long names and leaves no trailing hyphen", () => {
-    const slug = slugifyMissionName("x".repeat(200));
-    expect(slug.length).toBeLessThanOrEqual(64);
-    expect(slug.endsWith("-")).toBe(false);
+  it("falls back to the other exports' default for an unnamed plan", () => {
+    expect(flightBriefFileName("")).toBe("mission.pdf");
+    expect(flightBriefFileName("   ")).toBe("mission.pdf");
+    expect(flightBriefFileName(undefined)).toBe("mission.pdf");
   });
 });
 

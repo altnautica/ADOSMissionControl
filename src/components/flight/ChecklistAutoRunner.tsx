@@ -41,7 +41,7 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { useNavSource } from "@/hooks/use-nav-source";
 import { shortPadName } from "@/lib/input/pad-status";
-import { batteryLowPct, batteryReading } from "@/lib/hud/battery";
+import { preflightChecks } from "@/lib/hud/preflight";
 import { decodeSensorHealth } from "@/lib/sensor-health";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { fcPrearmTexts, preflightItems } from "@/lib/cockpit/preflight";
@@ -158,6 +158,21 @@ export function ChecklistAutoRunner(): null {
     const prearmBit = sysStatus ? decodeSensorHealth(sysStatus).find((s) => s.name === "pre_arm_check") : undefined;
     const fcBattery = freshOnly(battery, now);
     const live = pilotChecklistView(pilot, receivedAt, now);
+    const linkLive = lastHeartbeat > 0 && isSkillLinkFresh(lastHeartbeat, now);
+    const gps = freshOnly(gpsBuf.latest(), now);
+    const ekf = freshOnly(ekfBuf.latest(), now);
+    // HOME_POSITION is latched: sent on connect, arm and set-home only.
+    const home = useTelemetryStore.getState().homePosition.latest();
+    const checks = preflightChecks({
+      telemetry: {
+        battery: fcBattery ? { remaining: fcBattery.remaining, voltage: fcBattery.voltage } : null,
+        gps: gps ? { fix_type: gps.fixType } : null,
+        home: home ? { lat_e7: Math.round(home.lat * 1e7), lon_e7: Math.round(home.lon * 1e7) } : null,
+        ekf: ekf ? { flags: ekf.flags } : null,
+      },
+      battery: null,
+      live: linkLive,
+    });
     setPreflightItems(
       droneId,
       preflightItems({
@@ -167,10 +182,9 @@ export function ChecklistAutoRunner(): null {
           sysStatusPrearmOk: prearmBit?.present ? prearmBit.healthy : null,
           directLines: prearmLines ?? [],
         }),
-        live: lastHeartbeat > 0 && isSkillLinkFresh(lastHeartbeat, now),
+        checks,
+        live: linkLive,
         nav,
-        battery: batteryReading(null, fcBattery ? { battery: { remaining: fcBattery.remaining, voltage: fcBattery.voltage } } : null),
-        batteryLowPct: batteryLowPct(null),
         controlMode: live?.controlMode ?? null,
         controller: { connected: padUsable, name: shortPadName(padName) },
         onScreenSticks: sticksShown,
@@ -178,7 +192,7 @@ export function ChecklistAutoRunner(): null {
       }),
     );
   }, [
-    droneId, sessionDroneId, sessionId, setPreflightItems, version, tick, battery, sysStatusBuf,
+    droneId, sessionDroneId, sessionId, setPreflightItems, version, tick, battery, sysStatusBuf, gpsBuf, ekfBuf,
     pilot, receivedAt, prearmLines, lastHeartbeat, nav, padUsable, padName, sticksShown, diskPercent,
   ]);
 

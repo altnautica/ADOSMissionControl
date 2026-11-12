@@ -13,6 +13,7 @@ import { useAgentConnectionStore } from "@/stores/agent-connection";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useFreshness } from "@/lib/agent/freshness";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
@@ -82,10 +83,12 @@ type RestartTarget = { kind: "one"; name: string } | { kind: "all" };
 const ALL_KEY = "*";
 
 export function ServiceTable({ services, onRestart, onRestartAll }: ServiceTableProps) {
+  const tk = useTranslations("command.serviceTable");
   const t = useTranslations("agent");
   const agentDependencies = useVideoStore((s) => s.agentDependencies);
   const freshness = useFreshness();
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const vehicleArmed = useNodeRegistryStore((s) =>
     nodeDeviceId ? s.nodes[nodeIdForDevice(nodeDeviceId)]?.fc.armState === "armed" : false,
@@ -112,7 +115,7 @@ export function ServiceTable({ services, onRestart, onRestartAll }: ServiceTable
           if (message) toast(message, "success");
           else toast(t("restartQueued", { name: key }), "info");
         },
-        (err: unknown) => toast(err instanceof Error ? err.message : String(err), "error"),
+        (err: unknown) => toast(describeAgentError(err, tk("restartFailed", { name: key })), "error"),
       )
       .finally(() =>
         setInFlight((s) => {
@@ -185,7 +188,7 @@ export function ServiceTable({ services, onRestart, onRestartAll }: ServiceTable
                   : "bg-status-warning/15 text-status-warning"
               )}
             >
-              Data stale
+              {tk("dataStale")}
             </span>
           )}
         </div>
@@ -216,9 +219,9 @@ export function ServiceTable({ services, onRestart, onRestartAll }: ServiceTable
               <th className="text-left py-1.5 pr-3 font-medium">{t("serviceStatus")}</th>
               {hasRealPids && (
                 <>
-                  <th className="text-right py-1.5 pr-3 font-medium">{t("servicePid")}</th>
-                  <th className="text-right py-1.5 pr-3 font-medium">{t("serviceCpu")}</th>
-                  <th className="text-right py-1.5 pr-3 font-medium">{t("serviceRam")}</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">PID</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">CPU %</th>
+                  <th className="text-right py-1.5 pr-3 font-medium">RAM (MB)</th>
                 </>
               )}
               <th className="text-right py-1.5 pr-3 font-medium">{t("serviceUptime")}</th>

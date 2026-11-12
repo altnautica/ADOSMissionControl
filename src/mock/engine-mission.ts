@@ -131,6 +131,9 @@ export function openDemoDroneMissionPlan(droneId: string): void {
   }));
   // Undo must not step back into the plan that was open before.
   clearHistory();
+  // Frame the route, as the real download does: the map may still sit on the
+  // previous plan's site, where a click would add a waypoint far from it.
+  usePlannerStore.getState().requestFit();
 }
 
 /**

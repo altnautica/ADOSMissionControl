@@ -11,6 +11,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { Sliders, Upload, Save, RotateCcw } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -22,8 +23,10 @@ import { loadBfSettingsMetadata } from "@/lib/protocol/param-metadata/bf-setting
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import type { CliSetting } from "@/lib/protocol/types";
 import { BfSettingsTable } from "./BfSettingsTable";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 export function BfSettingsPanel() {
+  const tr = useTranslations("fcPanels.bfSettingsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
@@ -99,8 +102,8 @@ export function BfSettingsPanel() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6">
       <PanelHeader
-        title="All Settings"
-        subtitle="Every Betaflight setting, read and written over the CLI"
+        title={tr("allSettings")}
+        subtitle={tr("everyBetaflightSettingReadAnd")}
         icon={<Sliders size={16} />}
         loading={loading}
         loadProgress={null}
@@ -111,14 +114,14 @@ export function BfSettingsPanel() {
       >
         {hasLoaded && (
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" icon={<RotateCcw size={12} />} disabled={!dirty || loading} onClick={revert}>Revert</Button>
+            <Button variant="secondary" size="sm" icon={<RotateCcw size={12} />} disabled={!dirty || loading} onClick={revert}><SaveBarLabel k="revert" /></Button>
             <Button
               variant="secondary" size="sm" icon={<Upload size={12} />} loading={loading}
               disabled={!connected || !dirty || loading || isArmed}
               title={isArmed ? lockMessage : "Apply to RAM (not saved to flash)"}
               onClick={() => write(false)}
             >
-              Apply
+              {tr("apply")}
             </Button>
             <Button
               variant="primary" size="sm" icon={<Save size={12} />} loading={loading}
@@ -126,7 +129,7 @@ export function BfSettingsPanel() {
               title={isArmed ? lockMessage : "Save to flash (no reboot)"}
               onClick={() => write(true)}
             >
-              Save
+              {tr("save")}
             </Button>
           </div>
         )}
@@ -142,14 +145,14 @@ export function BfSettingsPanel() {
         <div className="flex items-center gap-3 py-2">
           <input
             type="text"
-            placeholder="Search settings..."
+            placeholder={tr("searchSettings")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="flex-1 bg-bg-tertiary border border-border-default px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
           />
           <label className="flex items-center gap-1.5 text-[11px] text-text-secondary whitespace-nowrap cursor-pointer">
             <input type="checkbox" checked={showModifiedOnly} onChange={(e) => setShowModifiedOnly(e.target.checked)} />
-            Modified only
+            {tr("modifiedOnly")}
           </label>
           <span className="text-[10px] text-text-tertiary font-mono whitespace-nowrap">{settings.length} settings</span>
         </div>

@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 
@@ -114,11 +115,12 @@ export function Row({
  * on every video surface whether anyone is reading it or not.
  */
 export function MeasuredHops() {
+  const tq = useTranslations("command.latency-breakdown-parts");
   const { budget, jitterTargetMs } = useVideoLatencyBudget();
 
   if (!budget.hops) {
     return (
-      <Section title="Per-hop (measured)" subtitle="receive path">
+      <Section title={tq("perHopMeasured")} subtitle={tq("receivePath")}>
         <Note>
           Not measured — this needs `requestVideoFrameCallback` with WebRTC
           capture timestamps. Absent on a non-WebRTC source, and on a browser
@@ -134,50 +136,50 @@ export function MeasuredHops() {
 
   return (
     <Section
-      title="Per-hop (measured)"
+      title={tq("perHopMeasured")}
       subtitle={`P50 / P95 over ${budget.samples} frames`}
     >
       <Row
-        label="Capture → receive"
+        label={tq("captureReceive")}
         value={span(hops.captureToReceive)}
         badge={hops.captureToReceive.provenance}
-        tooltip="Encode plus network, from rVFC captureTime to receiveTime. captureTime for a remote source is the user agent's estimate from RTCP sender reports plus clock synchronisation, so it is real but only as good as that sync — and unusable for the first second of a session. Reference for a healthy LAN with a hardware-encoded publisher: about 180 ms P50 / 240 ms P95 end to end. That is a reference, not a measurement of this link."
+        tooltip={tq("encodePlusNetworkFromRVFC")}
       />
       <Row
-        label="Receive → present"
+        label={tq("receivePresent")}
         value={span(hops.receiveToPresent)}
         badge={hops.receiveToPresent.provenance}
-        tooltip="Jitter buffer plus decode plus composite. Both endpoints are timestamps the user agent reports directly on the performance.now() clock."
+        tooltip={tq("jitterBufferPlusDecodePlus")}
       />
       <Row
-        label="· decode"
+        label={tq("decode")}
         value={span(hops.decode)}
         badge={hops.decode.provenance}
-        tooltip="rVFC processingDuration: the summed decode time for the frame, reported by the decoder."
+        tooltip={tq("rvfcProcessingDurationTheSummedDecode")}
       />
       <Row
-        label="· buffer + composite"
+        label={tq("bufferComposite")}
         value={span(hops.bufferAndComposite)}
         badge={hops.bufferAndComposite.provenance}
-        tooltip="Receive-to-present minus decode. A subtraction of the two rows above, not an observation — nothing reports this hop directly."
+        tooltip={tq("receiveToPresentMinusDecode")}
       />
       <Row
-        label="Present → display"
+        label={tq("presentDisplay")}
         value={span(hops.presentToDisplay)}
         badge={hops.presentToDisplay.provenance}
-        tooltip="The v-sync tax, from presentationTime to expectedDisplayTime. expectedDisplayTime is the user agent's PREDICTION of when the frame becomes visible, not a report that it did."
+        tooltip={tq("theVSyncTaxFrom")}
       />
       <Row
-        label="End to end"
+        label={tq("endToEnd")}
         value={span(hops.endToEnd)}
         badge={hops.endToEnd.provenance}
-        tooltip="Capture to presented frame. Anchored on captureTime, so it carries the same RTCP-synchronisation caveat as the first hop. This is the honest end-to-end figure the receive path achieves; it is not the same quantity as round-trip time, which contains no capture or encode leg at all."
+        tooltip={tq("captureToPresentedFrameAnchored")}
       />
       <Row
-        label="Buffer target"
+        label={tq("bufferTarget")}
         value={`${jitterTargetMs} ms`}
         badge="live"
-        tooltip="What the control loop currently asks the receiver's jitter buffer for, chosen from measured freezes, RTP jitter and loss with a 2 s minimum dwell. It replaced a hardcoded 50 ms that no measurement produced. Zero means either the loop found no reason to add buffer, or this browser implements neither receiver knob — with frames arriving and a non-trivial buffer+composite hop above, it is the browser's own depth and nothing here set it."
+        tooltip={tq("whatTheControlLoopCurrently")}
       />
       <Note>
         Not measurable from a browser:{" "}

@@ -65,6 +65,7 @@ export function WifiSection({
   onScan,
   onLeave,
 }: Props) {
+  const tk = useTranslations("hardware.wifiSection");
   const t = useTranslations("hardware.connectionRisk");
   const tNet = useTranslations("nodeSettings");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -76,7 +77,7 @@ export function WifiSection({
       {/* AP card (live) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-text-primary">Access Point</h2>
+          <h2 className="text-lg font-medium text-text-primary">{tk("accessPoint")}</h2>
           <span className="text-xs text-text-secondary">
             Clients: {clients == null ? EMPTY : String(clients)}
           </span>
@@ -99,7 +100,7 @@ export function WifiSection({
 
             <div className="flex flex-col gap-1">
               <label htmlFor="ap-pass" className="text-xs text-text-secondary">
-                Passphrase
+                {tk("passphrase")}
               </label>
               <div className="flex items-stretch gap-2">
                 <input
@@ -107,7 +108,7 @@ export function WifiSection({
                   type={form.revealPass ? "text" : "password"}
                   value={form.passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  placeholder="8+ characters"
+                  placeholder={tk("n8Characters")}
                   spellCheck={false}
                   autoComplete="off"
                   className="flex-1 h-8 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
@@ -124,7 +125,7 @@ export function WifiSection({
 
             <div className="flex flex-col gap-1">
               <Select
-                label="Channel"
+                label={tk("channel")}
                 value={String(form.channel)}
                 onChange={(v) => setChannel(Number(v))}
                 options={CHANNEL_OPTIONS.map((ch) => ({
@@ -157,7 +158,7 @@ export function WifiSection({
                 disabled={!form.dirty || ssidBad || passProblem !== null}
                 loading={form.saving}
               >
-                Save
+                {tk("save")}
               </Button>
             </div>
           </div>
@@ -180,26 +181,26 @@ export function WifiSection({
       {/* WiFi Client card (live) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-text-primary">WiFi Client</h2>
+          <h2 className="text-lg font-medium text-text-primary">{tk("wifiClient")}</h2>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onScan}>
-              Scan networks
+              {tk("scanNetworks")}
             </Button>
             {wifiClient?.connected ? (
               <Button variant="ghost" size="sm" onClick={onLeave}>
-                Leave
+                {tk("leave")}
               </Button>
             ) : null}
           </div>
         </div>
 
         {!wifiClient?.available ? (
-          <div className="text-sm text-text-secondary">WiFi client not available on this hardware.</div>
+          <div className="text-sm text-text-secondary">{tk("wifiClientNotAvailableOn")}</div>
         ) : wifiClient?.connected ? (
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             <StatRow label="SSID" value={wifiClient.ssid ?? EMPTY} />
             <StatRow
-              label="Signal"
+              label={tk("signal")}
               value={
                 wifiClient.signal != null
                   ? wifiClient.signal + " dBm"
@@ -209,10 +210,10 @@ export function WifiSection({
               }
             />
             <StatRow label="IP" value={wifiClient.ip ?? EMPTY} />
-            <StatRow label="Gateway" value={wifiClient.gateway ?? EMPTY} />
+            <StatRow label={tk("gateway")} value={wifiClient.gateway ?? EMPTY} />
           </dl>
         ) : (
-          <div className="text-sm text-text-secondary">Not connected to any network.</div>
+          <div className="text-sm text-text-secondary">{tk("notConnectedToAnyNetwork")}</div>
         )}
       </section>
     </>

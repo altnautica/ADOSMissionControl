@@ -27,6 +27,7 @@ const COMMON_COMMANDS = [
 // ── Component ────────────────────────────────────────────────
 
 export function MavlinkShellPanel() {
+  const tr = useTranslations("fcPanels.mavlinkShellPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   // Subscribed so the panel re-renders when the selected drone or its link changes.
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -143,17 +144,17 @@ export function MavlinkShellPanel() {
         <div className="flex items-center gap-2">
           <Terminal size={16} className="text-accent-primary" />
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-status-success' : linkUp ? 'bg-status-warning' : 'bg-status-error'}`} />
-          <h2 className="text-sm font-medium text-text-primary">MAVLink Shell</h2>
-          <span className="text-[10px] text-text-tertiary">PX4 NuttX Console</span>
+          <h2 className="text-sm font-medium text-text-primary">{tr("mavlinkShell")}</h2>
+          <span className="text-[10px] text-text-tertiary">{tr("px4NuttXConsole")}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="ghost" onClick={copyOutput} title="Copy output">
+          <Button size="sm" variant="ghost" onClick={copyOutput} title={tr("copyOutput")}>
             <Copy size={14} />
           </Button>
-          <Button size="sm" variant="ghost" onClick={downloadOutput} title="Download output">
+          <Button size="sm" variant="ghost" onClick={downloadOutput} title={tr("downloadOutput")}>
             <Download size={14} />
           </Button>
-          <Button size="sm" variant="ghost" onClick={clearTerminal} title="Clear terminal">
+          <Button size="sm" variant="ghost" onClick={clearTerminal} title={tr("clearTerminal")}>
             <Trash2 size={14} />
           </Button>
         </div>
@@ -204,7 +205,7 @@ export function MavlinkShellPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Enter NuttX command..."
+          placeholder={tr("enterNuttXCommand")}
           className="flex-1 bg-transparent text-xs text-text-primary font-mono outline-none placeholder:text-text-tertiary"
           autoFocus
         />

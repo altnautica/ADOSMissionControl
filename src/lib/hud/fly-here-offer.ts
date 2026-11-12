@@ -9,6 +9,10 @@
 //
 // FC route: otherwise, a flight controller in GUIDED, armed and flying takes
 // a reposition straight from the surface.
+//
+// Neither: `reason` says why, worded by `refusal.<reason>`, so a long-press
+// on the map can say it in a toast instead of opening a dialog. An unknown
+// arm state (the pilot has no FC link) is possibly airborne: never `landed`.
 
 import type { PilotState } from "./cockpit-frames";
 import { CHIP_STALE_AFTER_MS } from "./flight-state";
@@ -25,26 +29,33 @@ export interface FlyHereFc {
   landed: boolean;
 }
 
+export type FlyHereReason = "failsafe" | "landed" | "pilot_stale" | "control_mode" | "not_guided";
+
 export interface FlyHereOffer {
   /** `pilot`: send the pilot's `goto`; `fc`: reposition the FC in GUIDED;
    *  null: no "Fly here" now. */
   route: "pilot" | "fc" | null;
+  /** Why not, when `route` is null and a reason is known. */
+  reason?: FlyHereReason;
 }
 
 /** Whether "Fly here" is offered now, from a pilot state `pilotAgeMs` old
- *  and the flight controller's own state. */
+ *  and the flight controller's own state, and why not. */
 export function flyHereOffered(p: PilotState | null, pilotAgeMs: number, fc?: FlyHereFc | null): FlyHereOffer {
-  if (
-    p !== null &&
-    pilotAgeMs < CHIP_STALE_AFTER_MS &&
-    p.controlMode === "ados" &&
-    gotoAdvertised(p) &&
-    p.armed &&
-    !p.landed &&
-    !p.fcFailsafe
-  ) {
+  const fresh = pilotAgeMs < CHIP_STALE_AFTER_MS;
+  if (p !== null && fresh && p.controlMode === "ados" && gotoAdvertised(p) && p.armed === true && p.landed === false && !p.fcFailsafe) {
     return { route: "pilot" };
   }
   if (fc && fc.guided && fc.armed && !fc.landed) return { route: "fc" };
+  if (p !== null && !fresh) return { route: null, reason: "pilot_stale" };
+  if (p !== null) {
+    if (p.fcFailsafe) return { route: null, reason: "failsafe" };
+    if (p.armed === false || p.landed === true) return { route: null, reason: "landed" };
+    if (!fc && gotoAdvertised(p) && p.controlMode !== "ados") return { route: null, reason: "control_mode" };
+  }
+  if (fc) {
+    if (!fc.armed || fc.landed) return { route: null, reason: "landed" };
+    if (!fc.guided) return { route: null, reason: "not_guided" };
+  }
   return { route: null };
 }

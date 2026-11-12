@@ -204,15 +204,22 @@ describe("bottom-left card map face", () => {
 
     // Basemap tiles, and the drone marker at the centre of the card (the
     // minimap follows the drone; the icon's margin centres it on its point).
-    await waitFor(() => expect(container.querySelectorAll("img.leaflet-tile").length).toBeGreaterThan(0));
-    const marker = await waitFor(() => {
-      const el = container.querySelector(".leaflet-marker-pane .leaflet-marker-icon");
-      expect(el).not.toBeNull();
-      return el as HTMLElement;
+    await waitFor(() => expect(container.querySelectorAll("img.leaflet-tile").length).toBeGreaterThan(0), {
+      timeout: 5_000,
     });
+    const marker = await waitFor(
+      () => {
+        const el = container.querySelector(".leaflet-marker-pane .leaflet-marker-icon");
+        expect(el).not.toBeNull();
+        return el as HTMLElement;
+      },
+      { timeout: 5_000 },
+    );
     const at = leafletPos(marker);
     const mapPane = leafletPos(container.querySelector(".leaflet-map-pane")!);
     expect(Math.abs(at.x + mapPane.x - card.w / 2)).toBeLessThanOrEqual(1);
     expect(Math.abs(at.y + mapPane.y - card.h / 2)).toBeLessThanOrEqual(1);
-  });
+    // The first case loads the lazy map modules, which can outlast the default
+    // 5 s budget on a loaded host; the waits above carry their own limits.
+  }, 20_000);
 });

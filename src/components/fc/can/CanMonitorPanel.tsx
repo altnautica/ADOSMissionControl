@@ -50,6 +50,7 @@ function sourceNodeId(canId: number): number {
 const CAN_FORWARD_REFRESH_MS = 2000;
 
 export function CanMonitorPanel() {
+  const tl = useTranslations("fcPanels.canMonitorPanel");
   // Subscribe to version so the UI re-renders on each frame
   const version = useCanMonitorStore((s) => s._version);
   const enabled = useCanMonitorStore((s) => s.enabled);
@@ -179,16 +180,16 @@ export function CanMonitorPanel() {
   return (
     <div className="p-4 max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text-primary">CAN Bus Monitor</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{tl("canBusMonitor")}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={clear}
             disabled={!enabled || totalFrames === 0}
             className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-border-default rounded hover:border-status-error hover:text-status-error text-text-secondary transition-colors disabled:opacity-30"
-            title="Clear frames"
+            title={tl("clearFrames")}
           >
             <Trash2 size={12} />
-            Clear
+            {tl("clear")}
           </button>
           {!demo && (
             <div className="w-24">
@@ -221,21 +222,21 @@ export function CanMonitorPanel() {
         <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
           <div className="flex items-center gap-1.5 text-text-tertiary mb-1">
             <Activity size={11} />
-            <span className="text-[10px] uppercase tracking-wider font-medium">Total Frames</span>
+            <span className="text-[10px] uppercase tracking-wider font-medium">{tl("totalFrames")}</span>
           </div>
           <p className="text-lg font-mono font-semibold text-text-primary">{totalFrames.toLocaleString()}</p>
         </div>
         <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
           <div className="flex items-center gap-1.5 text-text-tertiary mb-1">
             <Activity size={11} />
-            <span className="text-[10px] uppercase tracking-wider font-medium">Frames/sec</span>
+            <span className="text-[10px] uppercase tracking-wider font-medium">{tl("framesSec")}</span>
           </div>
           <p className="text-lg font-mono font-semibold text-text-primary">{liveFps}</p>
         </div>
         <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
           <div className="flex items-center gap-1.5 text-text-tertiary mb-1">
             <Activity size={11} />
-            <span className="text-[10px] uppercase tracking-wider font-medium">Distinct IDs</span>
+            <span className="text-[10px] uppercase tracking-wider font-medium">{tl("distinctIDs")}</span>
           </div>
           <p className="text-lg font-mono font-semibold text-text-primary">{idCounts.size}</p>
         </div>
@@ -249,7 +250,7 @@ export function CanMonitorPanel() {
             <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2 flex items-center gap-1.5">
                 <Cpu size={11} />
-                Detected Nodes
+                {tl("detectedNodes")}
               </h3>
               <div className="space-y-2">
                 {nodeSummaries.map((node) => (
@@ -276,7 +277,7 @@ export function CanMonitorPanel() {
           {topIds.length > 0 && (
             <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
-                Most Active IDs
+                {tl("mostActiveIDs")}
               </h3>
               <div className="space-y-1">
                 {topIds.map(([id, count]) => {
@@ -307,11 +308,11 @@ export function CanMonitorPanel() {
           </div>
           {!enabled ? (
             <div className="text-center py-12">
-              <p className="text-xs text-text-tertiary">Click Start to begin capturing CAN frames</p>
+              <p className="text-xs text-text-tertiary">{tl("clickStartToBeginCapturing")}</p>
             </div>
           ) : recentFrames.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-xs text-text-tertiary">Waiting for CAN frames...</p>
+              <p className="text-xs text-text-tertiary">{tl("waitingForCANFrames")}</p>
               <p className="text-[10px] text-text-tertiary mt-1">
                 Frames arrive only while forwarding is on. The selected bus needs a CAN driver enabled on the flight controller (CAN_P1_DRIVER / CAN_P2_DRIVER non-zero).
               </p>
@@ -321,13 +322,13 @@ export function CanMonitorPanel() {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-bg-secondary">
                   <tr className="border-b border-border-default text-text-tertiary">
-                    <th className="text-left py-1.5 px-3 font-medium">Time</th>
-                    <th className="text-left py-1.5 pr-3 font-medium">Bus</th>
-                    <th className="text-left py-1.5 pr-3 font-medium">Node</th>
+                    <th className="text-left py-1.5 px-3 font-medium">{tl("time")}</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">{tl("bus")}</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">{tl("node")}</th>
                     <th className="text-left py-1.5 pr-3 font-medium">CAN ID</th>
-                    <th className="text-left py-1.5 pr-3 font-medium">Label</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">{tl("label")}</th>
                     <th className="text-left py-1.5 pr-3 font-medium">DLC</th>
-                    <th className="text-left py-1.5 pr-3 font-medium">Data</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">{tl("data")}</th>
                   </tr>
                 </thead>
                 <tbody>

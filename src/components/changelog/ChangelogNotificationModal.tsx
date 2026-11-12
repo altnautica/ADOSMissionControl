@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
@@ -18,6 +19,7 @@ import { communityApi } from "@/lib/community-api";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 
 export function ChangelogNotificationModal() {
+  const tq = useTranslations("changelog.changelogNotificationModal");
   const {
     unseenEntries,
     allEntries,
@@ -59,7 +61,7 @@ export function ChangelogNotificationModal() {
     <Modal
       open={modalOpen}
       onClose={handleDismiss}
-      title="What's New"
+      title={tq("whatSNew")}
       className="max-w-xl"
       footer={
         <div className="flex items-center justify-between w-full">
@@ -70,14 +72,14 @@ export function ChangelogNotificationModal() {
             Go to Community &rarr;
           </button>
           <Button variant="primary" size="sm" onClick={handleDismiss}>
-            Got it
+            {tq("gotIt")}
           </Button>
         </div>
       }
     >
       <div className="max-h-[50vh] overflow-y-auto -mx-4 px-4">
         {entriesToShow.length === 0 ? (
-          <p className="text-sm text-text-tertiary py-4 text-center">No updates yet.</p>
+          <p className="text-sm text-text-tertiary py-4 text-center">{tq("noUpdatesYet")}</p>
         ) : (
           entriesToShow.map((entry) => (
             <ChangelogNotificationEntry

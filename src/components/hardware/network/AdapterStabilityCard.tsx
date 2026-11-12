@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import type { MacStabilityAdapter } from "@/lib/agent/feature-types";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { StatRow } from "./StatRow";
@@ -37,6 +38,7 @@ function adapterTitle(a: MacStabilityAdapter): string {
 }
 
 export function AdapterStabilityCard() {
+  const tq = useTranslations("hardware.adapterStabilityCard");
   const macStability = useAgentCapabilitiesStore((s) => s.macStability);
   const adapters = macStability?.adapters ?? [];
   // Omit-when-absent: nothing to show on a board with no no-efuse randomizer.
@@ -45,7 +47,7 @@ export function AdapterStabilityCard() {
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
-      <h2 className="mb-1 text-lg font-medium text-text-primary">Adapter stability</h2>
+      <h2 className="mb-1 text-lg font-medium text-text-primary">{tq("adapterStability")}</h2>
       <p className="mb-3 text-xs text-text-secondary">
         An onboard adapter with no hardware MAC randomizes its address each boot,
         which churns the DHCP lease. The agent pins a stable MAC so the IP stops
@@ -73,18 +75,18 @@ export function AdapterStabilityCard() {
                 </span>
               </div>
               <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-                {a.vidpid ? <StatRow label="Chipset" value={a.vidpid} /> : null}
+                {a.vidpid ? <StatRow label={tq("chipset")} value={a.vidpid} /> : null}
                 {a.pinnedMac ? (
                   <StatRow
-                    label="Pinned MAC"
+                    label={tq("pinnedMAC")}
                     value={a.pinnedMac}
                     valueClass="text-status-success"
                   />
                 ) : null}
                 {a.lastSeenMac && a.lastSeenMac !== a.pinnedMac ? (
-                  <StatRow label="Current MAC" value={a.lastSeenMac} />
+                  <StatRow label={tq("currentMAC")} value={a.lastSeenMac} />
                 ) : null}
-                {a.source ? <StatRow label="Detected by" value={a.source} /> : null}
+                {a.source ? <StatRow label={tq("detectedBy")} value={a.source} /> : null}
               </dl>
               {state === "candidate" ? (
                 <p className="mt-2 text-xs text-status-warning">

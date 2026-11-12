@@ -89,13 +89,20 @@ export interface FcNavItem {
 }
 
 export const FC_NAV_ITEMS: FcNavItem[] = [
-  // Flight
+  // Agent-run setup (calibration, initial tune, the ADOS Pilot hand-over) for
+  // this drone. It runs on the companion agent, so it stays reachable while
+  // the FC link is down.
+  { id: "aircraft-setup", labelKey: "aircraftSetup", icon: <Wand2 size={14} />, agentSide: true, section: "Flight" },
+  // Flight. Flight modes, frame and sensors are MAVLink parameter panels:
+  // Betaflight and iNav set modes through Aux Modes and have no FLTMODE,
+  // FRAME_* or sensor-type parameters. iNav's receiver and rate settings live
+  // in its own panels; the shared ones are ArduPilot's and Betaflight's.
   { id: "outputs", labelKey: "outputs", icon: <Cpu size={14} />, section: "Flight", labelOverride: { px4: "actuators" } },
-  { id: "receiver", labelKey: "receiver", icon: <Radio size={14} />, requiredCapability: "supportsReceiver", section: "Flight" },
-  { id: "modes", labelKey: "flightModes", icon: <SlidersHorizontal size={14} />, requiredCapability: "supportsFlightModes", section: "Flight" },
+  { id: "receiver", labelKey: "receiver", icon: <Radio size={14} />, requiredCapability: "supportsReceiver", excludeFirmware: ["inav"], section: "Flight" },
+  { id: "modes", labelKey: "flightModes", icon: <SlidersHorizontal size={14} />, requiredCapability: "supportsFlightModes", excludeFirmware: ["betaflight", "inav"], section: "Flight" },
   { id: "aux-modes", labelKey: "auxModes", icon: <ToggleLeft size={14} />, requiredCapability: "supportsAuxModes", section: "Flight" },
   { id: "bf-motors", labelKey: "motorsEsc", icon: <Cpu size={14} />, requiredCapability: "supportsMspMotors", section: "Flight" },
-  { id: "frame", labelKey: "frameSetup", icon: <Box size={14} />, section: "Flight", labelOverride: { px4: "airframe" } },
+  { id: "frame", labelKey: "frameSetup", icon: <Box size={14} />, excludeFirmware: ["betaflight", "inav"], section: "Flight", labelOverride: { px4: "airframe" } },
   { id: "ap-heli", labelKey: "apHeli", icon: <Fan size={14} />, requiredCapability: "supportsEkfConfig", requiredVehicleType: 4, section: "Flight" },
   { id: "vtol", labelKey: "vtol", icon: <Plane size={14} />, requiredCapability: "supportsVtolConfig", vehicleClasses: ["plane", "vtol"], section: "Flight" },
   { id: "sub-config", labelKey: "subConfig", icon: <Waves size={14} />, requiredCapability: "supportsSubConfig", vehicleClasses: ["sub"], section: "Flight" },
@@ -107,7 +114,7 @@ export const FC_NAV_ITEMS: FcNavItem[] = [
   { id: "health", labelKey: "healthCheck", icon: <HeartPulse size={14} />, section: "Safety" },
   // Sensors
   { id: "calibrate", labelKey: "calibrate", icon: <Move3d size={14} />, section: "Sensors" },
-  { id: "sensors", labelKey: "sensors", icon: <Gauge size={14} />, section: "Sensors" },
+  { id: "sensors", labelKey: "sensors", icon: <Gauge size={14} />, excludeFirmware: ["betaflight", "inav"], section: "Sensors" },
   { id: "px4-thermal", labelKey: "px4Thermal", icon: <Thermometer size={14} />, requiredCapability: "supportsPx4Tuning", section: "Sensors" },
   // iNav has neither the ArduPilot BATT_* params nor Betaflight's GPS Rescue
   // (MSP_GPS_RESCUE); its battery lives under "Battery Profiles".
@@ -130,7 +137,7 @@ export const FC_NAV_ITEMS: FcNavItem[] = [
   { id: "px4-autotune", labelKey: "px4Autotune", icon: <Wand2 size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["copter", "plane", "vtol"], section: "Tuning" },
   { id: "px4-vtol", labelKey: "px4Vtol", icon: <ArrowLeftRight size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["vtol"], section: "Flight" },
   { id: "px4-control-allocation", labelKey: "px4ControlAllocation", icon: <Sliders size={14} />, requiredCapability: "supportsPx4Tuning", section: "Tuning" },
-  { id: "rate-profiles", labelKey: "rateProfiles", icon: <Activity size={14} />, requiredCapability: "supportsRateProfiles", section: "Tuning" },
+  { id: "rate-profiles", labelKey: "rateProfiles", icon: <Activity size={14} />, requiredCapability: "supportsRateProfiles", excludeFirmware: ["inav"], section: "Tuning" },
   { id: "adjustments", labelKey: "adjustments", icon: <Sliders size={14} />, requiredCapability: "supportsAdjustments", section: "Tuning" },
   { id: "sensor-graphs", labelKey: "sensorGraphs", icon: <BarChart3 size={14} />, section: "Tuning" },
   // Display

@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -24,6 +25,7 @@ const PLATFORM_MULTIROTOR = 0;
 // ── Component ─────────────────────────────────────────────────
 
 export function ServosPanel() {
+  const tr = useTranslations("fcPanels.servosPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -89,12 +91,12 @@ export function ServosPanel() {
       <div className="max-w-2xl space-y-4">
         {isMultirotor && (
           <p className="text-[11px] text-text-tertiary border border-border-default rounded px-3 py-2 bg-bg-secondary">
-            This panel applies to fixed-wing and tricopter platforms. The connected flight controller is configured as a multirotor.
+            {tr("thisPanelAppliesToFixed")}
           </p>
         )}
         <PanelHeader
-          title="Servo Config"
-          subtitle="Travel limits, center position, and rate"
+          title={tr("servoConfig")}
+          subtitle={tr("travelLimitsCenterPositionAnd")}
           icon={<Sliders size={16} />}
           loading={loading}
           loadProgress={null}
@@ -113,14 +115,14 @@ export function ServosPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && !isMultirotor && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
@@ -164,7 +166,7 @@ export function ServosPanel() {
                       ))}
                     </div>
                     <label className="flex flex-col gap-1">
-                      <span className="text-[10px] text-text-tertiary font-mono">Rate (%)</span>
+                      <span className="text-[10px] text-text-tertiary font-mono">{tr("rate")}</span>
                       <input
                         type="number"
                         min={-125}

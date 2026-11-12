@@ -18,6 +18,7 @@ import { isAdosStack, isPeripheralStack, isFcStack, FIRMWARE_STACKS } from "./fi
 import type { AdosAgentStack } from "@/lib/protocol/firmware/ados-agent-manifest";
 
 export function FirmwarePanel() {
+  const tr = useTranslations("fcPanels.firmwarePanel");
   const fw = useFirmwareState();
   const isFc = isFcStack(fw.firmwareStack);
   const isAdos = isAdosStack(fw.firmwareStack);
@@ -102,7 +103,7 @@ export function FirmwarePanel() {
         <div className="flex items-center gap-3">
           <Zap size={20} className="text-accent-primary" />
           <div>
-            <h1 className="text-lg font-semibold text-text-primary">Flash Tool</h1>
+            <h1 className="text-lg font-semibold text-text-primary">{tr("flashTool")}</h1>
             <p className="text-xs text-text-tertiary">
               {isAdos ? t("subtitle") : "Flash firmware via USB DFU or serial bootloader"}
             </p>

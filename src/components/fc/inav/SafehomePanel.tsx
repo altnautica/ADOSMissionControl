@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 // ── Component ─────────────────────────────────────────────────
 
 export function SafehomePanel() {
+  const tr = useTranslations("fcPanels.safehomePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.inav");
@@ -80,7 +81,7 @@ export function SafehomePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Safehome Slots"
+          title={tr("safehomeSlots")}
           subtitle={`Up to ${SAFEHOME_MAX} return-to-home positions for iNav`}
           icon={<Home size={16} />}
           loading={loading}
@@ -100,14 +101,14 @@ export function SafehomePanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
@@ -168,7 +169,7 @@ export function SafehomePanel() {
                   >
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       <label className="flex flex-col gap-1">
-                        <span className="text-[10px] text-text-tertiary font-mono">Latitude</span>
+                        <span className="text-[10px] text-text-tertiary font-mono">{tr("latitude")}</span>
                         <input
                           type="number"
                           step="0.0000001"
@@ -180,7 +181,7 @@ export function SafehomePanel() {
                         />
                       </label>
                       <label className="flex flex-col gap-1">
-                        <span className="text-[10px] text-text-tertiary font-mono">Longitude</span>
+                        <span className="text-[10px] text-text-tertiary font-mono">{tr("longitude")}</span>
                         <input
                           type="number"
                           step="0.0000001"

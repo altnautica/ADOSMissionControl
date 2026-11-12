@@ -32,14 +32,14 @@ export function FollowMeButton() {
       return;
     }
     if (!selectedId) {
-      toast("Follow-me not started: no drone is selected", "warning");
+      toast("Follow my device not started: no drone is selected", "warning");
       return;
     }
 
     setStarting(true);
     try {
       const result = await startFollowMe(selectedId);
-      if (!result.ok) toast(`Follow-me not started: ${result.reason}`, "warning");
+      if (!result.ok) toast(`Follow my device not started: ${result.reason}`, "warning");
     } finally {
       setStarting(false);
     }
@@ -68,7 +68,7 @@ export function FollowMeButton() {
         icon={<MapPin size={12} />}
         onClick={handleToggle}
         disabled={starting}
-        title={isActive ? `Stop follow-me on ${droneName ?? "drone"}` : undefined}
+        title={isActive ? `Stop Follow my device on ${droneName ?? "drone"}` : undefined}
         className={cn(
           "flex-1",
           isActive && "ring-1 ring-accent-primary",

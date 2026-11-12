@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import type { BfLedModeColor, HsvColor } from "@/lib/protocol/types/betaflight";
 import {
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function BfLedModeColors({ modeColors, colors, disabled, onChange }: Props) {
+  const tl = useTranslations("fcPanels.bfLedModeColors");
   const colorOf = (mode: number, fun: number) =>
     modeColors.find((m) => m.mode === mode && m.fun === fun)?.color ?? 0;
 
@@ -66,9 +68,9 @@ export function BfLedModeColors({ modeColors, colors, disabled, onChange }: Prop
   return (
     <div className="mt-6 space-y-4">
       <div>
-        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Mode Colours</h3>
+        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tl("modeColours")}</h3>
         <p className="text-[10px] text-text-tertiary">
-          Palette colour used per flight mode and orientation direction.
+          {tl("paletteColourUsedPerFlight")}
         </p>
       </div>
 
@@ -100,7 +102,7 @@ export function BfLedModeColors({ modeColors, colors, disabled, onChange }: Prop
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Special Colours</h3>
+        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{tl("specialColours")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-w-3xl">
           {BF_LED_SPECIAL_COLORS.map((label, si) => (
             <div key={label} className="flex items-center gap-2">
@@ -112,7 +114,7 @@ export function BfLedModeColors({ modeColors, colors, disabled, onChange }: Prop
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-[11px] text-text-secondary">Colour aux channel</span>
+        <span className="text-[11px] text-text-secondary">{tl("colourAuxChannel")}</span>
         <input
           type="number"
           min={0}

@@ -177,6 +177,7 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
 // ── Component ─────────────────────────────────────────────────
 
 export function LogicConditionsPanel() {
+  const tm = useTranslations("fcPanels.logicConditionsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.inav");
@@ -248,7 +249,7 @@ export function LogicConditionsPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-4xl space-y-4">
         <PanelHeader
-          title="Logic Conditions"
+          title={tm("logicConditions")}
           subtitle={`Up to ${LOGIC_CONDITION_MAX} programmable boolean/arithmetic rules`}
           icon={<GitBranch size={16} />}
           loading={loading}
@@ -267,20 +268,20 @@ export function LogicConditionsPanel() {
               disabled={!connected || loading || isArmed}
               onClick={handleWrite}
             >
-              Write to FC
+              {tm("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {isArmed && (
           <p className="text-[10px] font-mono text-status-warning">
-            Armed: edits disabled. Live status visible below.
+            {tm("armedEditsDisabledLiveStatus")}
           </p>
         )}
 
         {conditionsDirty && !isArmed && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes: use Write to FC to persist.
+            {tm("unsavedChangesUseWriteTo")}
           </p>
         )}
 

@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { get as idbGet } from "idb-keyval";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,16 @@ interface MediaTabProps {
 }
 
 export function MediaTab({ record }: MediaTabProps) {
+  const tq = useTranslations("history.mediaTab");
   const media = record.media ?? [];
 
   if (media.length === 0) {
     return (
-      <Card title="Media" padding={true}>
+      <Card title={tq("media")} padding={true}>
         <div className="flex flex-col items-center gap-2 py-8">
           <Image size={24} className="text-text-tertiary" />
           <p className="text-[10px] text-text-tertiary">
-            No media linked to this flight. Use the Import Media button to add photos or videos.
+            {tq("noMediaLinkedToThis")}
           </p>
         </div>
       </Card>

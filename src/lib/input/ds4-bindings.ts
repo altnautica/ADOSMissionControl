@@ -186,6 +186,20 @@ export class GestureEngine {
     return rows.find((b) => b.when === null || this.cb.when(b.when)) ?? null;
   }
 
+  /**
+   * A held control of a combo was let go: the combo is aborted. Every press
+   * still waiting on a binding that needs `control` is dropped, its hold
+   * progress ended, so the control left down neither completes the combo's
+   * hold nor fires its own binding until it is pressed again.
+   */
+  private breakChordsNeeding(control: string): void {
+    for (const [c, p] of this.presses) {
+      if (p.holdFired || !p.candidates.some((b) => b.with.includes(control))) continue;
+      for (const b of p.candidates) if (b.gesture === "hold") this.cb.holdProgress?.(b, null);
+      this.presses.delete(c);
+    }
+  }
+
   /** Feed the controls down now. */
   update(isDown: (control: string) => boolean, now: number): void {
     const next = new Set<string>();
@@ -196,7 +210,11 @@ export class GestureEngine {
       if (next.has(c)) continue;
       const p = this.presses.get(c);
       this.presses.delete(c);
-      if (this.muted.delete(c) || !p) continue;
+      if (this.muted.delete(c)) {
+        this.breakChordsNeeding(c);
+        continue;
+      }
+      if (!p) continue;
       for (const b of p.candidates) if (b.gesture === "hold") this.cb.holdProgress?.(b, null);
       if (p.holdFired || p.tapFired) continue;
       const taps = p.candidates.filter((b) => b.gesture === "tap");

@@ -32,12 +32,13 @@ interface DroneListPanelProps {
 
 /**
  * The dashboard fleet sidebar. Renders every node — drone / FC-only / compute /
- * ground — through the one profile-aware `NodeRow` (name on its own line, health
- * ring from verified freshness, firmware·airframe flavor badge), reconciled onto
+ * ground — through the one profile-aware `NodeRow` (a 52 px row: the node tile
+ * with its liveness dot, the name, and a one-line meta summary), reconciled onto
  * the dashboard's `useDroneManager` selection (`node:<deviceId>`). Compute and
  * ground nodes sort to the bottom.
  */
 export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelProps) {
+  const tq = useTranslations("dashboard.droneListPanel");
   const t = useTranslations("fleet");
   const nodes = useFleetNodes();
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -142,7 +143,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
         {/* Node rail */}
         <div
           role="listbox"
-          aria-label="Nodes"
+          aria-label={tq("nodes")}
           className="flex-1 overflow-auto flex flex-col items-center gap-1 py-1.5"
         >
           {ordered.map((node) => (
@@ -176,15 +177,17 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
         <div className="flex items-center gap-1">
           <button
             onClick={openDialog}
-            className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-[4px] text-text-tertiary hover:text-text-primary transition-colors"
             title={t("addDrone")}
+            aria-label={t("addDrone")}
           >
             <Plus size={14} />
           </button>
           <button
             onClick={onToggleCollapse}
-            className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-[4px] text-text-tertiary hover:text-text-primary transition-colors"
             title={t("collapsePanel")}
+            aria-label={t("collapsePanel")}
           >
             <ChevronLeft size={14} />
           </button>
@@ -203,7 +206,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
           )}
         >
           <LayoutGrid size={14} className="shrink-0" />
-          Fleet Overview
+          {t("overview")}
         </button>
       </div>
 
@@ -212,19 +215,20 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
 
       {/* Search */}
       <div className="px-3 py-2 border-b border-border-default">
-        <div className="flex items-center gap-2 px-2 py-1 bg-bg-primary border border-border-default">
+        <div className="flex h-8 items-center gap-2 rounded-[4px] border border-border-default bg-bg-primary px-2.5 focus-within:border-accent-primary">
           <Search size={12} className="text-text-tertiary shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("searchDrones")}
+            aria-label={t("searchDrones")}
             className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none"
           />
         </div>
       </div>
 
       {/* Node list */}
-      <div role="listbox" aria-label="Nodes" className="flex-1 overflow-auto p-2 space-y-1">
+      <div role="listbox" aria-label={tq("nodes")} className="flex-1 overflow-auto p-1.5 space-y-0.5">
         {ordered.map((node) => (
           <div key={node._id}>{renderRow(node)}</div>
         ))}
@@ -238,7 +242,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
       {/* Footer */}
       <div className="px-3 py-1.5 border-t border-border-default">
         <span className="text-[10px] text-text-tertiary">
-          {nodes.length} {nodes.length === 1 ? "node" : "nodes"}
+          {t("droneCount", { count: nodes.length })}
         </span>
       </div>
 

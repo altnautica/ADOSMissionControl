@@ -36,10 +36,10 @@ describe("Scripts moved from a top-level surface into Setup", () => {
 
   it("FcPanelRouter dispatches the scripts panel (and null for an unknown id)", () => {
     expect(
-      FcPanelRouter({ activePanel: "scripts", firmwareType: "ardupilot-copter" }),
+      FcPanelRouter({ activePanel: "scripts", firmwareType: "ardupilot-copter", droneId: "d1", droneName: "Alpha" }),
     ).not.toBeNull();
     expect(
-      FcPanelRouter({ activePanel: "not-a-real-panel", firmwareType: "ardupilot-copter" }),
+      FcPanelRouter({ activePanel: "not-a-real-panel", firmwareType: "ardupilot-copter", droneId: "d1", droneName: "Alpha" }),
     ).toBeNull();
   });
 });

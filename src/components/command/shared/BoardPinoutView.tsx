@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Cpu, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ function buildRows(profile: BoardProfile): OutputRow[] {
 }
 
 export function BoardPinoutView() {
+  const tq = useTranslations("command.boardPinoutView");
   const drone = useDroneManager((s) => {
     const id = s.selectedDroneId;
     return id ? s.drones.get(id) : null;
@@ -77,7 +79,7 @@ export function BoardPinoutView() {
         <div className="flex items-center gap-2 mb-2">
           <Cpu size={14} className="text-text-tertiary" />
           <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            Board Pinout
+            {tq("boardPinout")}
           </h4>
         </div>
         <p className="text-xs text-text-tertiary">
@@ -93,15 +95,13 @@ export function BoardPinoutView() {
         <div className="flex items-center gap-2 mb-2">
           <Cpu size={14} className="text-text-tertiary" />
           <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            Board Pinout
+            {tq("boardPinout")}
           </h4>
         </div>
         <p className="text-xs text-text-tertiary">
-          Unknown board ID: <span className="font-mono">{boardId}</span>
+          {tq("unknownBoardID")} <span className="font-mono">{boardId}</span>
         </p>
-        <p className="text-[10px] text-text-tertiary mt-1">
-          This board is not in the pinout database. Add it to <code>src/lib/boards/ardupilot-boards.ts</code>.
-        </p>
+        <p className="text-[10px] text-text-tertiary mt-1">{tq("notInDatabase")}</p>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export function BoardPinoutView() {
           <div className="flex items-center gap-2">
             <Cpu size={14} className="text-accent-primary" />
             <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              Board Pinout
+              {tq("boardPinout")}
             </h4>
           </div>
           <p className="text-sm font-medium text-text-primary mt-1">
@@ -134,7 +134,7 @@ export function BoardPinoutView() {
         <div className="flex items-start gap-2 mb-3 p-2 border border-status-warning/30 bg-status-warning/10 rounded">
           <AlertTriangle size={12} className="text-status-warning shrink-0 mt-0.5" />
           <p className="text-[10px] text-status-warning">
-            Timer group data not available for this board. Protocol conflict detection is disabled.
+            {tq("timerGroupDataNotAvailable")}
           </p>
         </div>
       )}
@@ -145,10 +145,10 @@ export function BoardPinoutView() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border-default text-text-tertiary">
-                <th className="text-left py-1.5 pr-3 font-medium">Output</th>
-                <th className="text-left py-1.5 pr-3 font-medium">Timer Group</th>
-                <th className="text-left py-1.5 pr-3 font-medium">Protocol</th>
-                <th className="text-left py-1.5 font-medium">Notes</th>
+                <th className="text-left py-1.5 pr-3 font-medium">{tq("output")}</th>
+                <th className="text-left py-1.5 pr-3 font-medium">{tq("timerGroup")}</th>
+                <th className="text-left py-1.5 pr-3 font-medium">{tq("protocol")}</th>
+                <th className="text-left py-1.5 font-medium">{tq("notes")}</th>
               </tr>
             </thead>
             <tbody>
@@ -190,7 +190,7 @@ export function BoardPinoutView() {
           </table>
         </div>
       ) : (
-        <p className="text-xs text-text-tertiary">No output data available.</p>
+        <p className="text-xs text-text-tertiary">{tq("noOutputDataAvailable")}</p>
       )}
     </div>
   );

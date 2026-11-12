@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useIsFresh } from "@/stores/clock-store";
@@ -37,6 +38,7 @@ function addrHex(addr: number[]): string {
 // ── Component ─────────────────────────────────────────────────
 
 export function TempSensorsPanel() {
+  const tr = useTranslations("fcPanels.tempSensorsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -97,8 +99,8 @@ export function TempSensorsPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Temperature Sensors"
-          subtitle="1-Wire and I2C temperature sensor configuration"
+          title={tr("temperatureSensors")}
+          subtitle={tr("n1WireAndI2CTemperature")}
           icon={<Thermometer size={16} />}
           loading={loading}
           loadProgress={null}
@@ -112,7 +114,7 @@ export function TempSensorsPanel() {
           <div className="space-y-2">
             {activeSensors.length === 0 && (
               <p className="text-xs text-text-tertiary font-mono">
-                No temperature sensors configured on this FC.
+                {tr("noTemperatureSensorsConfiguredOn")}
               </p>
             )}
             {sensors.map((sensor, idx) => (

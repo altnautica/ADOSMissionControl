@@ -6,7 +6,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../tests/helpers/intl-wrapper";
 import type { ReactNode } from "react";
 
 const leaflet = vi.hoisted(() => ({

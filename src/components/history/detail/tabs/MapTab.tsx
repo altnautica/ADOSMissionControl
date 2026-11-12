@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import type { FlightRecord } from "@/lib/types";
 
@@ -23,6 +24,7 @@ interface MapTabProps {
 }
 
 export function MapTab({ record }: MapTabProps) {
+  const tk = useTranslations("history.mapTab");
   const hasPath = (record.path?.length ?? 0) >= 2;
   const hasTakeoff = record.takeoffLat !== undefined && record.takeoffLon !== undefined;
 
@@ -30,7 +32,7 @@ export function MapTab({ record }: MapTabProps) {
     return (
       <div className="flex h-[320px] items-center justify-center rounded border border-border-default bg-bg-tertiary">
         <span className="text-[10px] font-mono text-text-tertiary">
-          No path data for this flight
+          {tk("noPathDataForThis")}
         </span>
       </div>
     );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ interface WriteConfirmDialogProps {
 }
 
 export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadata }: WriteConfirmDialogProps) {
+  const tl = useTranslations("fcPanels.writeConfirmDialog");
   const hasCritical = useMemo(
     () => changes.some((c) => isCriticalParam(c.name)),
     [changes]
@@ -56,14 +58,14 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
   };
 
   return (
-    <Modal open={open} onClose={handleCancel} title="Confirm Parameter Write" className="max-w-lg">
+    <Modal open={open} onClose={handleCancel} title={tl("confirmParameterWrite")} className="max-w-lg">
       <div className="flex flex-col gap-4">
         {/* Critical safety banner */}
         {hasCritical && (
           <div className="flex items-center gap-2 px-3 py-2 bg-status-error/10 border border-status-error/30 text-status-error text-xs">
             <AlertTriangle size={14} className="flex-shrink-0" />
             <span>
-              This batch includes flight-safety parameters. Review carefully before writing.
+              {tl("thisBatchIncludesFlightSafety")}
             </span>
           </div>
         )}
@@ -79,9 +81,9 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-bg-secondary">
               <tr className="border-b border-border-default">
-                <th className="px-3 py-2 text-left font-semibold text-text-secondary">Parameter</th>
-                <th className="px-3 py-2 text-right font-semibold text-text-secondary">Old</th>
-                <th className="px-3 py-2 text-right font-semibold text-text-secondary">New</th>
+                <th className="px-3 py-2 text-left font-semibold text-text-secondary">{tl("parameter")}</th>
+                <th className="px-3 py-2 text-right font-semibold text-text-secondary">{tl("old")}</th>
+                <th className="px-3 py-2 text-right font-semibold text-text-secondary">{tl("new")}</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +100,7 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
                         {critical && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-status-error/15 text-status-error rounded-sm">
                             <AlertTriangle size={10} />
-                            Flight safety
+                            {tl("flightSafety")}
                           </span>
                         )}
                       </div>
@@ -151,14 +153,14 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
             />
             <span className="flex items-center gap-1.5 text-xs text-status-error">
               <ShieldAlert size={13} className="flex-shrink-0" />
-              I understand this change affects flight safety
+              {tl("iUnderstandThisChangeAffects")}
             </span>
           </label>
         )}
 
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" icon={<X size={12} />} onClick={handleCancel}>
-            Cancel
+            {tl("cancel")}
           </Button>
           <Button
             variant="primary"

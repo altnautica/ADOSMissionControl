@@ -103,7 +103,7 @@ export default function ReportsPage() {
               <DataValue label={tr("totalDistance")} value={kpis.totalDistanceKm.toFixed(1)} unit="km" />
             </Card>
             <Card padding={true}>
-              <DataValue label={tr("totalBattery")} value={kpis.totalBatteryUsed.toFixed(0)} unit="%" />
+              <DataValue label={tr("avgBattery")} value={kpis.avgBatteryUsed === null ? "—" : kpis.avgBatteryUsed.toFixed(0)} unit="%" />
             </Card>
           </div>
 

@@ -35,6 +35,8 @@ export interface CommandTelemetrySnapshot {
     fix_type?: number;
     satellites?: number;
   };
+  /** Metres to home as the agent reports it (GNSS or EKF-local). */
+  home_distance?: number;
   last_heartbeat?: number;
   last_update?: number;
 }

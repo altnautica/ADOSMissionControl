@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowDownToLine, ArrowUpFromLine, Home, Pause } from "lucide-react";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
@@ -33,8 +34,8 @@ import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { pilotStreamOpen, usePilotLinkStore } from "@/lib/input/pilot-stream";
 import { specBuiltin } from "@/lib/cockpit/spec-builtins";
-import { specString } from "@/lib/cockpit/spec-strings";
-import { activate, buildSkillContext } from "@/lib/skills";
+import { specOrAppText, specString } from "@/lib/cockpit/spec-strings";
+import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
 import { vehicleLanded } from "@/lib/skills/flight-facts";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
@@ -59,26 +60,40 @@ export function leftColumnLabels(cls: FlightGridClass): boolean {
   return LABELS_AT.includes(cls);
 }
 
+/** The recovery built-ins whose registry state the column reflects. A press
+ *  still dispatches, so the refusal toast explains a disabled one. */
+const STATEFUL_BUILTINS: Record<string, true> = { land: true, rth: true, pause: true };
+
 function ColumnButton({
   id,
+  droneId,
   icon,
   label,
   ...rest
 }: {
   id: string;
+  droneId: string;
   icon: ReactNode;
   label: CSSProperties | null;
   onClick: () => void;
   "aria-expanded"?: boolean;
   "data-sheet-trigger"?: string;
 }) {
+  const t = useTranslations();
+  const state = useSkillRegistry((s) =>
+    STATEFUL_BUILTINS[id] ? s.states.get(droneId)?.get(id) : undefined,
+  );
+  const disabled = state?.kind === "disabled";
+  const reason = disabled && state.reason ? specOrAppText(t, state.reason) : null;
+  const name = specBuiltin(id).label;
   return (
     <button
       type="button"
       className="fs-btn fs-col-target"
       data-builtin={id}
-      aria-label={specBuiltin(id).label}
-      title={specBuiltin(id).label}
+      aria-label={name}
+      aria-disabled={disabled || undefined}
+      title={reason ?? name}
       {...rest}
     >
       {icon}
@@ -149,6 +164,7 @@ export function LeftColumn({ droneId }: { droneId: string }) {
         {onGround ? (
           <ColumnButton
             id="takeoff"
+            droneId={droneId}
             icon={<ArrowUpFromLine size={18} aria-hidden />}
             label={label}
             data-sheet-trigger="launch"
@@ -156,10 +172,10 @@ export function LeftColumn({ droneId }: { droneId: string }) {
             onClick={() => (viaPilot ? setLaunchOpen((o) => !o) : fire("takeoff"))}
           />
         ) : (
-          <ColumnButton id="land" icon={<ArrowDownToLine size={18} aria-hidden />} label={label} onClick={() => fire("land")} />
+          <ColumnButton id="land" droneId={droneId} icon={<ArrowDownToLine size={18} aria-hidden />} label={label} onClick={() => fire("land")} />
         )}
-        <ColumnButton id="rth" icon={<Home size={18} aria-hidden />} label={label} onClick={() => fire("rth")} />
-        <ColumnButton id="pause" icon={<Pause size={18} aria-hidden />} label={label} onClick={() => fire("pause")} />
+        <ColumnButton id="rth" droneId={droneId} icon={<Home size={18} aria-hidden />} label={label} onClick={() => fire("rth")} />
+        <ColumnButton id="pause" droneId={droneId} icon={<Pause size={18} aria-hidden />} label={label} onClick={() => fire("pause")} />
       </div>
       {launchOpen && viaPilot && (
         <LaunchSheet droneId={droneId} pilot={pilot} onClose={() => setLaunchOpen(false)} />

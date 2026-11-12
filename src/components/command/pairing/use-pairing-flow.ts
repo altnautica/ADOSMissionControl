@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { usePairingStore, type DiscoveredAgent } from "@/stores/pairing-store";
 import { buildAgentInstallCommand } from "@/lib/agent/install-script";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -93,6 +94,7 @@ export function usePairingFlow({
   initialCode,
   autoGenerate = true,
 }: FlowOptions) {
+  const tErr = useTranslations("command.pairing.error");
   const [state, setState] = useState<PairingState>("setup");
   const [preGenCode, setPreGenCode] = useState<string | null>(null);
   // The pairing request behind `preGenCode` and the device that registered
@@ -173,8 +175,10 @@ export function usePairingFlow({
     try {
       generated = await preGenerate({});
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "Could not generate a pairing code";
-      setErrorMessage(raw);
+      // The raw failure (often a Convex server error) is for the console; the
+      // operator gets a sentence.
+      console.error("[pairing] code generation failed", err);
+      setErrorMessage(tErr("generateFailed"));
       setState("error");
       return;
     } finally {
@@ -185,7 +189,7 @@ export function usePairingFlow({
     setRequestId(generated.requestId);
     setState("waiting");
     startCountdown();
-  }, [preGenerate, startCountdown, onCodeReset]);
+  }, [preGenerate, startCountdown, onCodeReset, tErr]);
 
   // The deep-link code claimed in this open dialog. A code is claimed once;
   // a retry clears this and claims it again.
@@ -319,9 +323,11 @@ export function usePairingFlow({
 
     try {
       if (!claimCode) {
-        throw new Error(
-          "Convex not available. Cannot pair in local-only mode."
-        );
+        setErrorMessage(tErr("noCloud"));
+        setState("error");
+        setPairingInProgress(false);
+        setPairingError(tErr("noCloud"));
+        return;
       }
 
       const result = await claimCode({ code: agent.pairingCode });
@@ -338,12 +344,12 @@ export function usePairingFlow({
         // means the agent is in local mode, so point at LAN pairing.
         const local = result.error === "invalid_pairing_code";
         const msg = local
-          ? "That code isn't registered with the cloud relay. If this drone is on your network, pair it by hostname instead."
+          ? tErr("notRegistered")
           : result.error === "rate_limited"
-            ? `Too many pair-code attempts. Try again in ${Math.ceil(result.retryAfterMs / 1000)} s.`
+            ? tErr("rateLimited", { seconds: Math.ceil(result.retryAfterMs / 1000) })
           : result.error === "pairing_code_expired"
-            ? "Pairing code expired. Ask the agent to generate a new one."
-            : "This code was already used by another account.";
+            ? tErr("expired")
+            : tErr("alreadyClaimed");
         setCanPairLocally(local);
         setErrorMessage(msg);
         setState("error");
@@ -373,15 +379,17 @@ export function usePairingFlow({
     } catch (err) {
       // Reaching here means a genuinely unexpected throw (Convex unreachable,
       // or the gated not-authenticated precondition). Expected pairing
-      // failures are handled above as returned results, not exceptions.
+      // failures are handled above as returned results, not exceptions. The
+      // raw text goes to the console only.
       if (signal?.aborted) return;
-      const msg = err instanceof Error ? err.message : "Pairing failed";
+      console.error("[pairing] claim failed", err);
+      const msg = tErr("generic");
       setErrorMessage(msg);
       setState("error");
       setPairingInProgress(false);
       setPairingError(msg);
     }
-  }, [claimCode, onPaired, setPairingError, setPairingInProgress, stopCountdown]);
+  }, [claimCode, onPaired, setPairingError, setPairingInProgress, stopCountdown, tErr]);
 
   return {
     state,

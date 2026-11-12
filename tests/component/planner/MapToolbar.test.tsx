@@ -151,3 +151,25 @@ describe("MapToolbar rail", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("offline.waitingForMap");
   });
 });
+
+describe("MapToolbar tool-group hit targets", () => {
+  it("draws each group opener as a 16 × 32 strip with a 32 × 48 hit area", () => {
+    renderRail();
+    for (const group of ["rail.waypointTools", "rail.drawTools", "rail.markerTools"]) {
+      const opener = screen.getByRole("button", { name: group });
+      // h-8 = 32 px tall, w-4 = 16 px wide; the ::after box adds 8 px above
+      // and below (48 px) and 16 px to the right (32 px).
+      expect(opener.className).toMatch(/(^|\s)h-8(\s|$)/);
+      expect(opener.className).toMatch(/(^|\s)w-4(\s|$)/);
+      expect(opener.className).toContain("after:-inset-y-2");
+      expect(opener.className).toContain("after:-right-4");
+    }
+  });
+
+  it("opens a group's flyout from a right-click on its face", () => {
+    renderRail();
+    const face = screen.getByRole("toolbar").querySelector<HTMLButtonElement>('button[data-tool="waypoint"]')!;
+    fireEvent.contextMenu(face);
+    expect(screen.getByRole("dialog", { name: "rail.waypointTools" })).toBeInTheDocument();
+  });
+});

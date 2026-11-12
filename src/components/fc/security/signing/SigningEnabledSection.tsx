@@ -9,6 +9,7 @@
  * claiming either outcome.
  */
 
+import { useTranslations } from "next-intl";
 import { Lock, RotateCw, Trash2, AlertTriangle, KeyRound, Cloud, CloudOff } from "lucide-react";
 import type { DroneSigningState } from "@/stores/signing-store";
 import { KeyAgeNudge } from "../KeyAgeNudge";
@@ -57,6 +58,7 @@ export function SigningEnabledSection({
   onCloudSyncToggle,
   nodeHoldsKey,
 }: SigningEnabledSectionProps) {
+  const tr = useTranslations("fcPanels.signingEnabledSection");
   const settling = state.enrollmentState === "unconfirmed" || state.enrollmentState === "disable_unconfirmed";
 
   return (
@@ -69,25 +71,23 @@ export function SigningEnabledSection({
       />
       <div className="flex items-center gap-2 text-text-primary">
         <Lock size={16} aria-hidden="true" className="text-status-success" />
-        <span className="font-medium">Signing enabled</span>
+        <span className="font-medium">{tr("signingEnabled")}</span>
       </div>
       <dl className="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-text-secondary">
-        <dt className="text-text-tertiary">Key fingerprint</dt>
+        <dt className="text-text-tertiary">{tr("keyFingerprint")}</dt>
         <dd className="font-mono">{state.keyId ?? "(unknown)"}</dd>
-        <dt className="text-text-tertiary">Enrolled</dt>
+        <dt className="text-text-tertiary">{tr("enrolled")}</dt>
         <dd>{state.enrolledAt ?? "(unknown)"}</dd>
       </dl>
       <p className="text-xs text-text-tertiary">
-        With a key in its store, ArduPilot accepts unsigned commands only on its USB port
-        (channel 0) and rejects them on every other link. The flight controller does not report
-        this, so the panel does not claim it.
+        {tr("withAKeyInIts")}
       </p>
 
       {state.enrollmentState === "unconfirmed" && (
         <div role="alert" className="border border-status-warning/40 bg-status-warning/5 p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium text-status-warning">
             <AlertTriangle size={14} aria-hidden="true" />
-            The flight controller may hold the new key or the previous one
+            {tr("theFlightControllerMayHold")}
           </div>
           <p className="text-xs text-text-secondary">
             This browser keeps both ({state.keyId ?? "new"} and {state.previousKeyId ?? "none"}) and signs with the new key.
@@ -97,11 +97,11 @@ export function SigningEnabledSection({
           <div className="flex gap-2 flex-wrap">
             <button type="button" disabled={busy} onClick={() => onSettleNewKey("new")}
               className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary disabled:opacity-50">
-              It has the new key
+              {tr("itHasTheNewKey")}
             </button>
             <button type="button" disabled={busy || !state.previousKeyId} onClick={() => onSettleNewKey("previous")}
               className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary disabled:opacity-50">
-              It kept the previous key
+              {tr("itKeptThePreviousKey")}
             </button>
           </div>
         </div>
@@ -111,20 +111,19 @@ export function SigningEnabledSection({
         <div role="alert" className="border border-status-warning/40 bg-status-warning/5 p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium text-status-warning">
             <AlertTriangle size={14} aria-hidden="true" />
-            Disable sent; the flight controller has not confirmed it
+            {tr("disableSentTheFlightController")}
           </div>
           <p className="text-xs text-text-secondary">
-            This browser keeps the key and keeps signing until you confirm. Signing is off once the flight controller
-            accepts unsigned commands on a link other than USB.
+            {tr("thisBrowserKeepsTheKey")}
           </p>
           <div className="flex gap-2 flex-wrap">
             <button type="button" disabled={busy} onClick={() => onSettleDisable(true)}
               className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary disabled:opacity-50">
-              Signing is off: forget the key
+              {tr("signingIsOffForgetThe")}
             </button>
             <button type="button" disabled={busy} onClick={() => onSettleDisable(false)}
               className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary disabled:opacity-50">
-              It is still signing: keep the key
+              {tr("itIsStillSigningKeep")}
             </button>
           </div>
         </div>
@@ -139,7 +138,7 @@ export function SigningEnabledSection({
               <CloudOff size={14} aria-hidden="true" className="text-text-tertiary mt-0.5" />
             )}
             <div>
-              <p className="text-sm font-medium text-text-primary">Sync to cloud</p>
+              <p className="text-sm font-medium text-text-primary">{tr("syncToCloud")}</p>
               <p className="text-xs text-text-tertiary">
                 {!isAuthenticated
                   ? "Sign in to enable cloud key sync across devices."
@@ -198,7 +197,7 @@ export function SigningEnabledSection({
           disabled={busy || settling}
         >
           <RotateCw size={14} aria-hidden="true" />
-          Rotate key
+          {tr("rotateKey")}
         </button>
         <button
           type="button"
@@ -207,7 +206,7 @@ export function SigningEnabledSection({
           disabled={busy || settling}
         >
           <KeyRound size={14} aria-hidden="true" />
-          Export key
+          {tr("exportKey")}
         </button>
         <button
           type="button"
@@ -216,7 +215,7 @@ export function SigningEnabledSection({
           disabled={busy || settling}
         >
           <Trash2 size={14} aria-hidden="true" />
-          Disable signing
+          {tr("disableSigning")}
         </button>
       </div>
       <SigningHistorySection droneId={droneId} />

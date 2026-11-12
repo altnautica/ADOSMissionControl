@@ -25,6 +25,7 @@ import { useGcsLocation } from "@/hooks/use-gcs-location";
 import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
 import { DisconnectGuard } from "@/components/fc/shared/DisconnectGuard";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArmedWriteConfirmDialog } from "@/components/indicators/ArmedWriteConfirmDialog";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cn } from "@/lib/utils";
@@ -165,7 +166,11 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
     discardAndDisconnect,
     cancelDisconnect,
     requestDisconnect,
+    armedDrone,
+    confirmArmedDisconnect,
+    cancelArmedDisconnect,
   } = useDisconnectGuard();
+  const tGuard = useTranslations("panelCommit.disconnectGuard");
 
   // Listen for disconnect requests from other components (e.g. ActiveConnections)
   useEffect(() => {
@@ -396,6 +401,17 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
         onCommitAndDisconnect={commitAndDisconnect}
         onDiscardAndDisconnect={discardAndDisconnect}
         onCancel={cancelDisconnect}
+      />
+
+      {/* Disconnecting an armed drone asks first. */}
+      <ConfirmDialog
+        open={armedDrone !== null}
+        onConfirm={confirmArmedDisconnect}
+        onCancel={cancelArmedDisconnect}
+        title={tGuard("armedTitle")}
+        message={tGuard("armedMessage", { name: armedDrone?.name ?? "" })}
+        confirmLabel={tGuard("armedConfirm")}
+        variant="danger"
       />
 
       {/* Body — the primary content column plus a global right-hand rail

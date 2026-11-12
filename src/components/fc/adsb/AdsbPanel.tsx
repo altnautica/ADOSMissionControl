@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Radar } from "lucide-react";
 import { ParamFieldsPanel, type ParamSection } from "../shared/ParamFieldsPanel";
 
@@ -39,11 +40,12 @@ const SECTIONS: ParamSection[] = [
 ];
 
 export function AdsbPanel() {
+  const tr = useTranslations("fcPanels.adsbPanel");
   return (
     <ParamFieldsPanel
       panelId="adsb"
-      title="ADS-B & Avoidance"
-      subtitle="Traffic awareness (ADS-B) plus obstacle and traffic avoidance"
+      title={tr("adsBAvoidance")}
+      subtitle={tr("trafficAwarenessADSBPlus")}
       icon={<Radar size={16} />}
       sectionIcon={<Radar size={14} />}
       sections={SECTIONS}

@@ -23,6 +23,7 @@ interface Props {
 }
 
 export function LanguageStep({ selectedLocale, onLocaleChange, next, dotStep, totalSteps }: Props) {
+  const tk = useTranslations("onboarding.languageStep");
   const t = useTranslations("welcome");
   const setLocale = useSettingsStore((s) => s.setLocale);
 
@@ -31,7 +32,7 @@ export function LanguageStep({ selectedLocale, onLocaleChange, next, dotStep, to
       {/* Brand header */}
       <div className="text-center mb-10">
         <p className="font-display text-xs font-semibold uppercase tracking-[0.25em] text-accent-primary">ADOS</p>
-        <p className="text-[10px] uppercase tracking-widest text-text-tertiary font-medium mt-0.5">Mission Control</p>
+        <p className="text-[10px] uppercase tracking-widest text-text-tertiary font-medium mt-0.5">{tk("missionControl")}</p>
       </div>
 
       <h2 className="text-xl font-display font-semibold text-text-primary mb-8 text-center">

@@ -14,6 +14,7 @@ import { useMotorTestController } from "./use-motor-test-controller";
  * the output the FC reports, with the commanded value beside it.
  */
 export function BfMotorTest({ connected }: { connected: boolean }) {
+  const tr = useTranslations("fcPanels.bfMotorTest");
   const { toast } = useToast();
   const t = useTranslations("fcToasts.motors");
   const { isHardBlocked } = useArmedLock();
@@ -41,7 +42,7 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
         <div>
           <p className="text-xs font-medium text-status-error">REMOVE ALL PROPELLERS BEFORE TESTING</p>
           <p className="text-[10px] text-status-error/80 mt-0.5">
-            Motors will spin when tested. Failure to remove propellers can result in injury or damage.
+            {tr("motorsWillSpinWhenTested")}
           </p>
         </div>
       </div>
@@ -54,11 +55,11 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
           onChange={(e) => setPropsRemoved(e.target.checked)}
           className="w-4 h-4 rounded border-border-default bg-bg-tertiary accent-accent-primary"
         />
-        <span className="text-xs text-text-secondary">I confirm all propellers have been removed</span>
+        <span className="text-xs text-text-secondary">{tr("iConfirmAllPropellersHave")}</span>
       </label>
 
       {propsRemoved && !test.supported && (
-        <p className="text-[10px] text-text-tertiary mt-3">Motor test is not available on this link.</p>
+        <p className="text-[10px] text-text-tertiary mt-3">{tr("motorTestIsNotAvailable")}</p>
       )}
 
       {/* Motor controls */}
@@ -73,18 +74,18 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
                 onClick={handleEnable}
                 disabled={isHardBlocked || !connected || test.motorCount === null}
               >
-                Enable Motor Test
+                {tr("enableMotorTest")}
               </Button>
             ) : (
               <Button variant="secondary" size="sm" icon={<Square size={12} />} onClick={test.stop} className="border-status-error text-status-error">
-                Stop All Motors
+                {tr("stopAllMotors")}
               </Button>
             )}
-            {isHardBlocked && <span className="text-[10px] text-status-error">Disarm to test motors</span>}
+            {isHardBlocked && <span className="text-[10px] text-status-error">{tr("disarmToTestMotors")}</span>}
           </div>
 
           {test.motorCount === null ? (
-            <p className="text-[10px] text-text-tertiary">Waiting for the flight controller&apos;s motor output report.</p>
+            <p className="text-[10px] text-text-tertiary">{tr("waitingForTheFlightController")}</p>
           ) : (
             <>
               {/* Individual motor sliders */}
@@ -116,14 +117,14 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
               {/* Master slider */}
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-text-secondary">
-                  <span>Master Throttle</span>
+                  <span>{tr("masterThrottle")}</span>
                   <span className="font-mono tabular-nums">{master === null ? "mixed" : `${master}%`}</span>
                 </div>
                 <input
                   type="range" min="0" max="100" value={master ?? 0}
                   onChange={(e) => test.setAll(Number(e.target.value))}
                   disabled={!test.active}
-                  aria-label="Master throttle"
+                  aria-label={tr("masterThrottle2")}
                   className="w-full accent-accent-primary disabled:opacity-30"
                 />
                 <div className="flex justify-between text-[8px] text-text-tertiary font-mono">

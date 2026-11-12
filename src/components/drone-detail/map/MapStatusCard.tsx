@@ -16,11 +16,13 @@ import { useTranslations } from "next-intl";
 
 import type { NavHealth } from "@/lib/hud/nav-types";
 import { cn } from "@/lib/utils";
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
   PLACEMENT_KEY,
   STREAM_KEY,
   UPLOAD_KEY,
   type MapStatusView,
+  type MapTone,
 } from "@/components/drone-detail/map/map-status-view";
 
 interface MapStatusCardProps {
@@ -33,6 +35,18 @@ const HEALTH_TONE: Record<NavHealth, string> = {
   good: "text-status-success",
   degraded: "text-status-warning",
   lost: "text-status-error",
+};
+
+const TONE: Record<MapTone, string | undefined> = {
+  ok: undefined,
+  warn: "text-status-warning",
+  crit: "text-status-error",
+};
+
+const BAR_TONE: Record<MapTone, string> = {
+  ok: "bg-accent-primary",
+  warn: "bg-status-warning",
+  crit: "bg-status-error",
 };
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -60,7 +74,7 @@ export function MapStatusCard({ view, poseHealth }: MapStatusCardProps) {
         <h3 className="text-sm font-medium text-text-primary">{t("status")}</h3>
         {view.state === "stale" && (
           <span className="text-xs text-status-warning" role="status">
-            {t("stale")}
+            {specString("map.panel.stale", { s: view.ageS ?? 0 })}
           </span>
         )}
       </header>
@@ -68,14 +82,14 @@ export function MapStatusCard({ view, poseHealth }: MapStatusCardProps) {
         <p className="text-xs text-text-secondary">{t("noData")}</p>
       ) : (
         <dl className={cn("divide-y divide-border-default", view.state === "stale" && "opacity-60")}>
-          <Row label={t("session")}>{s.sessionId ?? t("noSession")}</Row>
-          <Row label={t("points")}>{s.sweepPoints !== null ? s.sweepPoints.toLocaleString() : dash}</Row>
-          <Row label={t("area")}>{s.areaM2 !== null ? `${s.areaM2.toFixed(1)} m²` : dash}</Row>
+          <Row label={specString("map.status.session")}>{s.sessionId ?? t("noSession")}</Row>
+          <Row label={specString("map.status.sweep_points")}>{s.sweepPoints !== null ? s.sweepPoints.toLocaleString() : dash}</Row>
+          <Row label={specString("map.status.area")}>{s.areaM2 !== null ? `${s.areaM2.toFixed(1)} m²` : dash}</Row>
           <Row label={t("health")}>
             {poseHealth ? <span className={HEALTH_TONE[poseHealth]}>{tq(poseHealth)}</span> : t("noPose")}
           </Row>
-          <Row label={t("placement")}>{s.placement ? t(PLACEMENT_KEY[s.placement]) : dash}</Row>
-          <Row label={t("memory")}>
+          <Row label={specString("map.status.placement")}>{s.placement ? specString(PLACEMENT_KEY[s.placement]) : dash}</Row>
+          <Row label={specString("map.status.memory")}>
             {s.memoryUsedMb !== null && s.memoryBudgetMb !== null ? (
               <span className="inline-flex items-center gap-2">
                 {view.memoryFraction !== null && (
@@ -83,31 +97,47 @@ export function MapStatusCard({ view, poseHealth }: MapStatusCardProps) {
                     <span
                       className={cn(
                         "block h-full",
-                        view.memoryFraction > 0.9 ? "bg-status-warning" : "bg-accent-primary",
+                        BAR_TONE[view.memoryTone],
                       )}
                       style={{ width: `${Math.round(view.memoryFraction * 100)}%` }}
                     />
                   </span>
                 )}
-                {t("memoryValue", {
-                  used: Math.round(s.memoryUsedMb),
-                  budget: Math.round(s.memoryBudgetMb),
-                })}
+                <span className={TONE[view.memoryTone]} data-tone={view.memoryTone}>
+                  {t("memoryValue", {
+                    used: Math.round(s.memoryUsedMb),
+                    budget: Math.round(s.memoryBudgetMb),
+                  })}
+                </span>
               </span>
             ) : (
               dash
             )}
           </Row>
-          <Row label={t("voxel")}>{s.voxelM !== null ? `${(s.voxelM * 100).toFixed(0)} cm` : dash}</Row>
-          <Row label={t("keyframesDropped")}>{s.keyframesDropped ?? dash}</Row>
+          <Row label={specString("map.status.voxel_size")}>{s.voxelM !== null ? `${(s.voxelM * 100).toFixed(0)} cm` : dash}</Row>
+          <Row label={specString("map.status.keyframes_dropped")}>
+            <span className={TONE[view.keyframesTone]} data-tone={view.keyframesTone}>
+              {s.keyframesDropped ?? dash}
+            </span>
+          </Row>
           {s.navPose && (
             <Row label={t("navPose")}>{t(s.navPose === "always" ? "navPoseAlways" : "navPoseCapture")}</Row>
           )}
           {s.upload && (
-            <Row label={t("upload")}>{t(UPLOAD_KEY[s.upload.state], { pct: view.uploadPct ?? 0 })}</Row>
+            <Row label={specString("map.status.upload")}>
+              <span className={TONE[view.uploadTone]} data-tone={view.uploadTone}>
+                {specString(UPLOAD_KEY[s.upload.state])}
+                {s.upload.state === "uploading" ? ` ${view.uploadPct ?? 0}%` : ""}
+              </span>
+            </Row>
           )}
           {s.stream && (
-            <Row label={t("stream")}>{t(STREAM_KEY[s.stream.state], { rate: view.streamRate ?? dash })}</Row>
+            <Row label={specString("map.status.live_stream")}>
+              <span className={TONE[view.streamTone]} data-tone={view.streamTone}>
+                {specString(STREAM_KEY[s.stream.state])}
+                {s.stream.state === "live" || s.stream.state === "degraded" ? ` · ${view.streamRate ?? dash}` : ""}
+              </span>
+            </Row>
           )}
         </dl>
       )}

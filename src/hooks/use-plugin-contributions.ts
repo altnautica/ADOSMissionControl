@@ -22,9 +22,10 @@
  *     signed-in mode too. Bundles live in the shared
  *     `plugin-contribution-cache`, loaded once per `(installId, version)`
  *     however many slot hosts ask, and released when the last host lets go.
- *     An iframe contribution is omitted until its blob is ready, so no iframe
- *     ever mounts against an empty src; an inline contribution is listed
- *     while it loads and when it fails, so the slot shows why.
+ *     An iframe contribution is listed with its load state until its blob is
+ *     ready, so no iframe ever mounts against an empty src and the slot says
+ *     it is loading or why it failed; an inline contribution is listed the
+ *     same way.
  *   - Handlers: `buildPluginHandlers()` runs once per `(pluginId, deviceId)`
  *     in the same shared cache and is `dispose()`d when the last host holding
  *     it drops the plugin (it tears down any telemetry subscriptions the
@@ -59,7 +60,7 @@ import {
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
 import { createConvexRecordsBackend } from "@/lib/plugins/handlers/records";
 import type { BridgeHandler } from "@/lib/plugins/bridge";
-import type { InlineMountState } from "@/components/plugins/PluginHostProvider";
+import type { FrameLoadState, InlineMountState } from "@/components/plugins/PluginHostProvider";
 import type { GcsContributeRow, PluginSlotName, PairedNodeProfile } from "@/lib/plugins/types";
 import {
   EMPTY_CONTRIBUTIONS as EMPTY,
@@ -225,8 +226,8 @@ export function usePluginContributions(
   // Keys this host holds in the shared cache, mapped to their install id.
   const heldBundlesRef = useRef<Map<string, string>>(new Map());
   const [loaded, setLoaded] = useState<ReadonlyMap<string, LoadedBundle>>(() => new Map());
-  // Inline installs whose load failed, by install id: shown with a retry.
-  const [inlineErrors, setInlineErrors] = useState<ReadonlyMap<string, string>>(
+  // Installs whose bundle load failed, by install id: shown with a retry.
+  const [bundleErrors, setBundleErrors] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
   // Bumped by a retry so the load effect re-acquires what failed.
@@ -269,7 +270,7 @@ export function usePluginContributions(
     for (const target of loadTargets) {
       if (held.has(target.key)) continue;
       held.set(target.key, target.installId);
-      setInlineErrors((prev) => {
+      setBundleErrors((prev) => {
         if (!prev.has(target.installId)) return prev;
         const next = new Map(prev);
         next.delete(target.installId);
@@ -284,9 +285,7 @@ export function usePluginContributions(
           // key unheld so a retry or the next install-set change reloads it.
           if (!held.delete(target.key)) return;
           const message = err instanceof Error ? err.message : String(err);
-          if (target.bundle.kind === "node") {
-            setInlineErrors((prev) => new Map(prev).set(target.installId, message));
-          }
+          setBundleErrors((prev) => new Map(prev).set(target.installId, message));
           console.warn("plugin_bundle_load_failed", { installId: target.installId, error: message });
         },
       );
@@ -370,11 +369,18 @@ export function usePluginContributions(
       } else if (row.inlineUnavailable !== undefined) {
         inlineState = { status: "error", message: t(row.inlineUnavailable), retry };
       } else if (row.bundle?.kind === "node") {
-        const error = inlineErrors.get(row.installId);
+        const error = bundleErrors.get(row.installId);
         inlineState =
           error !== undefined ? { status: "error", message: error, retry } : { status: "loading" };
-      } else if (view?.kind !== "frame") {
-        continue; // omit an iframe until its blob is ready
+      }
+      // An iframe mounts only against a ready blob; until then the slot shows
+      // the bundle's load state (a loading line, or the error with a retry),
+      // never an empty frame and never nothing at all.
+      let frameState: FrameLoadState | undefined;
+      if (!inlineState && view?.kind !== "frame") {
+        if (!row.bundle) continue; // no GCS bundle: nothing can mount
+        const error = bundleErrors.get(row.installId);
+        frameState = error !== undefined ? { status: "error", message: error, retry } : { status: "loading" };
       }
       const grantedCapabilities = new Set(row.grantedCaps);
       for (const entry of row.gcsContributes) {
@@ -389,6 +395,7 @@ export function usePluginContributions(
             ...(entry.zone !== undefined ? { zone: entry.zone } : {}),
             bundleUrl: view?.kind === "frame" ? view.blobUrl : "",
             ...(inlineState ? { isolation: "inline" as const, inline: inlineState } : {}),
+            ...(frameState ? { frame: frameState } : {}),
             grantedCapabilities,
             handlers: pluginHandlers,
             pluginInstallId: row.installId,
@@ -403,5 +410,5 @@ export function usePluginContributions(
       return a.contribution.pluginId.localeCompare(b.contribution.pluginId);
     });
     return built.map((b) => b.contribution);
-  }, [slotRows, loaded, handlers, inlineErrors, retry, slot, nodeProfile, deviceId, t]);
+  }, [slotRows, loaded, handlers, bundleErrors, retry, slot, nodeProfile, deviceId, t]);
 }

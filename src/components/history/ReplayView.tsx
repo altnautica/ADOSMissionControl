@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Play } from "lucide-react";
 import { formatDecimal } from "@/lib/i18n/format";
 import {
@@ -38,6 +38,7 @@ interface ReplayViewProps {
 }
 
 export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps) {
+  const tq = useTranslations("history.replayView");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const locale = useLocale();
@@ -167,7 +168,7 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
             className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           >
             <ArrowLeft size={14} />
-            Exit Replay
+            {tq("exitReplay")}
           </button>
           <div className="w-px h-4 bg-border-default" />
           <div className="flex items-center gap-2">
@@ -194,7 +195,7 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
         <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
           <div className="flex flex-col items-center gap-2">
             <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-text-tertiary font-mono">Loading recording...</span>
+            <span className="text-xs text-text-tertiary font-mono">{tq("loadingRecording")}</span>
           </div>
         </div>
       ) : shownError ? (
@@ -205,7 +206,7 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
               onClick={onExit}
               className="text-xs text-accent-primary hover:underline cursor-pointer"
             >
-              Return to History
+              {tq("returnToHistory")}
             </button>
           </div>
         </div>

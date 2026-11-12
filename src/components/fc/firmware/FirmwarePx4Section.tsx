@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import type { PX4Release, PX4Board } from "@/lib/protocol/firmware/types";
 import { HardDrive, Zap, RefreshCw } from "lucide-react";
@@ -24,6 +25,7 @@ export function FirmwarePx4Section({
   selectedPx4Board, setSelectedPx4Board,
   px4Boards, onRetry,
 }: Props) {
+  const tr = useTranslations("fcPanels.firmwarePx4Section");
   const boardGroups = useMemo(() => buildPX4SelectGroups(px4Boards), [px4Boards])
 
   return (
@@ -32,11 +34,11 @@ export function FirmwarePx4Section({
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold text-text-primary flex items-center gap-2">
             <Zap size={14} />
-            PX4 Release
+            {tr("px4Release")}
           </h2>
           {px4Loading && (
             <span className="text-[10px] text-text-tertiary flex items-center gap-1">
-              <RefreshCw size={10} className="animate-spin" /> Loading releases...
+              <RefreshCw size={10} className="animate-spin" /> {tr("loadingReleases")}
             </span>
           )}
         </div>
@@ -44,16 +46,16 @@ export function FirmwarePx4Section({
         {px4Error && (
           <div className="text-[10px] text-status-error flex items-center justify-between">
             <span>{px4Error}</span>
-            <button onClick={onRetry} className="underline cursor-pointer">Retry</button>
+            <button onClick={onRetry} className="underline cursor-pointer">{tr("retry")}</button>
           </div>
         )}
 
         <Select
-          label="Release"
+          label={tr("release")}
           value={selectedPx4Release}
           onChange={(v) => { setSelectedPx4Release(v); setSelectedPx4Board(""); }}
           disabled={px4Loading || px4Releases.length === 0}
-          placeholder="Loading releases..."
+          placeholder={tr("loadingReleases")}
           options={px4Releases.map((r) => ({
             value: r.tag,
             label: `${r.name || r.tag}${r.prerelease ? " (pre-release)" : ""}`,
@@ -64,7 +66,7 @@ export function FirmwarePx4Section({
       <div className="bg-bg-secondary border border-border-default p-4 space-y-3">
         <h2 className="text-xs font-semibold text-text-primary flex items-center gap-2">
           <HardDrive size={14} />
-          Target Board
+          {tr("targetBoard")}
         </h2>
         <Select
           value={selectedPx4Board}

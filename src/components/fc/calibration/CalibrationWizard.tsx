@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle, XCircle, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,22 +60,23 @@ interface CalibrationWizardProps {
   className?: string;
 }
 
-const statusBadge: Record<CalibrationStatus, { label: string; className: string }> = {
-  idle: { label: "Ready", className: "bg-bg-tertiary text-text-tertiary" },
-  in_progress: { label: "Calibrating", className: "bg-accent-primary/20 text-accent-primary" },
-  waiting_accept: { label: "Review & Accept", className: "bg-status-warning/20 text-status-warning" },
-  cal_warning: { label: "Review Results", className: "bg-status-warning/20 text-status-warning" },
-  success: { label: "Complete", className: "bg-status-success/20 text-status-success" },
-  error: { label: "Failed", className: "bg-status-error/20 text-status-error" },
+const statusBadge: Record<CalibrationStatus, string> = {
+  idle: "bg-bg-tertiary text-text-tertiary",
+  in_progress: "bg-accent-primary/20 text-accent-primary",
+  waiting_accept: "bg-status-warning/20 text-status-warning",
+  cal_warning: "bg-status-warning/20 text-status-warning",
+  success: "bg-status-success/20 text-status-success",
+  error: "bg-status-error/20 text-status-error",
 };
 
 export function CalibrationWizard({
   title, description, steps, currentStep, status, progress, statusMessage,
-  waitingForConfirm, onConfirm, confirmLabel = "Confirm Position",
+  waitingForConfirm, onConfirm, confirmLabel,
   compassProgress, compassResults, failureFixes, preTips,
   onStart, onCancel, onForceSave, unsupportedNotice, blockedReason, className,
 }: CalibrationWizardProps) {
-  const badge = statusBadge[status];
+  const t = useTranslations("fcCalibration.wizard");
+  const badgeClassName = statusBadge[status];
 
   return (
     <div className={cn("border border-border-default bg-bg-secondary p-4", className)}>
@@ -83,12 +85,12 @@ export function CalibrationWizard({
           <h3 className="text-sm font-medium text-text-primary">{title}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">{description}</p>
         </div>
-        <span className={cn("text-[10px] font-mono px-2 py-0.5 shrink-0", badge.className)}>{badge.label}</span>
+        <span className={cn("text-[10px] font-mono px-2 py-0.5 shrink-0", badgeClassName)}>{t(`status.${status}`)}</span>
       </div>
 
       {preTips && preTips.length > 0 && status === "idle" && (
         <div className="mb-4 bg-bg-tertiary/50 px-3 py-2.5">
-          <p className="text-[10px] font-medium text-text-secondary mb-1.5">Before you start</p>
+          <p className="text-[10px] font-medium text-text-secondary mb-1.5">{t("beforeYouStart")}</p>
           <ol className="space-y-1">
             {preTips.map((tip, i) => (
               <li key={i} className="text-[10px] text-text-tertiary flex gap-1.5">
@@ -148,7 +150,7 @@ export function CalibrationWizard({
 
       {(status === "error" || status === "cal_warning") && failureFixes && failureFixes.length > 0 && (
         <div className={cn("mb-3 px-3 py-2.5 border", status === "cal_warning" ? "border-status-warning/20 bg-status-warning/5" : "border-status-error/20 bg-status-error/5")}>
-          <p className={cn("text-[10px] font-medium mb-1.5", status === "cal_warning" ? "text-status-warning" : "text-status-error")}>Troubleshooting</p>
+          <p className={cn("text-[10px] font-medium mb-1.5", status === "cal_warning" ? "text-status-warning" : "text-status-error")}>{t("troubleshooting")}</p>
           <ul className="space-y-1">
             {failureFixes.map((fix, i) => (
               <li key={i} className="text-[10px] text-text-secondary flex gap-1.5"><span className="text-status-error shrink-0">&bull;</span>{fix}</li>
@@ -169,19 +171,19 @@ export function CalibrationWizard({
 
       <div className="flex gap-2">
         {status === "cal_warning" && onForceSave ? (
-          <><Button variant="primary" size="sm" onClick={onForceSave}>Force Save Offsets</Button>
-            <Button variant="secondary" size="sm" onClick={onStart} disabled={!!blockedReason}>Retry</Button></>
+          <><Button variant="primary" size="sm" onClick={onForceSave}>{t("forceSave")}</Button>
+            <Button variant="secondary" size="sm" onClick={onStart} disabled={!!blockedReason}>{t("retry")}</Button></>
         ) : waitingForConfirm && onConfirm ? (
-          <><Button variant="primary" size="sm" onClick={onConfirm}>{confirmLabel}</Button>
-            {onCancel && <Button variant="danger" size="sm" onClick={onCancel}>Cancel</Button>}</>
+          <><Button variant="primary" size="sm" onClick={onConfirm}>{confirmLabel ?? t("confirmPosition")}</Button>
+            {onCancel && <Button variant="danger" size="sm" onClick={onCancel}>{t("cancel")}</Button>}</>
         ) : status === "in_progress" && onCancel ? (
-          <><Button variant="secondary" size="sm" loading>Calibrating...</Button>
-            <Button variant="danger" size="sm" onClick={onCancel}>Cancel</Button></>
+          <><Button variant="secondary" size="sm" loading>{t("calibrating")}</Button>
+            <Button variant="danger" size="sm" onClick={onCancel}>{t("cancel")}</Button></>
         ) : unsupportedNotice ? (
-          <Button variant="secondary" size="sm" disabled>Not Available</Button>
+          <Button variant="secondary" size="sm" disabled>{t("notAvailable")}</Button>
         ) : (
           <Button variant="primary" size="sm" onClick={onStart} disabled={!!blockedReason}>
-            {status === "success" ? "Re-calibrate" : status === "error" || status === "cal_warning" ? "Retry" : "Start"}
+            {status === "success" ? t("recalibrate") : status === "error" || status === "cal_warning" ? t("retry") : t("start")}
           </Button>
         )}
       </div>

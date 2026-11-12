@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Terminal, Trash2 } from "lucide-react";
 import type { StatusLevel } from "@/lib/status-level";
@@ -37,6 +38,7 @@ function severityLevel(sev: number): StatusLevel {
 }
 
 export function ScriptConsole() {
+  const tq = useTranslations("dashboard.scriptConsole");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
   const [lines, setLines] = useState<Line[]>([]);
@@ -77,7 +79,7 @@ export function ScriptConsole() {
         <div className="flex items-center gap-1.5">
           <Terminal className="h-3.5 w-3.5 text-text-tertiary" />
           <span className="text-xs font-medium text-text-secondary">
-            Script Output
+            {tq("scriptOutput")}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -88,11 +90,11 @@ export function ScriptConsole() {
               onChange={(e) => setScriptsOnly(e.target.checked)}
               className="w-3 h-3 accent-accent-primary"
             />
-            Scripts only
+            {tq("scriptsOnly")}
           </label>
           <button
             type="button"
-            title="Clear"
+            title={tq("clear")}
             onClick={() => setLines([])}
             className="p-0.5 text-text-tertiary hover:text-accent-primary cursor-pointer"
           >

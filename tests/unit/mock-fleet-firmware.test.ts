@@ -101,9 +101,9 @@ describe("demo-fleet firmware variants", () => {
     expect(Number(after.value)).toBe(2);
   });
 
-  it("the demo fleet covers every non-default firmware variant", () => {
+  it("the demo fleet covers the firmware variants its config panels need", () => {
     const firmwares = new Set(DEMO_DRONES.map((d) => d.firmware).filter(Boolean));
-    for (const fw of ["px4", "px4-vtol", "ardupilot-plane", "ardupilot-plane-vtol", "ardupilot-plane-tailsitter", "ardupilot-plane-tiltrotor", "ardupilot-rover", "ardupilot-boat", "ardupilot-sub", "betaflight", "inav-plane", "ardupilot-heli"]) {
+    for (const fw of ["px4", "px4-vtol", "ardupilot-plane", "ardupilot-plane-tailsitter", "ardupilot-plane-tiltrotor", "ardupilot-rover", "ardupilot-boat", "inav-plane", "ardupilot-heli"]) {
       expect(firmwares.has(fw as MockFirmware)).toBe(true);
     }
   });

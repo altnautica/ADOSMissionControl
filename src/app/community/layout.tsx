@@ -13,13 +13,14 @@ const tabs = [
 ];
 
 function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
+  const tk = useTranslations("appPages.community");
   const pathname = usePathname();
   const t = useTranslations("communityNav");
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="border-b border-border-default bg-bg-secondary px-4">
-        <nav className="flex gap-1" aria-label="Community navigation">
+        <nav className="flex gap-1" aria-label={tk("communityNavigation")}>
           {tabs.map((tab) => {
               const isActive =
                 pathname === tab.href || pathname.startsWith(tab.href + "/");
@@ -44,7 +45,7 @@ function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Scoped to the page, not the nav, and reset on navigation: a failed
             tab shows a message and the other tabs stay reachable. */}
         <SilentErrorBoundary
-          label="CommunityLayout"
+          label={tk("communitylayout")}
           resetKey={pathname}
           fallback={
             <p role="alert" className="p-8 text-center text-xs text-text-secondary">

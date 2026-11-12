@@ -109,6 +109,64 @@ export function armedRefusalReason(err: AgentArmedRefusal): string {
   return err.message;
 }
 
+/** Looks up the operator sentence for an agent `E_*` code (a next-intl
+ * translator scoped to `agentErrors`). */
+export interface AgentErrorText {
+  (code: string): string;
+  has(code: string): boolean;
+}
+
+function stringField(value: unknown, key: string): string | undefined {
+  if (typeof value !== "object" || value === null || !(key in value)) return undefined;
+  const field: unknown = Reflect.get(value, key);
+  return typeof field === "string" && field.length > 0 ? field : undefined;
+}
+
+/**
+ * The sentence an operator sees for a failed agent call. A known `E_*` code
+ * (top level or under `detail`) reads as its localized text; otherwise the
+ * agent's own reason (`detail` when it is a string, else a `message` at the
+ * top level, under `detail` or under `error`); otherwise `fallback`. A call
+ * that never reached the agent, or an answer with no readable reason, gets
+ * `fallback`. Never the raw `Agent API <status>: <body>` text.
+ */
+export function describeAgentError(
+  err: unknown,
+  fallback: string,
+  codeText?: AgentErrorText,
+): string {
+  if (!(err instanceof AgentHttpError)) return fallback;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(err.body);
+  } catch {
+    return fallback;
+  }
+  const detail: unknown =
+    typeof parsed === "object" && parsed !== null && "detail" in parsed
+      ? Reflect.get(parsed, "detail")
+      : undefined;
+  const errorField: unknown =
+    typeof parsed === "object" && parsed !== null && "error" in parsed
+      ? Reflect.get(parsed, "error")
+      : undefined;
+
+  const code =
+    (typeof errorField === "string" ? errorField : undefined) ??
+    stringField(detail, "error") ??
+    stringField(parsed, "code") ??
+    stringField(detail, "code");
+  if (code && code.startsWith("E_") && codeText?.has(code)) return codeText(code);
+
+  return (
+    (typeof detail === "string" && detail.length > 0 ? detail : undefined) ??
+    stringField(parsed, "message") ??
+    stringField(detail, "message") ??
+    stringField(errorField, "message") ??
+    fallback
+  );
+}
+
 /** The armed-override options every flight-affecting client call accepts. */
 export interface ArmedOverrideOptions {
   force?: boolean;

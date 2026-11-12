@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Eye, EyeOff, Save, RotateCcw,
   Layers, HardDrive, Copy, ClipboardPaste,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OSD_SCREENS, PRESETS, type OsdElement, type VideoFormat } from "./ap-osd-elements";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 interface OsdElementGridProps {
   elements: OsdElement[];
@@ -47,12 +49,13 @@ export function OsdElementGrid({
   onCommitFlash,
   onReset,
 }: OsdElementGridProps) {
+  const tk = useTranslations("fcPanels.osdElementGrid");
   return (
     <div className="w-[220px] border-r border-border-default bg-bg-secondary flex-shrink-0 flex flex-col overflow-hidden">
       <div className="px-3 py-3 border-b border-border-default">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
           <Layers size={12} />
-          OSD Elements
+          {tk("osdElements")}
         </h2>
       </div>
 
@@ -85,7 +88,7 @@ export function OsdElementGrid({
           className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary border border-border-default cursor-pointer"
         >
           <Copy size={10} />
-          Copy
+          {tk("copy")}
         </button>
         <button
           onClick={onPasteScreen}
@@ -93,7 +96,7 @@ export function OsdElementGrid({
           className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary border border-border-default cursor-pointer disabled:opacity-40"
         >
           <ClipboardPaste size={10} />
-          Paste
+          {tk("paste")}
         </button>
         <div className="flex-1" />
         <div className="flex items-center gap-0.5 bg-bg-tertiary p-0.5 rounded">
@@ -168,7 +171,7 @@ export function OsdElementGrid({
             className="flex items-center justify-center gap-2 w-full px-3 py-1.5 text-xs font-semibold text-text-secondary border border-accent-primary/50 hover:text-accent-primary hover:bg-accent-primary/10 cursor-pointer"
           >
             <HardDrive size={12} />
-            Write to Flash
+            <SaveBarLabel k="writeToFlash" />
           </button>
         )}
         <button
@@ -176,7 +179,7 @@ export function OsdElementGrid({
           className="flex items-center justify-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary border border-border-default hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
         >
           <RotateCcw size={12} />
-          Reset to Default
+          {tk("resetToDefault")}
         </button>
       </div>
     </div>

@@ -19,9 +19,9 @@
  */
 
 import { memo, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 
 import { bottomRowValues } from "@/lib/cockpit/bottom-row";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { isFresh } from "@/lib/telemetry/freshness";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { fmtDistance, fmtSigned1 } from "@/lib/hud/format";
@@ -51,7 +51,6 @@ function speed(v: number | null, signed = false): string {
 }
 
 export const BottomRow = memo(function BottomRow({ droneId }: { droneId: string }) {
-  const t = useTranslations("flightScreen.row");
   const grid = useFlightGrid();
   useThrottledTelemetryVersion();
   const { pilot, receivedAt } = usePilotState(droneId);
@@ -83,14 +82,14 @@ export const BottomRow = memo(function BottomRow({ droneId }: { droneId: string 
   });
   const labels = bottomRowLabels(grid);
   const cells: { key: string; label: string; value: string; title: string; stale?: boolean }[] = [
-    { key: "d", label: "D", value: fmtDistance(v.distM), title: t("d") },
-    { key: "h", label: "H", value: height(v.heightM), title: t("h") },
+    { key: "d", label: specString("cockpit.readout.distance"), value: fmtDistance(v.distM), title: specString("cockpit.readout.distance_title") },
+    { key: "h", label: specString("cockpit.readout.height"), value: height(v.heightM), title: specString("cockpit.readout.height_title") },
   ];
   if (labels === "full") {
     cells.push(
-      { key: "hs", label: "H.S", value: speed(v.hSpeedMps), title: t("hs") },
-      { key: "vs", label: "V.S", value: speed(v.vSpeedMps, true), title: t("vs") },
-      { key: "agl", label: "AGL", value: height(v.aglM), title: t("agl"), stale: pilotStale },
+      { key: "hs", label: specString("cockpit.readout.hspeed"), value: speed(v.hSpeedMps), title: specString("cockpit.readout.hspeed_title") },
+      { key: "vs", label: specString("cockpit.readout.vspeed"), value: speed(v.vSpeedMps, true), title: specString("cockpit.readout.vspeed_title") },
+      { key: "agl", label: specString("cockpit.readout.agl"), value: height(v.aglM), title: specString("cockpit.readout.agl_title"), stale: pilotStale },
     );
   }
   return (

@@ -159,3 +159,36 @@ describe("PluginHostProvider + PluginSlot", () => {
     cleanup();
   });
 });
+
+describe("PluginSlot iframe load state", () => {
+  it("shows a loading line instead of an empty iframe while the bundle loads", () => {
+    const c = { ...mkContribution("com.example.alpha", "main", "node.detail.tab"), bundleUrl: "", frame: { status: "loading" as const } };
+    const { container, getByRole } = render(
+      <PluginHostProvider contributions={[c]}>
+        <PluginSlot name="node.detail.tab" />
+      </PluginHostProvider>,
+    );
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(getByRole("status").textContent).toBe("inlineLoading");
+    cleanup();
+  });
+
+  it("shows the failure with a retry when the bundle fails", () => {
+    const retry = vi.fn();
+    const c = {
+      ...mkContribution("com.example.alpha", "main", "node.detail.tab"),
+      bundleUrl: "",
+      frame: { status: "error" as const, message: "timed out", retry },
+    };
+    const { container, getByRole } = render(
+      <PluginHostProvider contributions={[c]}>
+        <PluginSlot name="node.detail.tab" />
+      </PluginHostProvider>,
+    );
+    expect(container.querySelector("iframe")).toBeNull();
+    const alert = getByRole("alert");
+    alert.querySelector("button")!.click();
+    expect(retry).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+});

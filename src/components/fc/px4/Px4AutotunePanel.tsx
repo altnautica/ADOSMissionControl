@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { Wand2, Save, RotateCcw, HardDrive, AlertTriangle } from "lucide-react";
+import { Wand2, AlertTriangle } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -18,6 +18,8 @@ import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { AgentSetupStep } from "../calibration/AgentSetupStep";
 import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field { param: string; label: string; kind: "enum" | "number"; min?: number; max?: number; step?: number }
 
@@ -43,6 +45,7 @@ const FW_FIELDS: Field[] = [
 ];
 
 export function Px4AutotunePanel() {
+  const tr = useTranslations("fcPanels.px4AutotunePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDrone = useDroneManager(selectSelectedDrone);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -73,7 +76,7 @@ export function Px4AutotunePanel() {
   const setup = useAgentFcSetup(selectedDroneId);
   const hasDirty = dirtyParams.size > 0;
 
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: Field) => {
     const value = params.get(f.param) ?? 0;
@@ -97,7 +100,7 @@ export function Px4AutotunePanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="Autotune" subtitle={`PX4 ${isFixedWing ? "fixed-wing" : isVtol ? "multicopter + fixed-wing" : "multicopter"} auto-tuning`}
+        <PanelHeader title={tr("autotune")} subtitle={`PX4 ${isFixedWing ? "fixed-wing" : isVtol ? "multicopter + fixed-wing" : "multicopter"} auto-tuning`}
           icon={<Wand2 size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -115,17 +118,22 @@ export function Px4AutotunePanel() {
         </div>
 
         <div className="border border-border-default bg-bg-secondary p-4">
-          <div className="flex items-center gap-2 mb-3"><Wand2 size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">Autotune Settings</h2></div>
+          <div className="flex items-center gap-2 mb-3"><Wand2 size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">{tr("autotuneSettings")}</h2></div>
           <div className="space-y-3">{fields.map(renderField)}</div>
         </div>
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
         </AgentSetupStep>
       </div>
     </div>

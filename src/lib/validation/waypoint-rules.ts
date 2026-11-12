@@ -12,7 +12,7 @@
 
 import type { Waypoint } from "@/lib/types";
 import type { ResolvedAltitude } from "@/lib/mission/altitude-frame";
-import type { ValidationIssue, ValidationOptions } from "./mission-validator";
+import type { ValidationIssue, ValidationOptions } from "./issue-types";
 
 const TERMINAL_COMMANDS: Record<string, true> = { LAND: true, VTOL_LAND: true, RTL: true };
 const TAKEOFF_COMMANDS: Record<string, true> = { TAKEOFF: true, VTOL_TAKEOFF: true };
@@ -41,6 +41,7 @@ export function waypointIssues(
           severity: "blocking",
           code: "ALTITUDE_EXCEEDED",
           message: `WP${i + 1}: Altitude ${Math.round(alt.aboveHome)}m above home exceeds limit of ${altLimit}m`,
+          text: { key: "wpAltitudeMAboveHomeExceeds", params: { v0: i + 1, v1: Math.round(alt.aboveHome), v2: altLimit } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -50,6 +51,7 @@ export function waypointIssues(
         severity: "advisory",
         code: "ALTITUDE_UNCHECKED",
         message: `WP${i + 1}: ${alt.frame}-frame altitude cannot be compared to the ${altLimit}m ceiling without a home elevation`,
+        text: { key: "wpFrameAltitudeCannotBeCompared", params: { v0: i + 1, v1: alt.frame, v2: altLimit } },
         waypointIndex: i,
         waypointId: wp.id,
       });
@@ -63,6 +65,7 @@ export function waypointIssues(
       severity: "blocking",
       code: "BELOW_MIN_ALTITUDE",
       message: `WP${i + 1}: Altitude ${Math.round(alt.aboveHome)}m above home is below the fence floor of ${minAlt}m`,
+      text: { key: "wpAltitudeMAboveHomeIs", params: { v0: i + 1, v1: Math.round(alt.aboveHome), v2: minAlt } },
       waypointIndex: i,
       waypointId: wp.id,
     });
@@ -79,6 +82,7 @@ export function waypointIssues(
         severity: "blocking",
         code: "ACTION_NO_LOCATION",
         message: `WP${i + 1}: ${action.command} has no location (0, 0); set its latitude and longitude`,
+        text: { key: "wpHasNoLocation00", params: { v0: i + 1, v1: action.command } },
         waypointIndex: i,
         waypointId: wp.id,
       });
@@ -87,6 +91,7 @@ export function waypointIssues(
         severity: "blocking",
         code: "INVALID_ACTION_COORDS",
         message: `WP${i + 1}: ${action.command} has invalid coordinates`,
+        text: { key: "wpHasInvalidCoordinates", params: { v0: i + 1, v1: action.command } },
         waypointIndex: i,
         waypointId: wp.id,
       });
@@ -117,6 +122,9 @@ export function waypointIssues(
           severity: "blocking",
           code: "TERRAIN_CLEARANCE",
           message: `WP${i + 1}: Only ${Math.round(alt.agl)}m above terrain (min: ${minClearance}m). ${ground}`,
+          text: alt.waypointGroundKnown && wp.groundElevation !== undefined
+            ? { key: "terrainClearanceGround", params: { v0: i + 1, v1: Math.round(alt.agl), v2: minClearance, ground: Math.round(wp.groundElevation) } }
+            : { key: "terrainClearanceGroundUnknown", params: { v0: i + 1, v1: Math.round(alt.agl), v2: minClearance } },
           waypointIndex: i,
           waypointId: wp.id,
         });
@@ -130,6 +138,7 @@ export function waypointIssues(
         message: alt.waypointGroundKnown
           ? `WP${i + 1}: terrain clearance not checked — no home elevation for this relative-frame altitude`
           : `WP${i + 1}: terrain unknown — no ground elevation sample at this waypoint, clearance not checked`,
+        text: { key: alt.waypointGroundKnown ? "terrainUncheckedNoHome" : "terrainUnknown", params: { wp: i + 1 } },
         waypointIndex: i,
         waypointId: wp.id,
       });

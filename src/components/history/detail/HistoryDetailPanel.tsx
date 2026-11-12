@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { X, Play, Lock, Unlock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -57,6 +58,7 @@ interface HistoryDetailPanelProps {
 }
 
 export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, onToggleListCollapsed }: HistoryDetailPanelProps) {
+  const tq = useTranslations("history.historyDetailPanel");
   const [active, setActive] = useState<TabId>("overview");
   const [recordings, setRecordings] = useState<TelemetryRecording[]>([]);
   const [signing, setSigning] = useState(false);
@@ -142,24 +144,24 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
             <>
               <Badge variant="success" size="sm">
                 <Lock size={10} className="inline mr-1" />
-                Sealed
+                {tq("sealed")}
               </Badge>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleVerify}
-                title="Verify signature hash"
+                title={tq("verifySignatureHash")}
               >
-                Verify
+                {tq("verify")}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 icon={<Unlock size={12} />}
                 onClick={handleUnseal}
-                title="Unseal to allow edits"
+                title={tq("unsealToAllowEdits")}
               >
-                Unseal
+                {tq("unseal")}
               </Button>
             </>
           ) : (
@@ -169,7 +171,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
               icon={<Lock size={12} />}
               onClick={handleSign}
               disabled={signing}
-              title="Sign and lock this record"
+              title={tq("signAndLockThisRecord")}
             >
               {signing ? "Signing…" : "Sign & lock"}
             </Button>
@@ -180,15 +182,15 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
               size="sm"
               icon={<Play size={12} />}
               onClick={() => onReplay(matchedRecording)}
-              title="Replay flight"
+              title={tq("replayFlight")}
             >
-              Replay
+              {tq("replay")}
             </Button>
           )}
           <button
             onClick={onClose}
             className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer p-1"
-            aria-label="Close"
+            aria-label={tq("close")}
           >
             <X size={14} />
           </button>
@@ -202,7 +204,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       )}
 
       {/* Tab strip */}
-      <div className="flex border-b border-border-default shrink-0 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Flight detail tabs">
+      <div className="flex border-b border-border-default shrink-0 overflow-x-auto scrollbar-hide" role="tablist" aria-label={tq("flightDetailTabs")}>
         {TABS.map((tab) => (
           <button
             key={tab.id}

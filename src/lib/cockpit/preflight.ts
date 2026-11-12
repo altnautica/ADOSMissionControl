@@ -1,19 +1,21 @@
 /**
  * @module cockpit/preflight
  * @description The pre-flight checklist that gates the first arm of a
- * session, built from the same sources on every surface: the pilot's
- * readiness items, the flight controller's own pre-arm checks, the vehicle
- * link, the navigation source, the battery, the controller (when the pilot
- * flies the sticks) and on-board storage. Texts come from the spec
- * (`flow.preflight.*`). A failing item blocks the first arm; a warning is
- * shown and accepted by passing the checklist.
+ * session. It starts with the shared pre-flight checks every surface
+ * evaluates (`@/lib/hud/preflight`: link, GPS, battery, home), then the
+ * pilot's readiness items, the flight controller's own pre-arm checks, and
+ * this app's navigation source, controller (when the pilot flies the
+ * sticks) and on-board storage items. Texts come from the spec. A failing
+ * or warning item names the fault, never the check as if it passed, and
+ * carries no source prefix. A failing item blocks the first arm; a warning
+ * is shown and accepted by passing the checklist.
  *
  * @license GPL-3.0-only
  */
 
 import type { FcStatusText, ReadinessItem } from "@/lib/hud/cockpit-frames";
-import type { BatteryReading } from "@/lib/hud/battery";
 import type { NavSourceResult } from "@/lib/hud/nav-source";
+import type { PreflightCheck } from "@/lib/hud/preflight";
 import { specText } from "@/lib/hud/spec-text";
 import { STORAGE_CRIT_PCT, STORAGE_WARN_PCT } from "@/lib/hud/status-pill";
 
@@ -37,7 +39,8 @@ export function fcPrearmItem(prearm: readonly string[] | undefined): PreflightIt
   const text = prearm[prearm.length - 1].replace(PREARM_TEXT, "");
   return {
     id: "fc_prearm",
-    label: text ? specText("flow.preflight.fc_prearm.failing", { text }) : specText("flow.preflight.fc_prearm"),
+    // The fault itself, without the "Flight controller:" source prefix.
+    label: text || specText("flow.preflight.fc_prearm"),
     state: "fail",
   };
 }
@@ -91,14 +94,12 @@ export interface PreflightInputs {
   readiness: readonly ReadinessItem[];
   /** The FC's pre-arm texts (`fcPrearmTexts`); undefined while unknown. */
   prearm: readonly string[] | undefined;
+  /** The shared pre-flight checks (`preflightChecks`), in their order. */
+  checks: readonly PreflightCheck[];
   /** The vehicle link is fresh. */
   live: boolean;
   /** The resolved navigation source, or null before any report. */
   nav: NavSourceResult | null;
-  /** The trusted battery reading, or null when unknown. */
-  battery: BatteryReading | null;
-  /** The low band (percent) the battery must be above. */
-  batteryLowPct: number;
   /** Who flies the sticks; the controller item shows only for `ados`. */
   controlMode: "ados" | "fc_manual" | "elrs" | null;
   controller: { connected: boolean; name: string | null };
@@ -108,32 +109,60 @@ export interface PreflightInputs {
   storagePct: number | null;
 }
 
-/** The checklist, in display order. */
+/** A shared check's words: its failure text when it fails and the check
+ *  carries one, else its label. */
+function checkLabel(c: PreflightCheck): string {
+  const fail = (c as PreflightCheck & { fail?: string }).fail;
+  return !c.ok && typeof fail === "string" && fail ? fail : c.label;
+}
+
+/** The source word of a nav source kind, for the degraded text. */
+const NAV_WORD: Record<string, string> = {
+  gps: "nav_source.gps",
+  ext: "nav_source.ext_nav",
+  flow: "nav_source.flow",
+  dr: "nav_source.dr",
+};
+
+/** The navigation source item: degraded names the source; no report says so. */
+function navItem(i: PreflightInputs): PreflightItem {
+  const label = specText("flow.preflight.nav_source");
+  if (!i.live || i.nav === null || i.nav.kind === "stale") {
+    return { id: "nav_source", label: specText("flow.preflight.not_reported", { item: label }), state: "warn" };
+  }
+  if (i.nav.tone === "crit") {
+    const word = NAV_WORD[i.nav.kind];
+    return {
+      id: "nav_source",
+      label: specText("alert.nav_source_degraded", { source: word ? specText(word) : i.nav.kind }),
+      state: "warn",
+    };
+  }
+  return { id: "nav_source", label, state: "pass" };
+}
+
+/** The checklist, in display order: the shared checks first. */
 export function preflightItems(i: PreflightInputs): PreflightItem[] {
-  const items: PreflightItem[] = [];
+  const items: PreflightItem[] = i.checks.map((c) => ({ id: c.id, label: checkLabel(c), state: c.ok ? "pass" : "fail" }));
   for (const r of i.readiness) {
     items.push({ id: `pilot:${r.id}`, label: r.msg || r.id, state: r.ok ? "pass" : r.severity === "block" ? "fail" : "warn" });
   }
   const prearm = fcPrearmItem(i.prearm);
   if (prearm) items.push(prearm);
-  items.push({ id: "link", label: specText("flow.preflight.link"), state: i.live ? "pass" : "fail" });
-  const navOk = i.live && i.nav !== null && i.nav.kind !== "stale" && i.nav.tone !== "crit";
-  items.push({ id: "nav_source", label: specText("flow.preflight.nav_source"), state: navOk ? "pass" : "warn" });
-  items.push({
-    id: "battery",
-    label: specText("flow.preflight.battery"),
-    state: i.battery !== null && i.battery.pct > i.batteryLowPct ? "pass" : "fail",
-  });
+  items.push(navItem(i));
   if (i.controlMode === "ados") {
     const { connected, name } = i.controller;
+    const ok = connected || i.onScreenSticks;
     items.push({
       id: "controller",
       label: connected
         ? name
           ? specText("flow.preflight.controller_named", { name })
           : specText("flow.preflight.controller")
-        : specText("flow.preflight.controller_optional"),
-      state: connected || i.onScreenSticks ? "pass" : "warn",
+        : i.onScreenSticks
+          ? specText("flow.preflight.controller_optional")
+          : specText("controls.no_controller"),
+      state: ok ? "pass" : "warn",
     });
   }
   items.push(storageItem(i.storagePct));

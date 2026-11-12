@@ -11,41 +11,27 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Trash2, Archive, Wrench, AlertTriangle } from "lucide-react";
 import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
 import type { EquipmentItem, EquipmentType } from "@/lib/types/operator";
 import { isInspectionDue } from "@/lib/equipment-inspection";
 
-const TYPE_OPTIONS: { value: EquipmentType; label: string }[] = [
-  { value: "prop_set", label: "Propeller set" },
-  { value: "motor_set", label: "Motor set" },
-  { value: "esc_set", label: "ESC set" },
-  { value: "camera", label: "Camera" },
-  { value: "gimbal", label: "Gimbal" },
-  { value: "payload", label: "Payload" },
-  { value: "frame", label: "Frame" },
-  { value: "rc_tx", label: "RC transmitter" },
+const EQUIPMENT_TYPES: EquipmentType[] = [
+  "prop_set",
+  "motor_set",
+  "esc_set",
+  "camera",
+  "gimbal",
+  "payload",
+  "frame",
+  "rc_tx",
 ];
-
-const FILTER_OPTIONS = [
-  { value: "all", label: "All types" },
-  ...TYPE_OPTIONS,
-];
-
-const TYPE_LABEL: Record<EquipmentType, string> = {
-  prop_set: "Props",
-  motor_set: "Motors",
-  esc_set: "ESCs",
-  camera: "Camera",
-  gimbal: "Gimbal",
-  payload: "Payload",
-  frame: "Frame",
-  rc_tx: "RC TX",
-};
 
 function genId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -54,7 +40,10 @@ function genId(): string {
   return `equip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+type PendingAction = { kind: "delete" | "retire"; id: string };
+
 export function EquipmentRegistryEditor() {
+  const t = useTranslations("operatorRegistry.equipment");
   const itemsMap = useEquipmentRegistryStore((s) => s.items);
   const upsert = useEquipmentRegistryStore((s) => s.upsert);
   const update = useEquipmentRegistryStore((s) => s.update);
@@ -65,6 +54,10 @@ export function EquipmentRegistryEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showRetired, setShowRetired] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [pending, setPending] = useState<PendingAction | null>(null);
+
+  const typeOptions = EQUIPMENT_TYPES.map((value) => ({ value, label: t(`type.${value}`) }));
+  const filterOptions = [{ value: "all", label: t("allTypes") }, ...typeOptions];
 
   const items = useMemo(() => {
     const all = Object.values(itemsMap);
@@ -85,7 +78,7 @@ export function EquipmentRegistryEditor() {
     const fresh: EquipmentItem = {
       id,
       type: typeFilter === "all" ? "prop_set" : (typeFilter as EquipmentType),
-      label: "New equipment",
+      label: t("newLabel"),
       totalFlightHours: 0,
       totalFlights: 0,
     };
@@ -93,15 +86,16 @@ export function EquipmentRegistryEditor() {
     setSelectedId(id);
   };
 
-  const handleDelete = (id: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Delete this equipment item permanently?")) return;
-    remove(id);
-    if (selectedId === id) setSelectedId(null);
-  };
-
-  const handleRetire = (id: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Retire this item? It will be hidden from active loadout pickers.")) return;
-    retire(id);
+  const confirmPending = () => {
+    const action = pending;
+    setPending(null);
+    if (!action) return;
+    if (action.kind === "retire") {
+      retire(action.id);
+      return;
+    }
+    remove(action.id);
+    if (selectedId === action.id) setSelectedId(null);
   };
 
   const handleInspected = (id: string) => {
@@ -109,18 +103,18 @@ export function EquipmentRegistryEditor() {
   };
 
   return (
-    <Card title="Equipment" padding={true}>
+    <Card title={t("title")} padding={true}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <span className="text-[11px] text-text-secondary">
-            {items.length} of {totalCount} active item{totalCount === 1 ? "" : "s"}
+            {t("activeCount", { shown: items.length, count: totalCount })}
           </span>
           <div className="flex items-center gap-2 flex-wrap">
             <Select
               label=""
               value={typeFilter}
               onChange={setTypeFilter}
-              options={FILTER_OPTIONS}
+              options={filterOptions}
             />
             <label className="flex items-center gap-1 text-[10px] text-text-tertiary">
               <input
@@ -128,28 +122,26 @@ export function EquipmentRegistryEditor() {
                 checked={showRetired}
                 onChange={(e) => setShowRetired(e.target.checked)}
               />
-              Show retired
+              {t("showRetired")}
             </label>
             <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={handleAdd}>
-              Add item
+              {t("add")}
             </Button>
           </div>
         </div>
 
         {items.length === 0 ? (
-          <p className="text-[10px] text-text-tertiary">
-            No equipment registered. Click Add to register a propeller set, motor, ESC, camera, gimbal, payload, frame, or RC transmitter.
-          </p>
+          <p className="text-[10px] text-text-tertiary">{t("empty")}</p>
         ) : (
           <div className="border border-border-default rounded">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border-default">
-                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">Type</th>
-                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">Label</th>
-                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">Fitment</th>
-                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">Hours</th>
-                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">Flights</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">{t("colType")}</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">{t("colLabel")}</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">{t("colFitment")}</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{t("colHours")}</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{t("colFlights")}</th>
                   <th className="px-2 py-1.5" />
                 </tr>
               </thead>
@@ -164,17 +156,17 @@ export function EquipmentRegistryEditor() {
                         selectedId === i.id ? "bg-accent-primary/10" : ""
                       } ${i.retiredAt ? "opacity-50" : ""}`}
                     >
-                      <td className="px-2 py-1.5 text-text-secondary">{TYPE_LABEL[i.type]}</td>
+                      <td className="px-2 py-1.5 text-text-secondary">{t(`typeShort.${i.type}`)}</td>
                       <td className="px-2 py-1.5 text-text-primary">
                         <span className="inline-flex items-center gap-1.5">
                           {i.label}
                           {due && (
-                            <span title="Inspection due">
+                            <span title={t("inspectionDue")}>
                               <AlertTriangle size={10} className="text-status-warning" />
                             </span>
                           )}
                           {i.retiredAt && (
-                            <span className="text-[9px] text-text-tertiary">retired</span>
+                            <span className="text-[9px] text-text-tertiary">{t("retiredTag")}</span>
                           )}
                         </span>
                       </td>
@@ -196,8 +188,8 @@ export function EquipmentRegistryEditor() {
                                 handleInspected(i.id);
                               }}
                               className="text-text-tertiary hover:text-status-success transition-colors"
-                              aria-label="Mark inspected"
-                              title="Mark inspected"
+                              aria-label={t("markInspected")}
+                              title={t("markInspected")}
                             >
                               <Wrench size={12} />
                             </button>
@@ -206,11 +198,11 @@ export function EquipmentRegistryEditor() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRetire(i.id);
+                                setPending({ kind: "retire", id: i.id });
                               }}
                               className="text-text-tertiary hover:text-status-warning transition-colors"
-                              aria-label="Retire"
-                              title="Retire item"
+                              aria-label={t("retire")}
+                              title={t("retireItem")}
                             >
                               <Archive size={12} />
                             </button>
@@ -218,11 +210,11 @@ export function EquipmentRegistryEditor() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(i.id);
+                              setPending({ kind: "delete", id: i.id });
                             }}
                             className="text-text-tertiary hover:text-status-error transition-colors"
-                            aria-label="Delete"
-                            title="Delete item"
+                            aria-label={t("delete")}
+                            title={t("deleteItem")}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -241,45 +233,45 @@ export function EquipmentRegistryEditor() {
             <h4 className="text-[11px] uppercase tracking-wider text-text-secondary mb-2">{selected.label}</h4>
             <div className="grid grid-cols-2 gap-3">
               <Select
-                label="Type"
+                label={t("typeLabel")}
                 value={selected.type}
                 onChange={(v) => update(selected.id, { type: v as EquipmentType })}
-                options={TYPE_OPTIONS}
+                options={typeOptions}
               />
               <Input
-                label="Label"
+                label={t("label")}
                 value={selected.label}
                 onChange={(e) => update(selected.id, { label: e.target.value })}
               />
               <Input
-                label="Manufacturer"
+                label={t("manufacturer")}
                 value={selected.manufacturer ?? ""}
                 onChange={(e) => update(selected.id, { manufacturer: e.target.value })}
               />
               <Input
-                label="Model"
+                label={t("model")}
                 value={selected.model ?? ""}
                 onChange={(e) => update(selected.id, { model: e.target.value })}
               />
               <Input
-                label="Serial number"
+                label={t("serialNumber")}
                 value={selected.serial ?? ""}
                 onChange={(e) => update(selected.id, { serial: e.target.value })}
               />
               <Input
-                label="Fitment"
+                label={t("fitment")}
                 value={selected.fitment ?? ""}
                 onChange={(e) => update(selected.id, { fitment: e.target.value })}
-                placeholder="Alpha-1 motor 3"
+                placeholder={t("fitmentPlaceholder")}
               />
               <Input
-                label="Install date"
+                label={t("installDate")}
                 type="date"
                 value={selected.installDate ?? ""}
                 onChange={(e) => update(selected.id, { installDate: e.target.value })}
               />
               <Input
-                label="Inspect every (flight hours)"
+                label={t("inspectEvery")}
                 type="number"
                 min={0}
                 value={selected.inspectionIntervalHours?.toString() ?? ""}
@@ -291,13 +283,13 @@ export function EquipmentRegistryEditor() {
                 placeholder="25"
               />
               <Input
-                label="Last inspected"
+                label={t("lastInspected")}
                 type="date"
                 value={selected.lastInspectedAt ?? ""}
                 onChange={(e) => update(selected.id, { lastInspectedAt: e.target.value })}
               />
               <Input
-                label="Total flight hours"
+                label={t("totalFlightHours")}
                 type="number"
                 step="0.01"
                 value={selected.totalFlightHours?.toString() ?? "0"}
@@ -308,7 +300,7 @@ export function EquipmentRegistryEditor() {
                 }
               />
               <Input
-                label="Total flights"
+                label={t("totalFlights")}
                 type="number"
                 value={selected.totalFlights?.toString() ?? "0"}
                 onChange={(e) =>
@@ -321,6 +313,16 @@ export function EquipmentRegistryEditor() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        onConfirm={confirmPending}
+        onCancel={() => setPending(null)}
+        title={pending?.kind === "retire" ? t("retireTitle") : t("deleteTitle")}
+        message={pending?.kind === "retire" ? t("retireMessage") : t("deleteMessage")}
+        confirmLabel={pending?.kind === "retire" ? t("retire") : t("delete")}
+        variant="danger"
+      />
     </Card>
   );
 }

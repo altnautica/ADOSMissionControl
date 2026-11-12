@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
 
 /** WPA2-PSK passphrase rule: 8 to 63 printable ASCII characters. Returns
  * null when valid, else the reason key under `nodeSettings.network`. */
@@ -55,6 +56,7 @@ export function HotspotApFields({
   const tRisk = useTranslations("hardware.connectionRisk");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const [ssid, setSsid] = useState("");
   const [channel, setChannel] = useState("");
   const [passphrase, setPassphrase] = useState("");
@@ -106,7 +108,7 @@ export function HotspotApFields({
         view.persisted === false ? "warning" : "success",
       );
     } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+      toast(describeAgentError(err, t("applyFailed")), "error");
     } finally {
       setSaving(false);
     }

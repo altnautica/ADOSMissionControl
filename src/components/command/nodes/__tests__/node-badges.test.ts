@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { nodeBadges, type NodeBadgeLabels } from "../NodeBadgeSet";
+import { nodeBadges, nodeBadgesWithProvenance, type NodeBadgeLabels } from "../NodeBadgeSet";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 
 const LABELS: NodeBadgeLabels = {
@@ -21,6 +21,7 @@ const LABELS: NodeBadgeLabels = {
   compute: "Compute",
   fc: "FC",
   companion: "FC + SBC",
+  relayed: "Relayed",
 };
 
 function node(over: Partial<FleetNodeEntry> = {}): FleetNodeEntry {
@@ -83,5 +84,28 @@ describe("nodeBadges companion drone", () => {
       LABELS,
     );
     expect(badges.map((b) => b.key)).toEqual(["stale", "flavor"]);
+  });
+});
+
+describe("nodeBadgesWithProvenance", () => {
+  it("leads a live relayed node with the Relayed badge", () => {
+    const badges = nodeBadgesWithProvenance(
+      node({ isRelayed: true, fcConnected: true }),
+      "drone",
+      LABELS,
+    );
+    expect(badges[0]).toMatchObject({ key: "relayed", label: "Relayed", variant: "info" });
+  });
+
+  it("never marks a stale or offline relayed node as relayed", () => {
+    for (const lastSeen of [Date.now() - 50_000, Date.now() - 3_600_000]) {
+      const badges = nodeBadgesWithProvenance(node({ isRelayed: true, lastSeen }), "drone", LABELS);
+      expect(badges.map((b) => b.key)).not.toContain("relayed");
+    }
+  });
+
+  it("adds nothing for a directly reached node", () => {
+    const n = node({ fcConnected: true });
+    expect(nodeBadgesWithProvenance(n, "drone", LABELS)).toEqual(nodeBadges(n, "drone", LABELS));
   });
 });

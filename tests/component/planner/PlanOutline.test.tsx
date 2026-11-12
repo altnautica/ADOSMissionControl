@@ -161,7 +161,7 @@ describe("PlanOutline row menu", () => {
     fireEvent.contextMenu(document.querySelector('[data-waypoint-id="a"]') as HTMLElement);
     const item = screen.getByRole("menuitem", { name: "Resume from here…" });
     expect(item.getAttribute("aria-disabled")).toBe("true");
-    expect(item.getAttribute("title")).toBe("The plan starts here; send it normally");
+    expect(item.getAttribute("title")).toBe("The plan starts here; upload it normally");
     fireEvent.click(item);
     expect(usePlannerStore.getState().sendDialog).toBeNull();
     fireEvent.keyDown(document, { key: "Escape" });
@@ -247,5 +247,22 @@ describe("PlanOutline groups", () => {
     const { rerender } = renderWithIntl(<PlanOutline p={p as unknown as OutlineProps["p"]} showGeofence showRally />);
     rerender(<PlanOutline p={{ ...p, selectedWaypointId: "c" } as unknown as OutlineProps["p"]} showGeofence showRally />);
     expect(usePlannerStore.getState().sectionOpen["outline.mission"]).toBe(true);
+  });
+});
+
+describe("PlanOutline group header hit targets", () => {
+  it("draws the collapse and add buttons at 32 px with a 48 px hit area", () => {
+    renderOutline();
+    const buttons = [
+      screen.getByRole("button", { name: "Collapse Mission" }),
+      screen.getByRole("button", { name: "Add rally point" }),
+      screen.getByRole("button", { name: "Add point of interest" }),
+      screen.getByRole("button", { name: "Draw geofence" }),
+    ];
+    for (const button of buttons) {
+      expect(button.className, button.getAttribute("aria-label") ?? "").toMatch(/(^|\s)h-8 w-8(\s|$)/);
+      expect(button.className).toContain("after:h-12");
+      expect(button.className).toContain("after:w-12");
+    }
   });
 });

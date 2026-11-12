@@ -19,6 +19,7 @@ import { ServiceTable } from "@/components/command/shared/ServiceTable";
 import { useAgentConnectionStore } from "@/stores/agent-connection";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import type { ServiceInfo } from "@/lib/agent/types";
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 
 const SERVICES = [
   { name: "ados-mavlink", status: "running", uptime_seconds: 10 },
@@ -64,26 +65,33 @@ describe("ServiceTable restart", () => {
     expect(screen.queryByText(/The vehicle is armed/)).toBeNull();
   });
 
-  it("reports a refused restart and a cloud-queued one", async () => {
+  it("reports a refused restart, a cloud-queued one and a failed send", async () => {
     setArmed(false);
     const onRestart = vi
       .fn<(name: string) => Promise<string | null>>()
-      .mockRejectedValueOnce(new Error("Unknown service"))
-      .mockResolvedValueOnce(null);
+      .mockRejectedValueOnce(new AgentHttpError(404, JSON.stringify({ detail: "Unknown service" })))
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("Failed to fetch"));
     renderWithIntl(<ServiceTable services={SERVICES} onRestart={onRestart} />);
 
-    fireEvent.click(screen.getByLabelText("Restart ados-logd"));
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Restart" }));
-    });
+    const restart = async () => {
+      fireEvent.click(screen.getByLabelText("Restart ados-logd"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Restart" }));
+      });
+    };
+
+    // The agent's refusal is shown in its own words.
+    await restart();
     await waitFor(() => expect(toast).toHaveBeenCalledWith("Unknown service", "error"));
 
-    fireEvent.click(screen.getByLabelText("Restart ados-logd"));
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Restart" }));
-    });
+    await restart();
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(expect.stringContaining("sent over the cloud relay"), "info"),
     );
+
+    // A transport failure names the unit, never the raw exception text.
+    await restart();
+    await waitFor(() => expect(toast).toHaveBeenCalledWith("Could not restart ados-logd", "error"));
   });
 });

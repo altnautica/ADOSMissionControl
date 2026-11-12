@@ -50,6 +50,7 @@ vi.mock("@/lib/skills/plugin-skill-host-store", () => ({
 import {
   usePluginSkillEgress,
   mapReportedState,
+  POLL_INTERVAL_MS,
 } from "@/hooks/use-plugin-skill-egress";
 
 const FOLLOW_ROW = {
@@ -183,12 +184,39 @@ describe("usePluginSkillEgress", () => {
     expect(pushSpy.fn).toHaveBeenCalledWith("drone-1", "follow.state", {
       state: "active",
     });
-    // (2) the raw payload was republished on the plugin event bus.
+    // (2) the payload was republished on the plugin event bus, carrying the
+    // time the agent recorded it so the iframe can age the report.
     expect(publishSpy.fn).toHaveBeenCalledWith(
       "follow.state",
-      { active: true, lock_state: "locked", commanding: true },
+      { active: true, lock_state: "locked", commanding: true, ts_ms: 100 },
       expect.stringMatching(/^agent-state:drone-1:/),
     );
+  });
+
+  it("republishes a topic only when the agent records a new report", async () => {
+    let ts = 100;
+    getStateImpl.value = async () => ({
+      "follow.state": { payload: { active: true }, ts_ms: ts },
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderHook(() => usePluginSkillEgress("drone-1"));
+      await waitFor(() => expect(publishSpy.fn).toHaveBeenCalledTimes(1));
+      // The sidecar still holds the same report: nothing new is published.
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 3);
+      expect(publishSpy.fn).toHaveBeenCalledTimes(1);
+      // A newer report goes out with its own time.
+      ts = 2000;
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+      await waitFor(() => expect(publishSpy.fn).toHaveBeenCalledTimes(2));
+      expect(publishSpy.fn).toHaveBeenLastCalledWith(
+        "follow.state",
+        { active: true, ts_ms: 2000 },
+        expect.stringMatching(/^agent-state:drone-1:/),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("is inert when there is no local plugin set (not local-first)", async () => {

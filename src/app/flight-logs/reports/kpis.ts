@@ -12,7 +12,8 @@ export interface AggregateKpis {
   totalFlights: number;
   totalHours: number;
   totalDistanceKm: number;
-  totalBatteryUsed: number;
+  /** Mean battery percentage used per flight; percentages do not add across flights. */
+  avgBatteryUsed: number | null;
   /** Averages over the flights that report the metric; null when none do. */
   avgDurationMin: number | null;
   avgDistanceKm: number | null;
@@ -32,10 +33,7 @@ export function computeAggregateKpis(records: readonly FlightRecord[]): Aggregat
   const totalHours = totalSeconds / 3600;
   const totalDistanceKm =
     records.reduce((acc, r) => acc + (r.distance ?? 0), 0) / 1000;
-  const totalBatteryUsed = records.reduce(
-    (acc, r) => acc + (r.batteryUsed ?? 0),
-    0,
-  );
+  const avgBatteryUsed = meanOf(records.map((r) => r.batteryUsed));
   const avgDurationSec = meanOf(records.map((r) => r.duration));
   const avgDistanceM = meanOf(records.map((r) => r.distance));
   const avgMaxAlt = meanOf(records.map((r) => r.maxAlt));
@@ -54,7 +52,7 @@ export function computeAggregateKpis(records: readonly FlightRecord[]): Aggregat
     totalFlights,
     totalHours,
     totalDistanceKm,
-    totalBatteryUsed,
+    avgBatteryUsed,
     avgDurationMin: avgDurationSec === null ? null : avgDurationSec / 60,
     avgDistanceKm: avgDistanceM === null ? null : avgDistanceM / 1000,
     avgMaxAlt,

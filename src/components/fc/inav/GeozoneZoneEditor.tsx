@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useGeozoneStore, GEOZONE_FENCE_ACTION, GEOZONE_SHAPE, GEOZONE_TYPE } from "@/stores/geozone-store";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -63,6 +64,7 @@ export function GeozoneZoneEditor({
   onToggleActive,
   onSetMapEditZoneId,
 }: GeozoneZoneEditorProps) {
+  const tr = useTranslations("fcPanels.geozoneZoneEditor");
   const updateZone = useGeozoneStore((s) => s.updateZone);
   const removeZone = useGeozoneStore((s) => s.removeZone);
   const addVertex = useGeozoneStore((s) => s.addVertex);
@@ -111,7 +113,7 @@ export function GeozoneZoneEditor({
             removeZone(zone.number);
           }}
           className="p-1 text-text-tertiary hover:text-status-error transition-colors"
-          aria-label="Remove zone"
+          aria-label={tr("removeZone")}
         >
           <Trash2 size={12} />
         </button>
@@ -119,7 +121,7 @@ export function GeozoneZoneEditor({
 
       {isPolygon && zoneVerts.length < 3 && (
         <p className="px-3 pb-1 text-[10px] font-mono text-status-warning">
-          Polygon zones need at least 3 vertices before upload.
+          {tr("polygonZonesNeedAtLeast")}
         </p>
       )}
 
@@ -130,13 +132,13 @@ export function GeozoneZoneEditor({
         >
           <div className="grid grid-cols-2 gap-2">
             <Select
-              label="Type"
+              label={tr("type")}
               options={ZONE_TYPE_OPTIONS}
               value={String(zone.type)}
               onChange={(v) => updateZone(zone.number, { type: Number(v) as 0 | 1 })}
             />
             <Select
-              label="Shape"
+              label={tr("shape")}
               options={ZONE_SHAPE_OPTIONS}
               value={String(zone.shape)}
               onChange={(v) => updateZone(zone.number, { shape: Number(v) as 0 | 1 })}
@@ -145,7 +147,7 @@ export function GeozoneZoneEditor({
 
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] text-text-tertiary font-mono">Min altitude (m)</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tr("minAltitudeM")}</span>
               <input
                 type="number"
                 step="1"
@@ -159,7 +161,7 @@ export function GeozoneZoneEditor({
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] text-text-tertiary font-mono">Max altitude (m)</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tr("maxAltitudeM")}</span>
               <input
                 type="number"
                 step="1"
@@ -175,7 +177,7 @@ export function GeozoneZoneEditor({
           </div>
 
           <Select
-            label="Fence action"
+            label={tr("fenceAction")}
             options={FENCE_ACTION_OPTIONS}
             value={String(zone.fenceAction)}
             onChange={(v) => updateZone(zone.number, { fenceAction: Number(v) })}
@@ -201,7 +203,7 @@ export function GeozoneZoneEditor({
               />
             </button>
             <span className="text-[10px] text-text-secondary font-mono">
-              Altitudes relative to sea level
+              {tr("altitudesRelativeToSeaLevel")}
             </span>
           </div>
 
@@ -230,7 +232,7 @@ export function GeozoneZoneEditor({
                     icon={<Plus size={10} />}
                     onClick={() => addVertex(zone.number, { lat: 0, lon: 0 })}
                   >
-                    Add vertex
+                    {tr("addVertex")}
                   </Button>
                 </div>
               </div>
@@ -266,7 +268,7 @@ export function GeozoneZoneEditor({
                         vert.lon,
                       )
                     }
-                    placeholder="Lat"
+                    placeholder={tr("lat")}
                     className="flex-1 bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
                   />
                   <input
@@ -281,13 +283,13 @@ export function GeozoneZoneEditor({
                         parseFloat(e.target.value) || 0,
                       )
                     }
-                    placeholder="Lon"
+                    placeholder={tr("lon")}
                     className="flex-1 bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
                   />
                   <button
                     onClick={() => removeVertex(zone.number, vert.vertexIdx)}
                     className="p-1 text-text-tertiary hover:text-status-error transition-colors shrink-0"
-                    aria-label="Remove vertex"
+                    aria-label={tr("removeVertex")}
                   >
                     <Trash2 size={10} />
                   </button>

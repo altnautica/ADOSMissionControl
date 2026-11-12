@@ -7,7 +7,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/intl-wrapper";
 
 vi.hoisted(() => {
   const mem = new Map<string, string>();

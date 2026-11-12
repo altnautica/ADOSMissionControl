@@ -24,6 +24,7 @@ import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-cons
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 
 export function FleetTelemetryCard() {
+  const tq = useTranslations("dashboard.fleetTelemetryCard");
   const t = useTranslations("status");
   const drones = useFleetDrones(selectFleet, fleetSummaryEqual);
   const profiles = useDroneMetadataStore((s) => s.profiles);
@@ -35,14 +36,14 @@ export function FleetTelemetryCard() {
 
   if (telemetryRows.length === 0) {
     return (
-      <Card title="Fleet Telemetry">
-        <span className="text-[11px] text-text-tertiary">No connected drones</span>
+      <Card title={tq("fleetTelemetry")}>
+        <span className="text-[11px] text-text-tertiary">{tq("noConnectedDrones")}</span>
       </Card>
     );
   }
 
   return (
-    <Card title="Fleet Telemetry">
+    <Card title={tq("fleetTelemetry")}>
       {/* Summary row */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-1.5">

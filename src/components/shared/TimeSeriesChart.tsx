@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 /**
  * @module TimeSeriesChart
  * @description Reusable inline SVG single-series time-series chart.
@@ -38,6 +39,7 @@ export function TimeSeriesChart({
   secondaryLabel?: string;
   secondaryUnit?: string;
 }) {
+  const tk = useTranslations("shared.timeSeriesChart");
   if (data.length < 2) {
     return (
       <div
@@ -45,7 +47,7 @@ export function TimeSeriesChart({
         style={{ width, height }}
       >
         <span className="text-[10px] text-text-tertiary">
-          Waiting for data...
+          {tk("waitingForData")}
         </span>
       </div>
     );

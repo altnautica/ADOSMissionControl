@@ -47,10 +47,11 @@ interface ChartsTabProps {
 }
 
 export function ChartsTab({ record }: ChartsTabProps) {
+  const tq = useTranslations("history.chartsTab");
   const t = useTranslations("history");
   if (!record.recordingId) {
     return (
-      <Card title="Charts" padding={true}>
+      <Card title={tq("charts")} padding={true}>
         <p className="text-[10px] text-text-tertiary">
           {t("chartsNoRecording")}
         </p>
@@ -61,6 +62,7 @@ export function ChartsTab({ record }: ChartsTabProps) {
 }
 
 function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record: FlightRecord }) {
+  const tq = useTranslations("history.chartsTab");
   const t = useTranslations("history");
   const [series, setSeries] = useState<SeriesData>(EMPTY_SERIES);
   const [rawFrames, setRawFrames] = useState<TelemetryFrame[]>([]);
@@ -88,7 +90,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
 
   if (loadError) {
     return (
-      <Card title="Charts" padding={true}>
+      <Card title={tq("charts")} padding={true}>
         <p className="text-[10px] text-status-error">{t("chartsLoadError")}: {loadError}</p>
       </Card>
     );
@@ -96,7 +98,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
 
   if (!loaded) {
     return (
-      <Card title="Charts" padding={true}>
+      <Card title={tq("charts")} padding={true}>
         <div className="flex flex-col gap-3">
           <div className="h-[140px] w-full animate-pulse rounded bg-bg-tertiary" />
           <div className="h-[140px] w-full animate-pulse rounded bg-bg-tertiary" />
@@ -108,9 +110,9 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
 
   return (
     <div className="flex flex-col gap-3">
-      <ChartPanel title="Altitude (m)" data={series.altitude} lines={[{ key: "alt", color: "#3a82ff", label: "Alt" }]} events={record.events} />
+      <ChartPanel title={tq("altitudeM")} data={series.altitude} lines={[{ key: "alt", color: "#3a82ff", label: "Alt" }]} events={record.events} />
       <ChartPanel
-        title="Speed (m/s)"
+        title={tq("speedMS")}
         data={series.speed}
         lines={[
           { key: "gs", color: "#22c55e", label: "Ground" },
@@ -119,7 +121,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         events={record.events}
       />
       <ChartPanel
-        title="Battery"
+        title={tq("battery")}
         data={series.battery}
         lines={[
           { key: "v", color: "#eab308", label: "Voltage (V)" },
@@ -128,7 +130,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         events={record.events}
       />
       <ChartPanel
-        title="Attitude (°)"
+        title={tq("attitude")}
         data={series.attitude}
         lines={[
           { key: "roll", color: "#3a82ff", label: "Roll" },
@@ -138,7 +140,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         events={record.events}
       />
       <ChartPanel
-        title="GPS quality"
+        title={tq("gpsQuality")}
         data={series.gps}
         lines={[
           { key: "sats", color: "#22c55e", label: "Sats" },
@@ -147,7 +149,7 @@ function ChartsTabLoaded({ recordingId, record }: { recordingId: string; record:
         events={record.events}
       />
       <ChartPanel
-        title="Vibration (m/s²)"
+        title={tq("vibrationMS")}
         data={series.vibration}
         lines={[
           { key: "vx", color: "#3a82ff", label: "X" },

@@ -8,7 +8,6 @@ import {
 // The drone's top-level surfaces after the Agent-page consolidation.
 const DRONE_IDS = [
   "overview",
-  "flight",
   "cockpit",
   "map",
   "configure",

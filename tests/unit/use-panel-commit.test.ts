@@ -78,4 +78,24 @@ describe("usePanelCommit", () => {
     expect(source.revertAll).toHaveBeenCalledTimes(1);
     expect(toastSpy).toHaveBeenCalledWith(m.reverted, "info");
   });
+
+  it("holds the flashing flag during a commit and ignores a second press", async () => {
+    const { promise, resolve } = Promise.withResolvers<{ sent: boolean; acknowledged: boolean }>();
+    const commitToFlash = vi.fn(() => promise);
+    const { hook } = setup({ commitToFlash } as unknown as Partial<PanelCommitSource>);
+    let first: Promise<void> = Promise.resolve();
+    act(() => {
+      first = hook.result.current.flash();
+    });
+    expect(hook.result.current.flashing).toBe(true);
+    await act(async () => {
+      await hook.result.current.flash();
+    });
+    expect(commitToFlash).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolve({ sent: true, acknowledged: true });
+      await first;
+    });
+    expect(hook.result.current.flashing).toBe(false);
+  });
 });

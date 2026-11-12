@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { TimerGroupDiagram } from "./TimerGroupDiagram";
 import { AlertTriangle, Info } from "lucide-react";
 import type { BoardProfile, TimerGroupConflict } from "@/lib/board-profiles";
@@ -32,6 +33,7 @@ export function OutputTimerGroupConfig({
   gpioOutputs,
   onBoardOverride,
 }: OutputTimerGroupConfigProps) {
+  const tr = useTranslations("fcPanels.outputTimerGroupConfig");
   return (
     <>
       {/* ── Timer Group Diagram ──────────────────────────── */}
@@ -52,7 +54,7 @@ export function OutputTimerGroupConfig({
         <div className="p-2 bg-status-error/10 border border-status-error/20 space-y-1">
           <div className="flex items-center gap-1.5">
             <AlertTriangle size={12} className="text-status-error shrink-0" />
-            <span className="text-[10px] font-medium text-status-error">Timer Group Conflict</span>
+            <span className="text-[10px] font-medium text-status-error">{tr("timerGroupConflict")}</span>
           </div>
           {timerConflicts.map((c, i) => (
             <p key={i} className="text-[10px] text-status-error pl-5">
@@ -71,7 +73,7 @@ export function OutputTimerGroupConfig({
         <div className="p-2 bg-accent-primary/10 border border-accent-primary/20 space-y-1">
           <div className="flex items-center gap-1.5">
             <Info size={12} className="text-accent-primary shrink-0" />
-            <span className="text-[10px] font-medium text-accent-primary">Duplicate Functions</span>
+            <span className="text-[10px] font-medium text-accent-primary">{tr("duplicateFunctions")}</span>
           </div>
           {conflicts.map((c, i) => (
             <p key={i} className="text-[10px] text-accent-primary pl-5">{c}</p>
@@ -85,7 +87,7 @@ export function OutputTimerGroupConfig({
         <div className="p-2 bg-status-warning/10 border border-status-warning/20 space-y-1">
           <div className="flex items-center gap-1.5">
             <AlertTriangle size={12} className="text-status-warning shrink-0" />
-            <span className="text-[10px] font-medium text-status-warning">PWM Warnings</span>
+            <span className="text-[10px] font-medium text-status-warning">{tr("pwmWarnings")}</span>
           </div>
           {pwmWarnings.map((w, i) => (
             <p key={i} className="text-[10px] text-status-warning pl-5">Output {w.output}: {w.message}</p>

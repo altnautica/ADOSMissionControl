@@ -13,6 +13,8 @@
  * @license GPL-3.0-only
  */
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import { Thermometer, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,9 +30,12 @@ import {
   SENSOR_TYPES, INSTANCES, ENABLE_OPTIONS, TRIGGER_OPTIONS, LIMITS, PARAM_NAMES, OPTIONAL_NAMES,
 } from "./px4-thermal-params";
 import { FcSection } from "@/components/fc/shared/FcSection";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 
 export function Px4ThermalCalPanel() {
+  const ol = useOptionLabels();
+  const tr = useTranslations("fcPanels.px4ThermalCalPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("px4-thermal");
 
@@ -45,7 +50,7 @@ export function Px4ThermalCalPanel() {
     loadProgress, hasLoaded, missingOptional,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } =
+  const { saving, save: handleSave, flashing, flash: handleFlash } =
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
@@ -60,8 +65,8 @@ export function Px4ThermalCalPanel() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Thermal Calibration"
-            subtitle="Temperature compensation for gyro, accel, and baro (TC_*)"
+            title={tr("thermalCalibration")}
+            subtitle={tr("temperatureCompensationForGyroAccel")}
             icon={<Thermometer size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -73,9 +78,9 @@ export function Px4ThermalCalPanel() {
           />
 
           {/* Enables */}
-          <FcSection title="Compensation">
+          <FcSection title={tr("compensation")}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {SENSOR_TYPES.map((t) => (
+              {ol(SENSOR_TYPES).map((t) => (
                 <Select
                   key={t.enable}
                   label={`${t.label} (${t.enable})`}
@@ -88,18 +93,18 @@ export function Px4ThermalCalPanel() {
           </FcSection>
 
           {/* Calibration trigger */}
-          <FcSection title="Run Calibration">
+          <FcSection title={tr("runCalibration")}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {SENSOR_TYPES.map((t) => (
+              {ol(SENSOR_TYPES).map((t) => (
                 <Select
                   key={t.trigger}
                   label={`${t.label} (${t.trigger})`}
-                  options={TRIGGER_OPTIONS}
+                  options={ol(TRIGGER_OPTIONS)}
                   value={str(t.trigger)}
                   onChange={(v) => setLocalValue(t.trigger, Number(v))}
                 />
               ))}
-              {LIMITS.map((l) => (
+              {ol(LIMITS).map((l) => (
                 <Input
                   key={l.name}
                   label={`${l.label} (${l.name})`}
@@ -125,7 +130,7 @@ export function Px4ThermalCalPanel() {
           </FcSection>
 
           {/* Per-sensor calibration state */}
-          {SENSOR_TYPES.map((t) => {
+          {ol(SENSOR_TYPES).map((t) => {
             const rows = INSTANCES.filter((i) => has(`TC_${t.key}${i}_ID`) && num(`TC_${t.key}${i}_ID`) !== 0);
             if (rows.length === 0) return null;
             return (
@@ -138,7 +143,7 @@ export function Px4ThermalCalPanel() {
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <Input
-                        label="Min Temp"
+                        label={tr("minTemp")}
                         type="number"
                         step="1"
                         unit="°C"
@@ -146,7 +151,7 @@ export function Px4ThermalCalPanel() {
                         onChange={(e) => setLocalValue(`TC_${t.key}${i}_TMIN`, Number(e.target.value) || 0)}
                       />
                       <Input
-                        label="Ref Temp"
+                        label={tr("refTemp")}
                         type="number"
                         step="1"
                         unit="°C"
@@ -154,7 +159,7 @@ export function Px4ThermalCalPanel() {
                         onChange={(e) => setLocalValue(`TC_${t.key}${i}_TREF`, Number(e.target.value) || 0)}
                       />
                       <Input
-                        label="Max Temp"
+                        label={tr("maxTemp")}
                         type="number"
                         step="1"
                         unit="°C"
@@ -178,15 +183,15 @@ export function Px4ThermalCalPanel() {
               loading={saving}
               onClick={handleSave}
             >
-              Save to Flight Controller
+              <SaveBarLabel k="saveToFc" />
             </Button>
             {hasRamWrites && (
-              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>
-                Write to Flash
+              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={flashing} onClick={handleFlash}>
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
             {hasDirty && connected && (
-              <span className="text-[10px] text-status-warning">Unsaved changes</span>
+              <span className="text-[10px] text-status-warning"><SaveBarLabel k="unsavedChanges" /></span>
             )}
           </div>
         </div>

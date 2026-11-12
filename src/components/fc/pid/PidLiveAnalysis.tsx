@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Activity, Waves, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,7 @@ export function computeLivePidStats(
 }
 
 export function PidLiveAnalysis({ connected }: PidLiveAnalysisProps) {
+  const tr = useTranslations("fcPanels.pidLiveAnalysis");
   const attitudeRing = useTelemetryStore((s) => s.attitude);
   const vibrationRing = useTelemetryStore((s) => s.vibration);
   const tick = useClockTick();
@@ -147,7 +149,7 @@ export function PidLiveAnalysis({ connected }: PidLiveAnalysisProps) {
           <div className="w-px h-4 bg-border-default shrink-0" />
           <div className="flex items-center gap-1 shrink-0">
             <AlertTriangle size={10} className="text-status-warning" />
-            <span className="text-[9px] text-status-warning">Oscillation</span>
+            <span className="text-[9px] text-status-warning">{tr("oscillation")}</span>
           </div>
         </>
       )}

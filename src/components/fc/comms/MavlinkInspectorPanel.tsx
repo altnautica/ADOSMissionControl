@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -26,6 +27,7 @@ function formatTime(ts: number): string {
 }
 
 export function MavlinkInspectorPanel() {
+  const tl = useTranslations("fcPanels.mavlinkInspectorPanel");
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
 
@@ -133,14 +135,14 @@ export function MavlinkInspectorPanel() {
       {/* Sidebar — Message rates */}
       <div className="w-[220px] border-r border-border-default bg-bg-secondary flex-shrink-0 flex flex-col overflow-hidden">
         <div className="px-3 py-3 border-b border-border-default">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-1.5"><ArrowUpDown size={12} />Message Rates</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-1.5"><ArrowUpDown size={12} />{tl("messageRates")}</h2>
         </div>
         <div className="flex-1 overflow-y-auto">
           {msgRates.length === 0 ? (
             <p className="p-3 text-[10px] text-text-tertiary italic">{selectedDroneId ? "Waiting for data..." : "Connect a drone"}</p>
           ) : (
             <table className="w-full text-[10px] font-mono">
-              <thead><tr className="border-b border-border-default"><th className="text-left px-3 py-1 text-text-tertiary font-normal">Message</th><th className="text-right px-3 py-1 text-text-tertiary font-normal">Hz</th></tr></thead>
+              <thead><tr className="border-b border-border-default"><th className="text-left px-3 py-1 text-text-tertiary font-normal">{tl("message")}</th><th className="text-right px-3 py-1 text-text-tertiary font-normal">Hz</th></tr></thead>
               <tbody>
                 {msgRates.map(({ id, hz }) => (
                   <tr key={id} className="hover:bg-bg-tertiary cursor-pointer" onClick={() => setFilterMsgId(String(id))}>
@@ -158,24 +160,24 @@ export function MavlinkInspectorPanel() {
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
           <Radio size={14} className="text-text-secondary" />
-          <span className="text-xs font-semibold text-text-primary">MAVLink Inspector</span>
+          <span className="text-xs font-semibold text-text-primary">{tl("mavlinkInspector")}</span>
           <span className="text-[10px] text-text-tertiary font-mono">{filtered.length} msgs</span>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             <Filter size={12} className="text-text-tertiary" />
-            <input type="text" value={filterMsgId} onChange={(e) => setFilterMsgId(e.target.value)} placeholder="Filter: ID or name (comma-sep)" className="bg-bg-tertiary text-text-primary text-[10px] font-mono px-2 py-1 w-[200px] border border-border-default focus:outline-none focus:border-accent-primary placeholder:text-text-tertiary" />
+            <input type="text" value={filterMsgId} onChange={(e) => setFilterMsgId(e.target.value)} placeholder={tl("filterIDOrNameComma")} className="bg-bg-tertiary text-text-primary text-[10px] font-mono px-2 py-1 w-[200px] border border-border-default focus:outline-none focus:border-accent-primary placeholder:text-text-tertiary" />
           </div>
           <button onClick={() => setPaused((p) => !p)} className={`flex items-center gap-1 px-2 py-1 text-[10px] cursor-pointer ${paused ? "text-status-warning" : "text-text-secondary hover:text-text-primary"}`}>
             {paused ? <Pause size={10} /> : <Play size={10} />}{paused ? "Paused" : "Live"}
           </button>
-          <button onClick={exportLog} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"><Download size={10} />Export</button>
-          <button onClick={clear} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"><Trash2 size={10} />Clear</button>
+          <button onClick={exportLog} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"><Download size={10} />{tl("export")}</button>
+          <button onClick={clear} className="flex items-center gap-1 px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer"><Trash2 size={10} />{tl("clear")}</button>
         </div>
 
         <div className="flex items-center gap-0 px-4 py-1 border-b border-border-default bg-bg-tertiary text-text-tertiary font-mono text-[10px] leading-4">
-          <span className="w-[90px] shrink-0">Time</span><span className="w-[20px] shrink-0">Dir</span><span className="w-[40px] shrink-0 text-right">ID</span>
-          <span className="w-[180px] shrink-0 pl-2">Name</span><span className="w-[30px] shrink-0 text-right">Sys</span><span className="w-[35px] shrink-0 text-right">Comp</span>
-          <span className="w-[30px] shrink-0 text-right">Seq</span><span className="w-[30px] shrink-0 text-right">Len</span><span className="pl-2 flex-1">Payload</span>
+          <span className="w-[90px] shrink-0">{tl("time")}</span><span className="w-[20px] shrink-0">{tl("dir")}</span><span className="w-[40px] shrink-0 text-right">ID</span>
+          <span className="w-[180px] shrink-0 pl-2">{tl("name")}</span><span className="w-[30px] shrink-0 text-right">{tl("sys")}</span><span className="w-[35px] shrink-0 text-right">{tl("comp")}</span>
+          <span className="w-[30px] shrink-0 text-right">{tl("seq")}</span><span className="w-[30px] shrink-0 text-right">{tl("len")}</span><span className="pl-2 flex-1">{tl("payload")}</span>
         </div>
 
         <div ref={logRef} className="flex-1 overflow-y-auto font-mono text-[10px] leading-4" onMouseEnter={() => setAutoscroll(false)} onMouseLeave={() => setAutoscroll(true)}>

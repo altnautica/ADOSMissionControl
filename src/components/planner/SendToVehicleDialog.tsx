@@ -16,8 +16,9 @@
 
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, Plane, X } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ import type { PlanVehicleProfile } from "@/lib/types";
 import { isFlyingMission } from "@/lib/mission/upload-guard";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS, countCheckedPreflightItems } from "@/components/planner/preflight-items";
+import { flyThisMission } from "@/components/planner/fly-this-mission";
 import type { Planner } from "@/app/plan/use-planner";
 
 type SendItem = "mission" | "geofence" | "rally";
@@ -61,6 +63,7 @@ interface SendToVehicleDialogProps {
 
 export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally, resumeFromIndex }: SendToVehicleDialogProps) {
   const t = useTranslations("planner.send");
+  const router = useRouter();
   const setDock = usePlannerStore((s) => s.setDock);
 
   // The upload goes to the drone selected in the drone manager, which can
@@ -96,6 +99,7 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
     [fenceType, polygonPoints, circleCenter, circleRadius, zones],
   );
   const rallyCount = useRallyStore((s) => s.points.length);
+  const uploadProgress = useMissionStore((s) => s.uploadProgress);
 
   const checkedCount = countCheckedPreflightItems(usePreflightChecklistStore((s) => s.checked));
 
@@ -181,9 +185,25 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
           <Button variant="secondary" size="md" disabled={running} onClick={onClose}>
             {Object.keys(rows).length > 0 ? t("close") : t("cancel")}
           </Button>
-          <Button variant="primary" size="md" loading={running} disabled={selected.length === 0} onClick={() => void handleSend()}>
-            {running ? t("sending") : t("send")}
-          </Button>
+          {/* Once the mission is on the drone, the next step is flying it:
+              its Flight tab, with Launch set to start the mission. */}
+          {rows.mission?.status === "ok" && !running && targetId ? (
+            <Button
+              variant="primary"
+              size="md"
+              icon={<Plane size={14} />}
+              onClick={() => {
+                flyThisMission(targetId, (href) => router.push(href));
+                onClose();
+              }}
+            >
+              {t("flyMission")}
+            </Button>
+          ) : (
+            <Button variant="primary" size="md" loading={running} disabled={selected.length === 0} onClick={() => void handleSend()}>
+              {running ? t("sending") : t("send")}
+            </Button>
+          )}
         </div>
       }
     >
@@ -244,6 +264,26 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
                         </span>
                       )}
                     </div>
+                    {item === "mission" && row?.status === "running" && uploadProgress && uploadProgress.total > 0 && (
+                      <div className="flex flex-col gap-1 pl-6" data-testid="send-mission-progress">
+                        <span className="text-[11px] text-text-secondary tabular-nums">
+                          {t("progress", { sent: uploadProgress.sent, total: uploadProgress.total })}
+                        </span>
+                        <div
+                          role="progressbar"
+                          aria-label={t("progress", { sent: uploadProgress.sent, total: uploadProgress.total })}
+                          aria-valuemin={0}
+                          aria-valuemax={uploadProgress.total}
+                          aria-valuenow={uploadProgress.sent}
+                          className="h-1 bg-bg-tertiary"
+                        >
+                          <div
+                            className="h-full bg-accent-primary transition-[width]"
+                            style={{ width: `${(100 * uploadProgress.sent) / uploadProgress.total}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                     {flyingMission && (
                       <p className="pl-6 text-[11px] text-status-error" data-testid={`send-${item}-flying`}>
                         {t("missionInFlight")}

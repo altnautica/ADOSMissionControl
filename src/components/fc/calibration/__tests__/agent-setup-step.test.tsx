@@ -83,6 +83,8 @@ describe("AgentSetupStep", () => {
       const run = await screen.findByTestId("agent-setup-run-accel");
       expect((run as HTMLButtonElement).disabled).toBe(true);
       expect(run.getAttribute("title")).toBe("Disarm first");
+      // The reason is also shown inline, not only in a hover tooltip.
+      expect(screen.getByTestId("agent-setup-armed-accel").textContent).toBe("Disarm first");
     } finally {
       useDroneStore.setState({ armState: "disarmed", connectionState: "disconnected" });
     }

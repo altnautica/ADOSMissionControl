@@ -103,14 +103,18 @@ const HarmonicNotchPanel = dynamic(() => import("@/components/fc/notch/HarmonicN
 const SailboatPanel = dynamic(() => import("@/components/fc/sailboat/SailboatPanel").then(m => ({ default: m.SailboatPanel })), { ssr: false, ...panelLoading });
 const PayloadPanel = dynamic(() => import("@/components/fc/payload/PayloadPanel").then(m => ({ default: m.PayloadPanel })), { ssr: false, ...panelLoading });
 const AdsbPanel = dynamic(() => import("@/components/fc/adsb/AdsbPanel").then(m => ({ default: m.AdsbPanel })), { ssr: false, ...panelLoading });
+const AircraftSetupForDrone = dynamic(() => import("./AircraftSetupForDrone").then(m => ({ default: m.AircraftSetupForDrone })), { ssr: false, ...panelLoading });
 const DroneScriptsTab = dynamic(() => import("@/components/dashboard/drone-scripts/DroneScriptsTab").then(m => ({ default: m.DroneScriptsTab })), { ssr: false, ...panelLoading });
 
 interface FcPanelRouterProps {
   activePanel: string;
   firmwareType: string | null;
+  droneId: string;
+  droneName: string;
 }
 
-export function FcPanelRouter({ activePanel, firmwareType }: FcPanelRouterProps) {
+export function FcPanelRouter({ activePanel, firmwareType, droneId, droneName }: FcPanelRouterProps) {
+  if (activePanel === "aircraft-setup") return <AircraftSetupForDrone droneId={droneId} droneName={droneName} />;
   if (activePanel === "calibrate") return <CalibrationPanel />;
   if (activePanel === "outputs") {
     if (firmwareType === "px4") return <ActuatorPanel />;
@@ -147,8 +151,8 @@ export function FcPanelRouter({ activePanel, firmwareType }: FcPanelRouterProps)
     return firmwareType === "betaflight" ? <BfLedStripPanel /> : <LedPanel />;
   }
   if (activePanel === "receiver") {
-    // Betaflight drives receiver config over MSP; ArduPilot/iNav use the
-    // RC*/RCMAP parameter panel.
+    // Betaflight drives receiver config over MSP; ArduPilot uses the
+    // RC*/RCMAP parameter panel. The nav hides this panel on iNav.
     return firmwareType === "betaflight" ? <BfReceiverPanel /> : <ReceiverPanel />;
   }
 

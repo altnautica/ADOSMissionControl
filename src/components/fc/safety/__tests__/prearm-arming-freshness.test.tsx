@@ -27,6 +27,7 @@ vi.mock("@/stores/drone-manager", () => ({
 import { PreArmPanel } from "../PreArmPanel";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockStore } from "@/stores/clock-store";
+import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 
 const NOW = 1_800_000_000_000;
 
@@ -73,5 +74,17 @@ describe("PreArmPanel MSP arming badge", () => {
     expect(screen.getByText("Crash flip mode")).toBeTruthy();
     expect(screen.getByText("Arm switch")).toBeTruthy();
     expect(screen.queryByText(/Unknown flag/)).toBeNull();
+  });
+});
+
+describe("PreArmPanel vision navigation", () => {
+  it("shows no vision row that nothing feeds, even when vision navigation is advertised", () => {
+    useAgentCapabilitiesStore.setState({
+      navigation: { opticalFlowSupported: true, vioSupported: true },
+    } as never);
+    useTelemetryStore.setState({ armingFlags: 0, armingFlagsUpdatedAt: NOW - 1_000 });
+    render(<PreArmPanel />);
+    expect(screen.queryByText(/Vision navigation/i)).toBeNull();
+    expect(screen.queryByText("Companion process and EKF origin")).toBeNull();
   });
 });

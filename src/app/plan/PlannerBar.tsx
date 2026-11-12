@@ -2,7 +2,7 @@
  * @module PlannerBar
  * @description Top bar of the active planner: plan identity (library toggle,
  * inline name, unsaved dot), vehicle assignment, issue count, Save, the single
- * primary "Send to vehicle" action and the plan overflow menu.
+ * primary "Upload to vehicle" action and the plan overflow menu.
  * @license GPL-3.0-only
  */
 "use client";
@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle, ArrowDownUp, Copy, Download, FileDown, FileOutput, FileSpreadsheet, FileText,
-  FileUp, Globe, Library, Link2, MoreHorizontal, Move, Play, Save, Trash2, Upload,
+  FileUp, Globe, Library, Link2, MoreHorizontal, Move, Plane, Play, Save, Trash2, Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -25,12 +25,15 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useVehicleOptions } from "./use-vehicle-options";
+import { flyThisMission } from "@/components/planner/fly-this-mission";
+import { useDescribeUploadFailure } from "@/components/planner/use-describe-upload-failure";
 import { PlannerViewToggle } from "./PlannerViewToggle";
 import type { PlannerShareImport } from "./use-planner-share-import";
 import type { Planner } from "./use-planner";
 
-/** What the Send to vehicle dialog would offer for the current plan. */
+/** What the upload dialog would offer for the current plan. */
 export interface Sendable {
   hasWaypoints: boolean;
   fenceSendable: boolean;
@@ -75,7 +78,15 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
   const librarySheetOpen = usePlannerStore((s) => s.librarySheetOpen);
   const setLibrarySheetOpen = usePlannerStore((s) => s.setLibrarySheetOpen);
   const setDock = usePlannerStore((s) => s.setDock);
-  const vehicleOptions = useVehicleOptions(p.drones);
+  const vehicleOptions = useVehicleOptions(p.drones, p.selectedDroneId);
+  // Picking a connected vehicle for the plan also makes it the upload target
+  // when no drone is selected yet; a drone already selected elsewhere stays
+  // selected, and the upload dialog offers the switch.
+  const handleVehicleChange = (id: string) => {
+    p.setSelectedDroneId(id);
+    const manager = useDroneManager.getState();
+    if (id && manager.selectedDroneId === null && manager.drones.has(id)) manager.selectDrone(id);
+  };
 
   // Hard errors (out-of-fence, below terrain, bad jump target, ...) block the
   // send so an invalid mission can't be pushed to the FC.
@@ -90,11 +101,17 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
   // now; an edit, a plan switch or another drone reads differently.
   const status = useMissionUploadStatus();
   const uploadError = useMissionStore((s) => s.uploadError);
+  const uploadErrorCode = useMissionStore((s) => s.uploadErrorCode);
+  const uploadProgress = useMissionStore((s) => s.uploadProgress);
+  const uploadFailure = useDescribeUploadFailure()(uploadErrorCode, uploadError);
+  const targetDroneId = useDroneManager((s) => s.selectedDroneId);
   const sending = p.uploadState === "uploading";
   const sendLabel = errorCount > 0
     ? t("bar.fixIssues", { count: errorCount })
     : sending
-      ? t("bar.sending")
+      ? uploadProgress && uploadProgress.total > 0
+        ? t("bar.sendingProgress", { sent: uploadProgress.sent, total: uploadProgress.total })
+        : t("bar.sending")
       : status === "on-aircraft"
         ? t("bar.sent")
         : t("bar.send");
@@ -115,7 +132,7 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
     p.uploadState === "error"
       ? {
           label: t("uploadFailed"),
-          title: uploadError ? `${t("uploadFailed")}: ${uploadError}` : t("uploadFailed"),
+          title: uploadFailure ? `${t("uploadFailed")}: ${uploadFailure}` : t("uploadFailed"),
           className: "text-status-error",
         }
       : status === "older-on-aircraft"
@@ -123,6 +140,10 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
         : null;
 
   const overflowItems = [
+    // The plan is on the drone: the next step is flying it.
+    ...(status === "on-aircraft" && targetDroneId
+      ? [{ id: "fly-mission", label: t("send.flyMission"), icon: <Plane size={12} /> }, { id: "div0", label: "", divider: true }]
+      : []),
     { id: "download-drone", label: isDownloading ? t("loading") : t("bar.downloadFromDrone"), icon: <Download size={12} />, disabled: isDownloading || !hasDrone },
     { id: "import-boundary", label: t("import.boundary.menuLabel"), icon: <FileUp size={12} /> },
     { id: "div1", label: "", divider: true },
@@ -144,7 +165,8 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
   ];
 
   const handleOverflow = (id: string) => {
-    if (id === "download-drone") p.handleDownloadFromDrone();
+    if (id === "fly-mission") { if (targetDroneId) flyThisMission(targetDroneId, (href) => router.push(href)); }
+    else if (id === "download-drone") p.handleDownloadFromDrone();
     else if (id === "import-boundary") shareIo.handleImportBoundary();
     else if (id === "export-native") p.handleExportNative();
     else if (id === "export-waypoints") p.handleExportWaypoints();
@@ -190,7 +212,7 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
       <div className="flex-1" />
 
       <div className="w-48 shrink-0" title={t("bar.vehicle")}>
-        <Select options={vehicleOptions} value={p.selectedDroneId} onChange={p.setSelectedDroneId} ariaLabel={t("bar.vehicle")} className="h-7 text-xs" />
+        <Select options={vehicleOptions} value={p.selectedDroneId} onChange={handleVehicleChange} ariaLabel={t("bar.vehicle")} className="h-7 text-xs" />
       </div>
       {errorCount > 0 && (
         <button

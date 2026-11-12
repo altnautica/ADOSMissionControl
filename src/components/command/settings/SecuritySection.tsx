@@ -72,6 +72,7 @@ export function SecuritySection({
   readOnly,
   setValue,
 }: SectionProps) {
+  const tq = useTranslations("command.securitySection");
   const t = useTranslations("nodeSettings.security");
   // Subscribed so a pair/unpair mid-session re-resolves the PIN target.
   const localNodes = useLocalNodesStore((s) => s.nodes);
@@ -188,7 +189,7 @@ export function SecuritySection({
           configKey="api.mission_control_url"
           label={t("missionControlUrlLabel")}
           hint={t("missionControlUrlHint")}
-          placeholder="https://gcs.example.com"
+          placeholder={tq("httpsGcsExampleCom")}
           config={config}
           readOnly={readOnly}
           setValue={setValue}

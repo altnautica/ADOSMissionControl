@@ -4,9 +4,9 @@
  * @module DronePluginCard
  * @description Single plugin row inside the per-drone Plugins list.
  * Renders the plugin name + version + status pill, an Enable/Disable
- * toggle, a Configure link, and a three-dot overflow menu. Enable/Disable
- * enqueues `plugin.enable` or `plugin.disable` against the drone's agent via
- * the `cmd_droneCommands` queue; the agent picks the transport.
+ * toggle, a Configure link, and a three-dot overflow menu. Enable, Disable
+ * and Uninstall go straight to a node reachable on the LAN, else through the
+ * `cmd_droneCommands` relay; Disable and Uninstall ask first.
  *
  * A row reported by the node itself but with no cloud install record
  * (`installId` of `agent:<pluginId>` from the heartbeat inventory, or
@@ -87,17 +87,28 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
   const {
     confirmRemoveOpen,
     setConfirmRemoveOpen,
+    confirmDisableOpen,
+    setConfirmDisableOpen,
     updateSettingsOpen,
     setUpdateSettingsOpen,
     busy,
+    waiting,
+    isArmed,
     agentOnly,
     pendingUpdate,
     statusLabel,
     isEnabled,
     handleToggleEnable,
+    handleConfirmDisable,
     handleOverflow,
     handleRemove,
+    handleCancelPending,
   } = useDronePluginActions(install);
+  // Known delivery states read as words; an unrecognised one says so.
+  const modelStateWord = (state: string) =>
+    state === "resolved" || state === "needs_model" || state === "verify_failed"
+      ? t(`modelState.${state}`)
+      : t("modelState.unknown");
 
   return (
     <div
@@ -129,7 +140,11 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
                 <span
                   key={m.model_id}
                   className="inline-flex items-center gap-1 text-xs text-text-tertiary"
-                  title={m.reason ? `${m.state}: ${m.reason}` : m.state}
+                  title={
+                    m.reason
+                      ? t("modelStateReason", { state: modelStateWord(m.state), reason: m.reason })
+                      : modelStateWord(m.state)
+                  }
                 >
                   <span
                     className={cn(
@@ -153,7 +168,11 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
                   key={s.name}
                   className="inline-flex items-center gap-1 text-xs text-text-tertiary"
                   title={
-                    s.ready ? "ready" : s.reason ? `not ready: ${s.reason}` : "not ready"
+                    s.ready
+                      ? t("serviceReady")
+                      : s.reason
+                        ? t("serviceNotReadyReason", { reason: s.reason })
+                        : t("serviceNotReady")
                   }
                 >
                   <span
@@ -178,6 +197,19 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
           <DronePluginStatusPill label={statusLabel} />
         </div>
       </div>
+
+      {waiting ? (
+        <div
+          data-testid="plugin-command-waiting"
+          className="flex items-center justify-end gap-2 text-xs text-text-tertiary"
+          role="status"
+        >
+          <span>{t("waitingForNode", { name: install.name })}</span>
+          <Button variant="ghost" size="sm" onClick={handleCancelPending}>
+            {t("cancelCommand")}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-end gap-2">
         <Button
@@ -212,6 +244,8 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
             <Button
               variant="ghost"
               size="sm"
+              aria-label={t("moreActions")}
+              title={t("moreActions")}
               icon={<MoreHorizontal className="h-3.5 w-3.5" />}
             />
           }
@@ -244,6 +278,20 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
         title={t("uninstallConfirmTitle")}
         message={t("uninstallConfirmMessage", { name: install.name })}
         confirmLabel={t("uninstall")}
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        open={confirmDisableOpen}
+        onConfirm={handleConfirmDisable}
+        onCancel={() => setConfirmDisableOpen(false)}
+        title={t("disableConfirmTitle", { name: install.name })}
+        message={
+          isArmed
+            ? `${t("disableConfirmMessage")} ${t("disableArmedNote")}`
+            : t("disableConfirmMessage")
+        }
+        confirmLabel={t("disable")}
         variant="danger"
       />
 

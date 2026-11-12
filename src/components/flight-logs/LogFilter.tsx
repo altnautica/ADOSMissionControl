@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo, useCallback, useDeferredValue } from "react";
+import { useTranslations } from "next-intl";
 import { HistoryToolbar, type DatePreset } from "@/components/history/HistoryToolbar";
 import { type SortKey, type SortDir } from "@/components/history/HistoryTable";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useHistoryStore } from "@/stores/history-store";
 import type { FlightRecord } from "@/lib/types";
 
@@ -238,36 +240,49 @@ export interface LogFilterProps {
 }
 
 export function LogFilter({ filter, allRecords, filteredRecords }: LogFilterProps) {
+  const t = useTranslations("history");
+  const [emptyTrashOpen, setEmptyTrashOpen] = useState(false);
   return (
-    <HistoryToolbar
-      search={filter.search}
-      dateFrom={filter.dateFrom}
-      dateTo={filter.dateTo}
-      datePreset={filter.datePreset}
-      status={filter.status}
-      droneFilter={filter.droneFilter}
-      sort={filter.sort}
-      favoritesOnly={filter.favoritesOnly}
-      droneNames={filter.droneNames}
-      records={filteredRecords}
-      onSearchChange={filter.setSearch}
-      onDateFromChange={filter.handleSetDateFrom}
-      onDateToChange={filter.handleSetDateTo}
-      onDatePresetChange={filter.handleSetDatePreset}
-      onStatusChange={filter.setStatus}
-      onDroneFilterChange={filter.setDroneFilter}
-      onSortChange={filter.handleSortSelect}
-      onFavoritesOnlyChange={filter.setFavoritesOnly}
-      showTrash={filter.showTrash}
-      onShowTrashChange={filter.setShowTrash}
-      onEmptyTrash={() => {
-        if (typeof window !== "undefined" && !window.confirm("Permanently delete all trashed flights?")) return;
-        const store = useHistoryStore.getState();
-        store.emptyTrash();
-        void store.persistToIDB();
-      }}
-      trashCount={allRecords.filter((r) => r.deleted === true).length}
-      onReset={filter.handleReset}
-    />
+    <>
+      <HistoryToolbar
+        search={filter.search}
+        dateFrom={filter.dateFrom}
+        dateTo={filter.dateTo}
+        datePreset={filter.datePreset}
+        status={filter.status}
+        droneFilter={filter.droneFilter}
+        sort={filter.sort}
+        favoritesOnly={filter.favoritesOnly}
+        droneNames={filter.droneNames}
+        records={filteredRecords}
+        onSearchChange={filter.setSearch}
+        onDateFromChange={filter.handleSetDateFrom}
+        onDateToChange={filter.handleSetDateTo}
+        onDatePresetChange={filter.handleSetDatePreset}
+        onStatusChange={filter.setStatus}
+        onDroneFilterChange={filter.setDroneFilter}
+        onSortChange={filter.handleSortSelect}
+        onFavoritesOnlyChange={filter.setFavoritesOnly}
+        showTrash={filter.showTrash}
+        onShowTrashChange={filter.setShowTrash}
+        onEmptyTrash={() => setEmptyTrashOpen(true)}
+        trashCount={allRecords.filter((r) => r.deleted === true).length}
+        onReset={filter.handleReset}
+      />
+      <ConfirmDialog
+        open={emptyTrashOpen}
+        variant="danger"
+        title={t("emptyTrashTitle")}
+        message={t("trashEmptyConfirm")}
+        confirmLabel={t("emptyTrashTitle")}
+        onConfirm={() => {
+          const store = useHistoryStore.getState();
+          store.emptyTrash();
+          void store.persistToIDB();
+          setEmptyTrashOpen(false);
+        }}
+        onCancel={() => setEmptyTrashOpen(false)}
+      />
+    </>
   );
 }

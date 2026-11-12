@@ -69,7 +69,7 @@ describe("demo pilot mirrors the demo vehicle", () => {
     expect(progress!.total).toBeGreaterThan(0);
     expect(data).toMatchObject({ owner: "mission_fc", armed: true, landed: false, fcModeName: "AUTO" });
     expect(data.mission).toMatchObject({ state: "active", seq: progress!.seq, total: progress!.total, landingSeq: false });
-    expect(chip().text).toMatch(new RegExp(`^MISSION · WP ${progress!.seq}/${progress!.total}`));
+    expect(chip().text).toMatch(new RegExp(`^Mission · WP ${progress!.seq}/${progress!.total}`));
   });
 
   it("pauses the mission in a hold, then resumes it in AUTO", async () => {
@@ -79,7 +79,7 @@ describe("demo pilot mirrors the demo vehicle", () => {
     expect(data.owner).toBe("fc_mode");
     expect(data.mission?.state).toBe("paused");
     expect(chip()).toMatchObject({ ruleId: "mission_paused", button: "resume" });
-    expect(chip().text).toMatch(/^MISSION PAUSED · WP \d+\/\d+$/);
+    expect(chip().text).toMatch(/^Mission paused · WP \d+\/\d+$/);
 
     // The demo vehicle holds where it paused.
     const at = useNodeRegistryStore.getState().getEntry(ID)!.fc.position!;

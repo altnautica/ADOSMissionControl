@@ -40,7 +40,6 @@ import type { DroneProtocol } from "@/lib/protocol/types";
 import type { FleetCommandOutcome } from "@/lib/fleet-commands";
 import type { FleetDrone } from "@/lib/types";
 import { useUiStore } from "@/stores/ui-store";
-import { consumeImmersiveRequest } from "@/lib/cockpit/immersive-request";
 import { setFixtureFleet } from "../helpers/fleet-drones";
 import { MAV_LANDED_STATE_ON_GROUND, noteFcLandedState } from "@/lib/skills/flight-facts";
 
@@ -88,7 +87,6 @@ describe("CommandPalette flight commands", () => {
     cleanup();
     useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
     useUiStore.setState({ pendingDetailTab: null, immersiveMode: false });
-    consumeImmersiveRequest();
   });
 
   it("lists the selected drone's flight skills from the registry", () => {
@@ -98,15 +96,14 @@ describe("CommandPalette flight commands", () => {
     expect(screen.getByText(messages.commandPalette.goToMcp)).toBeTruthy();
   });
 
-  it("Open Cockpit shows the cockpit tab and parks an immersive request", () => {
+  it("Open Cockpit shows the embedded cockpit tab without going full screen", () => {
     openPalette();
     act(() => {
       fireEvent.click(screen.getByText(messages.commandPalette.openCockpit));
     });
     expect(useUiStore.getState().pendingDetailTab).toBe("cockpit");
-    // Immersive is entered by the cockpit once it shows, never directly here.
+    // Full screen is the operator's choice from the cockpit's own control.
     expect(useUiStore.getState().immersiveMode).toBe(false);
-    expect(consumeImmersiveRequest()).toBe(true);
   });
 
   it("does not offer Open Cockpit for a node that is not a drone", () => {

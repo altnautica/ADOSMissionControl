@@ -1,88 +1,65 @@
 /**
  * @module mock/mock-visor-surfaces
- * @description Demo-mode stand-ins for the capture extension's Visor node
- * surfaces (Capture, Sessions, Calibration), so a demo Visor shows the same
- * tab set a real one with the extension installed does. Each tab body is an
- * in-memory card that names itself as a demo stand-in; no extension bundle
+ * @description The world-engine extension's demo install row and page bodies,
+ * read from its manifest (`extension-manifests`): every Agent page and node
+ * surface it declares, on the profiles it declares them for, so each demo
+ * node shows the same pages a real one with the extension installed does.
+ * The bodies are in-memory stand-ins (`mock-live-world`); no extension bundle
  * is loaded and no agent route is called.
  * @license GPL-3.0-only
  */
 
+import YAML from "yaml";
+
 import type { InstallDetailRow } from "@/hooks/use-drone-plugin-contributions";
 import type { PluginSlotContribution } from "@/components/plugins/PluginHostProvider";
-import type { InlinePluginModule } from "@/lib/plugins/inline-host-types";
+import { parseNodePageContributions } from "@/lib/plugins/contributions/node-pages";
 import { slotToCapability, type GcsContributeRow } from "@/lib/plugins/types";
+import { WORLD_ENGINE_TAGGED_MANIFEST } from "./extension-manifests";
+import { DEMO_LIVE_WORLD_MODULE } from "./mock-live-world";
 
-export const DEMO_CAPTURE_PLUGIN_ID = "com.altnautica.world-engine";
-const VERSION = "2.0.0";
+interface WorldEngineManifest {
+  id: string;
+  name: string;
+  version: string;
+  gcs: { entrypoint: string; contributes: unknown };
+}
 
-/** The extension manifest's Visor `node_surfaces`, in its band and order. */
-const SURFACES: ReadonlyArray<
-  GcsContributeRow & { slot: "node.surface"; title: string }
-> = [
-  {
-    slot: "node.surface",
-    panelId: "capture",
-    title: "Capture",
-    profile: ["visor"],
-    group: "status",
-    order: 20,
-  },
-  {
-    slot: "node.surface",
-    panelId: "sessions",
-    title: "Sessions",
-    profile: ["visor"],
-    group: "status",
-    order: 30,
-  },
-  {
-    slot: "node.surface",
-    panelId: "calibration",
-    title: "Calibration",
-    profile: ["visor"],
-    group: "device",
-    order: 20,
-  },
-];
+const MANIFEST = YAML.parse(WORLD_ENGINE_TAGGED_MANIFEST) as WorldEngineManifest;
 
-/** The extension manifest's drone Agent page that hosts the live 3D viewer. */
-export const LIVE_WORLD_PAGE: GcsContributeRow & { slot: "node.agent.page" } = {
-  slot: "node.agent.page",
-  panelId: "live-world",
-  title: "Live World",
-  section: "videoVision",
-  profile: ["drone"],
-};
+export const DEMO_CAPTURE_PLUGIN_ID = MANIFEST.id;
 
-/** The demo install row carrying the Visor surfaces and the drone viewer page. */
+/** The two node page slots the manifest's `agent_pages` / `node_surfaces` map to. */
+type NodePageSlot = "node.agent.page" | "node.surface";
+
+/** Every Agent page and node surface the manifest declares. */
+export const DEMO_WORLD_ENGINE_PAGES: ReadonlyArray<
+  GcsContributeRow & { slot: NodePageSlot; title: string }
+> = parseNodePageContributions(MANIFEST.gcs.contributes).map((row) => ({
+  ...row,
+  // The parser emits only these two slots for this block.
+  slot: row.slot as NodePageSlot,
+  title: row.title ?? row.panelId,
+}));
+
+/** The demo install row carrying the extension's pages. */
 export const DEMO_CAPTURE_INSTALL_ROW: InstallDetailRow = {
   installId: DEMO_CAPTURE_PLUGIN_ID,
   pluginId: DEMO_CAPTURE_PLUGIN_ID,
-  version: VERSION,
-  name: "World Engine",
-  gcsContributes: [...SURFACES.map((s) => ({ ...s })), { ...LIVE_WORLD_PAGE }],
+  version: MANIFEST.version,
+  name: MANIFEST.name,
+  gcsContributes: DEMO_WORLD_ENGINE_PAGES.map((p) => ({ ...p })),
 };
 
-const MODULE: InlinePluginModule = {
-  mount(root, host) {
-    const card = document.createElement("div");
-    card.className =
-      "m-3 rounded border border-border-default bg-bg-secondary p-3 text-xs text-text-secondary";
-    card.textContent = `Demo: the capture extension's ${host.plugin.panelId} tab renders here on a Visor with the extension installed.`;
-    root.append(card);
-    return () => card.remove();
-  },
-};
-
-/** The tab bodies, built once so a re-render hands the host the same bundle. */
-export const DEMO_CAPTURE_SURFACES: ReadonlyArray<{
+/** The page bodies, built once so a re-render hands the host the same bundle
+ * and a mounted page is not rebuilt. */
+export const DEMO_WORLD_ENGINE_CONTRIBUTIONS: ReadonlyArray<{
   entry: GcsContributeRow;
-  contribution: PluginSlotContribution & { slot: "node.surface" };
-}> = SURFACES.map((entry) => ({
+  contribution: PluginSlotContribution & { slot: NodePageSlot };
+}> = DEMO_WORLD_ENGINE_PAGES.map((entry) => ({
   entry,
   contribution: {
-    slot: "node.surface",
+    slot: entry.slot,
     pluginId: DEMO_CAPTURE_PLUGIN_ID,
     panelId: entry.panelId,
     title: entry.title,
@@ -92,19 +69,18 @@ export const DEMO_CAPTURE_SURFACES: ReadonlyArray<{
       status: "ready",
       bundle: {
         kind: "inline",
-        module: MODULE,
+        module: DEMO_LIVE_WORLD_MODULE,
         trust: {
           pluginId: DEMO_CAPTURE_PLUGIN_ID,
-          version: VERSION,
+          version: MANIFEST.version,
           signerId: "demo",
-          entrypoint: "gcs/plugin.bundle.js",
+          entrypoint: MANIFEST.gcs.entrypoint,
           paths: [],
         },
-        readAsset: () =>
-          Promise.reject(new Error("the demo panel ships no assets")),
+        readAsset: () => Promise.reject(new Error("the demo page ships no assets")),
       },
     },
-    grantedCapabilities: new Set([slotToCapability("node.surface")]),
+    grantedCapabilities: new Set([slotToCapability(entry.slot)]),
     handlers: {},
     pluginInstallId: DEMO_CAPTURE_PLUGIN_ID,
   },

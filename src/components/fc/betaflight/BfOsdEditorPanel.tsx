@@ -37,6 +37,7 @@ function layoutSnapshot(els: BfOsdElement[], vs: VideoSystem): string {
 }
 
 export function BfOsdEditorPanel() {
+  const tr = useTranslations("fcPanels.bfOsdEditorPanel");
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectedDrone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
@@ -188,7 +189,7 @@ export function BfOsdEditorPanel() {
     <ArmedWarningBanner>
       <div className="h-full flex flex-col gap-3 p-4 overflow-auto">
         <PanelHeader
-          title="Betaflight OSD"
+          title={tr("betaflightOSD")}
           icon={<Monitor size={16} />}
           loading={loading}
           loadProgress={null}
@@ -199,7 +200,7 @@ export function BfOsdEditorPanel() {
         >
           {hasLoaded && (
             <Button variant="primary" size="sm" icon={<Save size={12} />} onClick={handleSave} loading={saving} disabled={saving}>
-              Save
+              {tr("save")}
             </Button>
           )}
         </PanelHeader>
@@ -208,10 +209,10 @@ export function BfOsdEditorPanel() {
         {hasLoaded && (
           <div className="flex items-center gap-3 flex-wrap">
             <div className="w-36">
-              <Select label="Video System" options={VIDEO_SYSTEM_OPTIONS} value={videoSystem} onChange={(v) => setVideoSystem(v as VideoSystem)} />
+              <Select label={tr("videoSystem")} options={VIDEO_SYSTEM_OPTIONS} value={videoSystem} onChange={(v) => setVideoSystem(v as VideoSystem)} />
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-text-secondary mr-1">OSD profile:</span>
+              <span className="text-xs text-text-secondary mr-1">{tr("osdProfile")}</span>
               {Array.from({ length: profileCount }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
@@ -241,7 +242,7 @@ export function BfOsdEditorPanel() {
               disabled={fontProgress !== null}
               onClick={() => fontInputRef.current?.click()}
             >
-              Upload font (.mcm)
+              {tr("uploadFontMcm")}
             </Button>
             {fontProgress && (
               <span className="text-[11px] font-mono text-text-secondary">

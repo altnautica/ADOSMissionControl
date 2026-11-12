@@ -127,6 +127,7 @@ export function handleMissionRequestFrame(s: MissionContext, frame: MAVLinkFrame
       item.param1, item.param2, item.param3, item.param4,
       item.x, item.y, item.z, s.sysId, s.compId,
     ))
+    s.missionUpload.onProgress?.(s.missionUpload.highestRequested + 1, s.missionUpload.items.length)
   }
 }
 

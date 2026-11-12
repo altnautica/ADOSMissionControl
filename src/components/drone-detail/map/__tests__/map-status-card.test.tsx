@@ -11,7 +11,12 @@ import { NextIntlClientProvider } from "next-intl";
 
 import messages from "../../../../../locales/en.json";
 import { MapStatusCard } from "@/components/drone-detail/map/MapStatusCard";
-import { MAP_STATUS_STALE_MS, mapStatusView } from "@/components/drone-detail/map/map-status-view";
+import {
+  MAP_STATUS_HEARTBEAT_STALE_MS,
+  MAP_STATUS_STREAM_STALE_MS,
+  mapStatusView,
+} from "@/components/drone-detail/map/map-status-view";
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { MapStatus, NavHealth } from "@/lib/hud/nav-types";
 
 const NOW = 1_000_000;
@@ -58,15 +63,17 @@ describe("MapStatusCard", () => {
     expect(text).toContain("512 / 1024 MB");
     expect(text).toContain("5 cm");
     expect(text).toContain("Always");
-    expect(text).toContain("Uploading 25%");
-    expect(text).toContain("Live · 2.0 MB/s");
-    expect(text).not.toContain(messages.hud.mapTab.stale);
+    expect(text).toContain(`${specString("map.status.upload.uploading")} 25%`);
+    expect(text).toContain(`${specString("map.status.stream.live")} · 16.8 Mbit/s`);
+    expect(text).not.toContain("STALE");
   });
 
   it("marks a status older than the stale threshold and keeps its values", () => {
-    const { container } = renderCard({ data: FULL, receivedAt: NOW - MAP_STATUS_STALE_MS - 1 });
+    const { container } = renderCard({ data: FULL, receivedAt: NOW - MAP_STATUS_STREAM_STALE_MS - 1000 });
     expect(container.querySelector("section")?.getAttribute("data-state")).toBe("stale");
-    expect(container.textContent).toContain(messages.hud.mapTab.stale);
+    expect(container.textContent).toContain(
+      specString("map.panel.stale", { s: Math.floor((MAP_STATUS_STREAM_STALE_MS + 1000) / 1000) }),
+    );
     expect(container.textContent).toContain("s-0042");
     expect(container.textContent).toContain(messages.hud.mapTab.noPose);
   });
@@ -84,8 +91,8 @@ describe("MapStatusCard", () => {
     const { container } = renderCard({ data: sparse, receivedAt: NOW });
     const text = container.textContent ?? "";
     expect(text).toContain(messages.hud.mapTab.noSession);
-    expect(text).not.toContain(messages.hud.mapTab.upload);
-    expect(text).not.toContain(messages.hud.mapTab.stream);
+    expect(text).not.toContain(specString("map.status.upload"));
+    expect(text).not.toContain(specString("map.status.live_stream"));
   });
 });
 
@@ -97,5 +104,44 @@ describe("mapStatusView", () => {
     );
     expect(v.memoryFraction).toBe(0.5);
     expect(v.uploadPct).toBe(0);
+  });
+
+  it("uses the stream budget for nav-stream entries and the longer one for the heartbeat slice", () => {
+    const entry = { data: FULL, receivedAt: NOW - MAP_STATUS_STREAM_STALE_MS - 1 };
+    expect(mapStatusView(entry, NOW, "stream").state).toBe("stale");
+    expect(mapStatusView(entry, NOW, "heartbeat").state).toBe("live");
+    expect(
+      mapStatusView({ data: FULL, receivedAt: NOW - MAP_STATUS_HEARTBEAT_STALE_MS - 1 }, NOW, "heartbeat").state,
+    ).toBe("stale");
+  });
+
+  it("shares the agent's warn and critical tones", () => {
+    const at = (used: number) =>
+      mapStatusView({ data: { ...FULL, memoryUsedMb: used, memoryBudgetMb: 100 }, receivedAt: NOW }, NOW).memoryTone;
+    expect(at(84)).toBe("ok");
+    expect(at(85)).toBe("warn");
+    expect(at(95)).toBe("crit");
+    const v = mapStatusView(
+      {
+        data: {
+          ...FULL,
+          keyframesDropped: 1,
+          upload: { state: "failed", bytesDone: 0, bytesTotal: 10 },
+          stream: { state: "degraded", bytesPerS: 1000 },
+        },
+        receivedAt: NOW,
+      },
+      NOW,
+    );
+    expect(v.keyframesTone).toBe("warn");
+    expect(v.uploadTone).toBe("crit");
+    expect(v.streamTone).toBe("warn");
+    expect(mapStatusView({ data: { ...FULL, keyframesDropped: 0 }, receivedAt: NOW }, NOW).keyframesTone).toBe("ok");
+  });
+
+  it("uses the shared spec words for placement", () => {
+    const { container } = renderCard({ data: { ...FULL, placement: "stream" }, receivedAt: NOW });
+    expect(container.textContent).toContain(specString("map.status.placement.stream"));
+    expect(container.textContent).toContain(specString("map.status.placement"));
   });
 });

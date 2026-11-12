@@ -834,5 +834,135 @@
         "pilot_not_answering"
       ]
     }
+  },
+  {
+    "name": "arm_unknown_hides_preflight_items",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [
+        {
+          "id": "gps",
+          "label": "GNSS fix"
+        }
+      ],
+      "armed": null
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "nav_source_degraded_warns",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "nav_source": {
+        "kind": "ext",
+        "quality": "degraded",
+        "tone": "warn"
+      }
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Navigation source degraded (Ext nav)",
+      "count": 1,
+      "ids": [
+        "nav_source_degraded"
+      ]
+    }
+  },
+  {
+    "name": "nav_source_lost_is_critical",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "nav_source": {
+        "kind": "gps",
+        "quality": "noFix",
+        "tone": "crit"
+      }
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Navigation source degraded (GPS)",
+      "count": 1,
+      "ids": [
+        "nav_source_degraded"
+      ]
+    }
+  },
+  {
+    "name": "nav_source_good_is_quiet",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "nav_source": {
+        "kind": "gps",
+        "quality": "good",
+        "tone": "good"
+      }
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "nav_source_stale_is_quiet",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "nav_source": {
+        "kind": "stale",
+        "quality": null,
+        "tone": "muted"
+      }
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
   }
 ]

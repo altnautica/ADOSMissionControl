@@ -79,6 +79,8 @@ describe("pill cases", () => {
         preflightFailing: i.preflight_failing,
         fcFailsafe: (i as { fc_failsafe?: boolean }).fc_failsafe,
         failsafeCause: (i as { failsafe_cause?: string | null }).failsafe_cause,
+        armed: (i as { armed?: boolean | null }).armed,
+        navSource: (i as { nav_source?: PillInputs["navSource"] }).nav_source,
       });
       const s = pillSummary(alerts, new Set());
       expect({ severity: s.severity, text: s.text, count: s.count, ids: alerts.map((a) => a.id) }).toEqual(c.expected);

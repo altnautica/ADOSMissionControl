@@ -8,6 +8,7 @@ import flightStateJson from "../cockpit-spec/flight-state.json";
 import tokensJson from "../cockpit-spec/tokens.json";
 import type { PilotState } from "./cockpit-frames";
 import { specText } from "./spec-text";
+import { fmtEta } from "./format";
 
 export interface ChipRule {
   id: string;
@@ -100,7 +101,7 @@ function matches(match: ChipRule["match"], f: ChipFacts): boolean {
   for (const [key, want] of Object.entries(match)) {
     switch (key) {
       case "pilot_stale":
-        if ((f.ageMs > CHIP_STALE_AFTER_MS) !== want) return false;
+        if ((f.ageMs >= CHIP_STALE_AFTER_MS) !== want) return false;
         break;
       case "owner":
         if (f.owner !== want) return false;
@@ -135,14 +136,6 @@ function matches(match: ChipRule["match"], f: ChipFacts): boolean {
     }
   }
   return true;
-}
-
-function fmtEta(s: number | null): string {
-  if (s === null || !Number.isFinite(s)) return "";
-  // Round the total first, so 119.6 s reads 2:00, never 1:60.
-  const total = Math.round(s);
-  const m = Math.floor(total / 60);
-  return m > 0 ? `ETA ${m}:${String(total % 60).padStart(2, "0")}` : `ETA ${total} s`;
 }
 
 /** A launch step's name, upper case (`flow.launch.step.*`, `after` as its label). */

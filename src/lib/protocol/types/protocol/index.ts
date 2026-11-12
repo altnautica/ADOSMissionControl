@@ -17,6 +17,7 @@ export type { MspModeBox, MspModeRange, MspAdjustmentRange } from '../../msp/msp
 import type { DroneProtocolBase } from './base';
 import type { DroneProtocolMspExtensions } from './msp-extensions';
 import type { DroneProtocolSubscriptions } from './subscriptions';
+import type { DroneProtocolVehicleIo } from './vehicle-io';
 
 export type { LinkInfo, FtpDirEntry, GuidedGotoOptions, CommandQueueSnapshot } from './base';
 
@@ -29,4 +30,7 @@ export type { LinkInfo, FtpDirEntry, GuidedGotoOptions, CommandQueueSnapshot } f
  * store state.
  */
 export interface DroneProtocol
-  extends DroneProtocolBase, DroneProtocolMspExtensions, DroneProtocolSubscriptions {}
+  extends DroneProtocolBase,
+    DroneProtocolVehicleIo,
+    DroneProtocolMspExtensions,
+    DroneProtocolSubscriptions {}

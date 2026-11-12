@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { rangeError, type SettingRange } from "./inav-setting-fields";
 
 interface SettingNumberFieldProps {
@@ -20,11 +21,12 @@ interface SettingNumberFieldProps {
 }
 
 export function SettingNumberField({ label, value, range, step = 1, disabled, onChange }: SettingNumberFieldProps) {
+  const tr = useTranslations("fcPanels.settingNumberField");
   if (value === undefined) {
     return (
       <div className="flex flex-col gap-1">
         <span className="text-[10px] text-text-tertiary font-mono">{label}</span>
-        <span className="text-[10px] text-text-tertiary font-mono">Not on this firmware</span>
+        <span className="text-[10px] text-text-tertiary font-mono">{tr("notOnThisFirmware")}</span>
       </div>
     );
   }

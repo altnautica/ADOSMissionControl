@@ -71,6 +71,11 @@ export function AgentSetupStep({
           {runLabel}
         </Button>
       )}
+      {!active && armedLocked && (
+        <p className="text-xs text-status-warning" data-testid={`agent-setup-armed-${step}`}>
+          {specString("setup.err.armed")}
+        </p>
+      )}
     </div>
   );
 }

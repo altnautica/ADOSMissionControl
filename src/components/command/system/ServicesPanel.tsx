@@ -7,18 +7,20 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { Server } from "lucide-react";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { ServiceTable } from "../shared/ServiceTable";
 import { CollapsibleSection } from "./shared";
 
 export function ServicesPanel() {
+  const tq = useTranslations("command.servicesPanel");
   const services = useAgentSystemStore((s) => s.services);
   const restartService = useAgentSystemStore((s) => s.restartService);
 
   return (
     <CollapsibleSection
-      title="Services"
+      title={tq("services")}
       icon={Server}
       defaultOpen={true}
       badge={services.length > 0 ? services.length : undefined}
@@ -30,7 +32,7 @@ export function ServicesPanel() {
         />
       ) : (
         <p className="text-xs text-text-tertiary py-4 text-center">
-          No service data available
+          {tq("noServiceDataAvailable")}
         </p>
       )}
     </CollapsibleSection>

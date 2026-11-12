@@ -1,28 +1,37 @@
 /**
  * Resolve a skill's display label + one-line effect for the bar and slots.
  *
- * Built-in skills carry a fully-qualified i18n key ROOT in `label` (e.g.
- * `"skills.arm"`); the display name lives at `<root>.label` and the effect at
- * `<root>.effect`. Plugin skills carry their label as a literal string (so a
- * plugin author does not have to ship GCS translations) — those render the
- * literal directly and have no separate effect line.
+ * A built-in the shared cockpit spec lists is named by the spec
+ * (`builtins.json` `label`), the same words on every surface. A built-in
+ * only this app has carries an i18n key ROOT in `label` (e.g.
+ * `"skills.arm"`); its name lives at `<root>.label` and its effect at
+ * `<root>.effect`. A plugin skill's label is a key into the extension's own
+ * locale bundle (resolved there first), an app key, or a literal; an
+ * unresolved key is humanized, never shown raw.
  *
  * @module skills/skill-label
  * @license GPL-3.0-only
  */
 
+import { SPEC_BUILTINS } from "@/lib/cockpit/spec-builtins";
+import { pluginSkillString } from "./plugin-skill-strings";
 import type { Skill } from "./types";
 
-type Translate = (key: string, values?: Record<string, string | number>) => string;
+/** The spec's built-in names, by skill id. */
+const SPEC_LABEL: Readonly<Record<string, string>> = Object.fromEntries(SPEC_BUILTINS.map((b) => [b.id, b.label]));
+
+type Translate = ((key: string, values?: Record<string, string | number>) => string) & {
+  has?: (key: string) => boolean;
+};
 
 /** The display name for a skill. */
 export function skillDisplayLabel(skill: Skill, t: Translate): string {
   if (skill.source === "plugin") {
-    // A plugin label that happens to be a dotted i18n key resolves; a literal
-    // falls back to itself. Either way we never append ".label" to it.
-    return safeTranslateOrLiteral(skill.label, t);
+    // The extension's own bundle first, then the app catalogue; a key neither
+    // carries is humanized. Never with ".label" appended.
+    return pluginSkillString(skill.pluginId, skill.label) ?? safeTranslateOrLiteral(skill.label, t);
   }
-  return t(`${skill.label}.label`);
+  return SPEC_LABEL[skill.id] ?? t(`${skill.label}.label`);
 }
 
 /**
@@ -64,12 +73,11 @@ export function skillEffectText(skill: Skill, t: Translate): string {
 }
 
 function safeTranslateOrLiteral(value: string, t: Translate): string {
-  if (value.includes(".")) {
-    try {
-      return t(value);
-    } catch {
-      return value;
-    }
+  if (!value.includes(".")) return value;
+  if (t.has && !t.has(value)) return resolveContribLabel(value);
+  try {
+    return t(value);
+  } catch {
+    return resolveContribLabel(value);
   }
-  return value;
 }

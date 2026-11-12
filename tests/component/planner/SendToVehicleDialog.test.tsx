@@ -4,11 +4,13 @@
  * @license GPL-3.0-only
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
+import { screen, cleanup, fireEvent, waitFor, within, act } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { renderWithIntl } from "../../helpers/intl-wrapper";
 
-const mocks = vi.hoisted(() => ({ errors: [] as unknown[] }));
+const mocks = vi.hoisted(() => ({ errors: [] as unknown[], push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }), usePathname: () => "/plan" }));
 
 vi.mock("@/hooks/use-validation-options", () => ({ useValidationOptions: () => ({}) }));
 vi.mock("@/lib/validation/mission-validator", () => ({ validateMission: () => ({ errors: mocks.errors, warnings: [] }) }));
@@ -22,6 +24,8 @@ import { PREFLIGHT_ITEM_IDS } from "@/components/planner/preflight-items";
 import { useDroneManager, type DroneManagerState } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useMissionStore } from "@/stores/mission-store";
+import { useLaunchRequestStore } from "@/stores/launch-request-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useMissionStateStore, type MissionStateKind } from "@/lib/mission/mission-state";
 
@@ -104,7 +108,9 @@ beforeEach(() => {
   usePreflightChecklistStore.setState({ checked: {} });
   useDroneManager.setState(initialDroneManager, true);
   useDroneStore.setState({ armState: "disarmed", flightMode: "STABILIZE" });
-  useMissionStore.setState({ vehicleProfile: null });
+  useMissionStore.setState({ vehicleProfile: null, uploadProgress: null });
+  useLaunchRequestStore.setState({ pending: null });
+  mocks.push.mockReset();
   useNodeRegistryStore.getState().clear();
   useMissionStateStore.setState({ inputs: {}, status: {} });
 });
@@ -127,19 +133,19 @@ describe("SendToVehicleDialog", () => {
 
   it("runs selected items in order and continues after a failure", async () => {
     renderDialog();
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(calls).toEqual(["mission", "geofence", "rally"]));
     await waitFor(() => {
-      expect(within(screen.getByTestId("send-row-mission")).getByText("Sent")).toBeInTheDocument();
+      expect(within(screen.getByTestId("send-row-mission")).getByText("Uploaded")).toBeInTheDocument();
       expect(within(screen.getByTestId("send-row-geofence")).getByText("Failed")).toBeInTheDocument();
       expect(within(screen.getByTestId("send-row-geofence")).getByText("Fence rejected")).toBeInTheDocument();
-      expect(within(screen.getByTestId("send-row-rally")).getByText("Sent")).toBeInTheDocument();
+      expect(within(screen.getByTestId("send-row-rally")).getByText("Uploaded")).toBeInTheDocument();
     });
   });
 
   it("keeps going when an item throws", async () => {
     renderDialog({ p: makePlanner(async () => { calls.push("mission"); throw new Error("link lost"); }) });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(calls).toEqual(["mission", "geofence", "rally"]));
     await waitFor(() => expect(within(screen.getByTestId("send-row-mission")).getByText("link lost")).toBeInTheDocument());
   });
@@ -147,7 +153,7 @@ describe("SendToVehicleDialog", () => {
   it("skips deselected items", async () => {
     renderDialog();
     fireEvent.click(screen.getByLabelText("Geofence"));
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(calls).toEqual(["mission", "rally"]));
   });
 
@@ -157,7 +163,7 @@ describe("SendToVehicleDialog", () => {
     const mission = screen.getByLabelText("Mission (2 items)");
     expect(mission).not.toBeChecked();
     expect(mission).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(calls).toEqual(["geofence", "rally"]));
     fireEvent.click(screen.getByRole("button", { name: "Review issues" }));
     expect(usePlannerStore.getState().dockOpen).toBe(true);
@@ -168,7 +174,7 @@ describe("SendToVehicleDialog", () => {
   it("shows checklist progress and opens the checklist tab", () => {
     usePreflightChecklistStore.setState({ checked: { [PREFLIGHT_ITEM_IDS[0]]: true } });
     const { onClose } = renderDialog();
-    expect(screen.getByText(`Pre-flight checklist 1/${PREFLIGHT_ITEM_IDS.length}`)).toBeInTheDocument();
+    expect(screen.getByText(`Mission prep checklist 1/${PREFLIGHT_ITEM_IDS.length}`)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open checklist" }));
     expect(usePlannerStore.getState().dockTab).toBe("checklist");
     expect(onClose).toHaveBeenCalled();
@@ -179,7 +185,7 @@ describe("SendToVehicleDialog", () => {
     renderDialog({ p: makePlanner(async () => ({ success: true, message: "" }), {
       drones: [{ id: "d1", name: "Alpha" }], selectedDroneId: "d1",
     }) });
-    expect(screen.getByText("Sends to Alpha")).toBeInTheDocument();
+    expect(screen.getByText("Uploads to Alpha")).toBeInTheDocument();
     expect(screen.queryByTestId("send-target-mismatch")).toBeNull();
   });
 
@@ -190,8 +196,8 @@ describe("SendToVehicleDialog", () => {
     renderDialog({ p: makePlanner(async () => ({ success: true, message: "" }), {
       drones: [{ id: "d1", name: "Alpha" }, { id: "d2", name: "Bravo" }], selectedDroneId: "d1",
     }) });
-    expect(screen.getByText("Sends to Bravo")).toBeInTheDocument();
-    expect(screen.getByText("This plan is assigned to Alpha. Sending goes to Bravo.")).toBeInTheDocument();
+    expect(screen.getByText("Uploads to Bravo")).toBeInTheDocument();
+    expect(screen.getByText("This plan is assigned to Alpha. Uploading goes to Bravo.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch to Alpha" }));
     expect(selectDrone).toHaveBeenCalledWith("d1");
   });
@@ -246,7 +252,39 @@ describe("SendToVehicleDialog", () => {
     expect(row).toBeChecked();
     fireEvent.click(screen.getByLabelText("Geofence"));
     fireEvent.click(screen.getByLabelText("Rally points (1)"));
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(handleUpload).toHaveBeenCalledWith(1));
+  });
+
+  it("counts the mission items the drone has taken while the mission row runs", async () => {
+    const upload = Promise.withResolvers<{ success: boolean; message: string }>();
+    renderDialog({ p: makePlanner(() => upload.promise) });
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await act(async () => { useMissionStore.setState({ uploadProgress: { sent: 3, total: 12 } }); });
+    const progress = await screen.findByTestId("send-mission-progress");
+    expect(within(progress).getByText("Uploading mission 3/12")).toBeInTheDocument();
+    expect(within(progress).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
+    await act(async () => { upload.resolve({ success: true, message: "ok" }); await upload.promise; });
+    await waitFor(() => expect(screen.queryByTestId("send-mission-progress")).toBeNull());
+  });
+
+  it("offers Fly this mission once the mission is uploaded, opening the drone's Flight tab with Launch set to the mission", async () => {
+    seedDrones(["d1"], "d1");
+    const props = renderDialog();
+    expect(screen.queryByRole("button", { name: "Fly this mission" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Fly this mission" }));
+    expect(mocks.push).toHaveBeenCalledWith("/");
+    expect(useUiStore.getState().pendingDetailTab).toBe("cockpit");
+    expect(useLaunchRequestStore.getState().pending).toMatchObject({ droneId: "d1", after: "mission" });
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("does not offer Fly this mission when the mission row failed", async () => {
+    seedDrones(["d1"], "d1");
+    renderDialog({ p: makePlanner(async () => ({ success: false, message: "no" })) });
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(within(screen.getByTestId("send-row-mission")).getByText("Failed")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Fly this mission" })).toBeNull();
   });
 });

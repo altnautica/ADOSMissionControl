@@ -26,7 +26,7 @@ import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { isFresh } from "@/lib/telemetry/freshness";
-import { notifySkill } from "@/lib/skills/registry";
+import { notifySkill, useSkillRegistry } from "@/lib/skills/registry";
 import type { DroneProtocol } from "@/lib/protocol/types/protocol";
 import type { CommandResult } from "@/lib/protocol/types/core";
 import type { FlightMode } from "@/lib/types";
@@ -75,7 +75,7 @@ function endSession(reason: string | null): void {
   clearInterval(session.timer);
   session = null;
   useFollowMeStore.getState().deactivate();
-  if (reason) notifySkill(`Follow-me stopped: ${reason}`, "warning");
+  if (reason) notifySkill(`Follow my device stopped: ${reason}`, "warning");
 }
 
 /** Why the session must end now, or null to keep following. */
@@ -184,15 +184,23 @@ export type FollowMeStart = { ok: true } | { ok: false; reason: string };
  * @param droneId - drone-manager id of the drone to command
  * @param minAltitude - Minimum altitude in meters (drone won't go below this). Default 10m.
  * @returns a refusal with its reason when a session is running, the drone is
- *   not connected and armed, or the GCS location cannot be read.
+ *   not connected and armed, an extension's motion skill is steering it, or
+ *   the GCS location cannot be read.
  */
 export async function startFollowMe(droneId: string, minAltitude = 10): Promise<FollowMeStart> {
-  if (session || starting) return { ok: false, reason: "a follow-me session is already running" };
+  if (session || starting) return { ok: false, reason: "Follow my device is already running" };
   const drone = useDroneManager.getState().drones.get(droneId);
   if (!drone?.protocol.isConnected) return { ok: false, reason: "the drone is not connected" };
   if (useNodeRegistryStore.getState().getEntry(droneId)?.fc.armState !== "armed") {
     return { ok: false, reason: "the drone is not armed" };
   }
+  // A motion skill and this follow both steer the drone; the operator stops
+  // the skill first rather than having two senders fight.
+  const registry = useSkillRegistry.getState();
+  const motion = [...registry.skills.values()].find(
+    (s) => s.motion === true && registry.getState(droneId, s.id).kind === "active",
+  );
+  if (motion) return { ok: false, reason: "a motion skill is active on this drone; stop it first" };
 
   starting = true;
   try {

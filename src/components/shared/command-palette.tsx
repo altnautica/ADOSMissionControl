@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { Search, LayoutDashboard, Route, History, Settings, Battery, Home, Plug, SlidersHorizontal, Play, Bot, Gauge } from "lucide-react";
 import { getFleetDrones, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
-import { requestImmersiveCockpit } from "@/lib/cockpit/immersive-request";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -54,15 +53,15 @@ export function CommandPalette() {
     { id: "nav-history", label: t("goToHistory"), category: t("navigation"), icon: <History size={14} />, action: () => router.push("/flight-logs") },
     { id: "nav-mcp", label: t("goToMcp"), category: t("navigation"), icon: <Bot size={14} />, action: () => router.push("/mcp") },
     { id: "nav-config", label: t("goToConfig"), category: t("navigation"), icon: <Settings size={14} />, action: () => router.push("/config") },
-    // The selected node's Cockpit tab, taken full screen once it is showing.
-    // Only a drone has a cockpit, as in the node header.
+    // The selected node's Flight tab, embedded in the node detail; the
+    // operator takes it full screen from its own top bar. Only a drone has a
+    // cockpit, as in the node header.
     ...(selectedIsDrone
       ? [{
           id: "nav-cockpit", label: t("openCockpit"), category: t("navigation"), icon: <Gauge size={14} />,
           action: () => {
             useUiStore.getState().setPendingDetailTab("cockpit");
             router.push("/");
-            requestImmersiveCockpit();
           },
         }]
       : []),

@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, Check, AlertCircle, X, FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ export function ImportLogModal({ open, onClose }: ImportLogModalProps) {
 }
 
 function ImportLogDialog({ onClose }: { onClose: () => void }) {
+  const tq = useTranslations("history.importLogModal");
   const [files, setFiles] = useState<ParsedFile[]>([]);
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
@@ -131,7 +133,7 @@ function ImportLogDialog({ onClose }: { onClose: () => void }) {
       <div className="w-[600px] max-w-[95vw] max-h-[80vh] overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">
-            Import Flight Logs
+            {tq("importFlightLogs")}
           </h3>
           <button onClick={onClose} className="text-text-tertiary hover:text-text-primary p-1">
             <X size={14} />
@@ -154,7 +156,7 @@ function ImportLogDialog({ onClose }: { onClose: () => void }) {
               }}
             >
               <Upload size={24} className="mx-auto text-text-tertiary mb-2" />
-              <p className="text-xs text-text-secondary">Drop log files here, or click to browse</p>
+              <p className="text-xs text-text-secondary">{tq("dropLogFilesHereOr")}</p>
               <p className="text-[10px] text-text-tertiary mt-1">
                 ArduPilot .bin · PX4 .ulg · MAVLink .tlog · ADOS .json
               </p>
@@ -211,7 +213,7 @@ function ImportLogDialog({ onClose }: { onClose: () => void }) {
               <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-border-default">
                 {importing ? (
                   <Button variant="secondary" size="sm" onClick={handleCancel}>
-                    Cancel
+                    {tq("cancel")}
                   </Button>
                 ) : importableCount > 0 ? (
                   <Button variant="primary" size="sm" onClick={() => void handleImport()}>
@@ -219,7 +221,7 @@ function ImportLogDialog({ onClose }: { onClose: () => void }) {
                   </Button>
                 ) : (
                   <Button variant="secondary" size="sm" onClick={onClose}>
-                    Close
+                    {tq("close")}
                   </Button>
                 )}
               </div>

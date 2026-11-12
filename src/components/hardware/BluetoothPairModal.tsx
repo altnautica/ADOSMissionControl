@@ -24,6 +24,7 @@ interface BluetoothPairModalProps {
 }
 
 export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
+  const tq = useTranslations("hardware.bluetoothPairModal");
   const t = useTranslations("hardware.bluetooth");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
@@ -88,7 +89,7 @@ export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
   const footer = (
     <>
       <Button variant="secondary" onClick={onClose} disabled={bluetooth.scanning}>
-        Close
+        {tq("close")}
       </Button>
       <Button
         variant="primary"
@@ -105,19 +106,19 @@ export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Pair Bluetooth device"
+      title={tq("pairBluetoothDevice")}
       footer={footer}
       className="max-w-md"
     >
       {!hasAgent ? (
         <div className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-xs text-status-warning">
-          No ground station connected.
+          {tq("noGroundStationConnected")}
         </div>
       ) : (
         <div className="space-y-3">
           {bluetooth.scanning ? (
             <div className="flex flex-col gap-1">
-              <div className="text-xs text-text-secondary">Scanning for devices...</div>
+              <div className="text-xs text-text-secondary">{tq("scanningForDevices")}</div>
               <div className="h-1.5 w-full overflow-hidden rounded bg-bg-tertiary">
                 <div
                   className="h-full bg-accent-primary transition-all"
@@ -129,14 +130,14 @@ export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
 
           {bluetooth.scan_results.length === 0 && !bluetooth.scanning ? (
             <div className="py-6 text-center text-xs text-text-secondary">
-              Tap Scan to discover nearby devices.
+              {tq("tapScanToDiscoverNearby")}
             </div>
           ) : null}
 
           {bluetooth.scan_results.length > 0 ? (
             <div className="flex flex-col gap-2">
               <div className="text-xs uppercase tracking-wide text-text-secondary">
-                Scan results
+                {tq("scanResults")}
               </div>
               <ul className="flex flex-col gap-1">
                 {bluetooth.scan_results.map((dev) => {

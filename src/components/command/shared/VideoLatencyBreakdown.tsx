@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -45,6 +46,7 @@ export function VideoLatencyBreakdown({
   children,
   className,
 }: VideoLatencyBreakdownProps) {
+  const tk = useTranslations("command.videoLatencyBreakdown");
   const latency = useVideoStore((s) => s.latency);
   const codec = useVideoStore((s) => s.codec);
   const bitrateKbps = useVideoStore((s) => s.bitrateKbps);
@@ -190,7 +192,7 @@ export function VideoLatencyBreakdown({
             <div
               id="video-latency-breakdown"
               role="dialog"
-              aria-label="Video latency breakdown"
+              aria-label={tk("videoLatencyBreakdown")}
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
               style={panelStyle}
@@ -203,13 +205,13 @@ export function VideoLatencyBreakdown({
             >
               <header className="flex items-center justify-between px-3 py-2 border-b border-border-default">
                 <span className="text-[10px] uppercase tracking-widest text-text-tertiary">
-                  End-to-end latency
+                  {tk("endToEndLatency")}
                 </span>
                 {pinned && (
                   <button
                     type="button"
                     onClick={() => setPinned(false)}
-                    aria-label="Close pinned panel"
+                    aria-label={tk("closePinnedPanel")}
                     className="text-text-tertiary hover:text-text-primary"
                   >
                     <X className="w-3 h-3" />
@@ -220,18 +222,18 @@ export function VideoLatencyBreakdown({
               <div className="px-3 py-2 space-y-3">
                 {/* True glass-to-glass */}
                 <Section
-                  title="True glass-to-glass"
-                  subtitle="camera → your monitor"
+                  title={tk("trueGlassToGlass")}
+                  subtitle={tk("cameraYourMonitor")}
                 >
                   {hasG2G ? (
                     <Row
-                      label="Sample EWMA"
+                      label={tk("sampleEWMA")}
                       value={
                         latency.trueG2GStdDevMs != null
                           ? `${Math.round(latency.trueG2GMs ?? 0)} ms ± ${Math.round(latency.trueG2GStdDevMs)}`
                           : fmtMs(latency.trueG2GMs)
                       }
-                      tooltip="Time from camera capture on the drone to the frame being presented on your screen. Uses SEI timestamps in the H.264 bitstream + WebRTC presentationTime + a drone↔browser clock offset estimate."
+                      tooltip={tk("timeFromCameraCaptureOn")}
                     />
                   ) : (
                     <Note>
@@ -253,8 +255,8 @@ export function VideoLatencyBreakdown({
                     publish-side number and a glass-to-glass number that
                     has never been measured. */}
                 <Section
-                  title="Drone publish side"
-                  subtitle="encoder output → drone RTSP readback"
+                  title={tk("dronePublishSide")}
+                  subtitle={tk("encoderOutputDroneRTSPReadback")}
                 >
                   {latency.airSource === "unavailable" ? (
                     <Note>
@@ -263,18 +265,18 @@ export function VideoLatencyBreakdown({
                   ) : (
                     <>
                       <Row
-                        label="Stamp-to-readback EWMA"
+                        label={tk("stampToReadbackEWMA")}
                         value={fmtMs(latency.airLatencyMs)}
-                        tooltip="Drone-side stamp-to-readback: the time between the encoder emitting a frame (where the SEI timestamp is injected, after encode) and that frame being read back off the drone's own RTSP feed. Covers the publish mux, the RTSP publish and the drone-side buffering. It EXCLUDES camera capture, encode, the radio link, the ground ingest and the browser — it is not a glass-to-glass figure."
+                        tooltip={tk("droneSideStampToReadback")}
                       />
                       <Row
-                        label="Samples (1s)"
+                        label={tk("samples1s")}
                         value={
                           latency.airSamples != null
                             ? String(latency.airSamples)
                             : "—"
                         }
-                        tooltip="Number of SEI samples read by the drone's local tap in the last second. Roughly equal to the encode framerate when SEI is healthy."
+                        tooltip={tk("numberOfSEISamplesRead")}
                       />
                     </>
                   )}
@@ -291,67 +293,67 @@ export function VideoLatencyBreakdown({
 
                 {/* Link */}
                 <Section
-                  title="Link"
-                  subtitle="network + receiver path"
+                  title={tk("link")}
+                  subtitle={tk("networkReceiverPath")}
                 >
                   <Row
-                    label="Round-trip"
+                    label={tk("roundTrip")}
                     value={fmtMs(latency.rttMs)}
                     badge="live"
-                    tooltip="WebRTC ICE candidate-pair currentRoundTripTime. Same number Chrome shows in chrome://webrtc-internals."
+                    tooltip={tk("webrtcICECandidatePairCurrentRoundTripTime")}
                   />
                   <Row
-                    label="RTP jitter"
+                    label={tk("rtpJitter")}
                     value={fmtMs(latency.rtpJitterMs)}
                     badge="live"
-                    tooltip="inbound-rtp.jitter. Variance in packet arrival timing — high values mean the network is delivering frames at uneven cadence."
+                    tooltip={tk("inboundRtpJitterVarianceIn")}
                   />
                   <Row
-                    label="Playout buffer"
+                    label={tk("playoutBuffer")}
                     value={fmtMs(latency.jitterBufferMs)}
                     badge="live"
-                    tooltip="Chrome's decoder jitter buffer: how long each frame waits between arriving and being decoded. Grows when the network is jittery; shrinks when the link is smooth."
+                    tooltip={tk("chromeSDecoderJitterBuffer")}
                   />
                   <Row
-                    label="Packets lost"
+                    label={tk("packetsLost")}
                     value={String(packetsLost)}
                     badge="live"
-                    tooltip="Cumulative RTP packets the receiver detected as lost. Climbing values mean either link quality or FEC budget is insufficient."
+                    tooltip={tk("cumulativeRTPPacketsTheReceiver")}
                   />
                 </Section>
 
                 {/* GCS receive */}
-                <Section title="GCS receive" subtitle="browser-side">
+                <Section title={tk("gcsReceive")} subtitle={tk("browserSide")}>
                   <Row
-                    label="Frames decoded"
+                    label={tk("framesDecoded")}
                     value={latency.framesDecoded.toLocaleString()}
                     badge="live"
-                    tooltip="Total video frames Chrome has decoded since this session started."
+                    tooltip={tk("totalVideoFramesChromeHas")}
                   />
                   <Row
-                    label="Frames dropped"
+                    label={tk("framesDropped")}
                     value={latency.framesDropped.toLocaleString()}
                     badge="live"
-                    tooltip="Frames Chrome decoded but couldn't render in time (compositor pressure, tab in the background)."
+                    tooltip={tk("framesChromeDecodedButCouldn")}
                   />
                   {latency.clockOffsetMs !== null && (
                     <Row
-                      label="Clock offset"
+                      label={tk("clockOffset")}
                       value={
                         latency.clockOffsetUncertaintyMs != null
                           ? `${latency.clockOffsetMs > 0 ? "+" : ""}${Math.round(latency.clockOffsetMs)} ms ± ${Math.round(latency.clockOffsetUncertaintyMs)}`
                           : fmtMs(latency.clockOffsetMs)
                       }
-                      tooltip="Estimated drone↔browser wall-clock offset, derived from /api/time round-trips (Cristian's algorithm). Positive means the drone clock is ahead."
+                      tooltip={tk("estimatedDroneBrowserWallClock")}
                     />
                   )}
                 </Section>
 
                 <div className="border-t border-border-default pt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-text-secondary">
-                  <Field label="Codec" value={codec || "—"} />
-                  <Field label="Bitrate" value={bitrateLabel} />
+                  <Field label={tk("codec")} value={codec || "—"} />
+                  <Field label={tk("bitrate")} value={bitrateLabel} />
                   <Field
-                    label="Transport"
+                    label={tk("transport")}
                     value={transport.toUpperCase().replace("-", " ")}
                   />
                   <Field

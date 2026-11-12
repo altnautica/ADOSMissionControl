@@ -16,6 +16,7 @@ import {
   type WifiScanNetwork,
 } from "@/lib/agent/network-client";
 import { useToast } from "@/components/ui/toast";
+import { useDescribeAgentError } from "@/hooks/use-describe-agent-error";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 const STATUS_POLL_MS = 10000;
@@ -27,6 +28,7 @@ const STATUS_POLL_MS = 10000;
 export function useWifiClient(nodeDeviceId: string | null) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const describeAgentError = useDescribeAgentError();
   const agent = useNodeDirectAgent(nodeDeviceId);
   const ctx = useMemo(
     () => (agent ? agentNetworkContext(agent.agentUrl, agent.apiKey) : null),
@@ -177,13 +179,13 @@ export function useWifiClient(nodeDeviceId: string | null) {
           setForcePrompt(true);
           return;
         }
-        toast(err instanceof Error ? err.message : t("wifi.joinFailed"), "error");
+        toast(describeAgentError(err, t("wifi.joinFailed")), "error");
       } finally {
         setJoining(false);
       }
       await refresh();
     },
-    [ctx, joining, ssid, passphrase, toast, t, refresh],
+    [ctx, joining, ssid, passphrase, toast, t, refresh, describeAgentError],
   );
 
   const onLeave = useCallback(async () => {
@@ -198,12 +200,12 @@ export function useWifiClient(nodeDeviceId: string | null) {
         "success",
       );
     } catch (err) {
-      toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+      toast(describeAgentError(err, t("applyFailed")), "error");
     } finally {
       setLeaving(false);
     }
     await refresh();
-  }, [ctx, leaving, toast, t, refresh]);
+  }, [ctx, leaving, toast, t, refresh, describeAgentError]);
 
   const onForget = useCallback(
     async (name: string) => {
@@ -213,13 +215,13 @@ export function useWifiClient(nodeDeviceId: string | null) {
         await forgetWifi(ctx, name);
         toast(t("wifi.forgot", { name }), "success");
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+        toast(describeAgentError(err, t("applyFailed")), "error");
       } finally {
         setRowBusy(null);
       }
       await refresh();
     },
-    [ctx, toast, t, refresh],
+    [ctx, toast, t, refresh, describeAgentError],
   );
 
   const onAutoconnect = useCallback(
@@ -230,13 +232,13 @@ export function useWifiClient(nodeDeviceId: string | null) {
         await setWifiAutoconnect(ctx, name, enabled);
         toast(t("applied"), "success");
       } catch (err) {
-        toast(err instanceof Error ? err.message : t("applyFailed"), "error");
+        toast(describeAgentError(err, t("applyFailed")), "error");
       } finally {
         setRowBusy(null);
       }
       await refresh();
     },
-    [ctx, rowBusy, toast, t, refresh],
+    [ctx, rowBusy, toast, t, refresh, describeAgentError],
   );
 
   const pickNetwork = useCallback((n: WifiScanNetwork) => {

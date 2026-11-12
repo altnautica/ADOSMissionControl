@@ -23,6 +23,7 @@ import { ServoMappingTable, type OutputRow } from "../misc/ServoMappingTable";
 import { MotorTestSection } from "./MotorTestSection";
 import { ServoTestSection } from "./ServoTestSection";
 import { Save, HardDrive } from "lucide-react";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const OUTPUT_COUNT = 16;
 const PWM_ABS_MIN = 800;
@@ -67,6 +68,7 @@ function validateOutputs(rows: (OutputRow | null)[]): { pwmWarnings: PwmWarning[
 }
 
 export function OutputsPanel() {
+  const tr = useTranslations("fcPanels.outputsPanel");
   const protocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.motors");
@@ -77,7 +79,7 @@ export function OutputsPanel() {
     loadProgress, hasLoaded,
     refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: OUTPUT_PARAMS, optionalParams: OPTIONAL_OUTPUT_PARAMS, panelId: "outputs", autoLoad: true });
-  const { saving, save, flash: handleFlash } = usePanelCommit(
+  const { saving, save, flashing, flash: handleFlash } = usePanelCommit(
     { saveAllToRam, commitToFlash, revertAll },
     { saved: t("outputsSaved"), flash: { successMessage: t("paramsFlashWritten") } },
   );
@@ -146,8 +148,8 @@ export function OutputsPanel() {
     return (
       <div className="flex-1 p-6">
         <div className="max-w-4xl space-y-4">
-          <h2 className="text-sm font-semibold text-text-primary">Servo / Motor Outputs</h2>
-          <Card><p className="text-xs text-text-tertiary">Connect to a drone to configure outputs.</p></Card>
+          <h2 className="text-sm font-semibold text-text-primary">{tr("servoMotorOutputs")}</h2>
+          <Card><p className="text-xs text-text-tertiary">{tr("connectToADroneTo")}</p></Card>
         </div>
       </div>
     );
@@ -156,10 +158,10 @@ export function OutputsPanel() {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-4xl space-y-4">
-        <PanelHeader title="Servo / Motor Outputs" subtitle="Output function assignment, PWM limits, and motor test" loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={!!protocol} error={error}>
+        <PanelHeader title={tr("servoMotorOutputs")} subtitle={tr("outputFunctionAssignmentPWMLimits")} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={!!protocol} error={error}>
           {hasDirty && <span className="text-[10px] font-mono text-status-warning px-1.5 py-0.5 bg-status-warning/10 border border-status-warning/20">UNSAVED</span>}
-          <Button variant="primary" size="sm" icon={<Save size={12} />} loading={saving} disabled={!hasDirty} onClick={handleSave}>Save</Button>
-          {hasRamWrites && <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} onClick={handleFlash}>Write to Flash</Button>}
+          <Button variant="primary" size="sm" icon={<Save size={12} />} loading={saving} disabled={!hasDirty} onClick={handleSave}>{tr("save")}</Button>
+          {hasRamWrites && <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} loading={flashing} onClick={handleFlash}><SaveBarLabel k="writeToFlash" /></Button>}
         </PanelHeader>
 
         <OutputTimerGroupConfig hasLoaded={hasLoaded} boardProfile={boardProfile} functionMap={functionMap} motPwmType={motPwmType} timerConflicts={timerConflicts} conflicts={conflicts} pwmWarnings={pwmWarnings} gpioOutputs={gpioOutputs} onBoardOverride={setManualBoardOverride} />

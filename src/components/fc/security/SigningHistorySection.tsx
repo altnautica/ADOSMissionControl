@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function SigningHistorySection({ droneId }: Props) {
+  const tr = useTranslations("fcPanels.signingHistorySection");
   const [open, setOpen] = useState(false);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authLoading = useAuthStore((s) => s.isLoading);
@@ -48,7 +50,7 @@ export function SigningHistorySection({ droneId }: Props) {
         ) : (
           <ChevronRight size={14} aria-hidden="true" />
         )}
-        <span className="font-medium">History</span>
+        <span className="font-medium">{tr("history")}</span>
         {isAuthenticated ? (
           <span className="text-xs text-text-tertiary">({count} events)</span>
         ) : (
@@ -61,14 +63,13 @@ export function SigningHistorySection({ droneId }: Props) {
         <div className="mt-3">
           {!isAuthenticated ? (
             <p className="text-xs text-text-tertiary py-2">
-              Sign in to cloud-sync this drone and surface a per-drone audit
-              log here.
+              {tr("signInToCloudSync")}
             </p>
           ) : events === undefined ? (
-            <p className="text-xs text-text-tertiary py-2">Loading history…</p>
+            <p className="text-xs text-text-tertiary py-2">{tr("loadingHistory")}</p>
           ) : events.length === 0 ? (
             <p className="text-xs text-text-tertiary py-2">
-              No signing events recorded for this drone yet.
+              {tr("noSigningEventsRecordedFor")}
             </p>
           ) : (
             <ul className="space-y-1.5 max-h-[280px] overflow-y-auto">

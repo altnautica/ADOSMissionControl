@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Battery, Zap, ShieldAlert } from "lucide-react";
@@ -42,6 +43,7 @@ export function Px4PowerSections({
   lbl: (raw: string) => ReactNode;
   enumValues: (canonical: string) => ReadonlyMap<number, string>;
 }) {
+  const tr = useTranslations("fcPanels.px4PowerSections");
   const str = (name: string) => (params.has(name) ? String(params.get(name)) : "");
   const num = (v: string) => Number(v) || 0;
   const enumField = (name: string, text: string) => (
@@ -54,40 +56,40 @@ export function Px4PowerSections({
 
   return (
     <>
-      <FcSection icon={<Battery size={14} />} title="Battery Settings">
-        {enumField("BATT_MONITOR", "Battery 1 Source")}
+      <FcSection icon={<Battery size={14} />} title={tr("batterySettings")}>
+        {enumField("BATT_MONITOR", tr("battery1Source"))}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <StarredParam param="BATT_CAPACITY">
-            <Input label={lbl("BATT_CAPACITY — Capacity")} type="number" step="50" min="-1" unit="mAh"
+            <Input label={lbl(`BATT_CAPACITY — ${tr("capacity")}`)} type="number" step="50" min="-1" unit="mAh"
               value={str("BATT_CAPACITY")} onChange={(e) => setLocalValue("BATT_CAPACITY", num(e.target.value))} />
           </StarredParam>
-          {enumField("BAT1_N_CELLS", "Cell Count")}
+          {enumField("BAT1_N_CELLS", tr("cellCount"))}
           <StarredParam param="BAT1_R_INTERNAL">
-            <Input label={lbl("BAT1_R_INTERNAL — Internal Resistance")} type="number" step="0.001" min="-1" max="0.2" unit="Ω"
+            <Input label={lbl(`BAT1_R_INTERNAL — ${tr("internalResistance")}`)} type="number" step="0.001" min="-1" max="0.2" unit="Ω"
               value={str("BAT1_R_INTERNAL")} onChange={(e) => setLocalValue("BAT1_R_INTERNAL", num(e.target.value))} />
           </StarredParam>
         </div>
-        <p className="text-[10px] text-text-tertiary">Capacity -1 means unknown; internal resistance -1 lets PX4 estimate it.</p>
+        <p className="text-[10px] text-text-tertiary">{tr("capacity1MeansUnknownInternal")}</p>
       </FcSection>
 
       {hasAnalog && (
-        <FcSection icon={<Zap size={14} />} title="Power Module Calibration">
+        <FcSection icon={<Zap size={14} />} title={tr("powerModuleCalibration")}>
           {params.has("BATT_VOLT_MULT") && (
-            <Input label={lbl("BATT_VOLT_MULT — Voltage Divider")} type="number" step="0.01"
+            <Input label={lbl(`BATT_VOLT_MULT — ${tr("voltageDivider")}`)} type="number" step="0.01"
               value={str("BATT_VOLT_MULT")} onChange={(e) => setLocalValue("BATT_VOLT_MULT", num(e.target.value))} />
           )}
           {params.has("BATT_AMP_PERVLT") && (
-            <Input label={lbl("BATT_AMP_PERVLT — Amps Per Volt")} type="number" step="0.1" unit="A/V"
+            <Input label={lbl(`BATT_AMP_PERVLT — ${tr("ampsPerVolt")}`)} type="number" step="0.1" unit="A/V"
               value={str("BATT_AMP_PERVLT")} onChange={(e) => setLocalValue("BATT_AMP_PERVLT", num(e.target.value))} />
           )}
           {params.has("BATT_AMP_OFFSET") && (
-            <Input label={lbl("BATT_AMP_OFFSET — Current Sensor Zero Offset")} type="number" step="0.001" unit="V"
+            <Input label={lbl(`BATT_AMP_OFFSET — ${tr("currentSensorZeroOffset")}`)} type="number" step="0.001" unit="V"
               value={str("BATT_AMP_OFFSET")} onChange={(e) => setLocalValue("BATT_AMP_OFFSET", num(e.target.value))} />
           )}
         </FcSection>
       )}
 
-      <FcSection icon={<ShieldAlert size={14} />} title="Battery Failsafe">
+      <FcSection icon={<ShieldAlert size={14} />} title={tr("batteryFailsafe")}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {THRESHOLDS.map((t) => (
             <StarredParam key={t.name} param={t.name}>
@@ -99,7 +101,7 @@ export function Px4PowerSections({
         <p className="text-[10px] text-text-tertiary">
           Thresholds are the fraction of charge remaining (0.15 = 15 % left), not volts.
         </p>
-        {enumField("BATT_FS_LOW_ACT", "Battery Failsafe Action")}
+        {enumField("BATT_FS_LOW_ACT", tr("batteryFailsafeAction"))}
       </FcSection>
     </>
   );

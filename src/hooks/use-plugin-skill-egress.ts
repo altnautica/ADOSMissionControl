@@ -17,9 +17,10 @@
  *      {@link PluginSkillReportedState} and pushes it to
  *      `usePluginSkillHostStore` so the Skill Bar's `getState` reads the
  *      plugin's true state (never optimistic GCS state); and
- *   2. republishes every published topic on the GCS plugin event bus under the
- *      plugin's own agent-state origin, which the plugin's iframe host on this
- *      drone forwards to the iframe (`ctx.events.subscribe(topic)`).
+ *   2. republishes each new report (a new agent `ts_ms`) on the GCS plugin
+ *      event bus, with that `ts_ms` on the payload, under the plugin's own
+ *      agent-state origin, which the plugin's iframe host on this drone
+ *      forwards to the iframe (`ctx.events.subscribe(topic)`).
  *
  * Local-first only: the source hook is inert unless the operator is
  * signed out, not in demo, and holds a LAN key for the drone, so this hook
@@ -32,7 +33,11 @@ import { useEffect, useRef } from "react";
 
 import { useLocalAgentPlugins } from "@/hooks/use-local-agent-plugins";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import { agentStateOrigin, publishPluginEvent } from "@/lib/plugins/event-bus";
+import {
+  agentStateOrigin,
+  agentStatePayload,
+  publishPluginEvent,
+} from "@/lib/plugins/event-bus";
 import {
   usePluginSkillHostStore,
   type PluginSkillReportedState,
@@ -172,6 +177,8 @@ export function usePluginSkillEgress(droneId: string | null | undefined): void {
     // One sweep at a time: an agent slower than the interval would otherwise
     // stack a new request per plugin on every tick.
     let inFlight = false;
+    // The agent `ts_ms` last republished per drone, plugin and topic.
+    const lastPublished = new Map<string, number>();
 
     const pollOnce = async () => {
       const id = droneRef.current;
@@ -213,10 +220,17 @@ export function usePluginSkillEgress(droneId: string | null | undefined): void {
               });
             }
 
-            // (2) Republish every topic onto the plugin event bus under the
-            // plugin's own agent-state origin; the plugin's iframe host on
-            // this drone forwards it (ctx.events.subscribe(topic)).
-            publishPluginEvent(topic, payload, origin);
+            // (2) Republish a topic onto the plugin event bus under the
+            // plugin's own agent-state origin, only when the agent recorded a
+            // new report: the sidecar keeps the last payload, and sending it
+            // again would make a silent plugin look live. The agent's `ts_ms`
+            // rides on the payload so the iframe can age the report. The
+            // plugin's iframe host on this drone forwards it
+            // (ctx.events.subscribe(topic)).
+            const seenKey = `${id}\u0000${plugin.pluginId}\u0000${topic}`;
+            if (lastPublished.get(seenKey) === entry.ts_ms) continue;
+            lastPublished.set(seenKey, entry.ts_ms);
+            publishPluginEvent(topic, agentStatePayload(payload, entry.ts_ms), origin);
           }
         }),
       );

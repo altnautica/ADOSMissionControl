@@ -72,7 +72,7 @@ function reportWith(overrides: Record<string, unknown> = {}) {
 describe("DiscoverySection config switch", () => {
   it("writes the mDNS announcement flag through the shared config writer", async () => {
     const { setValue } = renderSection();
-    fireEvent.click(screen.getByText("Announce over mDNS"));
+    fireEvent.click(screen.getByText("Advertise over mDNS"));
     await waitFor(() =>
       expect(setValue).toHaveBeenCalledWith("discovery.mdns_enabled", "false"),
     );

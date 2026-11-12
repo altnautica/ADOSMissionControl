@@ -11,6 +11,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Upload,
   AlertTriangle,
@@ -66,6 +67,7 @@ export function PickStage({
   onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
   onPick: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
+  const tk = useTranslations("plugins.stages");
   return (
     <div className="space-y-3 p-4">
       <div
@@ -84,7 +86,7 @@ export function PickStage({
       >
         <Upload className="h-8 w-8 text-text-tertiary" />
         <p className="text-sm text-text-primary">
-          Drag a <code>.adosplug</code> here or pick a file.
+          {tk("dragA")} <code>.adosplug</code> here or pick a file.
         </p>
         <label className="cursor-pointer text-xs text-accent-primary underline">
           <input
@@ -93,7 +95,7 @@ export function PickStage({
             className="hidden"
             onChange={onPick}
           />
-          Choose file
+          {tk("chooseFile")}
         </label>
       </div>
     </div>
@@ -109,6 +111,7 @@ export function ErrorStage({
   onClose: () => void;
   onRetry: () => void;
 }) {
+  const tk = useTranslations("plugins.stages");
   return (
     <div className="space-y-3 p-4">
       <div className="flex items-start gap-2 rounded-md border border-status-error/30 bg-status-error/10 p-3">
@@ -120,10 +123,10 @@ export function ErrorStage({
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>
-          Close
+          {tk("close")}
         </Button>
         <Button variant="secondary" onClick={onRetry}>
-          Try again
+          {tk("tryAgain")}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import {
   LineChart,
@@ -21,6 +22,7 @@ interface PidFFTChartProps {
 }
 
 export function PidFFTChart({ data, color = AXIS_COLORS.roll }: PidFFTChartProps) {
+  const tk = useTranslations("fcPanels.pidFFTChart");
   const chartData = useMemo(
     () =>
       data.spectrum
@@ -45,7 +47,7 @@ export function PidFFTChart({ data, color = AXIS_COLORS.roll }: PidFFTChartProps
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[200px] text-[10px] text-text-tertiary">
-        No FFT data
+        {tk("noFFTData")}
       </div>
     );
   }

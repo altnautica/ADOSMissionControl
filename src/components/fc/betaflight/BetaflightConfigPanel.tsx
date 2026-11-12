@@ -22,8 +22,10 @@ import {
 } from "lucide-react";
 import { bfConfigParamNames, featureDefsForApi, BEEPER_DEFS } from "./bf-config-constants";
 import { FcSection } from "@/components/fc/shared/FcSection";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 export function BetaflightConfigPanel() {
+  const tr = useTranslations("fcPanels.betaflightConfigPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const t = useTranslations("fcToasts.betaflight");
   const scrollRef = usePanelScroll("bf-config");
@@ -47,7 +49,7 @@ export function BetaflightConfigPanel() {
     autoLoad: true,
   });
   useUnsavedGuard(dirtyParams.size > 0);
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit(
     { saveAllToRam, commitToFlash, revertAll },
     { flash: { successMessage: t("writtenToFlash") } },
   );
@@ -106,8 +108,8 @@ export function BetaflightConfigPanel() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Configuration"
-            subtitle="Feature toggles, arming settings, and beeper configuration"
+            title={tr("configuration")}
+            subtitle={tr("featureTogglesArmingSettingsAnd")}
             icon={<Settings size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -121,7 +123,7 @@ export function BetaflightConfigPanel() {
           <FcSection
             icon={<ToggleRight size={14} />}
             title={`Feature Toggles (${enabledFeatureCount}/${featureDefs.length} enabled)`}
-            description="Enable or disable firmware features (BF_FEATURE_MASK)"
+            description={tr("enableOrDisableFirmwareFeatures")}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {featureDefs.map((feat) => {
@@ -158,12 +160,12 @@ export function BetaflightConfigPanel() {
           {/* Arming Configuration */}
           <FcSection
             icon={<Shield size={14} />}
-            title="Arming"
-            description="Auto-disarm timeout and small angle limit"
+            title={tr("arming")}
+            description={tr("autoDisarmTimeoutAndSmall")}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Auto-disarm delay"
+                label={tr("autoDisarmDelay")}
                 type="number"
                 step="1"
                 min="0"
@@ -173,7 +175,7 @@ export function BetaflightConfigPanel() {
                 onChange={(e) => set("BF_AUTO_DISARM_DELAY", e.target.value)}
               />
               <Input
-                label="Small angle limit"
+                label={tr("smallAngleLimit")}
                 type="number"
                 step="1"
                 min="0"
@@ -193,7 +195,7 @@ export function BetaflightConfigPanel() {
           <FcSection
             icon={<Bell size={14} />}
             title={`Beeper Configuration (${enabledBeeperCount}/${BEEPER_DEFS.length} enabled)`}
-            description="Toggle individual beeper conditions (BF_BEEPER_DISABLED_MASK is inverted: bit=1 disables)"
+            description={tr("toggleIndividualBeeperConditionsBF")}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
               {BEEPER_DEFS.map((beep) => {
@@ -233,26 +235,26 @@ export function BetaflightConfigPanel() {
               loading={saving}
               onClick={handleSave}
             >
-              Save to Flight Controller
+              <SaveBarLabel k="saveToFc" />
             </Button>
             {hasRamWrites && (
               <Button
                 variant="secondary"
                 size="lg"
                 icon={<HardDrive size={14} />}
-                onClick={handleFlash}
+                loading={flashing} onClick={handleFlash}
               >
-                Write to Flash
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
             {!connected && (
               <span className="text-[10px] text-text-tertiary">
-                Connect a drone to save parameters
+                <SaveBarLabel k="connectToSave" />
               </span>
             )}
             {hasDirty && connected && (
               <span className="text-[10px] text-status-warning">
-                Unsaved changes
+                <SaveBarLabel k="unsavedChanges" />
               </span>
             )}
           </div>

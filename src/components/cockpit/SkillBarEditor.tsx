@@ -19,7 +19,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { RotateCcw, Gamepad2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -30,7 +30,6 @@ import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { formatChord } from "@/lib/skills/chord";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import type { HotbarSlot } from "@/stores/settings/keybindings-slice";
-import { SKILL_BUTTON_DEFAULTS } from "@/lib/input/skill-button-defaults";
 import { useKeyCapture, useButtonCapture } from "@/hooks/use-binding-capture";
 import { SkillDrawer } from "./SkillDrawer";
 import { EditableSkillSlot } from "./EditableSkillSlot";
@@ -211,20 +210,6 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
     );
   };
 
-  const handleApplyControllerDefaults = () => {
-    if (!loadout) return;
-    let applied = 0;
-    for (const def of SKILL_BUTTON_DEFAULTS) {
-      const slot = loadout.slots.find((s) => s.skillId === def.skillId);
-      if (slot) {
-        setSlotGamepadButton(loadout.id, slot.index, def.button);
-        applied += 1;
-      }
-    }
-    toast(t("controllerDefaultsApplied", { count: applied }), "success");
-    announce(t("controllerDefaultsApplied", { count: applied }));
-  };
-
   const [confirmReset, setConfirmReset] = useState(false);
   const handleReset = () => {
     setConfirmReset(false);
@@ -324,14 +309,6 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
 
       {/* Actions. */}
       <div className="flex flex-wrap items-center gap-2 border-t border-border-default pt-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<Gamepad2 size={12} />}
-          onClick={handleApplyControllerDefaults}
-        >
-          {t("applyControllerDefaults")}
-        </Button>
         <Button
           variant="ghost"
           size="sm"

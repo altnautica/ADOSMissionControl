@@ -606,6 +606,85 @@
     }
   },
   {
+    "name": "arm_unknown_suppresses",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": null,
+        "airborne": null,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "alertBannerVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "arm_unknown_hides_without_seen",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": null,
+        "airborne": null,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "alertBannerVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": "stop",
+        "shownAtMs": 3000,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 4000
+    },
+    "expected": {
+      "kind": "hide",
+      "tipId": "stop",
+      "markSeen": false,
+      "reason": "not_allowed"
+    }
+  },
+  {
     "name": "sheet_opens_hides_unseen",
     "input": {
       "state": {

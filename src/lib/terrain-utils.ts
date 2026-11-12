@@ -28,6 +28,8 @@ export interface ResolvedPath {
   waypointIndices: number[];
   /** Terrain height (meters above ellipsoid) at each original waypoint. */
   terrainHeights: number[];
+  /** Terrain height (meters above ellipsoid) under every entry of `positions`. */
+  groundHeights: number[];
   /** Terrain height (meters above ellipsoid) at home, the relative-frame datum. */
   homeTerrainHeight: number;
 }
@@ -87,7 +89,7 @@ export async function resolveAGLToAbsolute(
   home: HomePoint,
 ): Promise<ResolvedPath> {
   if (waypoints.length === 0) {
-    return { positions: [], waypointIndices: [], terrainHeights: [], homeTerrainHeight: 0 };
+    return { positions: [], waypointIndices: [], terrainHeights: [], groundHeights: [], homeTerrainHeight: 0 };
   }
 
   // Warm the bundled geoid grid so absolute-frame MSL->ellipsoidal is correct on
@@ -175,8 +177,9 @@ export async function resolveAGLToAbsolute(
     return Cartesian3.fromRadians(carto.longitude, carto.latitude, absoluteAlt);
   });
 
-  // Extract terrain heights at original waypoint positions only
-  const terrainHeights = waypointIndices.map((idx) => groundAt(idx));
+  // Ground under every point; the waypoint subset is the per-waypoint terrain.
+  const groundHeights = cartographics.map((_, i) => groundAt(i));
+  const terrainHeights = waypointIndices.map((idx) => groundHeights[idx]);
 
-  return { positions, waypointIndices, terrainHeights, homeTerrainHeight };
+  return { positions, waypointIndices, terrainHeights, groundHeights, homeTerrainHeight };
 }

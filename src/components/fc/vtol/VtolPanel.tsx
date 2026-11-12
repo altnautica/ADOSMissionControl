@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Plane, Save, RotateCcw, HardDrive } from "lucide-react";
+import { Plane } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -16,6 +16,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field {
   param: string;
@@ -58,6 +60,7 @@ const TAILSIT: Field[] = [
 const ALL_FIELDS = [...GENERAL, ...TRANSITION, ...TILT, ...TAILSIT];
 
 export function VtolPanel() {
+  const tr = useTranslations("fcPanels.vtolPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -72,7 +75,7 @@ export function VtolPanel() {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, optionalParams: paramNames, panelId: "vtol", autoLoad: true });
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -121,7 +124,7 @@ export function VtolPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="QuadPlane / VTOL" subtitle="Frame, transition, and tilt/tailsitter setup for VTOL planes"
+        <PanelHeader title={tr("quadplaneVTOL")} subtitle={tr("frameTransitionAndTiltTailsitter")}
           icon={<Plane size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -130,13 +133,18 @@ export function VtolPanel() {
         {collapsible("Tilt-Rotor", showTilt, () => setShowTilt((v) => !v), TILT)}
         {collapsible("Tailsitter", showTailsit, () => setShowTailsit((v) => !v), TAILSIT)}
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 // ── Component ─────────────────────────────────────────────────
 
 export function GlobalVariablesPanel() {
+  const tr = useTranslations("fcPanels.globalVariablesPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.inav");
@@ -113,7 +114,7 @@ export function GlobalVariablesPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-xl space-y-4">
         <PanelHeader
-          title="Global Variables"
+          title={tr("globalVariables")}
           subtitle={`Live values for ${GVAR_MAX} global variables (set by logic conditions or overridden here)`}
           icon={<Variable size={16} />}
           loading={loading}
@@ -126,7 +127,7 @@ export function GlobalVariablesPanel() {
 
         {isArmed && (
           <p className="text-[10px] font-mono text-status-warning">
-            Armed: overrides disabled. Live values update below.
+            {tr("armedOverridesDisabledLiveValues")}
           </p>
         )}
 
@@ -163,7 +164,7 @@ export function GlobalVariablesPanel() {
                     disabled={isArmed || !connected}
                     onClick={() => handleSet(idx)}
                   >
-                    Set
+                    {tr("set")}
                   </Button>
                 </div>
               </div>
@@ -173,8 +174,7 @@ export function GlobalVariablesPanel() {
 
         {hasLoaded && (
           <p className="text-[10px] font-mono text-text-tertiary">
-            Setting a value is a live runtime override; logic conditions may change it again, and it
-            is not written to EEPROM. Overrides are blocked while armed.
+            {tr("settingAValueIsA")}
           </p>
         )}
       </div>

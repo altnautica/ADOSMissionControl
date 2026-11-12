@@ -291,7 +291,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
             onClick={() => setSearchQuery("")}
             className="text-[10px] text-text-tertiary hover:text-text-primary cursor-pointer"
           >
-            Clear
+            {t("clear")}
           </button>
         )}
       </div>
@@ -302,19 +302,19 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           onClick={() => handleSort("timestamp")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer shrink-0 w-[60px]"
         >
-          {t("time")} <SortIcon field="timestamp" sortField={sortField} sortDir={sortDir} />
+          TIME <SortIcon field="timestamp" sortField={sortField} sortDir={sortDir} />
         </button>
         <button
           onClick={() => handleSort("severity")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer shrink-0 w-[72px]"
         >
-          {t("severity")} <SortIcon field="severity" sortField={sortField} sortDir={sortDir} />
+          SEVERITY <SortIcon field="severity" sortField={sortField} sortDir={sortDir} />
         </button>
         <button
           onClick={() => handleSort("text")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer flex-1"
         >
-          {t("message")} <SortIcon field="text" sortField={sortField} sortDir={sortDir} />
+          MESSAGE <SortIcon field="text" sortField={sortField} sortDir={sortDir} />
         </button>
       </div>
 

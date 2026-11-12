@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -32,6 +33,7 @@ const PROFILE_OPTIONS = [
 // ── Component ─────────────────────────────────────────────────
 
 export function ControlProfilePanel() {
+  const tr = useTranslations("fcPanels.controlProfilePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -94,8 +96,8 @@ export function ControlProfilePanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="Control Profiles"
-          subtitle="Switch the active rate and control profile"
+          title={tr("controlProfiles")}
+          subtitle={tr("switchTheActiveRateAnd")}
           icon={<Gauge size={16} />}
           loading={loading}
           loadProgress={null}
@@ -111,7 +113,7 @@ export function ControlProfilePanel() {
               iNav supports up to 3 control profiles. Switching takes effect immediately on the FC.
             </p>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-text-tertiary font-mono">Active control profile</span>
+              <span className="text-[10px] text-text-tertiary font-mono">{tr("activeControlProfile")}</span>
               <Select
                 label=""
                 options={PROFILE_OPTIONS.slice(0, info.profileCount)}
@@ -124,13 +126,13 @@ export function ControlProfilePanel() {
         )}
         <ConfirmDialog
           open={pendingProfile !== null}
-          title="Switch active control profile?"
+          title={tr("switchActiveControlProfile")}
           message={
             pendingProfile !== null
               ? `This switches the active profile on the flight controller immediately. The new profile starts with its own PID, rates, and RC-tuning values. Current flight behavior may change. Switching to profile ${pendingProfile + 1}.`
               : ""
           }
-          confirmLabel="Switch profile"
+          confirmLabel={tr("switchProfile")}
           cancelLabel="Cancel"
           variant="primary"
           onConfirm={handleSwitchConfirm}

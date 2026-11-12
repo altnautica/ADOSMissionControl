@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import {
   ComposedChart,
@@ -31,6 +32,7 @@ function downsample<T>(arr: T[], maxPoints: number): T[] {
 }
 
 export function PidTrackingChart({ data, color = AXIS_COLORS.roll }: PidTrackingChartProps) {
+  const tr = useTranslations("fcPanels.pidTrackingChart");
   const chartData = useMemo(() => {
     const maxLen = Math.max(data.desired.length, data.actual.length);
     const points: { timeMs: number; desired: number; actual: number }[] = [];
@@ -56,7 +58,7 @@ export function PidTrackingChart({ data, color = AXIS_COLORS.roll }: PidTracking
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[200px] text-[10px] text-text-tertiary">
-        No tracking data
+        {tr("noTrackingData")}
       </div>
     );
   }
@@ -114,7 +116,7 @@ export function PidTrackingChart({ data, color = AXIS_COLORS.roll }: PidTracking
       </ResponsiveContainer>
       {/* RMS error badge */}
       <div className="absolute top-2 right-2 bg-bg-tertiary border border-border-default px-2 py-1">
-        <span className="text-[9px] text-text-tertiary block">RMS Error</span>
+        <span className="text-[9px] text-text-tertiary block">{tr("rmsError")}</span>
         <span className="text-xs font-mono font-medium text-text-primary">
           {data.rmsError === null ? "-" : `${data.rmsError.toFixed(2)} deg/s`}
         </span>

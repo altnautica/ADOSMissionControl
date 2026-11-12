@@ -15,6 +15,7 @@ import { useTelemetryStore } from "./telemetry-store";
 import { useUploadReceiptsStore } from "./upload-receipts-store";
 import { withPlannerHistory } from "@/lib/planner-history";
 import { flyingMissionRefusal } from "@/lib/mission/upload-guard";
+import { MISSION_TRANSFER_NO_ANSWER } from "@/lib/protocol/mission-result";
 // The pure mission ⇄ wire collapser: re-nests a downloaded flat item list into
 // the waypoint model. The upload side goes through `mission-upload`, which also
 // owns the receipt hash and the seq → waypoint mapping, so the three agree.
@@ -90,11 +91,11 @@ export async function uploadPlanMission(
   // Never replace the mission under a vehicle that is flying it.
   const refusal = flyingMissionRefusal(droneId);
   if (refusal) {
-    set({ uploadState: "error", uploadError: refusal });
+    set({ uploadState: "error", uploadError: refusal, uploadErrorCode: null });
     return false;
   }
 
-  set({ uploadState: "uploading", uploadError: null });
+  set({ uploadState: "uploading", uploadError: null, uploadErrorCode: null, uploadProgress: null });
 
   // Flatten the waypoint model (NAV waypoints + their attached actions) into
   // the FC's contiguous `seq` item list, with each frame-less waypoint taking
@@ -114,7 +115,7 @@ export async function uploadPlanMission(
     // The plan cannot be encoded for this autopilot (a PX4 target and a
     // terrain-frame waypoint): nothing was sent, so the vehicle's mission
     // and any receipt for it are unchanged.
-    set({ uploadState: "error", uploadError: err instanceof Error ? err.message : String(err) });
+    set({ uploadState: "error", uploadError: err instanceof Error ? err.message : String(err), uploadErrorCode: null });
     return false;
   }
   // Hash what is being sent now: an edit made while the transfer runs must
@@ -125,21 +126,27 @@ export async function uploadPlanMission(
 
   let success = false;
   let failure: string | null = null;
+  let failureCode: number | null = null;
   let opaqueId: number | undefined;
   // The agent's count of uploads it has seen from any client: theplan
   // identity rule trusts this receipt only while no other upload follows.
   const uploadsSeenBefore = droneId
     ? (useNavStreamStore.getState().byDrone[droneId]?.pilot?.data.mission?.uploadsSeen ?? undefined)
     : undefined;
+  set({ uploadProgress: { sent: 0, total: items.length } });
   try {
-    const result = await protocol.uploadMission(items);
+    const result = await protocol.uploadMission(items, (sent, total) => set({ uploadProgress: { sent, total } }));
     success = result.success;
     opaqueId = result.opaqueId;
-    if (!success) failure = result.message || "The flight controller did not accept the mission";
+    if (!success) {
+      failure = result.message || "The flight controller did not accept the mission";
+      failureCode = result.resultCode;
+    }
   } catch (err) {
     failure = err instanceof Error && err.message ? err.message : "The mission transfer failed";
+    failureCode = MISSION_TRANSFER_NO_ANSWER;
   }
-  set({ uploadState: success ? "uploaded" : "error", uploadError: failure });
+  set({ uploadState: success ? "uploaded" : "error", uploadError: failure, uploadErrorCode: failureCode });
   if (droneId) {
     // A failed transfer may have left the FC with a partial or cleared
     // mission, so what it holds is no longer known. After an override the

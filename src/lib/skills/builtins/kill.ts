@@ -13,7 +13,6 @@ import type { Skill } from "../types";
 import {
   disabledIfNoBlindLink,
   pilotActionResult,
-  REASON,
   specConfirm,
   viaPilot,
   lastResortPath,
@@ -27,12 +26,11 @@ export const killSkill: Skill = {
   category: "safety",
   source: "builtin",
   toggle: false,
-  armRequirement: "armed",
+  armRequirement: "any",
   confirm: specConfirm("kill", "danger"),
   getState: (ctx) => {
     const noLink = disabledIfNoBlindLink(ctx);
     if (noLink) return noLink;
-    if (ctx.armState === "disarmed") return { kind: "disabled", reason: REASON.notArmed };
     return withStaleLinkWarning(ctx, { kind: "idle" });
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a

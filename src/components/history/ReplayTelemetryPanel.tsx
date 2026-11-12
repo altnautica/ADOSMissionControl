@@ -46,6 +46,7 @@ const FIX_KEYS: Record<number, string> = {
 };
 
 export function ReplayTelemetryPanel() {
+  const tk = useTranslations("history.replayTelemetryPanel");
   // The rings are mutated in place, so the buffer references never change;
   // `_version` is what moves on every replayed push.
   useTelemetryStore((s) => s._version);
@@ -67,14 +68,14 @@ export function ReplayTelemetryPanel() {
 
   return (
     <div className="w-48 bg-bg-secondary border-l border-border-default overflow-y-auto shrink-0">
-      <Section title="Position">
+      <Section title={tk("position")}>
         <Row label="ALT" value={formatDecimal(pos?.relativeAlt, 1, locale)} unit="m" />
         <Row label="SPD" value={formatDecimal(pos?.groundSpeed, 1, locale)} unit="m/s" />
         <Row label="HDG" value={pos?.heading !== undefined ? Math.round(pos.heading) : "—"} unit="°" />
         <Row label="VS" value={formatDecimal(pos?.climbRate, 1, locale)} unit="m/s" />
       </Section>
 
-      <Section title="Battery">
+      <Section title={tk("battery")}>
         <Row label="BAT" value={knownRemainingPct(bat?.remaining)?.toFixed(0) ?? "—"} unit="%" />
         <Row label="VOLT" value={formatDecimal(bat?.voltage, 1, locale)} unit="V" />
         <Row label="AMP" value={formatDecimal(bat?.current, 1, locale)} unit="A" />
@@ -86,13 +87,13 @@ export function ReplayTelemetryPanel() {
         <Row label="HDOP" value={formatDecimal(gps?.hdop, 1, locale)} />
       </Section>
 
-      <Section title="Attitude">
+      <Section title={tk("attitude")}>
         <Row label="ROLL" value={formatDecimal(att?.roll, 1, locale)} unit="°" />
         <Row label="PITCH" value={formatDecimal(att?.pitch, 1, locale)} unit="°" />
         <Row label="YAW" value={formatDecimal(att?.yaw, 1, locale)} unit="°" />
       </Section>
 
-      <Section title="Flight">
+      <Section title={tk("flight")}>
         <Row label="THR" value={vfr?.throttle !== undefined ? Math.round(vfr.throttle) : "—"} unit="%" />
       </Section>
     </div>

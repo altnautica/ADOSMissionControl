@@ -63,7 +63,9 @@ export function PluginsTab({ ctx }: { ctx: SurfaceContext }) {
   const blocked = agentGateFallback(agentGate);
   if (blocked) return blocked;
 
-  const droneName = activeDrone.name ?? activeDrone.id;
+  // The fleet display name the node header shows, never the agent's own name
+  // or its raw id.
+  const droneName = ctx.displayName;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">

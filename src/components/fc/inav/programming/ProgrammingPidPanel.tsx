@@ -29,6 +29,7 @@ const OPERAND_TYPE_OPTIONS = LOGIC_OPERAND_TYPE_OPTIONS;
 // ── Component ─────────────────────────────────────────────────
 
 export function ProgrammingPidPanel() {
+  const tr = useTranslations("fcPanels.programmingPidPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.inav");
@@ -102,7 +103,7 @@ export function ProgrammingPidPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-4">
         <PanelHeader
-          title="Programming PIDs"
+          title={tr("programmingPIDs")}
           subtitle={`Up to ${PROGRAMMING_PID_MAX} software PID controllers driven by logic conditions`}
           icon={<Sliders size={16} />}
           loading={loading}
@@ -121,7 +122,7 @@ export function ProgrammingPidPanel() {
               disabled={!connected || loading || isArmed}
               onClick={handleWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
@@ -136,7 +137,7 @@ export function ProgrammingPidPanel() {
 
         {pidsDirty && !isArmed && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes: use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 
@@ -181,7 +182,7 @@ export function ProgrammingPidPanel() {
 
                   {/* Setpoint row */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[9px] text-text-tertiary w-20 shrink-0">Setpoint</span>
+                    <span className="text-[9px] text-text-tertiary w-20 shrink-0">{tr("setpoint")}</span>
                     <div className="w-28">
                       <Select
                         label=""
@@ -202,7 +203,7 @@ export function ProgrammingPidPanel() {
 
                   {/* Measurement row */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[9px] text-text-tertiary w-20 shrink-0">Measurement</span>
+                    <span className="text-[9px] text-text-tertiary w-20 shrink-0">{tr("measurement")}</span>
                     <div className="w-28">
                       <Select
                         label=""
@@ -223,7 +224,7 @@ export function ProgrammingPidPanel() {
 
                   {/* Gains row */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-[9px] text-text-tertiary w-20 shrink-0">Gains</span>
+                    <span className="text-[9px] text-text-tertiary w-20 shrink-0">{tr("gains")}</span>
                     {(["P", "I", "D", "FF"] as const).map((key) => (
                       <div key={key} className="flex items-center gap-1">
                         <span className="text-[9px] font-mono text-text-tertiary">{key}</span>

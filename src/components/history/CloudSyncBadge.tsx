@@ -24,6 +24,7 @@ function fmtTime(ms: number): string {
 }
 
 export function CloudSyncBadge() {
+  const tq = useTranslations("history.cloudSyncBadge");
   const t = useTranslations("history");
   const convexAvailable = useConvexAvailable();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -41,7 +42,7 @@ export function CloudSyncBadge() {
     return (
       <span
         className="inline-flex items-center gap-1 text-[10px] font-mono text-text-tertiary"
-        title="Sign in with Convex sync to keep flights in the cloud"
+        title={tq("signInWithConvexSync")}
       >
         <CloudOff size={11} />
         {t("syncLocalOnly")}

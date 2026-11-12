@@ -173,9 +173,9 @@ export function HistoryToolbar({
         size="md"
         icon={<Trash2 size={14} />}
         onClick={() => onShowTrashChange(!showTrash)}
-        title={`Trash (${trashCount})`}
+        title={t("trashCount", { count: trashCount })}
       >
-        Trash{trashCount > 0 ? ` (${trashCount})` : ""}
+        {trashCount > 0 ? t("trashCount", { count: trashCount }) : t("trash")}
       </Button>
       {showTrash && trashCount > 0 && (
         <Button
@@ -183,9 +183,9 @@ export function HistoryToolbar({
           size="md"
           icon={<RotateCcw size={14} />}
           onClick={onEmptyTrash}
-          title="Empty trash"
+          title={t("emptyTrashTitle")}
         >
-          Empty
+          {t("trashEmpty")}
         </Button>
       )}
       <Button
@@ -210,27 +210,27 @@ export function HistoryToolbar({
         size="md"
         icon={<Upload size={14} />}
         onClick={() => setImportOpen(true)}
-        title="Import logs"
+        title={t("importLogs")}
       >
-        Import
+        {t("importBtn")}
       </Button>
       <Button
         variant="ghost"
         size="md"
         icon={<Image size={14} />}
         onClick={() => setMediaOpen(true)}
-        title="Import media"
+        title={t("mediaBtnTitle")}
       >
-        Media
+        {t("mediaBtn")}
       </Button>
       <Button
         variant="ghost"
         size="md"
         icon={<Archive size={14} />}
         onClick={() => void exportBackup(backupTelemetry)}
-        title="Export full backup (ZIP)"
+        title={t("backupExportTitle")}
       >
-        Backup
+        {t("backupExport")}
       </Button>
       <Button
         variant={backupTelemetry ? "primary" : "ghost"}
@@ -238,9 +238,9 @@ export function HistoryToolbar({
         icon={<Activity size={14} />}
         onClick={() => setBackupTelemetry(!backupTelemetry)}
         aria-pressed={backupTelemetry}
-        title="Include flight telemetry in the backup, so restored flights keep replay, charts and export (larger file)"
+        title={t("backupWithTelemetryTitle")}
       >
-        With telemetry
+        {t("backupWithTelemetry")}
       </Button>
       <Button
         variant="ghost"
@@ -254,17 +254,17 @@ export function HistoryToolbar({
             if (!input.files?.[0]) return;
             const result = await importBackup(input.files[0]);
             if (result.errors.length > 0) {
-              window.alert(`Restore completed with errors:\n${result.errors.join("\n")}`);
+              window.alert(t("backupRestoreErrors", { errors: result.errors.join("\n") }));
             } else {
-              window.alert(`Restored ${result.storesRestored} stores, ${result.recordsMerged} records merged.`);
+              window.alert(t("backupRestoreDone", { stores: result.storesRestored, records: result.recordsMerged }));
             }
             window.location.reload();
           };
           input.click();
         }}
-        title="Restore from backup (ZIP)"
+        title={t("backupRestoreTitle")}
       >
-        Restore
+        {t("backupRestore")}
       </Button>
       <Link href="/flight-logs/reports">
         <Button

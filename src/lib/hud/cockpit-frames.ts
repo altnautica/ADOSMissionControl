@@ -118,8 +118,10 @@ export interface PilotState {
   avoid: "brake" | "bypass" | "off" | null;
   fcMode: number | null;
   fcModeName: string | null;
-  armed: boolean;
-  landed: boolean;
+  /** Null while the pilot has no flight-controller link: the arm state is
+   *  unknown, and every surface treats the drone as possibly airborne. */
+  armed: boolean | null;
+  landed: boolean | null;
   vehicleClass: VehicleClass | null;
   inputSrc: string | null;
   inputAgeMs: number | null;
@@ -221,8 +223,8 @@ export function parsePilotState(raw: unknown): PilotState | null {
     avoid: oneOf(p.avoid, ["brake", "bypass", "off"] as const),
     fcMode: num(p.fc_mode),
     fcModeName: str(p.fc_mode_name),
-    armed: p.armed === true,
-    landed: p.landed !== false,
+    armed: typeof p.armed === "boolean" ? p.armed : null,
+    landed: typeof p.landed === "boolean" ? p.landed : null,
     vehicleClass: oneOf(p.vehicle_class, ["multirotor", "fixedwing", "vtol"] as const),
     inputSrc: str(p.input_src),
     inputAgeMs: num(p.input_age_ms),

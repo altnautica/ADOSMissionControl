@@ -23,8 +23,10 @@ import {
   RC_CHANNEL_COUNT, CHANNEL_OPTIONS, RC_PROTOCOLS_BITMASK,
   RSSI_TYPE_OPTIONS, RC_REVERSAL, receiverParams,
 } from "./receiver-constants";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 export function ReceiverPanel() {
+  const tl = useTranslations("fcPanels.receiverPanel");
   const protocol = useDroneManager(selectSelectedProtocol);
 
   // Live RC data: re-read on every telemetry push and dropped once stale, so
@@ -48,7 +50,7 @@ export function ReceiverPanel() {
     refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, panelId: "receiver", autoLoad: true });
   const t = useTranslations("fcToasts.receiver");
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit(
     { saveAllToRam, commitToFlash, revertAll },
     { saved: t("receiverParamsSaved"), flash: { successMessage: t("paramsWrittenToFlash") } },
   );
@@ -97,8 +99,8 @@ export function ReceiverPanel() {
 
   if (!protocol) {
     return (<div className="flex-1 p-6"><div className="max-w-3xl space-y-4">
-      <h2 className="text-sm font-semibold text-text-primary">RC Receiver</h2>
-      <Card><p className="text-xs text-text-tertiary">Connect to a drone to configure receiver.</p></Card>
+      <h2 className="text-sm font-semibold text-text-primary">{tl("rcReceiver")}</h2>
+      <Card><p className="text-xs text-text-tertiary">{tl("connectToADroneTo")}</p></Card>
     </div></div>);
   }
 
@@ -107,8 +109,8 @@ export function ReceiverPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-4">
         <PanelHeader
-          title="RC Receiver"
-          subtitle="Channel mapping, calibration, and per-channel settings"
+          title={tl("rcReceiver")}
+          subtitle={tl("channelMappingCalibrationAndPer")}
           loading={loading}
           loadProgress={loadProgress}
           hasLoaded={hasLoaded}
@@ -129,23 +131,23 @@ export function ReceiverPanel() {
             disabled={!hasDirty}
             onClick={handleSave}
           >
-            Save
+            {tl("save")}
           </Button>
           {hasRamWrites && (
             <Button
               variant="secondary"
               size="sm"
               icon={<HardDrive size={12} />}
-              onClick={handleFlash}
+              loading={flashing} onClick={handleFlash}
             >
-              Write to Flash
+              <SaveBarLabel k="writeToFlash" />
             </Button>
           )}
         </PanelHeader>
 
         {/* ── Live RC Channels ──────────────────────────────── */}
 
-        <Card title="Live RC Channels">
+        <Card title={tl("liveRCChannels")}>
           <div className="space-y-1.5">
             {channels.slice(0, RC_CHANNEL_COUNT).map((val, i) => (
               <RcChannelBar
@@ -177,28 +179,28 @@ export function ReceiverPanel() {
 
         {/* ── Channel Mapping ──────────────────────────────── */}
 
-        <Card title="Channel Mapping">
+        <Card title={tl("channelMapping")}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
-              label="Roll"
+              label={tl("roll")}
               value={getMapping("ROLL")}
               onChange={(v) => setLocalValue("RCMAP_ROLL", Number(v))}
               options={CHANNEL_OPTIONS}
             />
             <Select
-              label="Pitch"
+              label={tl("pitch")}
               value={getMapping("PITCH")}
               onChange={(v) => setLocalValue("RCMAP_PITCH", Number(v))}
               options={CHANNEL_OPTIONS}
             />
             <Select
-              label="Throttle"
+              label={tl("throttle")}
               value={getMapping("THROTTLE")}
               onChange={(v) => setLocalValue("RCMAP_THROTTLE", Number(v))}
               options={CHANNEL_OPTIONS}
             />
             <Select
-              label="Yaw"
+              label={tl("yaw")}
               value={getMapping("YAW")}
               onChange={(v) => setLocalValue("RCMAP_YAW", Number(v))}
               options={CHANNEL_OPTIONS}
@@ -209,7 +211,7 @@ export function ReceiverPanel() {
         {/* ── RC Protocol & RSSI ──────────────────────────── */}
 
         {!isPx4 && (
-        <Card title="RC Protocol & RSSI">
+        <Card title={tl("rcProtocolRSSI")}>
           <div className="space-y-3">
             {/* RC_PROTOCOLS is a real bitmask: several protocols can be
                 allowed at once and bit 0 means "All". A Select could only ever
@@ -231,11 +233,10 @@ export function ReceiverPanel() {
               </button>
             </div>
             <p className="text-[10px] text-text-tertiary">
-              Bitmask of allowed RC input protocols. Bit 0 (&ldquo;All&rdquo;) accepts every
-              protocol; otherwise set the bits matching your receiver.
+              {tl("bitmaskOfAllowedRCInput")}
             </p>
             <Select
-              label="RSSI_TYPE — RSSI Source"
+              label={tl("rssiTYPERSSISource")}
               options={RSSI_TYPE_OPTIONS}
               value={String(params.get("RSSI_TYPE") ?? "0")}
               onChange={(v) => setLocalValue("RSSI_TYPE", Number(v))}
@@ -246,17 +247,17 @@ export function ReceiverPanel() {
 
         {/* ── Per-Channel Settings ─────────────────────────── */}
 
-        <Card title="Channel Settings" padding={false}>
+        <Card title={tl("channelSettings")} padding={false}>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border-default text-text-secondary">
                   <th className="px-3 py-2 text-left font-medium">CH</th>
-                  <th className="px-3 py-2 text-left font-medium">Min</th>
-                  <th className="px-3 py-2 text-left font-medium">Max</th>
-                  <th className="px-3 py-2 text-left font-medium">Trim</th>
+                  <th className="px-3 py-2 text-left font-medium">{tl("min")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{tl("max")}</th>
+                  <th className="px-3 py-2 text-left font-medium">{tl("trim")}</th>
                   {!isPx4 && <th className="px-3 py-2 text-left font-medium">DZ</th>}
-                  <th className="px-3 py-2 text-left font-medium">Rev</th>
+                  <th className="px-3 py-2 text-left font-medium">{tl("rev")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,7 +329,7 @@ export function ReceiverPanel() {
       <BitmaskEditor
         open={protocolsEditOpen}
         onClose={() => setProtocolsEditOpen(false)}
-        title="RC_PROTOCOLS — Allowed RC Protocols"
+        title={tl("rcPROTOCOLSAllowedRCProtocols")}
         bitmask={RC_PROTOCOLS_BITMASK}
         value={rcProtocolsValue}
         onApply={(next) => setLocalValue("RC_PROTOCOLS", next)}

@@ -236,4 +236,17 @@ describe("mapFullStatusToCloudStatus — telemetry", () => {
     expect(t?.battery).toBeUndefined();
     expect(t?.position?.alt_rel).toBe(50.0);
   });
+
+  it("carries the agent's distance to home, and leaves it absent when unreported", () => {
+    const withHome = {
+      ...fullStatus(undefined),
+      telemetry: { ...ROUTER_TELEMETRY, home_distance: 123.4 },
+    };
+    expect(mapFullStatusToCloudStatus(withHome, groundNode).telemetry?.home_distance).toBe(123.4);
+    const without = {
+      ...fullStatus(undefined),
+      telemetry: { ...ROUTER_TELEMETRY, home_distance: null },
+    };
+    expect(mapFullStatusToCloudStatus(without, groundNode).telemetry?.home_distance).toBeUndefined();
+  });
 });

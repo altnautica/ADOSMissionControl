@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ export function BfOsdGrid({
   elements, activeProfile, profileCount, videoSystem, selectedId,
   onSelectElement, onUpdateElement,
 }: BfOsdGridProps) {
+  const tr = useTranslations("fcPanels.bfOsdGrid");
   const [dragging, setDragging] = useState<number | null>(null);
   const [dragGhost, setDragGhost] = useState<{ x: number; y: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -202,7 +204,7 @@ export function BfOsdGrid({
                 }
               />
             </div>
-            <div className="flex items-center gap-2" role="group" aria-label="Visible in OSD profiles">
+            <div className="flex items-center gap-2" role="group" aria-label={tr("visibleInOSDProfiles")}>
               {Array.from({ length: profileCount }, (_, i) => {
                 const bit = 1 << i;
                 return (

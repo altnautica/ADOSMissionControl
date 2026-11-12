@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Select } from "@/components/ui/select";
 import { RotateCcw } from "lucide-react";
@@ -31,6 +32,7 @@ export function ModeSlotRow({
   onUpdate,
   onReset,
 }: ModeSlotRowProps) {
+  const tr = useTranslations("fcPanels.modeSlotRow");
   const description = MODE_DESCRIPTIONS[slot.mode as UnifiedFlightMode];
 
   const modesWithDesc = useMemo(() =>
@@ -76,7 +78,7 @@ export function ModeSlotRow({
         {/* Simple / Super Simple checkboxes (copter only) */}
         {isCopter && (
           <div className="flex items-center gap-2 shrink-0">
-            <label className="flex items-center gap-1 text-[10px] text-text-secondary cursor-pointer" title="Simple Mode — earth-relative heading">
+            <label className="flex items-center gap-1 text-[10px] text-text-secondary cursor-pointer" title={tr("simpleModeEarthRelativeHeading")}>
               <input
                 type="checkbox"
                 checked={slot.simple}
@@ -85,7 +87,7 @@ export function ModeSlotRow({
               />
               S
             </label>
-            <label className="flex items-center gap-1 text-[10px] text-text-secondary cursor-pointer" title="Super Simple Mode — home-relative heading">
+            <label className="flex items-center gap-1 text-[10px] text-text-secondary cursor-pointer" title={tr("superSimpleModeHomeRelative")}>
               <input
                 type="checkbox"
                 checked={slot.superSimple}
@@ -106,7 +108,7 @@ export function ModeSlotRow({
         {isDirty && (
           <button
             onClick={() => onReset(index)}
-            title="Reset to FC values"
+            title={tr("resetToFCValues")}
             className="text-text-tertiary hover:text-text-primary cursor-pointer shrink-0"
           >
             <RotateCcw size={12} />
@@ -125,7 +127,7 @@ export function ModeSlotRow({
       {isActive && (
         <div className="mt-2 ml-10">
           <span className="text-[10px] font-medium text-accent-primary uppercase tracking-wider">
-            Active
+            {tr("active")}
           </span>
         </div>
       )}

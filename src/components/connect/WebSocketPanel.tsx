@@ -87,6 +87,7 @@ export function WebSocketPanel({
   /** Blocks the connect action (link mode with no target drone chosen yet). */
   connectDisabled?: boolean;
 }) {
+  const tk = useTranslations("connect.webSocketPanel");
   const t = useTranslations("connect");
   const [localUrl, setLocalUrl] = useState("ws://localhost:14550");
   const [connecting, setConnecting] = useState(false);
@@ -232,7 +233,7 @@ export function WebSocketPanel({
           handleUrlChange(e.target.value);
           setError(null);
         }}
-        placeholder="ws://localhost:14550"
+        placeholder={tk("wsLocalhost14550")}
       />
 
       {discoveredRigs.length > 0 && (

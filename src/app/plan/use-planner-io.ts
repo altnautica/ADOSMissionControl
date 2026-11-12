@@ -281,7 +281,7 @@ export function usePlannerIO(deps: IODeps) {
     toast(t("newPlanCreated"), "info");
   }, [setSelectedWaypoint, toast, t, setMissionName, setSelectedDroneId]);
 
-  // ── Download from drone ───────────────────────────────────
+  // ── Download from vehicle ─────────────────────────────────
   const executeDownloadFromDrone = useCallback(async () => {
     const downloaded = await downloadMission();
     // A truncated or stalled transfer rejects inside the adapter and the

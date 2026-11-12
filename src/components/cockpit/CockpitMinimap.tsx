@@ -5,8 +5,9 @@
  * @description The map face of the flight screen's bottom-left card. In the
  * global frame it is a clean, non-interactive tile overview (with any
  * extension map overlays and the follow target placed about the EKF origin)
- * and a click opens the full Flight tab; the basemap selector sits behind a
- * layers icon. In the local frame (no GNSS position, an ExternalNav / None
+ * and its corner button switches the cockpit to the Map view; the basemap
+ * selector sits behind a layers icon. Both corner buttons draw at 24 px with
+ * a 48 px hit area (spec `touch_target.min`). In the local frame (no GNSS position, an ExternalNav / None
  * horizontal source, or the operator's pin) it draws the north/east local
  * map, which pans and zooms in place. The `AUTO | LOCAL | MAP` toggle is
  * persisted per vehicle. It fills the card it is placed in.
@@ -23,7 +24,7 @@ import { FlightSheetPortal } from "@/components/cockpit/flight/flight-sheet";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
 import type { MinimapPin } from "@/lib/hud/minimap-mode";
-import { useUiStore } from "@/stores/ui-store";
+import { useCockpitViewStore } from "@/lib/cockpit/views";
 
 // The minimap is a Leaflet view: load it client-only so the cockpit renders on
 // the server without pulling Leaflet into the SSR pass.
@@ -45,10 +46,9 @@ const GuidedConfirmDialog = dynamic(
   { ssr: false },
 );
 
-function openFlightTab(): void {
-  const ui = useUiStore.getState();
-  ui.exitImmersiveMode();
-  ui.setPendingDetailTab("flight");
+/** Put the map on stage: the cockpit's Map view for this drone. */
+function openMapView(droneId: string): void {
+  useCockpitViewStore.getState().setView(droneId, "map");
 }
 
 function FrameToggle({ pin, onPin }: { pin: MinimapPin; onPin: (p: MinimapPin) => void }) {
@@ -76,8 +76,8 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
       ) : (
         <>
           {/* The map takes its own pointer input, so a right-click or a
-              long-press on it can offer Fly Here; opening the Flight tab is
-              the button in the corner. */}
+              long-press on it can offer Fly Here; the Map view is the
+              button in the corner. */}
           <div className="absolute inset-0">
             <OverviewMap compact pluginOverlay>
               <FollowTargetGeoLayer droneId={droneId} />
@@ -88,10 +88,11 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
               <button
                 type="button"
                 onClick={() => setBasemapOpen((o) => !o)}
-                aria-label={t("mapLayer")}
+                aria-label={specString("cockpit.minimap.map_layer")}
                 aria-expanded={basemapOpen}
-                title={t("mapLayer")}
-                className="flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+                title={specString("cockpit.minimap.map_layer")}
+                data-testid="minimap-layers"
+                className="mmap-hit flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
               >
                 <Layers size={13} aria-hidden="true" />
               </button>
@@ -105,11 +106,11 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
               {toggle}
               <button
                 type="button"
-                onClick={openFlightTab}
-                data-testid="minimap-open-flight"
-                title={t("openFlight")}
-                aria-label={t("openFlight")}
-                className="flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+                onClick={() => openMapView(droneId)}
+                data-testid="minimap-open-map"
+                title={t("openMapView")}
+                aria-label={t("openMapView")}
+                className="mmap-hit flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
               >
                 <Maximize2 size={13} aria-hidden="true" />
               </button>

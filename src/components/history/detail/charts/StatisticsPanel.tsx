@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -116,6 +117,7 @@ interface StatisticsPanelProps {
 }
 
 export function StatisticsPanel({ frames }: StatisticsPanelProps) {
+  const tq = useTranslations("history.statisticsPanel");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const stats = useMemo(() => {
@@ -133,8 +135,8 @@ export function StatisticsPanel({ frames }: StatisticsPanelProps) {
 
   if (stats.length === 0) {
     return (
-      <Card title="Statistics" padding={true}>
-        <p className="text-[10px] text-text-tertiary">No telemetry data.</p>
+      <Card title={tq("statistics")} padding={true}>
+        <p className="text-[10px] text-text-tertiary">{tq("noTelemetryData")}</p>
       </Card>
     );
   }
@@ -149,7 +151,7 @@ export function StatisticsPanel({ frames }: StatisticsPanelProps) {
   };
 
   return (
-    <Card title="Statistics" padding={true}>
+    <Card title={tq("statistics")} padding={true}>
       <div className="flex flex-col gap-1">
         {stats.map(({ group, stats: groupStats }) => {
           const open = expanded.has(group);
@@ -167,15 +169,15 @@ export function StatisticsPanel({ frames }: StatisticsPanelProps) {
                   <table className="w-full text-[10px] font-mono">
                     <thead>
                       <tr className="border-b border-border-default text-text-tertiary">
-                        <th className="text-left py-0.5 px-1">Field</th>
+                        <th className="text-left py-0.5 px-1">{tq("field")}</th>
                         <th className="text-right py-0.5 px-1">N</th>
-                        <th className="text-right py-0.5 px-1">Min</th>
+                        <th className="text-right py-0.5 px-1">{tq("min")}</th>
                         <th className="text-right py-0.5 px-1">P1</th>
                         <th className="text-right py-0.5 px-1">P50</th>
-                        <th className="text-right py-0.5 px-1">Mean</th>
+                        <th className="text-right py-0.5 px-1">{tq("mean")}</th>
                         <th className="text-right py-0.5 px-1">P99</th>
-                        <th className="text-right py-0.5 px-1">Max</th>
-                        <th className="text-right py-0.5 px-1">Std</th>
+                        <th className="text-right py-0.5 px-1">{tq("max")}</th>
+                        <th className="text-right py-0.5 px-1">{tq("std")}</th>
                       </tr>
                     </thead>
                     <tbody>

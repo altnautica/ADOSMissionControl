@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../../../tests/helpers/intl-wrapper";
 import { DisplayPortOsdPanel } from "../DisplayPortOsdPanel";
 import { useDisplayPortStore } from "@/stores/displayport-store";
 import { useClockStore } from "@/stores/clock-store";

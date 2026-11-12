@@ -12,6 +12,7 @@ import { NextIntlClientProvider } from "next-intl";
 
 import messages from "../../../../locales/en.json";
 import type { DetectionDemandStatus } from "@/lib/agent/detection-demand";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { DetectorStateTag } from "../DetectorStateTag";
 
 function tag(status: DetectionDemandStatus | null, show = true) {
@@ -25,11 +26,11 @@ function tag(status: DetectionDemandStatus | null, show = true) {
 
 describe("DetectorStateTag", () => {
   it.each([
-    ["idle", messages.hud.detector.idle],
+    ["idle", specString("detector.idle")],
     ["rejected", messages.hud.detector.rejected],
     ["unauthorized", messages.hud.detector.unauthorized],
     ["no-link", messages.hud.detector.noLink],
-    ["error", messages.hud.detector.unreachable],
+    ["error", specString("detector.unavailable")],
   ] as const)("names the %s state", (status, text) => {
     expect(tag(status)?.textContent).toBe(text);
   });

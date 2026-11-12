@@ -32,8 +32,12 @@ function Dispatcher() {
   return null;
 }
 
+/** A button past the standard mapping (an extra button on a larger pad):
+ * every standard button belongs to the cockpit. */
+const FREE_BUTTON = 18;
+
 function pressPad(index: number): void {
-  const buttons = Array.from({ length: 16 }, () => false);
+  const buttons = Array.from({ length: 20 }, () => false);
   act(() => useInputStore.setState({ buttons: [...buttons] }));
   buttons[index] = true;
   act(() => useInputStore.setState({ buttons: [...buttons] }));
@@ -46,7 +50,7 @@ describe("skill input while the controller tour shows", () => {
     activateSpy.mockClear();
     useDroneManager.setState({ selectedDroneId: "drone-1" });
     const loadout = cloneDefaultLoadout();
-    loadout.slots = loadout.slots.map((s) => (s.skillId === "rth" ? { ...s, gamepadButton: 3 } : s));
+    loadout.slots = loadout.slots.map((s) => (s.skillId === "rth" ? { ...s, gamepadButton: FREE_BUTTON } : s));
     useSettingsStore.setState({ loadouts: { [DEFAULT_LOADOUT_ID]: loadout }, activeLoadoutId: DEFAULT_LOADOUT_ID });
     useInputStore.setState({ buttons: [] });
     releaseSurface = useSkillInputStore.getState().acquireSurface();
@@ -68,15 +72,24 @@ describe("skill input while the controller tour shows", () => {
 
   it("fires a pad-bound skill when the tour is hidden", () => {
     mount();
-    pressPad(3);
+    pressPad(FREE_BUTTON);
     expect(activateSpy).toHaveBeenCalledTimes(1);
     expect(activateSpy.mock.calls[0][0]).toBe("rth");
+  });
+
+  it("never fires a skill saved on a cockpit-owned button", () => {
+    const loadout = cloneDefaultLoadout();
+    loadout.slots = loadout.slots.map((s) => (s.skillId === "land" ? { ...s, gamepadButton: 2 } : s));
+    useSettingsStore.setState({ loadouts: { [DEFAULT_LOADOUT_ID]: loadout }, activeLoadoutId: DEFAULT_LOADOUT_ID });
+    mount();
+    pressPad(2);
+    expect(activateSpy).not.toHaveBeenCalled();
   });
 
   it("ignores the pad while the tour shows", () => {
     useControlsStore.setState({ tourVisible: true });
     mount();
-    pressPad(3);
+    pressPad(FREE_BUTTON);
     expect(activateSpy).not.toHaveBeenCalled();
   });
 });

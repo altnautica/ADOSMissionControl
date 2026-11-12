@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import {
   LineChart,
@@ -70,6 +71,7 @@ export function buildLogGraphData(
 }
 
 export function LogTelemetryGraph() {
+  const tk = useTranslations("droneDetail.logTelemetryGraph");
   const [activeChannels, setActiveChannels] = useState<Record<ChannelKey, boolean>>({
     altitude: true,
     speed: false,
@@ -147,7 +149,7 @@ export function LogTelemetryGraph() {
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full text-text-tertiary text-xs">
-            Telemetry data will appear here when connected
+            {tk("telemetryDataWillAppearHere")}
           </div>
         )}
       </div>

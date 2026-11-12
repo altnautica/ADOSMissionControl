@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FileCode2,
@@ -46,6 +47,7 @@ export function ScriptFileManager({
   /** Bump this to force a re-list (e.g. after an applet is added elsewhere). */
   reloadSignal?: number;
 }) {
+  const tk = useTranslations("dashboard.scriptFileManager");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
 
@@ -94,11 +96,11 @@ export function ScriptFileManager({
     async (file: File) => {
       const protocol = selectedProtocol;
       if (!protocol?.uploadFileViaFtp) {
-        toast("This connection does not support file upload.", "error");
+        toast(tk("thisConnectionDoesNotSupport"), "error");
         return;
       }
       if (!file.name.toLowerCase().endsWith(SCRIPT_EXTENSION)) {
-        toast("Only .lua scripts can be uploaded.", "error");
+        toast(tk("onlyLuaScriptsCanBe"), "error");
         return;
       }
       if (file.size > MAX_SCRIPT_BYTES) {
@@ -124,7 +126,7 @@ export function ScriptFileManager({
         setUpload(null);
       }
     },
-    [selectedProtocol, toast, onUploaded, refresh],
+    [selectedProtocol, toast, onUploaded, refresh, tk],
   );
 
   async function doDownload(entry: FtpDirEntry) {
@@ -162,7 +164,7 @@ export function ScriptFileManager({
         <div className="flex items-center gap-2">
           <FolderOpen size={14} className="text-accent-primary" />
           <h2 className="text-sm font-medium text-text-primary">
-            Scripts on FC
+            {tk("scriptsOnFC")}
           </h2>
           <span className="text-[10px] font-mono text-text-tertiary">
             {SCRIPTS_DIR}/
@@ -175,7 +177,7 @@ export function ScriptFileManager({
           onClick={refresh}
           disabled={listing}
         >
-          Refresh
+          {tk("refresh")}
         </Button>
       </div>
 
@@ -200,7 +202,7 @@ export function ScriptFileManager({
       >
         <Upload size={16} className="text-text-tertiary" />
         <span className="text-[11px] text-text-secondary">
-          Drop a <span className="font-mono">.lua</span> script here, or click to
+          {tk("dropA")} <span className="font-mono">.lua</span> script here, or click to
           browse
         </span>
         <input
@@ -233,7 +235,7 @@ export function ScriptFileManager({
       {/* File list */}
       {entries.length === 0 && !listing && !error ? (
         <p className="py-3 text-center text-[11px] text-text-tertiary">
-          No scripts on the flight controller yet.
+          {tk("noScriptsOnTheFlight")}
         </p>
       ) : (
         <ul className="divide-y divide-border-default">
@@ -248,7 +250,7 @@ export function ScriptFileManager({
               </span>
               <button
                 type="button"
-                title="Download"
+                title={tk("download")}
                 onClick={() => doDownload(entry)}
                 className="p-1 text-text-tertiary hover:text-accent-primary cursor-pointer"
               >
@@ -256,7 +258,7 @@ export function ScriptFileManager({
               </button>
               <button
                 type="button"
-                title="Delete"
+                title={tk("delete")}
                 onClick={() => setDeleteTarget(entry)}
                 className="p-1 text-text-tertiary hover:text-status-error cursor-pointer"
               >
@@ -269,10 +271,10 @@ export function ScriptFileManager({
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Delete script"
+        title={tk("deleteScript")}
         message={`Delete ${deleteTarget?.name ?? ""} from the flight controller? This cannot be undone. The script stops running after the next reboot.`}
         variant="danger"
-        confirmLabel="Delete"
+        confirmLabel={tk("delete")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />

@@ -4,9 +4,9 @@
  * @module cockpit/flight/FlightTopBar
  * @description The flight screen's one top bar (cockpit spec `layout.json`
  * `top_bar`): flight-state chip · status pill · battery · link · navigation
- * source · controller · data-layer level · Menu · STOP.
+ * source · controller · data-layer level · Full screen · Menu · STOP.
  *
- * The bar never scrolls and never wraps. The Menu and STOP sit in a fixed end
+ * The bar never scrolls and never wraps. Full screen, the Menu and STOP sit in a fixed end
  * group, so STOP is always fully visible. When the row runs out of room the
  * spec's `overflow.to_menu_order` moves items into the Menu one at a time:
  * the controller, the navigation source, the link's text, the link's icon,
@@ -24,13 +24,14 @@
  */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { Menu, OctagonX } from "lucide-react";
+import { Maximize2, Menu, Minimize2, OctagonX } from "lucide-react";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
+import { useUiStore } from "@/stores/ui-store";
 import { FlightStateChip } from "../v2/FlightStateChip";
 import { LayerLevelButton } from "../layers/LayerLevelButton";
 import { NavSourceChip } from "../NavSourceChip";
@@ -164,6 +165,7 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
       </div>
       <div className="fs-bar-end">
         {!hidden.has("layer_button") && <LayerLevelButton droneId={droneId} iconOnly={compact} />}
+        <FullscreenButton />
         <button
           type="button"
           className="fs-btn fs-hit fs-icon-btn"
@@ -197,3 +199,28 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
 }
 
 export const FlightTopBar = memo(FlightTopBarInner);
+
+/** Full screen: the frame leaves the Flight tab to cover the viewport (and
+ *  the browser goes full screen); pressed again, or Escape, it returns. */
+function FullscreenButton() {
+  const immersive = useUiStore((s) => s.immersiveMode);
+  const label = specString(immersive ? "cockpit.menu.leave_immersive" : "cockpit.menu.immersive");
+  const Icon = immersive ? Minimize2 : Maximize2;
+  return (
+    <button
+      type="button"
+      className="fs-btn fs-hit fs-icon-btn"
+      data-testid="fs-fullscreen"
+      aria-pressed={immersive}
+      aria-label={label}
+      title={label}
+      onClick={() => {
+        const ui = useUiStore.getState();
+        if (ui.immersiveMode) ui.exitImmersiveMode();
+        else ui.enterImmersiveMode();
+      }}
+    >
+      <Icon className="fs-ico" aria-hidden="true" />
+    </button>
+  );
+}

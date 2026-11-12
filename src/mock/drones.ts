@@ -27,9 +27,9 @@ export interface DemoDroneConfig {
  * The one exception is Bravo-02, the single ArduPilot Copter kept as the FC-only
  * baseline (a direct MAVLink connection, no companion → the node console's
  * FC-only overview + "add a companion computer" CTA). The airframe/firmware
- * flavors span PX4, PX4-VTOL, ArduPlane and its VTOL / tailsitter / tiltrotor
- * variants, ArduRover, ArduBoat (sailboat), ArduSub, ArduHeli, Betaflight, iNav
- * — each lighting up a different config panel set (the MSP flavors run their FC
+ * flavors span PX4, PX4-VTOL, ArduPlane and its tailsitter / tiltrotor
+ * variants, ArduRover, ArduBoat (sailboat), ArduHeli and iNav — each lighting
+ * up a different config panel set (the MSP flavor runs its FC
  * through the agent as a byte-pipe). The workstation (compute) and ground-station
  * nodes are defined below.
  */
@@ -66,11 +66,6 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     hasAgent: true, firmware: "ardupilot-plane",
   },
   {
-    id: "foxtrot-6", name: "Foxtrot-06", status: "in_mission", flightMode: "AUTO",
-    homeLat: 12.936, homeLon: 77.688, homeAlt: 0, batteryStart: 78, pathIndex: 1, healthScore: 92,
-    hasAgent: true, firmware: "ardupilot-plane-vtol",
-  },
-  {
     id: "golf-7", name: "Golf-07", status: "in_mission", flightMode: "AUTO",
     homeLat: 12.944, homeLon: 77.658, homeAlt: 0, batteryStart: 69, pathIndex: 2, healthScore: 91,
     hasAgent: true, firmware: "ardupilot-plane-tailsitter",
@@ -91,19 +86,9 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
     hasAgent: true, firmware: "ardupilot-boat",
   },
   {
-    id: "kilo-11", name: "Kilo-11", status: "in_mission", flightMode: "AUTO",
-    homeLat: 12.932, homeLon: 77.652, homeAlt: 0, batteryStart: 65, pathIndex: 7, healthScore: 87,
-    hasAgent: true, firmware: "ardupilot-sub",
-  },
-  {
     id: "lima-12", name: "Lima-12", status: "in_mission", flightMode: "AUTO",
     homeLat: 12.958, homeLon: 77.652, homeAlt: 0, batteryStart: 88, pathIndex: 3, healthScore: 93,
     hasAgent: true, firmware: "ardupilot-heli",
-  },
-  {
-    id: "mike-13", name: "Mike-13", status: "in_mission", flightMode: "AUTO",
-    homeLat: 12.962, homeLon: 77.670, homeAlt: 0, batteryStart: 76, pathIndex: 0, healthScore: 91,
-    hasAgent: true, firmware: "betaflight",
   },
   {
     id: "november-14", name: "November-14", status: "in_mission", flightMode: "AUTO",

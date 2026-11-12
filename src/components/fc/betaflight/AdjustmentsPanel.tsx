@@ -10,12 +10,14 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { SlidersHorizontal, Save, RotateCcw, Radio, Plus, Trash2 } from "lucide-react";
+import { SlidersHorizontal, Save, Radio, Plus, Trash2 } from "lucide-react";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import type { MspAdjustmentRange } from "@/lib/protocol/types";
 import { PwmRangeSlider, stepToPwm, pwmToStep } from "./PwmRangeSlider";
 import { ADJUSTMENT_FUNCTIONS, AUX_CHANNELS, adjustmentFunctionLabel } from "./adjustment-constants";
 import { FcSection } from "@/components/fc/shared/FcSection";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 /** Betaflight MAX_ADJUSTMENT_RANGE_COUNT. */
 const MAX_ADJUSTMENTS = 30;
@@ -23,6 +25,7 @@ const MAX_ADJUSTMENTS = 30;
 const clampPwm = (pwm: number) => Math.max(900, Math.min(2100, pwm));
 
 export function AdjustmentsPanel() {
+  const tr = useTranslations("fcPanels.adjustmentsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const t = useTranslations("fcToasts.betaflight");
@@ -111,8 +114,8 @@ export function AdjustmentsPanel() {
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-6">
         <PanelHeader
-          title="Adjustments"
-          subtitle="In-flight parameter adjustment via RC channels"
+          title={tr("adjustments")}
+          subtitle={tr("inFlightParameterAdjustmentVia")}
           icon={<SlidersHorizontal size={16} />}
           loading={loading}
           loadProgress={null}
@@ -123,8 +126,7 @@ export function AdjustmentsPanel() {
         />
 
         <p className="text-xs text-text-tertiary">
-          Assign RC channel ranges to adjust PID, rate, and other parameters in flight.
-          Each adjustment maps a switch channel (activation range) and an adjustment channel (value).
+          {tr("assignRCChannelRangesTo")}
         </p>
 
         {/* Live RC channel preview */}
@@ -133,8 +135,8 @@ export function AdjustmentsPanel() {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-accent-primary"><Radio size={14} /></span>
               <div>
-                <h2 className="text-sm font-medium text-text-primary">Live RC Channels</h2>
-                <p className="text-[10px] text-text-tertiary">Current AUX channel PWM values</p>
+                <h2 className="text-sm font-medium text-text-primary">{tr("liveRCChannels")}</h2>
+                <p className="text-[10px] text-text-tertiary">{tr("currentAUXChannelPWMValues")}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -160,7 +162,7 @@ export function AdjustmentsPanel() {
         {hasLoaded && (
           <div className="space-y-3">
             {ranges.length === 0 && (
-              <p className="text-center py-4 text-text-tertiary text-xs">No adjustments configured.</p>
+              <p className="text-center py-4 text-text-tertiary text-xs">{tr("noAdjustmentsConfigured")}</p>
             )}
             {ranges.map((r, i) => (
               <FcSection key={i}>
@@ -172,11 +174,11 @@ export function AdjustmentsPanel() {
                 </div>
                 <div className="grid grid-cols-[1fr_1fr_1fr] gap-3">
                   <div>
-                    <label className="text-[10px] text-text-tertiary block mb-1">When Channel</label>
+                    <label className="text-[10px] text-text-tertiary block mb-1">{tr("whenChannel")}</label>
                     <Select options={AUX_CHANNELS} value={String(r.auxChannelIndex)} onChange={(v) => update(i, { auxChannelIndex: Number(v) })} />
                   </div>
                   <div>
-                    <label className="text-[10px] text-text-tertiary block mb-1">Apply Function</label>
+                    <label className="text-[10px] text-text-tertiary block mb-1">{tr("applyFunction")}</label>
                     <Select
                       options={ADJUSTMENT_FUNCTIONS}
                       value={String(r.adjustmentFunction)}
@@ -186,14 +188,14 @@ export function AdjustmentsPanel() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-text-tertiary block mb-1">Via Channel</label>
+                    <label className="text-[10px] text-text-tertiary block mb-1">{tr("viaChannel")}</label>
                     <Select options={AUX_CHANNELS} value={String(r.auxSwitchChannelIndex)} onChange={(v) => update(i, { auxSwitchChannelIndex: Number(v) })} />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-[10px] text-text-secondary">
                     <span>{r.rangeStart} µs</span>
-                    <span className="text-text-tertiary">Activation Range</span>
+                    <span className="text-text-tertiary">{tr("activationRange")}</span>
                     <span>{r.rangeEnd} µs</span>
                   </div>
                   <PwmRangeSlider
@@ -207,22 +209,21 @@ export function AdjustmentsPanel() {
               </FcSection>
             ))}
             <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={addAdjustment} disabled={ranges.length >= MAX_ADJUSTMENTS}>
-              Add Adjustment
+              {tr("addAdjustment")}
             </Button>
           </div>
         )}
 
         {/* Save / Revert */}
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected || !canSave} loading={saving} onClick={handleSave}>
-            Save to Flight Controller
-          </Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>
-            Revert
-          </Button>
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected || !canSave}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

@@ -13,6 +13,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
@@ -184,6 +185,7 @@ interface VibrationSpectrogramPanelProps {
 }
 
 export function VibrationSpectrogramPanel({ frames }: VibrationSpectrogramPanelProps) {
+  const tq = useTranslations("history.vibrationSpectrogramPanel");
   const [axis, setAxis] = useState<Axis>("X");
 
   const samples = useMemo(() => {
@@ -223,7 +225,7 @@ export function VibrationSpectrogramPanel({ frames }: VibrationSpectrogramPanelP
 
   if (samples.length < 32) {
     return (
-      <Card title="Vibration level spectrum" padding={true}>
+      <Card title={tq("vibrationLevelSpectrum")} padding={true}>
         <p className="text-[10px] text-text-tertiary">
           Not enough vibration samples ({samples.length}). Need ≥32 for spectrogram.
         </p>
@@ -232,7 +234,7 @@ export function VibrationSpectrogramPanel({ frames }: VibrationSpectrogramPanelP
   }
 
   return (
-    <Card title="Vibration level spectrum" padding={true}>
+    <Card title={tq("vibrationLevelSpectrum")} padding={true}>
       <p className="text-[10px] text-text-tertiary mb-2">
         How the logged vibration level varied over time, not the accelerometer spectrum: prop and motor
         frequencies are far above this {sampleRate} Hz level log.

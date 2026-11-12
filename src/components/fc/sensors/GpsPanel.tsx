@@ -1,6 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
+
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -10,11 +12,15 @@ import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { MapPin, Navigation, ShieldAlert, Save, HardDrive, Info } from "lucide-react";
+import { MapPin, Navigation, ShieldAlert, Save, Info } from "lucide-react";
 import { gpsParamNames, GPS_PROVIDER_OPTIONS, SBAS_MODE_OPTIONS, SANITY_CHECK_OPTIONS } from "./gps-constants";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 export function GpsPanel() {
+  const ol = useOptionLabels();
+  const tk = useTranslations("fcPanels.gpsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("gps");
 
@@ -24,7 +30,7 @@ export function GpsPanel() {
     loadProgress, hasLoaded,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
+  const { saving, flashing, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -39,7 +45,7 @@ export function GpsPanel() {
       <div className="max-w-2xl space-y-6">
         <PanelHeader
           title="GPS"
-          subtitle="GPS protocol and GPS Rescue (return-to-home) configuration"
+          subtitle={tk("gpsProtocolAndGPSRescue")}
           icon={<MapPin size={16} />}
           loading={loading}
           loadProgress={loadProgress}
@@ -50,16 +56,16 @@ export function GpsPanel() {
         />
 
         {/* GPS Protocol */}
-        <FcSection icon={<Navigation size={14} />} title="GPS Protocol">
+        <FcSection icon={<Navigation size={14} />} title={tk("gpsProtocol")}>
           <Select
-            label="Provider"
+            label={tk("provider")}
             options={GPS_PROVIDER_OPTIONS}
             value={p("BF_GPS_PROVIDER")}
             onChange={(v) => set("BF_GPS_PROVIDER", v)}
           />
           <Select
-            label="SBAS Mode"
-            options={SBAS_MODE_OPTIONS}
+            label={tk("sbasMode")}
+            options={ol(SBAS_MODE_OPTIONS)}
             value={p("BF_GPS_SBAS_MODE")}
             onChange={(v) => set("BF_GPS_SBAS_MODE", v)}
           />
@@ -76,7 +82,7 @@ export function GpsPanel() {
                 }
                 className="accent-accent-primary"
               />
-              <span className="text-xs text-text-secondary">Auto Config</span>
+              <span className="text-xs text-text-secondary">{tk("autoConfig")}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -90,7 +96,7 @@ export function GpsPanel() {
                 }
                 className="accent-accent-primary"
               />
-              <span className="text-xs text-text-secondary">Auto Baud</span>
+              <span className="text-xs text-text-secondary">{tk("autoBaud")}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -104,17 +110,17 @@ export function GpsPanel() {
                 }
                 className="accent-accent-primary"
               />
-              <span className="text-xs text-text-secondary">Galileo Support</span>
+              <span className="text-xs text-text-secondary">{tk("galileoSupport")}</span>
             </label>
           </div>
         </FcSection>
 
         {/* GPS Rescue */}
-        <FcSection icon={<ShieldAlert size={14} />} title="GPS Rescue" actions={<span className="text-[10px] text-text-tertiary ml-auto">Betaflight return-to-home</span>}>
+        <FcSection icon={<ShieldAlert size={14} />} title={tk("gpsRescue")} actions={<span className="text-[10px] text-text-tertiary ml-auto">{tk("betaflightReturnToHome")}</span>}>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input
-              label="Max Rescue Angle"
+              label={tk("maxRescueAngle")}
               type="number"
               step="1"
               min="0"
@@ -124,7 +130,7 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_ANGLE", e.target.value)}
             />
             <Input
-              label="Initial Altitude"
+              label={tk("initialAltitude")}
               type="number"
               step="1"
               min="1"
@@ -134,7 +140,7 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_INITIAL_ALT", e.target.value)}
             />
             <Input
-              label="Descent Distance"
+              label={tk("descentDistance")}
               type="number"
               step="10"
               min="0"
@@ -144,7 +150,7 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_DESCENT_DIST", e.target.value)}
             />
             <Input
-              label="Ground Speed"
+              label={tk("groundSpeed")}
               type="number"
               step="50"
               min="0"
@@ -154,7 +160,7 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_GROUND_SPEED", e.target.value)}
             />
             <Input
-              label="Throttle Min"
+              label={tk("throttleMin")}
               type="number"
               step="10"
               min="1000"
@@ -163,7 +169,7 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_THROTTLE_MIN", e.target.value)}
             />
             <Input
-              label="Throttle Max"
+              label={tk("throttleMax")}
               type="number"
               step="10"
               min="1000"
@@ -172,7 +178,7 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_THROTTLE_MAX", e.target.value)}
             />
             <Input
-              label="Throttle Hover"
+              label={tk("throttleHover")}
               type="number"
               step="10"
               min="1000"
@@ -181,14 +187,14 @@ export function GpsPanel() {
               onChange={(e) => set("BF_GPS_RESCUE_THROTTLE_HOVER", e.target.value)}
             />
             <Select
-              label="Sanity Checks"
-              options={SANITY_CHECK_OPTIONS}
+              label={tk("sanityChecks")}
+              options={ol(SANITY_CHECK_OPTIONS)}
               value={p("BF_GPS_RESCUE_SANITY_CHECKS", "1")}
               onChange={(v) => set("BF_GPS_RESCUE_SANITY_CHECKS", v)}
             />
           </div>
           <Input
-            label="Min Satellites"
+            label={tk("minSatellites")}
             type="number"
             step="1"
             min="0"
@@ -201,40 +207,22 @@ export function GpsPanel() {
           <div className="flex items-start gap-2 mt-2 p-2 bg-accent-primary/5 border border-accent-primary/20">
             <Info size={12} className="text-accent-primary shrink-0 mt-0.5" />
             <p className="text-[10px] text-text-secondary">
-              GPS Rescue must also be enabled as a mode in the Modes tab (assign to an AUX channel) for it to be active.
+              {tk("gpsRescueMustAlsoBe")}
             </p>
           </div>
         </FcSection>
 
         {/* Save */}
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Save size={14} />}
-            disabled={!hasDirty || !connected}
-            loading={saving}
-            onClick={handleSave}
-          >
-            Save to Flight Controller
-          </Button>
-          {hasRamWrites && (
-            <Button
-              variant="secondary"
-              size="lg"
-              icon={<HardDrive size={14} />}
-              onClick={handleFlash}
-            >
-              Write to Flash
-            </Button>
-          )}
-          {!connected && (
-            <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>
-          )}
-          {hasDirty && connected && (
-            <span className="text-[10px] text-status-warning">Unsaved changes</span>
-          )}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

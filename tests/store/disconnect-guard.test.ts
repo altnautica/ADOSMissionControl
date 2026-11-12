@@ -45,6 +45,7 @@ import { onUnexpectedDisconnect, useDroneManager } from "@/stores/drone-manager"
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
 import type { DroneProtocol, Transport, VehicleInfo } from "@/lib/protocol/types";
+import { IntlWrapper } from "../helpers/intl-wrapper";
 
 /** A drone whose transport emits `close` synchronously when disconnected. */
 function addWebSocketDrone(id: string, commit?: () => Promise<unknown>) {
@@ -89,7 +90,7 @@ describe("operator disconnect", () => {
     addWebSocketDrone("ws-1");
     const dropped = vi.fn();
     const off = onUnexpectedDisconnect(dropped);
-    const { result } = renderHook(() => useDisconnectGuard());
+    const { result } = renderHook(() => useDisconnectGuard(), { wrapper: IntlWrapper });
 
     act(() => result.current.requestDisconnect("ws-1"));
 
@@ -102,7 +103,7 @@ describe("operator disconnect", () => {
     const reply = Promise.withResolvers<void>();
     const { events } = addWebSocketDrone("ws-2", () => reply.promise);
     vi.spyOn(useParamSafetyStore.getState(), "getPendingCount").mockReturnValue(1);
-    const { result } = renderHook(() => useDisconnectGuard());
+    const { result } = renderHook(() => useDisconnectGuard(), { wrapper: IntlWrapper });
 
     act(() => result.current.requestDisconnect("ws-2"));
     let done!: Promise<void>;

@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Fan, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { FcSection } from "@/components/fc/shared/FcSection";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const SWASH_PARAMS = [
   "H_SW_TYPE", "H_COL_MIN", "H_COL_MAX", "H_COL_MID",
@@ -79,6 +81,7 @@ function MetaField({
 }
 
 export function ArduPilotHeliPanel() {
+  const tm = useTranslations("fcPanels.arduPilotHeliPanel");
   const scrollRef = usePanelScroll("ap-heli");
   const metadata = useParamMetadataMap();
 
@@ -93,7 +96,7 @@ export function ArduPilotHeliPanel() {
     loadProgress, hasLoaded, missingOptional,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } =
+  const { saving, save: handleSave, flashing, flash: handleFlash } =
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
@@ -123,8 +126,8 @@ export function ArduPilotHeliPanel() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Helicopter"
-            subtitle="Swashplate, rotor speed control, and autorotation"
+            title={tm("helicopter")}
+            subtitle={tm("swashplateRotorSpeedControlAnd")}
             icon={<Fan size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -201,15 +204,15 @@ export function ArduPilotHeliPanel() {
               loading={saving}
               onClick={handleSave}
             >
-              Save to Flight Controller
+              <SaveBarLabel k="saveToFc" />
             </Button>
             {hasRamWrites && (
-              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>
-                Write to Flash
+              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={flashing} onClick={handleFlash}>
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
             {hasDirty && connected && (
-              <span className="text-[10px] text-status-warning">Unsaved changes</span>
+              <span className="text-[10px] text-status-warning"><SaveBarLabel k="unsavedChanges" /></span>
             )}
           </div>
         </div>

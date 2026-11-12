@@ -17,7 +17,7 @@
  * @license GPL-3.0-only
  */
 
-import { WEB_BUTTON_INDEX } from "@/lib/input/ds4-bindings";
+import { SPEC_BINDINGS, WEB_BUTTON_INDEX } from "@/lib/input/ds4-bindings";
 
 /**
  * Build the canonical chord for a keyboard event, or null when the event has
@@ -129,13 +129,32 @@ export const COCKPIT_GAMEPAD_BUTTON = {
   dpadRight: WEB_BUTTON_INDEX.dpad_right,
 } as const;
 
-const RESERVED_GAMEPAD_BUTTONS: ReadonlySet<number> = new Set(
+const CHORD_GAMEPAD_BUTTONS: ReadonlySet<number> = new Set(
   Object.values(COCKPIT_GAMEPAD_BUTTON),
 );
 
-/** True when a gamepad button is owned by the cockpit and must not be bound. */
+/**
+ * Every control the controller spec binds, as a standard-mapping index: the
+ * face buttons, shoulders, triggers, stick clicks, PS and touchpad included.
+ * Derived from the spec's own rows so a binding added there is reserved here.
+ */
+const RESERVED_GAMEPAD_BUTTONS: ReadonlySet<number> = new Set(
+  SPEC_BINDINGS.filter((b) => b.action !== "none")
+    .flatMap((b) => [b.control, ...b.with])
+    .map((c) => WEB_BUTTON_INDEX[c])
+    .filter((i): i is number => typeof i === "number"),
+);
+
+/** True when the controller spec binds a gamepad button: a skill bound to it
+ * would fire alongside the cockpit's own action, so it must not be bound. */
 export function isReservedGamepadButton(button: number): boolean {
   return RESERVED_GAMEPAD_BUTTONS.has(button);
+}
+
+/** True when a button belongs to one of the cockpit's chords or menus
+ * (`COCKPIT_GAMEPAD_BUTTON`) and is kept out of the MANUAL_CONTROL mask. */
+export function isCockpitChordButton(button: number): boolean {
+  return CHORD_GAMEPAD_BUTTONS.has(button);
 }
 
 /** True when a chord is globally reserved and must not be bound to a slot. */

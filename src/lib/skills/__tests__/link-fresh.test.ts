@@ -55,6 +55,7 @@ const STALE = { kind: "idle", warning: "refusal.link_stale" };
 const STALE_DISABLED = { kind: "disabled", reason: "refusal.link_stale_disabled" };
 
 describe("skill link freshness", () => {
+  let clock = Date.now();
   beforeEach(() => {
     vi.useFakeTimers({
       toFake: [
@@ -67,6 +68,10 @@ describe("skill link freshness", () => {
         "cancelAnimationFrame",
       ],
     });
+    // Each test runs on its own minute, so a one-shot fired in an earlier
+    // test is never inside the activation debounce window.
+    clock += 60_000;
+    vi.setSystemTime(clock);
     killSwitch.mockClear();
     registerBuiltins();
     selectConnectedDrone();
@@ -100,6 +105,28 @@ describe("skill link freshness", () => {
     }
   });
 
+  it("sends kill blind after link loss left the arm state unknown", async () => {
+    // Heartbeat silent 6 s with the transport still open: link loss has
+    // reset the arm state to unknown.
+    useDroneStore.setState({ armState: "unknown", lastHeartbeat: Date.now() - 6000 });
+    const notes: string[] = [];
+    const ctx = {
+      ...buildSkillContext(DRONE),
+      notify: (msg: string) => void notes.push(msg),
+      confirm: async () => true,
+    };
+    await activate("kill", ctx);
+    expect(notes).not.toContain("refusal.no_fc_link");
+    expect(killSwitch).toHaveBeenCalledWith(true);
+  });
+
+  it("kill goes out in any arm state, disarmed included (shared spec)", async () => {
+    useDroneStore.setState({ armState: "disarmed", lastHeartbeat: Date.now() });
+    const ctx = { ...buildSkillContext(DRONE), confirm: async () => true };
+    await activate("kill", ctx);
+    expect(killSwitch).toHaveBeenCalledWith(true);
+  });
+
   it("disables the last-resort set too before any heartbeat was heard", () => {
     useDroneStore.setState({ armState: "unknown", lastHeartbeat: 0 });
     useSkillRegistry.getState().recomputeSelected();
@@ -128,7 +155,7 @@ describe("skill link freshness", () => {
     expect(killSwitch).toHaveBeenCalledWith(true);
   });
 
-  it("an emergency stop from a pad hold or a key still needs the full spec stop hold", async () => {
+  it("a completed pad stop hold sends kill with no second hold", async () => {
     useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
     const policies: ConfirmPolicy[] = [];
     const ctx = {
@@ -138,10 +165,25 @@ describe("skill link freshness", () => {
         return false;
       },
     };
-    // A pad hold row (its own hold is not the confirmation), then a key press.
+    await activate("kill", ctx, { confirmedByHold: true, heldMs: layoutSpec.holds_ms.stop });
+    expect(policies).toHaveLength(0);
+    expect(killSwitch).toHaveBeenCalledWith(true);
+  });
+
+  it("a short pad hold or a key press still needs the full spec stop hold", async () => {
+    useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
+    const policies: ConfirmPolicy[] = [];
+    const ctx = {
+      ...buildSkillContext(DRONE),
+      confirm: async (policy: ConfirmPolicy) => {
+        policies.push(policy);
+        return false;
+      },
+    };
+    await activate("kill", ctx, { confirmedByHold: true, heldMs: layoutSpec.holds_ms.stop - 1 });
     await activate("kill", ctx, { confirmedByHold: true });
     await activate("kill", ctx);
-    expect(policies).toHaveLength(2);
+    expect(policies).toHaveLength(3);
     for (const p of policies) {
       expect(p.gesture).toBe("guarded");
       expect(p.holdMs).toBe(layoutSpec.holds_ms.stop);

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validateMission, type ValidationOptions } from '@/lib/validation/mission-validator';
+import { validateMission } from '@/lib/validation/mission-validator';
+import type { ValidationOptions } from '@/lib/validation/issue-types';
 import type { PlanVehicleProfile, Waypoint } from '@/lib/types/mission';
 
 const ARDUCOPTER: PlanVehicleProfile = { autopilot: 'ardupilot', vehicleClass: 'copter' };

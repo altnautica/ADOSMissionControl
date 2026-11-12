@@ -129,7 +129,7 @@
     }
   },
   {
-    "name": "link_stale_boundary_2000_is_fresh",
+    "name": "link_stale_boundary_2000_is_stale",
     "input": {
       "pilot": {
         "owner": "skill",
@@ -249,14 +249,143 @@
       "complete_age_ms": null
     },
     "expected": {
+      "rule": "link_stale",
+      "text": "LINK",
+      "color": "stale",
+      "dim": true,
+      "button": null,
+      "secondary": []
+    }
+  },
+  {
+    "name": "link_stale_boundary_1999_is_fresh",
+    "input": {
+      "pilot": {
+        "owner": "skill",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 1999,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": "ORBIT 8 m",
+      "complete_age_ms": null
+    },
+    "expected": {
       "rule": "skill",
       "text": "FOLLOW · ORBIT 8 m",
       "color": "skill",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -382,13 +511,13 @@
     },
     "expected": {
       "rule": "idle_ready",
-      "text": "READY",
+      "text": "Ready",
       "color": "ready",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -502,13 +631,13 @@
     },
     "expected": {
       "rule": "idle_not_ready",
-      "text": "NOT READY · No position estimate",
+      "text": "Not ready · No position estimate",
       "color": "not_ready",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -628,13 +757,13 @@
     },
     "expected": {
       "rule": "idle_not_ready",
-      "text": "NOT READY · Aircraft setup needed",
+      "text": "Not ready · Aircraft setup needed",
       "color": "not_ready",
       "dim": false,
       "button": "setup",
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -760,13 +889,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · SPORT",
+      "text": "Pilot · SPORT",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -892,13 +1021,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1029,8 +1158,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1161,8 +1290,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1291,13 +1420,13 @@
     },
     "expected": {
       "rule": "goto",
-      "text": "GOTO · 5 m",
+      "text": "Goto · 5 m",
       "color": "goto",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1423,13 +1552,13 @@
     },
     "expected": {
       "rule": "goto",
-      "text": "GOTO · — m",
+      "text": "Goto · — m",
       "color": "goto",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1555,13 +1684,13 @@
     },
     "expected": {
       "rule": "swarm",
-      "text": "SWARM",
+      "text": "Swarm",
       "color": "swarm",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1688,13 +1817,13 @@
     },
     "expected": {
       "rule": "tuning",
-      "text": "TUNING · AUTOTUNE_ROLL",
+      "text": "Tuning · AUTOTUNE_ROLL",
       "color": "tuning",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1821,13 +1950,13 @@
     },
     "expected": {
       "rule": "tuning",
-      "text": "TUNING",
+      "text": "Tuning",
       "color": "tuning",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -1953,13 +2082,13 @@
     },
     "expected": {
       "rule": "mission_paused",
-      "text": "MISSION PAUSED · WP 3/6",
+      "text": "Mission paused · WP 3/6",
       "color": "mission",
       "dim": false,
       "button": "resume",
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2085,13 +2214,13 @@
     },
     "expected": {
       "rule": "mission_active",
-      "text": "MISSION · WP 4/6 · ETA 37 s",
+      "text": "Mission · WP 4/6 · ETA 37 s",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2217,13 +2346,13 @@
     },
     "expected": {
       "rule": "mission_active",
-      "text": "MISSION · WP 4/6 · ETA 1:05",
+      "text": "Mission · WP 4/6 · ETA 1:05",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2349,13 +2478,13 @@
     },
     "expected": {
       "rule": "mission_active",
-      "text": "MISSION · WP 4/6",
+      "text": "Mission · WP 4/6",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2481,13 +2610,13 @@
     },
     "expected": {
       "rule": "mission_active",
-      "text": "MISSION · WP 6/6 · ETA 12 s · LANDING",
+      "text": "Mission · WP 6/6 · ETA 12 s · Landing",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2613,13 +2742,13 @@
     },
     "expected": {
       "rule": "mission_complete",
-      "text": "MISSION COMPLETE",
+      "text": "Mission complete",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2745,13 +2874,13 @@
     },
     "expected": {
       "rule": "mission_fc",
-      "text": "MISSION · WP 6/6",
+      "text": "Mission · WP 6/6",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -2877,13 +3006,13 @@
     },
     "expected": {
       "rule": "mission_fc",
-      "text": "MISSION · WP 2/5",
+      "text": "Mission · WP 2/5",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3000,13 +3129,13 @@
     },
     "expected": {
       "rule": "vtol_transition",
-      "text": "TRANSITION",
+      "text": "Transition",
       "color": "rth",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3128,8 +3257,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3251,8 +3380,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3374,8 +3503,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3497,8 +3626,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3620,8 +3749,8 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3738,13 +3867,13 @@
     },
     "expected": {
       "rule": "fc_land",
-      "text": "LANDING",
+      "text": "Landing",
       "color": "rth",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3861,13 +3990,13 @@
     },
     "expected": {
       "rule": "fc_land",
-      "text": "LANDING",
+      "text": "Landing",
       "color": "rth",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -3984,13 +4113,13 @@
     },
     "expected": {
       "rule": "fc_other_ados_standby",
-      "text": "FC · LOITER · ADOS STANDING BY",
+      "text": "FC · LOITER · ADOS standing by",
       "color": "fc",
       "dim": false,
       "button": "take_control",
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -4112,8 +4241,8 @@
       "dim": false,
       "button": "take_control",
       "secondary": [
-        "AVOIDING",
-        "FC MANUAL"
+        "Avoiding",
+        "FC Manual"
       ]
     }
   },
@@ -4235,7 +4364,7 @@
       "dim": false,
       "button": "take_control",
       "secondary": [
-        "AVOIDING",
+        "Avoiding",
         "ELRS"
       ]
     }
@@ -4362,13 +4491,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "Blocked",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -4494,13 +4623,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "Controller lost",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -4626,13 +4755,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "Another skill has control",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -4758,13 +4887,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "Skill stopped",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -4890,13 +5019,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "Link lost",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -5022,13 +5151,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "Obstacle close",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -5154,13 +5283,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
         "new reason",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -5286,13 +5415,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -5418,13 +5547,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "BLOCKED",
-        "ADOS PILOT"
+        "Blocked",
+        "ADOS Pilot"
       ]
     }
   },
@@ -5550,13 +5679,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDANCE OFF",
-        "ADOS PILOT"
+        "Avoidance off",
+        "ADOS Pilot"
       ]
     }
   },
@@ -5682,12 +5811,12 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -5813,12 +5942,12 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -5944,12 +6073,12 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "FC MANUAL"
+        "FC Manual"
       ]
     }
   },
@@ -6075,7 +6204,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6206,7 +6335,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6464,13 +6593,13 @@
     },
     "expected": {
       "rule": "mission_active",
-      "text": "MISSION · WP 4/6 · ETA 2:00",
+      "text": "Mission · WP 4/6 · ETA 2:00",
       "color": "mission",
       "dim": false,
       "button": null,
       "secondary": [
-        "AVOIDING",
-        "ADOS PILOT"
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   },
@@ -6600,12 +6729,12 @@
     },
     "expected": {
       "rule": "launching",
-      "text": "TAKING OFF · TAKE OFF",
+      "text": "Taking off · TAKE OFF",
       "color": "pilot",
       "dim": false,
       "button": "abort",
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -6735,12 +6864,12 @@
     },
     "expected": {
       "rule": "launching",
-      "text": "TAKING OFF · ARM",
+      "text": "Taking off · ARM",
       "color": "pilot",
       "dim": false,
       "button": "abort",
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -6870,12 +6999,12 @@
     },
     "expected": {
       "rule": "idle_ready",
-      "text": "READY",
+      "text": "Ready",
       "color": "ready",
       "dim": false,
       "button": null,
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -7001,12 +7130,12 @@
     },
     "expected": {
       "rule": "idle_ready",
-      "text": "READY",
+      "text": "Ready",
       "color": "ready",
       "dim": false,
       "button": null,
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -7136,12 +7265,12 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": null,
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -7267,13 +7396,13 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "PILOT · NORMAL",
+      "text": "Pilot · NORMAL",
       "color": "pilot",
       "dim": false,
       "button": "resume",
       "secondary": [
         "Mission paused · WP 3/6",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -7406,9 +7535,9 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "FAILSAFE",
+        "Failsafe",
         "Link lost",
-        "ADOS PILOT"
+        "ADOS Pilot"
       ]
     }
   },
@@ -7540,7 +7669,139 @@
       "dim": false,
       "button": null,
       "secondary": [
-        "ADOS PILOT"
+        "ADOS Pilot"
+      ]
+    }
+  },
+  {
+    "name": "armed_unknown_reads_the_owner",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "sport",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": null,
+        "landed": null,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "Pilot · SPORT",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Avoiding",
+        "ADOS Pilot"
       ]
     }
   }

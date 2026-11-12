@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/intl-wrapper";
 import { GeozoneMapEditor } from '@/components/fc/inav/GeozoneMapEditor';
 import type { INavGeozoneVertex } from '@/lib/protocol/types/inav';
 

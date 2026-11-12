@@ -212,6 +212,7 @@ interface RowProps {
 }
 
 function PeripheralRow({ summary, isOpen, detail, onToggle }: RowProps) {
+  const tq = useTranslations("command.peripheralsTab");
   return (
     <>
       <tr
@@ -247,19 +248,19 @@ function PeripheralRow({ summary, isOpen, detail, onToggle }: RowProps) {
                 </div>
                 {detail.match ? (
                   <div>
-                    <span className="text-text-primary">Match:</span>{" "}
+                    <span className="text-text-primary">{tq("match")}</span>{" "}
                     {JSON.stringify(detail.match)}
                   </div>
                 ) : null}
                 <div>
-                  <span className="text-text-primary">Actions:</span>{" "}
+                  <span className="text-text-primary">{tq("actions")}</span>{" "}
                   {detail.actions.length === 0
                     ? "none"
                     : detail.actions.map((a) => a.display_name).join(", ")}
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-text-secondary">Loading...</div>
+              <div className="text-xs text-text-secondary">{tq("loading")}</div>
             )}
           </td>
         </tr>

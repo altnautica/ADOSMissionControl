@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, AlertCircle, Info } from "lucide-react";
 import type { PidAnalysisResult } from "@/lib/analysis/types";
@@ -63,6 +64,7 @@ function ScoreRing({ score, size = 72, strokeWidth = 5 }: { score: number; size?
 }
 
 export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
+  const tm = useTranslations("fcPanels.pidAnalysisSummary");
   const floors = [result.fft.roll, result.fft.pitch, result.fft.yaw]
     .map((axis) => axis.noiseFloorDb)
     .filter((db): db is number => db !== null);
@@ -77,7 +79,7 @@ export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {/* Overall Tune Score */}
       <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center">
-        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-2">Tune Score</span>
+        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-2">{tm("tuneScore")}</span>
         <div className="relative">
           <ScoreRing score={result.tuneScore ?? 0} />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -90,7 +92,7 @@ export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
 
       {/* Noise Level */}
       <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center">
-        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">Noise Level</span>
+        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">{tm("noiseLevel")}</span>
         <span className={cn("text-sm font-semibold", noise.color)}>{noise.label}</span>
         <span className="text-[9px] font-mono text-text-tertiary mt-0.5">
           {avgNoiseFloor === null ? "no IMU data" : `${avgNoiseFloor.toFixed(1)} dB avg`}
@@ -118,7 +120,7 @@ export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
 
       {/* Issues */}
       <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center">
-        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">Issues</span>
+        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">{tm("issues")}</span>
         <span className="text-lg font-bold font-mono text-text-primary">
           {result.issues.length}
         </span>
@@ -139,7 +141,7 @@ export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
             </span>
           )}
           {result.issues.length === 0 && (
-            <span className="text-[9px] text-status-success">All clear</span>
+            <span className="text-[9px] text-status-success">{tm("allClear")}</span>
           )}
         </div>
       </div>

@@ -1,7 +1,9 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
 import { useMemo, useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -11,7 +13,7 @@ import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { Radio, Save, HardDrive, AlertTriangle } from "lucide-react";
+import { Radio, Save, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   vtxParamNames, VTX_BANDS, BAND_INDEX_TO_LETTER, BAND_LETTER_TO_INDEX,
@@ -21,7 +23,11 @@ import {
 import type { MspVtxTablePowerLevel } from "@/lib/protocol/types/betaflight";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 export function VtxPanel() {
+  const ol = useOptionLabels();
+  const tk = useTranslations("fcPanels.vtxPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("vtx");
 
@@ -31,7 +37,7 @@ export function VtxPanel() {
     loadProgress, hasLoaded,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
+  const { saving, flashing, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -94,7 +100,7 @@ export function VtxPanel() {
       <div className="max-w-2xl space-y-6">
         <PanelHeader
           title="VTX"
-          subtitle="Video transmitter band, channel, and power configuration"
+          subtitle={tk("videoTransmitterBandChannelAnd")}
           icon={<Radio size={16} />}
           loading={loading}
           loadProgress={loadProgress}
@@ -105,11 +111,11 @@ export function VtxPanel() {
         />
 
         {/* VTX Type: detected by the FC, not configurable */}
-        <FcSection icon={<Radio size={14} />} title="VTX Type">
+        <FcSection icon={<Radio size={14} />} title={tk("vtxType")}>
           <p className="text-xs font-mono text-text-primary">
             {vtxType === undefined ? "—" : `${vtxType} — ${VTX_TYPE_LABELS[vtxType] ?? "Unknown"}`}
           </p>
-          <p className="text-[10px] text-text-tertiary">Detected by the flight controller from the connected device.</p>
+          <p className="text-[10px] text-text-tertiary">{tk("detectedByTheFlightController")}</p>
         </FcSection>
 
         {(vtxType === 0 || vtxType === VTX_TYPE_NONE) && hasLoaded && (
@@ -129,7 +135,7 @@ export function VtxPanel() {
             <FcSection>
               <div className="flex items-center gap-2 mb-1">
                 <Radio size={14} className="text-accent-primary" />
-                <h2 className="text-sm font-medium text-text-primary">Band / Channel</h2>
+                <h2 className="text-sm font-medium text-text-primary">{tk("bandChannel")}</h2>
                 {selectedFrequency > 0 && (
                   <span className="text-[10px] font-mono text-accent-primary ml-auto">
                     {selectedBandLetter}{selectedChannel} — {selectedFrequency} MHz
@@ -141,7 +147,7 @@ export function VtxPanel() {
                 <table className="w-full border-collapse text-[10px] font-mono">
                   <thead>
                     <tr>
-                      <th className="text-left text-text-tertiary px-1 py-1 w-12">Band</th>
+                      <th className="text-left text-text-tertiary px-1 py-1 w-12">{tk("band")}</th>
                       {Array.from({ length: CHANNEL_COUNT }, (_, i) => (
                         <th key={i} className="text-center text-text-tertiary px-1 py-1">
                           CH{i + 1}
@@ -188,7 +194,7 @@ export function VtxPanel() {
             </FcSection>
 
             {/* Power / Pit Mode / Low Power */}
-            <FcSection icon={<Radio size={14} />} title="Power Settings">
+            <FcSection icon={<Radio size={14} />} title={tk("powerSettings")}>
               {powerLevels !== null && powerLevels.length === 0 ? (
                 <p className="text-[10px] text-text-tertiary">
                   This flight controller reports no VTX power table, so the power level cannot be labelled.
@@ -196,30 +202,30 @@ export function VtxPanel() {
                 </p>
               ) : (
                 <Select
-                  label="Power Level"
+                  label={tk("powerLevel")}
                   options={powerOptions}
                   value={powerValue === undefined ? "" : String(powerValue)}
                   onChange={(v) => set("BF_VTX_POWER", v)}
                 />
               )}
               <Select
-                label="Pit Mode"
-                options={PIT_MODE_OPTIONS}
+                label={tk("pitMode")}
+                options={ol(PIT_MODE_OPTIONS)}
                 value={p("BF_VTX_PIT_MODE")}
                 onChange={(v) => set("BF_VTX_PIT_MODE", v)}
               />
               <Select
-                label="Low Power on Disarm"
-                options={LOW_POWER_DISARM_OPTIONS}
+                label={tk("lowPowerOnDisarm")}
+                options={ol(LOW_POWER_DISARM_OPTIONS)}
                 value={p("BF_VTX_LOW_POWER_DISARM")}
                 onChange={(v) => set("BF_VTX_LOW_POWER_DISARM", v)}
               />
             </FcSection>
 
             {/* Frequency Override */}
-            <FcSection icon={<Radio size={14} />} title="Frequency Override">
+            <FcSection icon={<Radio size={14} />} title={tk("frequencyOverride")}>
               <Input
-                label="Manual Frequency (MHz)"
+                label={tk("manualFrequencyMHz")}
                 type="number"
                 step="1"
                 min="0"
@@ -229,41 +235,23 @@ export function VtxPanel() {
                 onChange={(e) => set("BF_VTX_FREQUENCY", e.target.value)}
               />
               <p className="text-[10px] text-text-tertiary">
-                Set to 0 to use band/channel selection above. Non-zero overrides band/channel.
+                {tk("setTo0ToUse")}
               </p>
             </FcSection>
           </>
         )}
 
         {/* Save */}
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Save size={14} />}
-            disabled={!hasDirty || !connected}
-            loading={saving}
-            onClick={handleSave}
-          >
-            Save to Flight Controller
-          </Button>
-          {hasRamWrites && (
-            <Button
-              variant="secondary"
-              size="lg"
-              icon={<HardDrive size={14} />}
-              onClick={handleFlash}
-            >
-              Write to Flash
-            </Button>
-          )}
-          {!connected && (
-            <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>
-          )}
-          {hasDirty && connected && (
-            <span className="text-[10px] text-status-warning">Unsaved changes</span>
-          )}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

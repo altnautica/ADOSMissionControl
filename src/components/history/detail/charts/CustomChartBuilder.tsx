@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export interface CustomChartBuilderProps {
 }
 
 export function CustomChartBuilder({ frames }: CustomChartBuilderProps) {
+  const tq = useTranslations("history.customChartBuilder");
   const [traces, setTraces] = useState<TraceConfig[]>([]);
   const [adding, setAdding] = useState(false);
 
@@ -55,13 +57,13 @@ export function CustomChartBuilder({ frames }: CustomChartBuilderProps) {
 
   if (traces.length === 0 && !adding) {
     return (
-      <Card title="Custom Chart" padding={true}>
+      <Card title={tq("customChart")} padding={true}>
         <div className="flex flex-col items-center gap-2 py-4">
           <p className="text-[10px] text-text-tertiary">
-            Build a custom chart from any telemetry channel and field.
+            {tq("buildACustomChartFrom")}
           </p>
           <Button variant="secondary" size="sm" onClick={() => setAdding(true)} icon={<Plus size={12} />}>
-            Add trace
+            {tq("addTrace")}
           </Button>
         </div>
       </Card>
@@ -69,7 +71,7 @@ export function CustomChartBuilder({ frames }: CustomChartBuilderProps) {
   }
 
   return (
-    <Card title="Custom Chart" padding={true}>
+    <Card title={tq("customChart")} padding={true}>
       {/* Trace legend + controls */}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         {traces.map((tr) => {
@@ -90,11 +92,11 @@ export function CustomChartBuilder({ frames }: CustomChartBuilderProps) {
           );
         })}
         <Button variant="ghost" size="sm" onClick={() => setAdding(true)} icon={<Plus size={12} />}>
-          Add
+          {tq("add")}
         </Button>
         {traces.length > 0 && (
           <Button variant="ghost" size="sm" onClick={clearAll} icon={<RotateCcw size={12} />}>
-            Clear
+            {tq("clear")}
           </Button>
         )}
       </div>

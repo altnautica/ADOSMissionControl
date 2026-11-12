@@ -14,6 +14,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Loader2, AlertTriangle, RotateCw } from "lucide-react";
 
@@ -44,6 +45,7 @@ export function tierForElapsed(elapsedMs: number, failed = false): EnrollmentPro
 }
 
 export function EnrollmentProgress({ startedAt, failed, onRetry, onCancel }: Props) {
+  const tk = useTranslations("fcPanels.enrollmentProgress");
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function EnrollmentProgress({ startedAt, failed, onRetry, onCancel }: Pro
               className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary inline-flex items-center gap-1.5"
             >
               <RotateCw size={14} aria-hidden="true" />
-              Retry
+              {tk("retry")}
             </button>
           )}
           {onCancel && (
@@ -83,7 +85,7 @@ export function EnrollmentProgress({ startedAt, failed, onRetry, onCancel }: Pro
               onClick={onCancel}
               className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary"
             >
-              Cancel
+              {tk("cancel")}
             </button>
           )}
         </div>

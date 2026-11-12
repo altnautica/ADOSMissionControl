@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionLabels } from "@/lib/i18n/option-labels";
 import type { FlashMethod, FirmwareStack } from "@/lib/protocol/firmware/types";
 import { AlertTriangle, Zap, Usb } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -17,10 +18,11 @@ export function DfuStatusBanner({
   isFlashing: boolean;
   onDetectDfu: () => void;
 }) {
+  const tm = useTranslations("fcPanels.firmwareCommonSections");
   if (dfuDevices.length > 0) {
     return (
       <div className="border border-status-success/40 bg-status-success/5 p-4 space-y-2">
-        <p className="text-xs text-status-success font-semibold">DFU Device Connected</p>
+        <p className="text-xs text-status-success font-semibold">{tm("dfuDeviceConnected")}</p>
         <p className="text-[10px] text-text-secondary">{dfuDevices.map((d) => d.label).join(", ")} — ready to flash.</p>
       </div>
     );
@@ -28,14 +30,14 @@ export function DfuStatusBanner({
   if (selectedDroneId) {
     return (
       <div className="border border-status-warning/40 bg-status-warning/5 p-4 space-y-2">
-        <p className="text-xs text-status-warning font-semibold">FC Connected via MAVLink</p>
+        <p className="text-xs text-status-warning font-semibold">{tm("fcConnectedViaMAVLink")}</p>
         <p className="text-[10px] text-text-secondary">
-          Your FC is connected via MAVLink. For DFU flashing, disconnect and reconnect while holding the BOOT button.
+          {tm("yourFCIsConnectedVia")}
         </p>
         {usbSupported && (
           <button onClick={onDetectDfu} disabled={isFlashing}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">
-            <Usb size={12} /> Scan for DFU
+            <Usb size={12} /> {tm("scanForDFU")}
           </button>
         )}
       </div>
@@ -43,14 +45,14 @@ export function DfuStatusBanner({
   }
   return (
     <div className="border border-border-default bg-bg-secondary p-4 space-y-2">
-      <p className="text-xs text-text-secondary font-semibold">No Connection</p>
+      <p className="text-xs text-text-secondary font-semibold">{tm("noConnection")}</p>
       <p className="text-[10px] text-text-tertiary">
-        Connect your FC in DFU mode: hold BOOT while plugging in USB, then click Scan.
+        {tm("connectYourFCInDFU")}
       </p>
       {usbSupported && (
         <button onClick={onDetectDfu} disabled={isFlashing}
           className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">
-          <Usb size={12} /> Scan for DFU
+          <Usb size={12} /> {tm("scanForDFU")}
         </button>
       )}
     </div>
@@ -68,16 +70,18 @@ export function FirmwareStackSelector({
   setUseCustom: (v: boolean) => void;
   droneType?: string;
 }) {
+  const ol = useOptionLabels();
+  const tm = useTranslations("fcPanels.firmwareCommonSections");
   const t = useTranslations("flashTool.ados");
   return (
     <div className="bg-bg-secondary border border-border-default p-4 space-y-3">
-      <h2 className="text-xs font-semibold text-text-primary">Firmware Stack</h2>
+      <h2 className="text-xs font-semibold text-text-primary">{tm("firmwareStack")}</h2>
       <div
         role="radiogroup"
         aria-label={t("a11y.stackGroupLabel")}
         className="flex gap-2"
       >
-        {FIRMWARE_STACKS.map(({ id, label, labelKey }) => {
+        {ol(FIRMWARE_STACKS).map(({ id, label, labelKey }) => {
           const isActive = firmwareStack === id;
           return (
             <button key={id}
@@ -110,9 +114,10 @@ export function FlashMethodSelector({
   usbSupported: boolean;
   dfuDevices: UsbDeviceInfo[];
 }) {
+  const tm = useTranslations("fcPanels.firmwareCommonSections");
   return (
     <div className="bg-bg-secondary border border-border-default p-4 space-y-3">
-      <h2 className="text-xs font-semibold text-text-primary">Flash Method</h2>
+      <h2 className="text-xs font-semibold text-text-primary">{tm("flashMethod")}</h2>
       <div className="flex gap-3">
         {currentFlashMethods.map(({ id, label, icon: Icon, desc }) => {
           const disabled = ((id === "st-rom-serial" || id === "px4-serial") && !serialSupported) || (id === "dfu" && !usbSupported);
@@ -134,7 +139,7 @@ export function FlashMethodSelector({
         <div className="mt-2">
           {dfuDevices.length > 0
             ? <p className="text-[10px] text-status-success">{dfuDevices.length} DFU device{dfuDevices.length > 1 ? "s" : ""} ready: {dfuDevices.map((d) => d.label).join(", ")}</p>
-            : <p className="text-[10px] text-text-tertiary">No DFU devices detected. Use the Scan button above to find one.</p>
+            : <p className="text-[10px] text-text-tertiary">{tm("noDFUDevicesDetectedUse")}</p>
           }
         </div>
       )}

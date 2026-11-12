@@ -9,8 +9,9 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Save, RotateCcw, HardDrive, Sliders } from "lucide-react";
+import { Sliders } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
@@ -39,12 +40,15 @@ import {
 } from "./px4-control-allocation-constants";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 const AIRFRAME_FIELDS: CaField[] = [
   { param: "CA_AIRFRAME", label: "Airframe", kind: "enum" },
   { param: "CA_METHOD", label: "Allocation method", kind: "enum" },
 ];
 
 export function Px4ControlAllocationPanel() {
+  const tr = useTranslations("fcPanels.px4ControlAllocationPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -66,7 +70,7 @@ export function Px4ControlAllocationPanel() {
   const tiltCount = Math.min(CA_MAX_TILTS, Math.max(0, Math.trunc(params.get("CA_SV_TL_COUNT") ?? 0)));
   const revValue = Math.trunc(params.get("CA_R_REV") ?? 0);
 
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: CaField) => {
     const value = params.get(f.param) ?? 0;
@@ -104,17 +108,17 @@ export function Px4ControlAllocationPanel() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Control Allocation"
-            subtitle="PX4 airframe, allocation method, rotor coefficients, control surfaces, and tilt servos"
+            title={tr("controlAllocation")}
+            subtitle={tr("px4AirframeAllocationMethodRotor")}
             icon={<Sliders size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
             onRead={refresh} connected={connected} error={error}
           />
 
-          <FcSection title="Airframe">
+          <FcSection title={tr("airframe")}>
             {AIRFRAME_FIELDS.map(renderField)}
             <div className="grid grid-cols-[180px_1fr] items-center gap-3">
               <div>
-                <span className="text-xs text-text-secondary">Reversible motors</span>
+                <span className="text-xs text-text-secondary">{tr("reversibleMotors")}</span>
                 <span className="text-[9px] text-text-tertiary block font-mono">{pn("CA_R_REV")}</span>
               </div>
               <Button variant="secondary" size="sm" onClick={() => setRevEditor(true)}>
@@ -123,37 +127,42 @@ export function Px4ControlAllocationPanel() {
             </div>
           </FcSection>
 
-          <FcSection title="Rotors">
+          <FcSection title={tr("rotors")}>
             {renderField({ param: "CA_ROTOR_COUNT", label: "Rotor count", kind: "enum" })}
             {rotorCount > 0
               ? indexedCards(rotorCount, caRotorFields, "Rotor")
-              : hasLoaded && <p className="text-[10px] text-text-tertiary">Set a rotor count to configure rotor coefficients.</p>}
+              : hasLoaded && <p className="text-[10px] text-text-tertiary">{tr("setARotorCountTo")}</p>}
           </FcSection>
 
-          <FcSection title="Control Surfaces">
+          <FcSection title={tr("controlSurfaces")}>
             {renderField({ param: "CA_SV_CS_COUNT", label: "Surface count", kind: "enum" })}
             {surfaceCount > 0 && indexedCards(surfaceCount, caSurfaceFields, "Surface")}
           </FcSection>
 
-          <FcSection title="Tilt Servos">
+          <FcSection title={tr("tiltServos")}>
             {renderField({ param: "CA_SV_TL_COUNT", label: "Tilt-servo count", kind: "enum" })}
             {tiltCount > 0 && indexedCards(tiltCount, caTiltFields, "Tilt")}
           </FcSection>
 
-          <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-            <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-            {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-            {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-            {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-          </div>
+          <PanelSaveBar
+            onSave={handleSave}
+            saving={saving}
+            saveDisabled={!hasDirty || !connected}
+            onRevert={handleRevert}
+            revertDisabled={!hasDirty}
+            showFlash={hasRamWrites}
+            onFlash={handleFlash}
+            flashing={flashing}
+            showConnectHint={!connected}
+            showUnsavedHint={hasDirty && connected}
+          />
         </div>
       </div>
 
       <BitmaskEditor
         open={revEditor}
         onClose={() => setRevEditor(false)}
-        title="Reversible motors (CA_R_REV)"
+        title={tr("reversibleMotorsCARREV")}
         bitmask={CA_R_REV_BITS}
         value={revValue}
         onApply={(v) => setLocalValue("CA_R_REV", v)}

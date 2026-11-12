@@ -8,6 +8,7 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch, type ParamBatchEntry } from "@/lib/protocol/param-write";
 import { cn } from "@/lib/utils";
+import { setupText } from "@/lib/fc-setup/strings";
 import { Button } from "@/components/ui/button";
 import { RC_CAL_STEPS } from "./calibration-types";
 import { RcChannelBar, RcCalSummaryTable } from "./RcChannelBar";
@@ -35,6 +36,7 @@ interface RcCalibrationWizardProps {
 }
 
 export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcCalibrationWizardProps) {
+  const tr = useTranslations("fcPanels.rcCalibrationWizard");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
@@ -163,7 +165,7 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
   if (unavailable) {
     return (
       <div className="border border-border-default bg-bg-secondary p-4">
-        <h3 className="text-sm font-medium text-text-primary">Radio Calibration</h3>
+        <h3 className="text-sm font-medium text-text-primary">{setupText("setup.radio.title")}</h3>
         <p className="text-xs text-text-tertiary mt-0.5">This firmware has no RCn_MIN / RCn_MAX / RCn_TRIM parameters, so stick endpoints cannot be calibrated here.</p>
       </div>
     );
@@ -173,19 +175,19 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-medium text-text-primary">Radio Calibration</h3>
-          <p className="text-xs text-text-tertiary mt-0.5">Calibrate RC transmitter stick endpoints and trims. Move all sticks and switches to full extent.</p>
+          <h3 className="text-sm font-medium text-text-primary">{setupText("setup.radio.title")}</h3>
+          <p className="text-xs text-text-tertiary mt-0.5">{tr("calibrateRCTransmitterStickEndpoints")}</p>
         </div>
         <span className={cn("text-[10px] font-mono px-2 py-0.5 shrink-0", badge.className)}>{badge.label}</span>
       </div>
 
       {step === "idle" && (
         <div className="mb-4 bg-bg-tertiary/50 px-3 py-2.5">
-          <p className="text-[10px] font-medium text-text-secondary mb-1.5">Before you start</p>
+          <p className="text-[10px] font-medium text-text-secondary mb-1.5">{tr("beforeYouStart")}</p>
           <ol className="space-y-1">
-            <li className="text-[10px] text-text-tertiary flex gap-1.5"><span className="text-text-secondary shrink-0">1.</span>Turn on RC transmitter and verify binding before starting</li>
-            <li className="text-[10px] text-text-tertiary flex gap-1.5"><span className="text-text-secondary shrink-0">2.</span>Ensure all trims on transmitter are centered (no sub-trim)</li>
-            <li className="text-[10px] text-text-tertiary flex gap-1.5"><span className="text-text-secondary shrink-0">3.</span>You will need to move ALL sticks and switches to their extremes</li>
+            <li className="text-[10px] text-text-tertiary flex gap-1.5"><span className="text-text-secondary shrink-0">1.</span>{tr("turnOnRCTransmitterAnd")}</li>
+            <li className="text-[10px] text-text-tertiary flex gap-1.5"><span className="text-text-secondary shrink-0">2.</span>{tr("ensureAllTrimsOnTransmitter")}</li>
+            <li className="text-[10px] text-text-tertiary flex gap-1.5"><span className="text-text-secondary shrink-0">3.</span>{tr("youWillNeedToMove")}</li>
           </ol>
         </div>
       )}
@@ -223,29 +225,29 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
       {step === "done" && <p className="text-[10px] font-mono text-status-success mb-3">{doneMsg}</p>}
       {isHardBlocked && <p className="text-[10px] font-mono text-status-warning mb-3">{hardBlockMessage}</p>}
       {step === "error" && <p className="text-[10px] font-mono text-status-error mb-3">{errorMsg}</p>}
-      {step === "saving" && <p className="text-[10px] font-mono text-text-tertiary mb-3">Writing RC parameters to flight controller...</p>}
+      {step === "saving" && <p className="text-[10px] font-mono text-text-tertiary mb-3">{tr("writingRCParametersToFlight")}</p>}
 
       {showTrimReset && (
         <div className="mb-3 border border-status-warning/30 bg-status-warning/5 px-3 py-2.5">
-          <p className="text-[10px] font-medium text-status-warning mb-1.5">Confirm Trim Reset</p>
+          <p className="text-[10px] font-medium text-status-warning mb-1.5">{tr("confirmTrimReset")}</p>
           <p className="text-[10px] text-text-tertiary mb-2">This will set RC1_TRIM through RC8_TRIM to 1500 (center). This affects flight behavior and should only be done if trims are incorrect.</p>
           <div className="flex gap-2">
-            <Button variant="danger" size="sm" onClick={handleResetTrims} loading={trimResetting} disabled={trimResetting || isHardBlocked}>Reset All Trims</Button>
-            <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(false)} disabled={trimResetting}>Cancel</Button>
+            <Button variant="danger" size="sm" onClick={handleResetTrims} loading={trimResetting} disabled={trimResetting || isHardBlocked}>{tr("resetAllTrims")}</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(false)} disabled={trimResetting}>{tr("cancel")}</Button>
           </div>
         </div>
       )}
 
       <div className="flex gap-2">
-        {step === "idle" && (<><Button variant="primary" size="sm" onClick={handleStart} disabled={!connected || isHardBlocked}>Start</Button>
-          <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(true)} disabled={!connected || showTrimReset || isHardBlocked}>Reset Trims</Button></>)}
-        {step === "center" && (<><Button variant="primary" size="sm" onClick={handleCenterConfirm}>Next</Button>
-          <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button></>)}
-        {step === "move" && (<><Button variant="primary" size="sm" onClick={handleMoveComplete}>Next</Button>
-          <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button></>)}
-        {step === "confirm" && (<><Button variant="primary" size="sm" onClick={handleSave} disabled={isHardBlocked}>Save</Button>
-          <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button></>)}
-        {step === "saving" && <Button variant="secondary" size="sm" loading disabled>Saving...</Button>}
+        {step === "idle" && (<><Button variant="primary" size="sm" onClick={handleStart} disabled={!connected || isHardBlocked}>{tr("start")}</Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(true)} disabled={!connected || showTrimReset || isHardBlocked}>{tr("resetTrims")}</Button></>)}
+        {step === "center" && (<><Button variant="primary" size="sm" onClick={handleCenterConfirm}>{tr("next")}</Button>
+          <Button variant="danger" size="sm" onClick={handleCancel}>{tr("cancel")}</Button></>)}
+        {step === "move" && (<><Button variant="primary" size="sm" onClick={handleMoveComplete}>{tr("next")}</Button>
+          <Button variant="danger" size="sm" onClick={handleCancel}>{tr("cancel")}</Button></>)}
+        {step === "confirm" && (<><Button variant="primary" size="sm" onClick={handleSave} disabled={isHardBlocked}>{tr("save")}</Button>
+          <Button variant="danger" size="sm" onClick={handleCancel}>{tr("cancel")}</Button></>)}
+        {step === "saving" && <Button variant="secondary" size="sm" loading disabled>{tr("saving")}</Button>}
         {(step === "done" || step === "error") && <Button variant="primary" size="sm" onClick={handleStart}>{step === "done" ? "Re-calibrate" : "Retry"}</Button>}
       </div>
     </div>

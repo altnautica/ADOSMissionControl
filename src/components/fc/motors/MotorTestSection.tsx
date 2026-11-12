@@ -21,6 +21,7 @@ interface MotorTestSectionProps {
 }
 
 export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: MotorTestSectionProps) {
+  const tr = useTranslations("fcPanels.motorTestSection");
   const { toast } = useToast();
   const t = useTranslations("fcToasts.motors");
   const [motorTestEnabled, setMotorTestEnabled] = useState(false);
@@ -58,16 +59,16 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
   );
 
   return (
-    <Card title="Motor Test">
+    <Card title={tr("motorTest")}>
       <div className="space-y-4">
         <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
           <AlertTriangle size={14} className="text-status-error shrink-0" />
           <span className="text-[10px] text-status-error">
-            Remove propellers before testing motors. Ensure drone is secured.
+            {tr("removePropellersBeforeTestingMotors")}
           </span>
         </div>
 
-        <Toggle label="Enable motor test (safety master)" checked={motorTestEnabled} onChange={setMotorTestEnabled} disabled={isHardBlocked} />
+        <Toggle label={tr("enableMotorTestSafetyMaster")} checked={motorTestEnabled} onChange={setMotorTestEnabled} disabled={isHardBlocked} />
 
         {isHardBlocked && (
           <div className="flex items-center gap-2 p-2 bg-status-error/10 border border-status-error/20">
@@ -78,7 +79,7 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
 
         {motorTestEnabled && (
           <div className="space-y-3">
-            <Select label="Motor" options={motorOptions} value={testMotor} onChange={setTestMotor} />
+            <Select label={tr("motor")} options={motorOptions} value={testMotor} onChange={setTestMotor} />
             <div className="flex flex-col gap-1">
               <label className="text-xs text-text-secondary">Throttle: {testThrottle}%</label>
               <input type="range" min={0} max={100} value={testThrottle} onChange={(e) => setTestThrottle(Number(e.target.value))} className="w-full accent-accent-primary" />

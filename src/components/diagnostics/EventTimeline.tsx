@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useMemo } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import type { EventType } from "@/stores/diagnostics-store";
@@ -73,6 +74,7 @@ function formatAbsoluteTime(timestamp: number): string {
 // ── Component ────────────────────────────────────────────────
 
 export function EventTimeline() {
+  const tq = useTranslations("diagnostics.eventTimeline");
   // The timeline RingBuffer is mutated in place, so its reference never
   // changes. Each logged event is a new object: selecting the newest one
   // re-renders exactly when an event lands (not on every frame bump).
@@ -110,7 +112,7 @@ export function EventTimeline() {
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <Clock size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Event Timeline</span>
+        <span className="text-xs font-semibold text-text-primary">{tq("eventTimeline")}</span>
         <span className="text-[10px] text-text-tertiary font-mono">
           {events.length} event{events.length !== 1 ? "s" : ""}
         </span>
@@ -125,7 +127,7 @@ export function EventTimeline() {
           )}
         >
           <Filter size={10} />
-          Filter
+          {tq("filter")}
         </button>
       </div>
 
@@ -137,13 +139,13 @@ export function EventTimeline() {
               onClick={selectAll}
               className="px-1.5 py-0.5 text-[9px] text-text-tertiary hover:text-text-secondary cursor-pointer"
             >
-              All
+              {tq("all")}
             </button>
             <button
               onClick={selectNone}
               className="px-1.5 py-0.5 text-[9px] text-text-tertiary hover:text-text-secondary cursor-pointer"
             >
-              None
+              {tq("none")}
             </button>
             <span className="w-px h-3 bg-border-default mx-1" />
             {ALL_EVENT_TYPES.map((type) => {
@@ -173,9 +175,9 @@ export function EventTimeline() {
         {events.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-6">
             <Clock size={24} className="text-text-tertiary" />
-            <span className="text-xs text-text-tertiary">No events recorded</span>
+            <span className="text-xs text-text-tertiary">{tq("noEventsRecorded")}</span>
             <span className="text-[10px] text-text-tertiary">
-              Events like arm/disarm, mode changes, errors, and param writes will appear here
+              {tq("eventsLikeArmDisarmMode")}
             </span>
           </div>
         ) : (

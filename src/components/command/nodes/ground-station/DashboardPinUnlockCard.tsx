@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { isDemoMode } from "@/lib/utils";
 const PIN_LENGTH = 4;
 
 export function DashboardPinUnlockCard({ nodeDeviceId }: { nodeDeviceId: string | null }) {
+  const tq = useTranslations("command.dashboardPinUnlockCard");
   const direct = useNodeDirectAgent(nodeDeviceId);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,7 +37,7 @@ export function DashboardPinUnlockCard({ nodeDeviceId }: { nodeDeviceId: string 
   if (dashboardSessionFor(agentUrl)) {
     return (
       <p role="status" className="mb-3 text-xs text-text-tertiary">
-        Unlocked with this node&apos;s dashboard PIN for this browser session.
+        {tq("unlockedWithThisNodeApos")}
       </p>
     );
   }
@@ -59,11 +61,10 @@ export function DashboardPinUnlockCard({ nodeDeviceId }: { nodeDeviceId: string 
     <section className="mb-4 rounded border border-status-warning/40 bg-status-warning/5 p-4">
       <div className="mb-2 flex items-center gap-2 text-text-primary">
         <KeyRound size={14} className="text-status-warning" aria-hidden="true" />
-        <h3 className="text-sm font-medium">This ground station is not paired</h3>
+        <h3 className="text-sm font-medium">{tq("thisGroundStationIsNot")}</h3>
       </div>
       <p className="mb-3 text-xs text-text-secondary">
-        Mission Control holds no key for this node, so it refuses status, radio and network data
-        until you enter its dashboard PIN. The unlock lasts until this page reloads.
+        {tq("missionControlHoldsNoKey")}
       </p>
       <form
         className="flex flex-wrap items-end gap-2"
@@ -73,7 +74,7 @@ export function DashboardPinUnlockCard({ nodeDeviceId }: { nodeDeviceId: string 
         }}
       >
         <label className="text-xs text-text-secondary">
-          Dashboard PIN
+          {tq("dashboardPIN")}
           <input
             type="password"
             inputMode="numeric"

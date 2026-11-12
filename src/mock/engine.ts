@@ -37,7 +37,7 @@ import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore, resolveNodeId } from "@/stores/node-registry";
-import { clearDemoVehicles, markDemoVehicles } from "@/lib/demo/demo-vehicles";
+import { clearDemoVehicles } from "@/lib/demo/demo-vehicles";
 import type { FleetDrone } from "@/lib/types";
 import { haversineDistance } from "@/lib/geo/distance";
 
@@ -46,16 +46,6 @@ const nid = (id: string): string => resolveNodeId(id);
 
 /** Elevation of the demo flying site above mean sea level, metres. */
 const DEMO_SITE_ELEVATION_M = 920;
-
-/**
- * A directly-connected flight controller (a USB/serial FC plugged into this
- * laptop, no companion agent behind it): it owns its own fleet row and has no
- * paired identity, so the Nodes board resolves it to the `direct-fc` reach kind
- * and it is commanded through its own live protocol. Its id is a plain string
- * (NOT `node:<id>`) so `adaptDirectFc` keeps it as the reach lookup key.
- */
-const DEMO_DIRECT_FC_ID = "sierra-19-usb";
-const DEMO_DIRECT_FC_NAME = "Sierra-19 (USB FC)";
 
 interface DroneSimState {
   config: DemoDroneConfig;
@@ -174,22 +164,6 @@ class MockFlightEngine {
         });
       }
     }
-
-    // A directly-connected flight controller: ownsFleetRow=true + no matching
-    // paired row, so `mergeFleetWithDirectFcs` synthesizes a `direct-fc` fleet
-    // node for it. It flies no path — it is just a live protocol the board can
-    // command through its own link (the reach kind a plugged-in FC resolves to).
-    const directFcProtocol = new MockProtocol("ardupilot-copter");
-    droneManager.addDrone(
-      DEMO_DIRECT_FC_ID,
-      DEMO_DIRECT_FC_NAME,
-      directFcProtocol,
-      new MockTransport(),
-      directFcProtocol.getVehicleInfo(),
-      { type: "websocket", url: "mock://demo" },
-      { ownsFleetRow: true },
-    );
-    markDemoVehicles([DEMO_DIRECT_FC_ID]);
 
     // Emit Alpha-01's boot messages so its Status tab is populated when opened
     // (no drone is auto-selected — the dashboard lands on the grid).

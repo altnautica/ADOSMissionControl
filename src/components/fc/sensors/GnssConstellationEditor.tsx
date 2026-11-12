@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 /**
  * @module fc/sensors/GnssConstellationEditor
@@ -35,6 +36,7 @@ export function GnssConstellationEditor({ paramName, value, bits, onChange }: {
   bits: ReadonlyMap<number, string>;
   onChange: (next: number) => void;
 }) {
+  const tk = useTranslations("fcPanels.gnssConstellationEditor");
   const chip = (active: boolean) =>
     `px-2 py-1 text-[10px] border transition-colors ${
       active
@@ -47,7 +49,7 @@ export function GnssConstellationEditor({ paramName, value, bits, onChange }: {
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
         <button type="button" onClick={() => onChange(0)} className={chip(value === 0)}>
-          Receiver default
+          {tk("receiverDefault")}
         </button>
         {GNSS_PRESETS.map((preset) => {
           const mask = gnssMask(preset);

@@ -1,10 +1,12 @@
 /**
  * @module mock/live-world-demo-panel
- * @description The demo rendition of the world-engine `live-world` Agent
- * page: the demo occupancy grid, SLAM trail and scan through the shared
+ * @description The demo renditions of the world-engine drone Agent pages
+ * that show live data. `world-model` holds the live map, as on the real
+ * extension: the demo occupancy grid, SLAM trail and scan through the shared
  * local-frame map, and an orbiting point cloud of the synthetic room coloured
- * by height band. Every surface is labelled as demo data. Mounted by
- * `DEMO_LIVE_WORLD_MODULE` inside the inline plugin host, in its own React
+ * by height band. `live-world` is the capture monitor
+ * (`live-world-monitor-demo`). Every surface is labelled as demo data. Mounted
+ * by `DEMO_LIVE_WORLD_MODULE` inside the inline plugin host, in its own React
  * root wrapped in the app's message bundle so the shared map's copy resolves.
  *
  * @license GPL-3.0-only
@@ -22,6 +24,7 @@ import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { mockDetectionStream } from "./mock-detections";
 import { CLOUD_BAND_M, CLOUD_HEIGHT_M, demoPointCloud, type CloudPoint } from "./mock-live-world";
+import { LiveWorldMonitorDemo } from "./live-world-monitor-demo";
 
 type Translate = (key: string, fallback: string) => string;
 
@@ -158,7 +161,7 @@ function PointCloudView({ droneId, points, tr }: { droneId: string; points: Clou
   );
 }
 
-function LiveWorldDemoPanel({ host }: { host: InlineHostApi }) {
+function WorldModelDemoPanel({ host, tr }: { host: InlineHostApi; tr: Translate }) {
   const deviceId = host.node.deviceId;
   const droneId = deviceId ? nodeIdForDevice(deviceId) : null;
   const points = useMemo(() => demoPointCloud(), []);
@@ -174,18 +177,13 @@ function LiveWorldDemoPanel({ host }: { host: InlineHostApi }) {
     };
   }, [droneId]);
 
-  const tr: Translate = (key, fallback) => {
-    const out = host.ctx.i18n.t(key);
-    return out === key ? fallback : out;
-  };
-
   return (
     <div
-      data-testid="live-world-demo"
+      data-testid="world-model-demo"
       style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0.875rem", color: "var(--alt-text-primary)", background: "var(--alt-bg-primary)", minHeight: "100%", boxSizing: "border-box" }}
     >
       <header style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <h2 style={{ fontSize: "0.9375rem", fontWeight: 600, margin: 0 }}>{tr("liveWorld.title", "Live World")}</h2>
+        <h2 style={{ fontSize: "0.9375rem", fontWeight: 600, margin: 0 }}>{tr("worldModel.title", "World Model")}</h2>
         <span style={pill}>{tr("liveWorld.demoBadge", "Demo data")}</span>
       </header>
       <p style={caption}>
@@ -219,6 +217,20 @@ function LiveWorldDemoPanel({ host }: { host: InlineHostApi }) {
   );
 }
 
+/** The page body for the mounted panel: the capture monitor on `live-world`,
+ * the live map on `world-model`. */
+function WorldEngineDemoPanel({ host }: { host: InlineHostApi }) {
+  const tr: Translate = (key, fallback) => {
+    const out = host.ctx.i18n.t(key);
+    return out === key ? fallback : out;
+  };
+  return host.plugin?.panelId === "live-world" ? (
+    <LiveWorldMonitorDemo tr={tr} />
+  ) : (
+    <WorldModelDemoPanel host={host} tr={tr} />
+  );
+}
+
 /** Render the demo viewer under the inline host's root; the returned disposer
  * unmounts it. The nested root carries its own message provider (the host's
  * provider does not reach a separate React root). */
@@ -233,7 +245,7 @@ export async function mountLiveWorldDemoPanel(root: HTMLElement, host: InlineHos
   const reactRoot = createRoot(container);
   reactRoot.render(
     <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
-      <LiveWorldDemoPanel host={host} />
+      <WorldEngineDemoPanel host={host} />
     </NextIntlClientProvider>,
   );
   return () =>

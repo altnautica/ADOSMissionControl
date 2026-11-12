@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { Trash2 } from "lucide-react";
@@ -19,6 +20,7 @@ interface CommunityCommentsProps {
 }
 
 export function CommunityComments({ targetType, targetId }: CommunityCommentsProps) {
+  const tq = useTranslations("community.communityComments");
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAdmin = useIsAdmin();
   const { data: comments, state } = useConvexSkipQueryState(communityApi.comments.list, {
@@ -70,18 +72,18 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
   if (state === "skipped") {
     return (
       <div className="py-4 text-sm text-text-tertiary">
-        Comments need the community backend, which is not available here.
+        {tq("commentsNeedTheCommunityBackend")}
       </div>
     );
   }
   if (state === "error") {
     return (
-      <div className="py-4 text-sm text-text-tertiary">Comments could not be loaded.</div>
+      <div className="py-4 text-sm text-text-tertiary">{tq("commentsCouldNotBeLoaded")}</div>
     );
   }
   if (comments === undefined) {
     return (
-      <div className="py-4 text-sm text-text-tertiary">Loading comments...</div>
+      <div className="py-4 text-sm text-text-tertiary">{tq("loadingComments")}</div>
     );
   }
 
@@ -92,7 +94,7 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
       </h3>
 
       {comments.length === 0 && (
-        <p className="text-sm text-text-tertiary py-2">No comments yet.</p>
+        <p className="text-sm text-text-tertiary py-2">{tq("noCommentsYet")}</p>
       )}
 
       <div className="space-y-2">
@@ -114,7 +116,7 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
                 <button
                   onClick={() => setPendingDelete(comment._id)}
                   className="text-text-tertiary hover:text-status-error transition-colors"
-                  title="Delete comment"
+                  title={tq("deleteComment")}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -134,7 +136,7 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
               type="text"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Add a comment..."
+              placeholder={tq("addAComment")}
               maxLength={2000}
               className="flex-1 bg-bg-secondary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
             />
@@ -143,7 +145,7 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
               disabled={!body.trim() || submitting}
               className="px-3 py-1.5 text-sm font-medium bg-accent-primary text-bg-primary rounded hover:bg-accent-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Post
+              {tq("post")}
             </button>
           </form>
         )}
@@ -156,9 +158,9 @@ export function CommunityComments({ targetType, targetId }: CommunityCommentsPro
 
       <ConfirmDialog
         open={pendingDelete !== null}
-        title="Delete comment"
-        message="This removes the comment for everyone. It cannot be undone."
-        confirmLabel="Delete"
+        title={tq("deleteComment")}
+        message={tq("thisRemovesTheCommentFor")}
+        confirmLabel={tq("delete")}
         variant="danger"
         onConfirm={() => void confirmDelete()}
         onCancel={() => setPendingDelete(null)}

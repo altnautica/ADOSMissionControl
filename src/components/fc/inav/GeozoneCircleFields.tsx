@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useGeozoneStore } from "@/stores/geozone-store";
 import type { INavGeozoneVertex } from "@/lib/protocol/types/inav";
 
@@ -20,6 +21,7 @@ interface GeozoneCircleFieldsProps {
 }
 
 export function GeozoneCircleFields({ zoneId, centre }: GeozoneCircleFieldsProps) {
+  const tr = useTranslations("fcPanels.geozoneCircleFields");
   const setCircle = useGeozoneStore((s) => s.setCircle);
   const lat = centre?.lat ?? 0;
   const lon = centre?.lon ?? 0;
@@ -29,7 +31,7 @@ export function GeozoneCircleFields({ zoneId, centre }: GeozoneCircleFieldsProps
     <div className="space-y-2">
       <div className="grid grid-cols-3 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] text-text-tertiary font-mono">Centre lat</span>
+          <span className="text-[10px] text-text-tertiary font-mono">{tr("centreLat")}</span>
           <input
             type="number"
             step="0.0000001"
@@ -39,7 +41,7 @@ export function GeozoneCircleFields({ zoneId, centre }: GeozoneCircleFieldsProps
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] text-text-tertiary font-mono">Centre lon</span>
+          <span className="text-[10px] text-text-tertiary font-mono">{tr("centreLon")}</span>
           <input
             type="number"
             step="0.0000001"
@@ -49,7 +51,7 @@ export function GeozoneCircleFields({ zoneId, centre }: GeozoneCircleFieldsProps
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] text-text-tertiary font-mono">Radius (m)</span>
+          <span className="text-[10px] text-text-tertiary font-mono">{tr("radiusM")}</span>
           <input
             type="number"
             step="1"
@@ -64,7 +66,7 @@ export function GeozoneCircleFields({ zoneId, centre }: GeozoneCircleFieldsProps
       </div>
       {radiusCm <= 0 && (
         <p className="text-[10px] font-mono text-status-warning">
-          Circular zones need a centre and a radius before upload.
+          {tr("circularZonesNeedACentre")}
         </p>
       )}
     </div>

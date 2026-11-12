@@ -17,7 +17,9 @@ import type { AgentClient } from "@/lib/agent/client";
 import { FcSourcePicker } from "../../shared/FcSourcePicker";
 import { MavlinkRoutingSection } from "../MavlinkRoutingSection";
 
-vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+// Keys echo back; no agent error code has a localized text, so a refusal
+// reads as the agent's own reason.
+vi.mock("next-intl", () => ({ useTranslations: () => Object.assign((k: string) => k, { has: () => false }) }));
 
 const toast = vi.fn();
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast }) }));
@@ -114,7 +116,7 @@ describe("FcSourcePicker armed override", () => {
     const write = attachRefusingClient();
     render(<FcSourcePicker nodeDeviceId={DEVICE} />);
     await act(async () => {
-      fireEvent.click(screen.getByText("Apply"));
+      fireEvent.click(screen.getByText("apply"));
     });
     expect(screen.getByText("message")).toBeTruthy();
     await act(async () => {
@@ -130,7 +132,7 @@ describe("FcSourcePicker armed override", () => {
     const write = attachRefusingClient();
     render(<FcSourcePicker nodeDeviceId={DEVICE} />);
     await act(async () => {
-      fireEvent.click(screen.getByText("Apply"));
+      fireEvent.click(screen.getByText("apply"));
     });
     await act(async () => {
       fireEvent.click(screen.getByText("cancel"));

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Cpu, Save, HardDrive, RotateCcw } from "lucide-react";
 import { Px4ActuatorTest } from "../px4/Px4ActuatorTest";
 import { PX4_OUTPUT_FUNCTION_OPTIONS } from "./px4-output-functions";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ const ACTUATOR_PARAMS: string[] = [
 // ── Component ────────────────────────────────────────────────
 
 export function ActuatorPanel() {
+  const tr = useTranslations("fcPanels.actuatorPanel");
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const t = useTranslations("fcToasts.frame");
@@ -103,8 +105,8 @@ export function ActuatorPanel() {
       <div className="max-w-3xl space-y-6">
         <PanelHeader
           icon={<Cpu size={16} />}
-          title="Actuator Configuration"
-          subtitle="PX4 Control Allocation — motor geometry and output mapping"
+          title={tr("actuatorConfiguration")}
+          subtitle={tr("px4ControlAllocationMotorGeometry")}
           loading={loading}
           loadProgress={loadProgress}
           hasLoaded={hasLoaded}
@@ -117,7 +119,7 @@ export function ActuatorPanel() {
           <>
             {/* Motor Geometry */}
             <section>
-              <h3 className="text-sm font-medium text-text-primary mb-3">Motor Geometry</h3>
+              <h3 className="text-sm font-medium text-text-primary mb-3">{tr("motorGeometry")}</h3>
               <div className="flex gap-6">
                 {/* SVG top-down view */}
                 <div className="w-48 h-48 bg-bg-tertiary rounded-lg border border-border-default flex items-center justify-center shrink-0">
@@ -147,7 +149,7 @@ export function ActuatorPanel() {
                 {/* Rotor position inputs */}
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2 mb-2">
-                    <label className="text-xs text-text-secondary">Rotor Count</label>
+                    <label className="text-xs text-text-secondary">{tr("rotorCount")}</label>
                     <Input
                       type="number" min={1} max={8} step={1}
                       value={String(rotorCount)}
@@ -156,7 +158,7 @@ export function ActuatorPanel() {
                     />
                   </div>
                   <div className="grid grid-cols-4 gap-1 text-[10px] text-text-tertiary font-medium">
-                    <span>Motor</span><span>X (fwd)</span><span>Y (right)</span><span>Z (down)</span>
+                    <span>{tr("motor")}</span><span>{tr("xFwd")}</span><span>{tr("yRight")}</span><span>{tr("zDown")}</span>
                   </div>
                   {rotorPositions.map((r) => (
                     <div key={r.idx} className="grid grid-cols-4 gap-1">
@@ -181,7 +183,7 @@ export function ActuatorPanel() {
 
             {/* PWM Output Functions */}
             <section>
-              <h3 className="text-sm font-medium text-text-primary mb-3">PWM Output Functions</h3>
+              <h3 className="text-sm font-medium text-text-primary mb-3">{tr("pwmOutputFunctions")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {Array.from({ length: MAX_PWM }, (_, i) => {
                   const param = `PWM_MAIN_FUNC${i + 1}`;
@@ -203,9 +205,9 @@ export function ActuatorPanel() {
 
             {/* Control Surface Count */}
             <section>
-              <h3 className="text-sm font-medium text-text-primary mb-3">Control Surfaces</h3>
+              <h3 className="text-sm font-medium text-text-primary mb-3">{tr("controlSurfaces")}</h3>
               <div className="flex items-center gap-3 p-3 rounded bg-bg-tertiary">
-                <label className="text-xs text-text-secondary">Surface Count</label>
+                <label className="text-xs text-text-secondary">{tr("surfaceCount")}</label>
                 <Input
                   type="number" min={0} max={8} step={1}
                   value={String(params.get("CA_SV_CS_COUNT") ?? 0)}
@@ -217,7 +219,7 @@ export function ActuatorPanel() {
 
             {/* Live actuator test */}
             <section>
-              <h3 className="text-sm font-medium text-text-primary mb-3">Actuator Test</h3>
+              <h3 className="text-sm font-medium text-text-primary mb-3">{tr("actuatorTest")}</h3>
               <Px4ActuatorTest connected={connected} />
             </section>
 
@@ -227,7 +229,7 @@ export function ActuatorPanel() {
                 <Save size={14} className="mr-1" /> {saving ? "Saving..." : "Save"}
               </Button>
               <Button size="sm" variant="secondary" disabled={!hasRamWrites} onClick={handleFlash}>
-                <HardDrive size={14} className="mr-1" /> Write to Flash
+                <HardDrive size={14} className="mr-1" /> <SaveBarLabel k="writeToFlash" />
               </Button>
             </div>
           </>

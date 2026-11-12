@@ -117,13 +117,13 @@ describe("demo pilot surface ops", () => {
 });
 
 describe("pinned FC failsafe", () => {
-  it("reaches the pilot frame and the chip's FAILSAFE line", () => {
+  it("reaches the pilot frame and the chip's failsafe line", () => {
     handle()!.pin({ fc_failsafe: true, failsafe_cause: "rc_or_failsafe" });
     vi.advanceTimersByTime(100);
     expect(pilot()).toMatchObject({ fcFailsafe: true, failsafeCause: "rc_or_failsafe" });
     const feed = useNavStreamStore.getState().byDrone[ID]!.pilot!;
     const facts = chipFacts(feed.data, 0, { homeDistM: null, modeDetail: null, completeAgeMs: null });
-    expect(chipSecondary(facts)[0]?.text).toBe("FAILSAFE");
+    expect(chipSecondary(facts)[0]?.text).toBe("Failsafe");
   });
 
   it("refuses Pause and Fly Here with failsafe while it is set, and leaves the FC flying", async () => {
@@ -142,11 +142,11 @@ describe("pinned FC failsafe", () => {
 });
 
 describe("pinned tuning step", () => {
-  it("shows TUNING with the step on the chip", () => {
+  it("shows Tuning with the step on the chip", () => {
     handle()!.pin({ owner: "tuning", setup_step: "rate_roll" });
     vi.advanceTimersByTime(100);
     expect(pilot()).toMatchObject({ owner: "tuning", setupStep: "rate_roll" });
-    expect(chip()).toMatchObject({ ruleId: "tuning", text: "TUNING · RATE_ROLL" });
+    expect(chip()).toMatchObject({ ruleId: "tuning", text: "Tuning · RATE_ROLL" });
   });
 });
 

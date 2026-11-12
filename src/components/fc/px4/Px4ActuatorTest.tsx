@@ -30,6 +30,7 @@ const OUTPUT_OPTIONS = [
 const isMotor = (fn: number) => fn >= 1 && fn <= 16;
 
 export function Px4ActuatorTest({ connected }: { connected: boolean }) {
+  const tr = useTranslations("fcPanels.px4ActuatorTest");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { toast } = useToast();
@@ -112,13 +113,13 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
           onChange={(e) => setPropsRemoved(e.target.checked)}
           className="w-4 h-4 rounded border-border-default bg-bg-tertiary accent-accent-primary"
         />
-        <span className="text-xs text-text-secondary">I confirm all propellers have been removed</span>
+        <span className="text-xs text-text-secondary">{tr("iConfirmAllPropellersHave")}</span>
       </label>
-      {isHardBlocked && <p className="text-[10px] text-status-error">Disarm to test actuators.</p>}
+      {isHardBlocked && <p className="text-[10px] text-status-error">{tr("disarmToTestActuators")}</p>}
 
       <div className="flex items-end gap-3 flex-wrap">
         <div className="w-32">
-          <Select label="Output" options={OUTPUT_OPTIONS} value={fn} onChange={selectFn} disabled={disabled} searchable />
+          <Select label={tr("output")} options={OUTPUT_OPTIONS} value={fn} onChange={selectFn} disabled={disabled} searchable />
         </div>
         <div className="flex-1 min-w-[12rem]">
           <div className="flex justify-between text-[10px] text-text-secondary mb-1">
@@ -146,7 +147,7 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
           className="border-status-error text-status-error"
           onClick={stop}
         >
-          Stop
+          {tr("stop")}
         </Button>
       </div>
     </div>

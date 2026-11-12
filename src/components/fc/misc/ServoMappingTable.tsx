@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Select, type SelectOptionGroup } from "@/components/ui/select";
 import { SERVO_FUNCTION_GROUPS } from "@/lib/servo-functions";
@@ -45,6 +46,7 @@ export function ServoMappingTable({
   liveServos,
   setLocalValue,
 }: ServoMappingTableProps) {
+  const tl = useTranslations("fcPanels.servoMappingTable");
   return (
     <Card padding={false}>
       <div className="overflow-x-auto">
@@ -52,12 +54,12 @@ export function ServoMappingTable({
           <thead>
             <tr className="border-b border-border-default text-text-secondary">
               <th className="px-3 py-2 text-left font-medium">#</th>
-              <th className="px-3 py-2 text-left font-medium">Function</th>
-              <th className="px-3 py-2 text-left font-medium">Min</th>
-              <th className="px-3 py-2 text-left font-medium">Max</th>
-              <th className="px-3 py-2 text-left font-medium">Trim</th>
-              <th className="px-3 py-2 text-left font-medium">Rev</th>
-              <th className="px-3 py-2 text-left font-medium">Current</th>
+              <th className="px-3 py-2 text-left font-medium">{tl("function")}</th>
+              <th className="px-3 py-2 text-left font-medium">{tl("min")}</th>
+              <th className="px-3 py-2 text-left font-medium">{tl("max")}</th>
+              <th className="px-3 py-2 text-left font-medium">{tl("trim")}</th>
+              <th className="px-3 py-2 text-left font-medium">{tl("rev")}</th>
+              <th className="px-3 py-2 text-left font-medium">{tl("current")}</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +106,7 @@ export function ServoMappingTable({
                         </span>
                       )}
                       {isTimerConflict && (
-                        <span className="text-[7px] font-sans text-status-error bg-status-error/10 px-0.5 py-px" title="Disabled by timer group conflict">
+                        <span className="text-[7px] font-sans text-status-error bg-status-error/10 px-0.5 py-px" title={tl("disabledByTimerGroupConflict")}>
                           CONFLICT
                         </span>
                       )}

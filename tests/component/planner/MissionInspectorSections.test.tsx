@@ -94,10 +94,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("MissionInspector", () => {
-  it("orders the sections Vehicle, Home & launch, Defaults, then Plan elements", () => {
+  it("orders the sections Drone, Home & launch, Defaults, then Plan elements", () => {
     renderWithIntl(<MissionInspector p={makePlanner()} showGeofence showRally />);
-    const titles = screen.getAllByText(/^(Vehicle|Home & launch|Defaults|Plan elements)$/).map((n) => n.textContent);
-    expect(titles).toEqual(["Vehicle", "Home & launch", "Defaults", "Plan elements"]);
+    const titles = screen.getAllByText(/^(Drone|Home & launch|Defaults|Plan elements)$/).map((n) => n.textContent);
+    expect(titles).toEqual(["Drone", "Home & launch", "Defaults", "Plan elements"]);
   });
 });
 
@@ -152,15 +152,15 @@ describe("HomeLaunchSection", () => {
 
     push(10);
     const { rerender } = renderWithIntl(<HomeLaunchSection />);
-    expect(screen.queryByRole("button", { name: "Use vehicle home" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use drone home" })).toBeNull();
 
     push(100_000);
     rerender(<HomeLaunchSection />);
-    expect(screen.queryByRole("button", { name: "Use vehicle home" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use drone home" })).toBeNull();
 
     push(500);
     rerender(<HomeLaunchSection />);
-    fireEvent.click(screen.getByRole("button", { name: "Use vehicle home" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use drone home" }));
     const home = useMissionStore.getState().plannedHome!;
     expect(home.lat).toBeCloseTo(HOME.lat + 500 / M_PER_DEG_LAT, 7);
     expect(home.groundAmsl).toBe(400);

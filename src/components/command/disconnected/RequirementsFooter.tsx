@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle, ArrowUpRight, Cpu } from "lucide-react";
 
 export function RequirementsFooter() {
+  const tq = useTranslations("command.requirementsFooter");
   const t = useTranslations("disconnectedPage");
 
   return (
@@ -37,9 +38,9 @@ export function RequirementsFooter() {
             Python 3.11+
           </span>
           <span className="text-border-default">|</span>
-          <span>Linux (Raspberry Pi OS recommended)</span>
+          <span>{tq("linuxRaspberryPiOSRecommended")}</span>
           <span className="text-border-default">|</span>
-          <span>ArduPilot or PX4 flight controller</span>
+          <span>{tq("ardupilotOrPX4FlightController")}</span>
         </div>
       </div>
 

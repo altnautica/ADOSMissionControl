@@ -6,6 +6,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { set as idbSet } from "idb-keyval";
 import { Upload, Check, AlertCircle, X } from "lucide-react";
@@ -43,6 +44,7 @@ export function MediaUploader({ open, onClose }: MediaUploaderProps) {
 }
 
 function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
+  const tq = useTranslations("history.mediaUploader");
   const [parsed, setParsed] = useState<ParsedMedia[]>([]);
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
@@ -169,7 +171,7 @@ function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
       <div className="w-[600px] max-w-[95vw] max-h-[80vh] overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">
-            Import Media
+            {tq("importMedia")}
           </h3>
           <button onClick={onClose} className="text-text-tertiary hover:text-text-primary p-1">
             <X size={14} />
@@ -197,10 +199,10 @@ function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
               >
                 <Upload size={24} className="mx-auto text-text-tertiary mb-2" />
                 <p className="text-xs text-text-secondary">
-                  Drop photos or videos here, or click to browse
+                  {tq("dropPhotosOrVideosHere")}
                 </p>
                 <p className="text-[10px] text-text-tertiary mt-1">
-                  JPEG, PNG, WebP, HEIC, MP4, MOV, WebM
+                  {tq("jpegPNGWebPHEICMP4")}
                 </p>
               </div>
 
@@ -228,7 +230,7 @@ function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
                         ) : p.matchedFlightId ? (
                           <span className="text-status-success shrink-0">→ {p.matchedFlightName}</span>
                         ) : (
-                          <span className="text-status-warning shrink-0">No match</span>
+                          <span className="text-status-warning shrink-0">{tq("noMatch")}</span>
                         )}
                       </div>
                     ))}
@@ -256,7 +258,7 @@ function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
                 {importedCount} files imported successfully.
               </p>
               <Button variant="secondary" size="sm" onClick={onClose} className="mt-3">
-                Close
+                {tq("close")}
               </Button>
             </div>
           )}

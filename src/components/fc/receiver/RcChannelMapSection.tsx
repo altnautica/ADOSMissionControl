@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Save, HardDrive } from "lucide-react";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const RCMAP_PARAMS = ["RCMAP_ROLL", "RCMAP_PITCH", "RCMAP_THROTTLE", "RCMAP_YAW"];
 
@@ -24,6 +25,7 @@ const RCMAP_LABELS: Record<string, string> = {
 };
 
 export function RcChannelMapSection() {
+  const tr = useTranslations("fcPanels.rcChannelMapSection");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
 
   const {
@@ -31,7 +33,7 @@ export function RcChannelMapSection() {
     hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: RCMAP_PARAMS, panelId: "rc-channel-map", autoLoad: false });
   const t = useTranslations("fcToasts.receiver");
-  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+  const { saving, save: handleSave, flashing, flash: handleFlash } = usePanelCommit(
     { saveAllToRam, commitToFlash, revertAll },
     { saved: t("rcMappingSaved"), flash: { successMessage: t("writtenToFlash") } },
   );
@@ -44,14 +46,14 @@ export function RcChannelMapSection() {
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-sm font-medium text-text-primary">RC Channel Assignment</h3>
+          <h3 className="text-sm font-medium text-text-primary">{tr("rcChannelAssignment")}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             Map which RC channel controls each axis. Default: CH1=Roll, CH2=Pitch, CH3=Throttle, CH4=Yaw.
           </p>
         </div>
         {!hasLoaded && connected && (
           <Button variant="secondary" size="sm" onClick={refresh} loading={loading}>
-            Read
+            {tr("read")}
           </Button>
         )}
       </div>
@@ -82,11 +84,11 @@ export function RcChannelMapSection() {
               disabled={!hasDirty || saving}
               loading={saving}
             >
-              Save
+              {tr("save")}
             </Button>
             {hasRamWrites && (
-              <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} onClick={handleFlash}>
-                Write to Flash
+              <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} loading={flashing} onClick={handleFlash}>
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
           </div>

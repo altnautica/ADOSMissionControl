@@ -10,6 +10,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
+// The hook's operator messages come from the real English catalogue.
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl")>();
+  const messages = (await import("../../locales/en.json")).default;
+  const cache = new Map<string, unknown>();
+  return {
+    ...actual,
+    useTranslations: (namespace?: string) => {
+      const key = namespace ?? "";
+      if (!cache.has(key)) {
+        cache.set(key, actual.createTranslator({ locale: "en", messages, namespace: namespace as never }));
+      }
+      return cache.get(key);
+    },
+  };
+});
+
 vi.hoisted(() => {
   const map = new Map<string, string>();
   const storage = {
@@ -65,5 +82,41 @@ describe("deep-link pairing", () => {
     act(() => result.current.retryDeepLinkClaim());
     await waitFor(() => expect(claimCode).toHaveBeenCalledTimes(2));
     expect(claimCode).toHaveBeenLastCalledWith({ code: "ABC123" });
+  });
+
+  it("reads claim outcomes as localized sentences, never the raw exception", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const flow = (claimCode: unknown): Flow => ({
+      open: true,
+      requiresSignIn: false,
+      claimCode: claimCode as Flow["claimCode"],
+      preGenerate: null,
+      watchClaim: null,
+      initialCode: "ABC123",
+      autoGenerate: false,
+    });
+
+    const limited = renderHook(() =>
+      usePairingFlow(flow(async () => ({ error: "rate_limited", retryAfterMs: 4_200 }))),
+    );
+    await waitFor(() =>
+      expect(limited.result.current.errorMessage).toBe(
+        "Too many pair-code attempts. Try again in 5 s.",
+      ),
+    );
+
+    const thrown = renderHook(() =>
+      usePairingFlow(
+        flow(async () => {
+          throw new Error("[CONVEX M(cmdPairing:claimPairingCode)] Server Error");
+        }),
+      ),
+    );
+    await waitFor(() => expect(thrown.result.current.state).toBe("error"));
+    expect(thrown.result.current.errorMessage).not.toContain("CONVEX");
+    expect(thrown.result.current.errorMessage).toBe(
+      "Pairing did not go through. Check your connection and try again.",
+    );
+    errorSpy.mockRestore();
   });
 });

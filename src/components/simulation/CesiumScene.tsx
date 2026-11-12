@@ -38,6 +38,7 @@ import {
   type TileProviderError,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { keepRenderingUntilGraphicsReady } from "./render-until-graphics-ready";
 
 interface CesiumSceneProps {
   onReady?: (viewer: CesiumViewer) => void;
@@ -151,6 +152,7 @@ export default function CesiumScene({
     if (!containerRef.current) return;
 
     let viewer: InstanceType<typeof Viewer> | null = null;
+    let stopSettleRender: (() => void) | null = null;
 
     try {
       viewer = new Viewer(containerRef.current, {
@@ -238,6 +240,10 @@ export default function CesiumScene({
       camCtrl.inertiaTranslate = 0.7;
       camCtrl.inertiaZoom = 0.7;
 
+      // Labels (waypoint numbers) and billboards draw a frame or more after
+      // they are added; keep painting until they can.
+      stopSettleRender = keepRenderingUntilGraphicsReady(viewer);
+
       viewerRef.current = viewer;
       onReadyRef.current?.(viewer);
     } catch (err) {
@@ -245,6 +251,7 @@ export default function CesiumScene({
     }
 
     return () => {
+      stopSettleRender?.();
       if (viewer && !viewer.isDestroyed()) viewer.destroy();
       viewerRef.current = null;
       tilesetRef.current = null;

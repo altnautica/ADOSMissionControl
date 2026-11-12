@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Map, Plug, Home } from "lucide-react";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 
 export function QuickActionsBar() {
+  const tk = useTranslations("dashboard.quickActionsBar");
   const router = useRouter();
   const [rthOpen, setRthOpen] = useState(false);
   const openDialog = useConnectDialogStore((s) => s.openDialog);
@@ -21,7 +23,7 @@ export function QuickActionsBar() {
           icon={<Map size={14} />}
           onClick={() => router.push("/plan")}
         >
-          New Mission
+          {tk("newMission")}
         </Button>
         <Button
           variant="secondary"
@@ -29,7 +31,7 @@ export function QuickActionsBar() {
           icon={<Plug size={14} />}
           onClick={openDialog}
         >
-          Connect Drone
+          {tk("connectDrone")}
         </Button>
         <Button
           variant="danger"
@@ -37,7 +39,7 @@ export function QuickActionsBar() {
           icon={<Home size={14} />}
           onClick={() => setRthOpen(true)}
         >
-          RTH All
+          {tk("rthAll")}
         </Button>
       </div>
 

@@ -16,6 +16,7 @@ function nav(over: Partial<NavState>): NavState {
     obstacleRateHz: null,
     minObstacleM: null,
     gpsFix: null,
+    poseAgeMs: null,
     ...over,
   };
 }

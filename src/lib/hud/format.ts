@@ -3,6 +3,16 @@
 
 const NO_DATA = "—";
 
+/** A time to go in seconds as the chip's ETA: "ETA 2:05", "ETA 45 s"; empty
+ *  when unknown. */
+export function fmtEta(s: number | null): string {
+  if (s === null || !Number.isFinite(s)) return "";
+  // Round the total first, so 119.6 s reads 2:00, never 1:60.
+  const total = Math.round(s);
+  const m = Math.floor(total / 60);
+  return m > 0 ? `ETA ${m}:${String(total % 60).padStart(2, "0")}` : `ETA ${total} s`;
+}
+
 /** One decimal with its sign, e.g. a climb rate: "1.2", "-0.4". A value that
  *  rounds to zero reads "0.0", never "-0.0". */
 export function fmtSigned1(v: number | null | undefined): string {

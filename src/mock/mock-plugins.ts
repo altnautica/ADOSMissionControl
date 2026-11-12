@@ -20,10 +20,6 @@ import type {
   DronePluginContribution,
   InstallDetailRow,
 } from "@/hooks/use-drone-plugin-contributions";
-import {
-  DEMO_INLINE_FIXTURE_PANEL_ID,
-  DEMO_INLINE_FIXTURE_PLUGIN_ID,
-} from "./inline-fixture-plugin";
 import { DEMO_CAPTURE_INSTALL_ROW } from "./mock-visor-surfaces";
 import type { DroneTargetActionContribution } from "@/lib/skills/target-actions";
 import type {
@@ -33,6 +29,16 @@ import type {
 } from "@/lib/plugins/types";
 import { slotToCapability } from "@/lib/plugins/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
+import type { ParsedManifest } from "@/components/plugins/transports/manifest-types";
+import {
+  FOLLOW_ME,
+  GIMBAL,
+  SIYI_POD,
+  THERMAL,
+  VISION_NAV,
+  demoReleaseManifest,
+  type DemoExtensionRelease,
+} from "./extension-manifests";
 
 /**
  * Demo install row. Keeps the same shape as Convex
@@ -64,82 +70,38 @@ export interface DemoPluginInstall {
   failureReason?: string;
 }
 
-/** A small parameter set so the native panel renders above the demo iframe
- * (a range, an enum, a number, and a boolean — one of each common widget). */
-const FOLLOW_DEMO_PARAMETERS: PluginParameter[] = [
-  {
-    key: "follow_distance_m",
-    schema: { type: "number", minimum: 2, maximum: 30, step: 0.5, default: 8 },
-    binding: "plugin.config",
-    ui: {
-      widget: "range",
-      label: "Follow distance (m)",
-      group: "Follow",
-      help: "Standoff distance the drone holds behind the target.",
-      order: 10,
-    },
-  },
-  {
-    key: "follow_mode",
-    schema: { type: "string", enum: ["chase", "orbit", "lead"], default: "chase" },
-    binding: "plugin.config",
-    ui: { widget: "enum", label: "Mode", group: "Follow", order: 20 },
-  },
-  {
-    key: "max_speed_ms",
-    schema: { type: "number", minimum: 1, maximum: 20, default: 6 },
-    binding: "plugin.config",
-    ui: { label: "Max speed (m/s)", group: "Limits", order: 30 },
-  },
-  {
-    key: "lost_target_rth",
-    schema: { type: "boolean", default: true },
-    binding: "plugin.config",
-    ui: {
-      label: "Return home on lost target",
-      group: "Limits",
-      order: 40,
-    },
-  },
-];
+/** A first-party install of a published release: its id, name, version, tab
+ * and parameters come from the release manifest, never a hand-copied list. */
+function releaseInstall(
+  release: DemoExtensionRelease,
+  install: Pick<DemoPluginInstall, "installId" | "agentId" | "status" | "failureReason">,
+): DemoPluginInstall {
+  const manifest = demoReleaseManifest(release);
+  const tab = manifest.contributesTabs?.[0];
+  return {
+    ...install,
+    pluginId: manifest.pluginId,
+    name: manifest.name,
+    version: manifest.version,
+    signed: true,
+    firstParty: true,
+    hasDroneDetailTab: tab !== undefined,
+    droneDetailTabTitle: tab?.title,
+    droneDetailTabIcon: tab?.icon,
+    droneDetailTabOrder: tab?.order,
+    droneDetailTabPanelId: tab?.panelId,
+    droneDetailTabProfile: tab?.profile ? [...tab.profile] : undefined,
+    parameters: manifest.contributesParameters ? [...manifest.contributesParameters] : undefined,
+  };
+}
 
 const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
-  // ── Drone 1: enabled vision-nav + follow-me plugins + telemetry logger ──
-  // Vision-nav declares no parameters (its manifest has none); its tab body
-  // is the demo inline panel (`mock-vision-nav`). Follow-me carries the
-  // native parameter set.
-  {
-    installId: "demo-install-001",
-    agentId: "alpha-1",
-    pluginId: "com.altnautica.vision-nav",
-    name: "ADOS Vision Navigation",
-    version: "0.5.0",
-    status: "running",
-    signed: true,
-    firstParty: true,
-    hasDroneDetailTab: true,
-    droneDetailTabTitle: "Vision Nav",
-    droneDetailTabIcon: "compass",
-    droneDetailTabOrder: 60,
-    droneDetailTabPanelId: "vision-nav-tab",
-    droneDetailTabProfile: ["drone"],
-  },
-  {
-    installId: "demo-install-006",
-    agentId: "alpha-1",
-    pluginId: "com.altnautica.follow-me",
-    name: "ADOS Follow-Me",
-    version: "0.2.9",
-    status: "running",
-    signed: true,
-    firstParty: true,
-    hasDroneDetailTab: true,
-    droneDetailTabTitle: "Follow-Me",
-    droneDetailTabIcon: "crosshair",
-    droneDetailTabOrder: 70,
-    droneDetailTabPanelId: "follow-me-tab",
-    parameters: FOLLOW_DEMO_PARAMETERS,
-  },
+  // ── Drone 1: vision-nav, follow-me and the optical pod running ──
+  // Vision-nav declares no parameters; its tab body is the demo inline panel
+  // (`mock-vision-nav`). The others render their declared parameters.
+  releaseInstall(VISION_NAV, { installId: "demo-install-001", agentId: "alpha-1", status: "running" }),
+  releaseInstall(FOLLOW_ME, { installId: "demo-install-006", agentId: "alpha-1", status: "running" }),
+  releaseInstall(SIYI_POD, { installId: "demo-install-008", agentId: "alpha-1", status: "running" }),
   {
     installId: "demo-install-002",
     agentId: "alpha-1",
@@ -151,22 +113,8 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
     firstParty: true,
     hasDroneDetailTab: false,
   },
-  // ── Drone 2: thermal cam enabled, geofence disabled, SIYI pod failed ──
-  {
-    installId: "demo-install-003",
-    agentId: "charlie-3",
-    pluginId: "com.flir.thermal",
-    name: "FLIR Lepton Thermal Camera",
-    version: "1.0.0",
-    status: "running",
-    signed: true,
-    firstParty: false,
-    hasDroneDetailTab: true,
-    droneDetailTabTitle: "Thermal Camera",
-    droneDetailTabIcon: "thermometer",
-    droneDetailTabOrder: 70,
-    droneDetailTabPanelId: "thermal-tab",
-  },
+  // ── Drone 2: thermal camera running, geofence disabled, optical pod failed ──
+  releaseInstall(THERMAL, { installId: "demo-install-003", agentId: "charlie-3", status: "running" }),
   {
     installId: "demo-install-004",
     agentId: "charlie-3",
@@ -181,34 +129,14 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   // A plugin the host stopped because its installed files no longer match
   // the digests recorded at install. The agent reports it `failed` with the
   // reason; the card renders the error state and the reason line.
-  {
+  releaseInstall(SIYI_POD, {
     installId: "demo-install-007",
     agentId: "charlie-3",
-    pluginId: "com.altnautica.siyi-pod",
-    name: "SIYI Optical Pod",
-    version: "0.5.1",
     status: "crashed",
-    signed: true,
-    firstParty: true,
-    hasDroneDetailTab: false,
     failureReason: "tampered: agent/src/altnautica_siyi_pod/pod.py digest mismatch",
-  },
-  // ── Drone 3: gimbal v2 enabled ──
-  {
-    installId: "demo-install-005",
-    agentId: "delta-4",
-    pluginId: "com.altnautica.gimbal-v2",
-    name: "MAVLink Gimbal v2 Controller",
-    version: "0.5.1",
-    status: "running",
-    signed: true,
-    firstParty: true,
-    hasDroneDetailTab: true,
-    droneDetailTabTitle: "Gimbal",
-    droneDetailTabIcon: "video",
-    droneDetailTabOrder: 50,
-    droneDetailTabPanelId: "gimbal-tab",
-  },
+  }),
+  // ── Drone 3: gimbal running ──
+  releaseInstall(GIMBAL, { installId: "demo-install-005", agentId: "delta-4", status: "running" }),
 ];
 
 /**
@@ -266,29 +194,44 @@ export function getDemoDronePluginContributions(
     }));
 }
 
-/** A demo plugin target-action so the cockpit target popup shows a cross-plugin
- * action ("Follow this target") alongside the built-in Designate under
- * `npm run demo`, with no agent. Offered on every demo drone. */
-const DEMO_TARGET_ACTIONS: DroneTargetActionContribution[] = [
-  {
-    installId: "demo-follow-me",
-    pluginId: "com.altnautica.follow-me",
-    localId: "follow",
-    label: "Follow this target",
-    icon: "Crosshair",
-    order: 20,
-    appliesToClass: "person",
-    designate: true,
-    configKey: "active",
-    configValue: true,
-    defaultKey: "f",
-  },
-];
+/** The release each first-party demo install mirrors, by extension id. */
+export const DEMO_RELEASES: ReadonlyMap<string, DemoExtensionRelease> = new Map(
+  [VISION_NAV, FOLLOW_ME, SIYI_POD, THERMAL, GIMBAL].map((r) => [demoReleaseManifest(r).pluginId, r]),
+);
 
+/** Running installs on a drone paired with the manifest of their release. */
+export function getDemoRunningReleaseInstalls(
+  agentId: string,
+): { install: DemoPluginInstall; manifest: ParsedManifest }[] {
+  return getDemoDronePluginInstalls(agentId).flatMap((install) => {
+    const release = DEMO_RELEASES.get(install.pluginId);
+    return install.status === "running" && release
+      ? [{ install, manifest: demoReleaseManifest(release) }]
+      : [];
+  });
+}
+
+/** The cockpit target-popup actions the drone's running installs declare
+ * (follow-me's Follow / Stop following, the gimbal's Aim), served per drone
+ * with no agent. */
 export function getDemoDroneTargetActions(
   agentId: string,
 ): DroneTargetActionContribution[] {
-  return agentId ? DEMO_TARGET_ACTIONS.map((c) => ({ ...c })) : [];
+  return getDemoRunningReleaseInstalls(agentId).flatMap(({ install, manifest }) =>
+    (manifest.contributesTargetActions ?? []).map((a) => ({
+      installId: install.installId,
+      pluginId: install.pluginId,
+      localId: a.id,
+      label: a.label ?? a.id,
+      icon: a.icon,
+      order: a.order,
+      appliesToClass: a.appliesToClass,
+      designate: a.designate,
+      configKey: a.configKey,
+      configValue: a.configValue,
+      defaultKey: a.defaultKey,
+    })),
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -332,13 +275,23 @@ export interface DemoFleetSlotContribution {
  * the page clear so the map shows through, as a real overlay plugin must; it
  * declares the same colour scheme as the plugin frame shell so the browser
  * does not paint the frame opaque. */
-function demoBundle(label: string, accent = "#38bdf8", transparent = false): string {
+export function demoBundleHtml(label: string, accent = "#38bdf8", transparent = false): string {
   const background = transparent ? "transparent" : "#0A0A0A";
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark light"><style>
+  // A map overlay keeps its card in the bottom-left corner, clear of the
+  // planner's tool rail (top-left), hint (top-centre) and coordinate widget
+  // (bottom-right), so it never covers the plan in the middle of the map.
+  const placement = transparent
+    ? "align-items:flex-end;justify-content:flex-start;padding:0 0 12px 12px;box-sizing:border-box"
+    : "align-items:center;justify-content:center";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark light"><style>
 html,body{margin:0;height:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-body{display:flex;align-items:center;justify-content:center;background:${background};color:#EDEDED}
+body{display:flex;${placement};background:${background};color:#EDEDED}
 .card{border:1px solid ${accent}40;background:${accent}14;color:${accent};padding:8px 12px;font-size:12px;letter-spacing:.04em}
 </style></head><body><div class="card">${label}</div></body></html>`;
+}
+
+function demoBundle(label: string, accent = "#38bdf8", transparent = false): string {
+  const html = demoBundleHtml(label, accent, transparent);
   if (
     typeof URL !== "undefined" &&
     typeof URL.createObjectURL === "function" &&
@@ -433,28 +386,11 @@ export function getDemoFleetPluginContributions(): DemoFleetSlotContribution[] {
 }
 
 /**
- * Demo install rows carrying node pages: the inline fixture module's one
- * Agent-sidebar page in the Software section, offered on every demo drone,
- * and the capture extension's Visor surfaces. Read by `useNodePluginPages`
- * in demo mode; the demo contribution producer mounts the bodies behind them.
+ * Demo install rows carrying node pages: the world-engine extension's Agent
+ * pages and node surfaces, as its manifest declares them. Read by
+ * `useNodePluginPages` in demo mode; the demo contribution producer mounts the
+ * bodies behind them.
  */
 export function getDemoNodePageInstallRows(): InstallDetailRow[] {
-  return [
-    {
-      installId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-      pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-      version: "1.0.0",
-      name: "Inline Fixture",
-      gcsContributes: [
-        {
-          slot: "node.agent.page",
-          panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
-          title: "Inline Fixture",
-          section: "software",
-          profile: ["drone"],
-        },
-      ],
-    },
-    DEMO_CAPTURE_INSTALL_ROW,
-  ];
+  return [DEMO_CAPTURE_INSTALL_ROW];
 }

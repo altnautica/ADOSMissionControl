@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Satellite, Save, RotateCcw, HardDrive } from "lucide-react";
+import { Satellite } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -16,6 +16,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 interface Field { param: string; label: string; kind: "enum" | "number"; min?: number; max?: number; step?: number }
 
@@ -38,6 +40,7 @@ const SECONDARY: Field[] = [
 const ALL_FIELDS = [...PRIMARY, ...SECONDARY];
 
 export function Px4GpsPanel() {
+  const tr = useTranslations("fcPanels.px4GpsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -54,7 +57,7 @@ export function Px4GpsPanel() {
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: Field) => {
     const value = params.get(f.param) ?? 0;
@@ -78,12 +81,12 @@ export function Px4GpsPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="GPS Configuration" subtitle="PX4 GNSS protocol, systems, and u-blox setup"
+        <PanelHeader title={tr("gpsConfiguration")} subtitle={tr("px4GNSSProtocolSystemsAnd")}
           icon={<Satellite size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
         <div className="border border-border-default bg-bg-secondary p-4">
-          <div className="flex items-center gap-2 mb-3"><Satellite size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">Primary GPS</h2></div>
+          <div className="flex items-center gap-2 mb-3"><Satellite size={14} className="text-accent-primary" /><h2 className="text-sm font-medium text-text-primary">{tr("primaryGPS")}</h2></div>
           <p className="text-[10px] text-text-tertiary mb-3">GNSS bitmask: GPS=1, SBAS=2, Galileo=4, BeiDou=8, GLONASS=16, NAVIC=32 (0 = receiver default). Most GPS params need a reboot.</p>
           <div className="space-y-3">{PRIMARY.map(renderField)}</div>
         </div>
@@ -91,19 +94,24 @@ export function Px4GpsPanel() {
         <div className="border border-border-default bg-bg-secondary">
           <button onClick={() => setShowSecondary((v) => !v)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
             <Satellite size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Secondary GPS</h2>
+            <h2 className="text-sm font-medium text-text-primary">{tr("secondaryGPS")}</h2>
             <span className="text-[10px] text-text-tertiary ml-auto">{showSecondary ? "▾" : "▸"}</span>
           </button>
           {showSecondary && <div className="px-4 pb-4 space-y-3">{SECONDARY.map(renderField)}</div>}
         </div>
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

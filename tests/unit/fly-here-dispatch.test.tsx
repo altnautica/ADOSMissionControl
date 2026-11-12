@@ -21,6 +21,7 @@ import { GuidedConfirmDialog } from "@/components/flight/GuidedConfirmDialog";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useGuidedStore } from "@/stores/guided-store";
+import { useInputStore } from "@/stores/input-store";
 import type { CommandResult, DroneProtocol } from "@/lib/protocol/types";
 import type { SkillContext } from "@/lib/skills/types";
 
@@ -118,10 +119,10 @@ describe("Fly Here dialog", () => {
   it("never sends a cleared altitude box", async () => {
     vi.useFakeTimers();
     open();
-    fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText(/altitude/i), { target: { value: "" } });
     const hold = screen.getByRole("button", { name: /Hold to fly here/ });
-    expect(hold).toHaveProperty("disabled", true);
-    fireEvent.mouseDown(hold);
+    expect(hold.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.pointerDown(hold);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
     });
@@ -131,8 +132,8 @@ describe("Fly Here dialog", () => {
   it("dispatches the held confirmation with the typed altitude", async () => {
     vi.useFakeTimers();
     open();
-    fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "25" } });
-    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to fly here/ }));
+    fireEvent.change(screen.getByLabelText(/altitude/i), { target: { value: "25" } });
+    fireEvent.pointerDown(screen.getByRole("button", { name: /Hold to fly here/ }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
     });
@@ -142,8 +143,8 @@ describe("Fly Here dialog", () => {
   it("confirms after the spec's Fly Here hold, not before", async () => {
     vi.useFakeTimers();
     open();
-    fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "25" } });
-    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to fly here/ }));
+    fireEvent.change(screen.getByLabelText(/altitude/i), { target: { value: "25" } });
+    fireEvent.pointerDown(screen.getByRole("button", { name: /Hold to fly here/ }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(SPEC_HOLD_MS.fly_here - 200);
     });
@@ -152,6 +153,47 @@ describe("Fly Here dialog", () => {
       await vi.advanceTimersByTimeAsync(400);
     });
     expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25, { changeMode: false });
+  });
+
+  it("confirms on a held Enter as well as the pointer", async () => {
+    vi.useFakeTimers();
+    open();
+    fireEvent.change(screen.getByLabelText(/altitude/i), { target: { value: "25" } });
+    fireEvent.keyDown(window, { key: "Enter" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SPEC_HOLD_MS.fly_here + 50);
+    });
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25, { changeMode: false });
+  });
+
+  it("confirms on the held gamepad confirm button", async () => {
+    vi.useFakeTimers();
+    open();
+    fireEvent.change(screen.getByLabelText(/altitude/i), { target: { value: "25" } });
+    await act(async () => {
+      const down = [...useInputStore.getState().buttons];
+      down[0] = true;
+      useInputStore.setState({ buttons: down });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SPEC_HOLD_MS.fly_here + 50);
+    });
+    useInputStore.setState({ buttons: [] });
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25, { changeMode: false });
+  });
+
+  it("sits below the top bar beside the left column on the flight screen", () => {
+    const root = document.createElement("div");
+    root.setAttribute("data-testid", "flight-screen");
+    document.body.appendChild(root);
+    try {
+      open();
+      const dialog = screen.getByTestId("fly-here-dialog");
+      expect(dialog.style.top).toContain("var(--fs-bar-b");
+      expect(dialog.className).not.toContain("bottom-4");
+    } finally {
+      root.remove();
+    }
   });
 
   it("warns that the hold takes over a running mission or skill", () => {

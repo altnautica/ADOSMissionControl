@@ -90,10 +90,10 @@ describe("published buttons array", () => {
     expect(captured[3]).toBe(true);
   });
 
-  it("publishes all sixteen button slots", () => {
+  it("publishes every standard button slot, PS and touchpad included", () => {
     release = acquireGamepadPolling();
     step();
-    expect(useInputStore.getState().buttons).toHaveLength(16);
+    expect(useInputStore.getState().buttons).toHaveLength(18);
   });
 
   it("keeps the published array when no button changed, and notifies once per frame", () => {

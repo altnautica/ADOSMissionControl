@@ -23,6 +23,7 @@
 
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { Cpu, Plug, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,10 @@ import { InstallAgentStrip } from "@/components/command/disconnected/InstallAgen
  * package.json. */
 const DEMO_URL = "/?demo=true";
 
+/** The platform never changes while the page is open. */
+const noSubscribe = () => () => {};
+const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
 export function EmptyFleetState() {
   const t = useTranslations("emptyState");
   const tLink = useTranslations("linkUp");
@@ -48,6 +53,9 @@ export function EmptyFleetState() {
   // operator's network are visible before they are asked to type anything.
   useDiscoveredAgents();
   const discoveredAgents = usePairingStore((s) => s.discoveredAgents);
+  // The palette chord reads ⌘K on macOS and Ctrl+K elsewhere (and on the
+  // server render, which cannot know).
+  const isMac = useSyncExternalStore(noSubscribe, readIsMac, () => false);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -124,7 +132,7 @@ export function EmptyFleetState() {
 
         <p className="text-center text-[10px] text-text-tertiary">
           <kbd className="border border-border-default px-1 py-0.5 font-mono">
-            ⌘K
+            {isMac ? "⌘K" : "Ctrl+K"}
           </kbd>{" "}
           {t("commandPaletteHint")}
         </p>

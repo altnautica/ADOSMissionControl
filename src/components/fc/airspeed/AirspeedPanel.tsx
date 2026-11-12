@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Wind } from "lucide-react";
 import { ParamFieldsPanel, type ParamSection } from "../shared/ParamFieldsPanel";
 
@@ -26,11 +27,12 @@ const SECTIONS: ParamSection[] = [
 ];
 
 export function AirspeedPanel() {
+  const tr = useTranslations("fcPanels.airspeedPanel");
   return (
     <ParamFieldsPanel
       panelId="airspeed"
-      title="Airspeed"
-      subtitle="Airspeed sensor calibration and the fixed-wing speed envelope"
+      title={tr("airspeed")}
+      subtitle={tr("airspeedSensorCalibrationAndThe")}
       icon={<Wind size={16} />}
       sectionIcon={<Wind size={14} />}
       sections={SECTIONS}

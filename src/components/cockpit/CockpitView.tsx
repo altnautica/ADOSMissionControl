@@ -35,7 +35,7 @@
 
 import { useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { Plane } from "lucide-react";
 
 import { VideoCanvas } from "@/components/flight/VideoCanvas";
@@ -111,8 +111,6 @@ interface CockpitViewProps {
 }
 
 export function CockpitView({ droneId }: CockpitViewProps) {
-  const t = useTranslations("skillBindings");
-  const tFly = useTranslations("flyCockpit");
   const containerRef = useRef<HTMLDivElement>(null);
   // Shell modals (welcome, disclaimer, what's new) wait while this is up.
   useFlightScreenPresence();
@@ -227,7 +225,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
         {cockpitEnabled && editing && (
           <div className="pointer-events-none absolute inset-x-0 z-40 flex justify-center" style={{ top: "var(--fs-top-y)" }}>
             <span className="fs-panel pointer-events-auto px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-primary">
-              {t("editBanner")}
+              {specString("cockpit.skill_bar.edit_banner")}
             </span>
           </div>
         )}
@@ -244,8 +242,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
             !editing && <SkillPicker droneId={droneId} pilot={pilot} notify={notifyToast} />
           ) : (
             <div className="fs-panel fs-enable" data-testid="fs-enable-skills">
-              <h2 className="text-xs font-semibold">{tFly("enableTitle")}</h2>
-              <p className="mt-1 text-[11px] leading-snug">{tFly("enableBody")}</p>
+              <h2 className="text-xs font-semibold">{specString("cockpit.enable.title")}</h2>
+              <p className="mt-1 text-[11px] leading-snug">{specString("cockpit.enable.body")}</p>
               <Button
                 variant="primary"
                 size="sm"
@@ -253,7 +251,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
                 onClick={enableSkillLayer}
                 className="mt-2"
               >
-                {tFly("enableButton")}
+                {specString("cockpit.enable.button")}
               </Button>
             </div>
           )}

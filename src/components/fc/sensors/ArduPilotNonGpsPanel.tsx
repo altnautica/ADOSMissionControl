@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Compass, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { FcSection } from "@/components/fc/shared/FcSection";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 const SRC_SETS = [1, 2, 3] as const;
 const SRC_FIELDS = [
@@ -89,6 +91,7 @@ function MetaField({
 }
 
 export function ArduPilotNonGpsPanel() {
+  const tm = useTranslations("fcPanels.arduPilotNonGpsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("ap-nongps");
   const metadata = useParamMetadataMap();
@@ -104,7 +107,7 @@ export function ArduPilotNonGpsPanel() {
     loadProgress, hasLoaded, missingOptional,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } =
+  const { saving, save: handleSave, flashing, flash: handleFlash } =
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
@@ -129,8 +132,8 @@ export function ArduPilotNonGpsPanel() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl space-y-6">
           <PanelHeader
-            title="Non-GPS Positioning"
-            subtitle="EKF3 source sets and external nav / beacon backends"
+            title={tm("nonGPSPositioning")}
+            subtitle={tm("ekf3SourceSetsAndExternal")}
             icon={<Compass size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -171,7 +174,7 @@ export function ArduPilotNonGpsPanel() {
 
           {/* External nav */}
           {hasViso && (
-            <FcSection title="External Navigation (VISO)">
+            <FcSection title={tm("externalNavigationVISO")}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {field("VISO_TYPE", "Type")}
                 {field("VISO_DELAY_MS", "Delay")}
@@ -185,7 +188,7 @@ export function ArduPilotNonGpsPanel() {
 
           {/* Beacon */}
           {hasBcn && (
-            <FcSection title="Beacon (BCN)">
+            <FcSection title={tm("beaconBCN")}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {field("BCN_TYPE", "Type")}
                 {field("BCN_LATITUDE", "Origin Latitude")}
@@ -206,15 +209,15 @@ export function ArduPilotNonGpsPanel() {
               loading={saving}
               onClick={handleSave}
             >
-              Save to Flight Controller
+              <SaveBarLabel k="saveToFc" />
             </Button>
             {hasRamWrites && (
-              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>
-                Write to Flash
+              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={flashing} onClick={handleFlash}>
+                <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
             {hasDirty && connected && (
-              <span className="text-[10px] text-status-warning">Unsaved changes</span>
+              <span className="text-[10px] text-status-warning"><SaveBarLabel k="unsavedChanges" /></span>
             )}
           </div>
         </div>

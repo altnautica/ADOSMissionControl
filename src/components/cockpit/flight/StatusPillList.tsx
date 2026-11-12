@@ -12,7 +12,6 @@
  */
 
 import type { RefObject } from "react";
-import { CircleCheck, OctagonAlert, TriangleAlert } from "lucide-react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
 import tokens from "@/lib/cockpit-spec/tokens.json";
@@ -20,7 +19,6 @@ import type { PillAlert, PillSource } from "@/lib/hud/status-pill";
 import { useFlightGrid } from "./flight-context";
 import { FlightSheetPortal, sheetPlacement } from "./flight-sheet";
 
-export const PILL_ICON = { ok: CircleCheck, warning: TriangleAlert, critical: OctagonAlert } as const;
 export const PILL_COLOR = { ok: "var(--fs-ok)", warning: "var(--fs-warn)", critical: "var(--fs-crit)" } as const;
 
 /** Each list item's glyph from the spec (`chrome.severity_icon`), drawn in its

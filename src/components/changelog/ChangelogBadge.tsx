@@ -7,12 +7,14 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Newspaper } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useChangelogNotificationStore } from "@/stores/changelog-notification-store";
 import Link from "next/link";
 
 export function ChangelogBadge() {
+  const tk = useTranslations("changelog.changelogBadge");
   const unseenCount = useChangelogNotificationStore((s) => s.unseenCount);
 
   return (
@@ -20,7 +22,7 @@ export function ChangelogBadge() {
       <Link
         href="/community"
         className="relative text-text-secondary hover:text-text-primary transition-colors"
-        aria-label="Community"
+        aria-label={tk("community")}
       >
         <Newspaper size={16} />
         {unseenCount > 0 && (

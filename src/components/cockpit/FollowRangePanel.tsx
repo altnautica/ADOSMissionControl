@@ -16,6 +16,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { FollowState } from "@/lib/hud/nav-types";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { formatRange, rangeInterval } from "@/lib/vision/target-format";
@@ -29,17 +30,7 @@ import {
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useFollowingMode } from "@/hooks/use-following-mode";
 
-const CUE_KEY = { ground: "gnd", box_height: "box", lidar: "lidar" } as const;
-
-const PHASE_KEY = {
-  idle: "idle",
-  acquiring: "acquiring",
-  following: "following",
-  coasting: "coasting",
-  searching: "searching",
-  holding: "holding",
-  lost: "lost",
-} as const;
+const MODE_KEY = { strict: "follow.mode.strict", smart: "follow.mode.smart" } as const;
 
 function fixed1(v: number | null): string {
   return v === null ? NO_DATA_GLYPH : v.toFixed(1);
@@ -63,13 +54,13 @@ export function FollowRangePanel({
   const live: FollowState | null = stale ? null : follow;
   const blank = live === null;
   const phase = follow?.phase ?? "idle";
-  const phaseWord = blank ? t("stale") : t(PHASE_KEY[phase]);
+  const phaseWord = specString(`follow.phase.${blank ? "stale" : phase}`);
   const phaseColor = blank ? "var(--hud-warn)" : `var(--hud-${PHASE_TONE[phase]})`;
   const range = live?.rangeM ?? null;
   const sigma = live?.rangeSigmaM ?? null;
   const rangeText = range === null ? NO_DATA_GLYPH : formatRange(range);
   const aglSource = live?.aglSource ?? null;
-  const sourceWord = aglSource === "baro" ? t("baro") : aglSource === "rng" ? t("rng") : null;
+  const sourceWord = aglSource === "baro" ? specString("agl.source.baro") : aglSource === "rng" ? t("rng") : null;
   const sourceStyle = aglSource === "baro" ? { color: "var(--hud-warn)" } : undefined;
   const agl = fixed1(live?.aglM ?? null);
   const dep = live?.depressionDeg ?? null;
@@ -81,7 +72,7 @@ export function FollowRangePanel({
     const measures = follow !== null && (follow.rangeM !== null || follow.rangeCues.length > 0);
     return (
       <div className="frp" data-width-class="compact" data-stale={blank ? "true" : undefined}
-        role="status" aria-label={t("label")} data-testid="follow-range-panel">
+        role="status" aria-label={specString("follow.range")} data-testid="follow-range-panel">
         <div className="frp-line">
           {measures && <span className="frp-range" data-testid="follow-range-value">{rangeText}</span>}
           {measures && sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
@@ -99,7 +90,7 @@ export function FollowRangePanel({
 
   return (
     <div className="frp" data-width-class={widthClass} data-stale={blank ? "true" : undefined}
-      role="status" aria-label={t("label")} data-testid="follow-range-panel">
+      role="status" aria-label={specString("follow.range")} data-testid="follow-range-panel">
       <div className="frp-row frp-head" data-row="range">
         <span className="frp-range">{rangeText}</span>
         <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
@@ -116,7 +107,7 @@ export function FollowRangePanel({
         </span>
       </div>
       <div className="frp-row" data-row="height">
-        <span>{t("agl")} {agl === NO_DATA_GLYPH ? agl : `${agl} m`}</span>
+        <span>{specString("cockpit.readout.agl")} {agl === NO_DATA_GLYPH ? agl : `${agl} m`}</span>
         {sourceWord && (
           <>
             <span className="frp-sep">·</span>
@@ -126,9 +117,9 @@ export function FollowRangePanel({
       </div>
       {full && (
         <div className="frp-row" data-row="geometry">
-          <span>{t("dep")} {dep === null ? NO_DATA_GLYPH : `${Math.round(dep)}°`}</span>
+          <span>{specString("follow.geo.depression", { v: dep === null ? NO_DATA_GLYPH : `${Math.round(dep)}°` })}</span>
           <span className="frp-sep">·</span>
-          <span>{t("brg")} {brg === null ? NO_DATA_GLYPH : bearing3(brg)}</span>
+          <span>{specString("follow.geo.bearing", { v: brg === null ? NO_DATA_GLYPH : bearing3(brg) })}</span>
           <span className="frp-sep">·</span>
           <span>{fixed1(live?.targetSpeedMps ?? null)} m/s</span>
         </div>
@@ -137,17 +128,17 @@ export function FollowRangePanel({
         <div className="frp-row" data-row="cues">
           {RANGE_CUE_ORDER.map((kind) => (
             <span key={kind} className="frp-cue" data-lit={cues.has(kind) ? "true" : "false"}>
-              {t(CUE_KEY[kind])}
+              {specString(`follow.cue.${kind}`)}
             </span>
           ))}
           <span className="frp-sep">·</span>
           <span style={latency !== null && latency > LATENCY_WARN_MS ? { color: "var(--hud-warn)" } : undefined}>
-            {t("lat")} {latency === null ? NO_DATA_GLYPH : `${Math.round(latency)} ms`}
+            {specString("follow.latency", { v: latency === null ? NO_DATA_GLYPH : `${Math.round(latency)} ms` })}
           </span>
           {mode && (
             <>
               <span className="frp-sep">·</span>
-              <span>{t(mode)}</span>
+              <span>{specString(MODE_KEY[mode])}</span>
             </>
           )}
         </div>

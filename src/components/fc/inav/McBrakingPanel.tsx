@@ -8,6 +8,7 @@
 
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -37,6 +38,7 @@ const DEFAULT: INavMcBraking = {
 // ── Component ─────────────────────────────────────────────────
 
 export function McBrakingPanel() {
+  const tr = useTranslations("fcPanels.mcBrakingPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -120,12 +122,12 @@ export function McBrakingPanel() {
       <div className="max-w-2xl space-y-4">
         {isNonMultirotor && (
           <p className="text-[11px] text-text-tertiary border border-border-default rounded px-3 py-2 bg-bg-secondary">
-            This panel applies to multirotor platforms. The connected flight controller is configured as a different platform.
+            {tr("thisPanelAppliesToMultirotor")}
           </p>
         )}
         <PanelHeader
-          title="MC Braking"
-          subtitle="Multicopter position-hold braking parameters"
+          title={tr("mcBraking")}
+          subtitle={tr("multicopterPositionHoldBrakingParameters")}
           icon={<Braces size={16} />}
           loading={loading}
           loadProgress={null}
@@ -144,14 +146,14 @@ export function McBrakingPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleWrite}
             >
-              Write to FC
+              {tr("writeToFC")}
             </Button>
           )}
         </PanelHeader>
 
         {dirty && !isNonMultirotor && (
           <p className="text-[10px] font-mono text-status-warning">
-            Unsaved changes : use Write to FC to persist.
+            {tr("unsavedChangesUseWriteTo")}
           </p>
         )}
 

@@ -11,6 +11,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import type { WifiPowersaveInterface } from "@/lib/agent/feature-types";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { StatRow } from "./StatRow";
@@ -31,6 +32,7 @@ function ifaceTitle(i: WifiPowersaveInterface): string {
 }
 
 export function WifiPowersaveCard() {
+  const tq = useTranslations("hardware.wifiPowersaveCard");
   const wifiPowersave = useAgentCapabilitiesStore((s) => s.wifiPowersave);
   const interfaces = wifiPowersave?.interfaces ?? [];
   // Omit-when-absent: nothing to show on an agent that predates the reconciler
@@ -39,7 +41,7 @@ export function WifiPowersaveCard() {
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
-      <h2 className="mb-1 text-lg font-medium text-text-primary">WiFi power-save</h2>
+      <h2 className="mb-1 text-lg font-medium text-text-primary">{tq("wifiPowerSave")}</h2>
       <p className="mb-3 text-xs text-text-secondary">
         Power-save adds receive latency and drops throughput on a link that must
         stay responsive. The agent holds power-save OFF at runtime and re-asserts
@@ -69,19 +71,19 @@ export function WifiPowersaveCard() {
                 </span>
               </div>
               <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-                <StatRow label="Re-asserts" value={String(i.reasserts)} />
+                <StatRow label={tq("reAsserts")} value={String(i.reasserts)} />
                 {i.signalDbm != null ? (
                   <StatRow
-                    label="Signal"
+                    label={tq("signal")}
                     value={`${i.signalDbm} dBm`}
                     valueClass={signalClass(i.signalDbm)}
                   />
                 ) : null}
                 {i.linkState ? (
-                  <StatRow label="Link" value={i.linkState} />
+                  <StatRow label={tq("link")} value={i.linkState} />
                 ) : null}
                 {i.lastReassert ? (
-                  <StatRow label="Last re-assert" value={i.lastReassert} />
+                  <StatRow label={tq("lastReAssert")} value={i.lastReassert} />
                 ) : null}
               </dl>
               {!off ? (

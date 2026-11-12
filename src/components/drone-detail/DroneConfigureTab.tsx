@@ -50,6 +50,7 @@ export function DroneConfigureTab({
   agentBacked = false,
   nodeDeviceId = null,
 }: DroneConfigureTabProps) {
+  const tk = useTranslations("droneDetail.droneConfigureTab");
   const t = useTranslations("fcNav");
   const lastActivePanel = useSettingsStore((s) => s.lastActivePanel);
   const setLastActivePanelSetting = useSettingsStore((s) => s.setLastActivePanel);
@@ -169,7 +170,7 @@ export function DroneConfigureTab({
       <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
         <div className="px-3 py-3 border-b border-border-default">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            {t("flightController")}
+            FLIGHT CONTROLLER
           </h2>
           {firmwareLabel && (
             <span className="mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-primary/15 text-accent-primary">
@@ -178,12 +179,12 @@ export function DroneConfigureTab({
           )}
           {firmwareType === "px4" && (
             <span className="mt-1 block text-[10px] text-text-tertiary">
-              Some panels (OSD, LED) are not available for PX4.
+              {tk("somePanelsOSDLEDAre")}
             </span>
           )}
           {firmwareType === "betaflight" && (
             <span className="mt-1 block text-[10px] text-text-tertiary">
-              Betaflight firmware. Some panels differ from ArduPilot.
+              {tk("betaflightFirmwareSomePanelsDiffer")}
             </span>
           )}
           {!isConnected && (
@@ -238,7 +239,7 @@ export function DroneConfigureTab({
             <div>
               <div className="px-3 pt-3 pb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                  {t("extensionsSection")}
+                  EXTENSIONS
                 </span>
               </div>
               {fcPluginTabs.map((c) => {
@@ -319,7 +320,7 @@ export function DroneConfigureTab({
           <>
             <FlashCommitBanner />
             <RebootRequiredBanner rebootParams={rebootParamsList} />
-            <FcPanelRouter activePanel={activePanel} firmwareType={firmwareType} />
+            <FcPanelRouter activePanel={activePanel} firmwareType={firmwareType} droneId={droneId} droneName={droneName} />
           </>
         )}
       </div>

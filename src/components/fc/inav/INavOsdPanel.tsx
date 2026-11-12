@@ -39,6 +39,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function INavOsdPanel() {
+  const tm = useTranslations("fcPanels.iNavOsdPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const connected = !!selectedProtocol;
 
@@ -165,8 +166,8 @@ export function INavOsdPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
         <PanelHeader
-          title="OSD (iNav)"
-          subtitle="OSD layout summary, alarms, and display preferences."
+          title={tm("osdINav")}
+          subtitle={tm("osdLayoutSummaryAlarmsAnd")}
           icon={<Monitor size={16} />}
           loading={loading}
           loadProgress={null}
@@ -185,7 +186,7 @@ export function INavOsdPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleSaveAlarms}
             >
-              Save alarms
+              {tm("saveAlarms")}
             </Button>
           )}
           {hasLoaded && prefsDirty && (
@@ -198,7 +199,7 @@ export function INavOsdPanel() {
               title={isArmed ? lockMessage : undefined}
               onClick={handleSavePrefs}
             >
-              Save prefs
+              {tm("savePrefs")}
             </Button>
           )}
         </PanelHeader>
@@ -207,41 +208,41 @@ export function INavOsdPanel() {
           <div className="space-y-3">
             {(alarmsDirty || prefsDirty) && (
               <p className="text-[10px] font-mono text-status-warning">
-                Unsaved changes : use the Save buttons above to persist.
+                {tm("unsavedChangesUseTheSave")}
               </p>
             )}
 
-            <Section title="Layouts">
+            <Section title={tm("layouts")}>
               {layoutsHeader ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-text-secondary">Layout count</span>
+                    <span className="text-text-secondary">{tm("layoutCount")}</span>
                     <span className="font-mono text-text-primary">{layoutsHeader.layoutCount}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-text-secondary">Items per layout</span>
+                    <span className="text-text-secondary">{tm("itemsPerLayout")}</span>
                     <span className="font-mono text-text-primary">{layoutsHeader.itemCount}</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-[11px] text-text-tertiary">No layout data.</p>
+                <p className="text-[11px] text-text-tertiary">{tm("noLayoutData")}</p>
               )}
             </Section>
 
-            <Section title="Alarms">
+            <Section title={tm("alarms")}>
               <AlarmFieldsEditor alarms={alarms} onUpdate={updateAlarm} />
             </Section>
 
-            <Section title="Preferences">
+            <Section title={tm("preferences")}>
               <OsdPreferencesEditor preferences={preferences} onUpdate={updatePref} />
             </Section>
           </div>
         )}
 
         {connected && (
-          <Section title="Font">
+          <Section title={tm("font")}>
             <p className="text-[10px] text-text-tertiary">
-              Upload a MAX7456 <span className="font-mono">.mcm</span> OSD font to the flight controller (analog OSD).
+              Upload a MAX7456 <span className="font-mono">.mcm</span> {tm("osdFontToTheFlight")}
             </p>
             <input
               ref={fontInputRef}
@@ -263,7 +264,7 @@ export function INavOsdPanel() {
                 title={isArmed ? lockMessage : undefined}
                 onClick={() => fontInputRef.current?.click()}
               >
-                Upload font (.mcm)
+                {tm("uploadFontMcm")}
               </Button>
               {fontProgress && (
                 <span className="text-[10px] font-mono text-text-tertiary">

@@ -116,8 +116,8 @@ export function DemoProvider() {
     // Auto-connect the agent store in demo mode
     useAgentConnectionStore.getState().connect("mock://demo");
     usePairingStore.getState().setPairedDrones(DEMO_AGENTS);
-    // Two drones paired over the LAN so the Nodes board shows the local-first
-    // `lan` reach kind alongside cloud (local-first).
+    // Delta-04 and Golf-07 are also paired over the LAN, so the Nodes board
+    // shows the local-first `lan` reach kind alongside cloud.
     seedDemoLanNodes(Date.now());
 
     // Seed the profile-specific stores the ground-station overview reads (the
@@ -133,9 +133,9 @@ export function DemoProvider() {
       const statuses: CommandCloudStatus[] = DEMO_AGENTS.map((agent, index) =>
         buildDemoStatus(agent, index, now),
       );
-      // Upsert (not replace) so the transitive-enrollment bridge's funneled
-      // relayed-drone rows (romeo-15 / whiskey-23), which it writes into this
-      // same store, survive each 2s tick rather than being wiped and re-added.
+      // Upsert (not replace) so any funneled relayed-drone rows the
+      // transitive-enrollment bridge writes into this same store survive
+      // each 2s tick rather than being wiped and re-added.
       // The demo roster is fixed, so nothing needs the replace semantics.
       useCommandFleetStore.getState().upsertCloudStatuses(statuses);
       for (const status of statuses) {

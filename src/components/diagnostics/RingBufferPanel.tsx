@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -51,6 +52,7 @@ function collectRingBufferInfo(): RingBufferInfo[] {
 }
 
 export function RingBufferPanel() {
+  const tq = useTranslations("diagnostics.ringBufferPanel");
   const ringBufferInfo = useDiagnosticsStore((s) => s.ringBufferInfo);
   const updateRingBufferInfo = useDiagnosticsStore((s) => s.updateRingBufferInfo);
 
@@ -69,7 +71,7 @@ export function RingBufferPanel() {
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <Database size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-text-primary">Ring Buffers</span>
+        <span className="text-xs font-semibold text-text-primary">{tq("ringBuffers")}</span>
         <span className="text-[10px] text-text-tertiary font-mono">
           {ringBufferInfo.length} buffer{ringBufferInfo.length !== 1 ? "s" : ""}
         </span>
@@ -79,17 +81,17 @@ export function RingBufferPanel() {
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-6">
             <Database size={24} className="text-text-tertiary" />
-            <span className="text-xs text-text-tertiary">No ring buffers tracked</span>
+            <span className="text-xs text-text-tertiary">{tq("noRingBuffersTracked")}</span>
           </div>
         ) : (
           <div className="font-mono text-[10px]">
             {/* Table header */}
             <div className="flex items-center px-4 py-1 border-b border-border-default bg-bg-tertiary text-text-tertiary sticky top-0 z-10">
-              <span className="w-[160px] shrink-0">Buffer</span>
-              <span className="w-[60px] shrink-0 text-right">Count</span>
-              <span className="w-[60px] shrink-0 text-right">Cap</span>
-              <span className="w-[50px] shrink-0 text-right">Fill</span>
-              <span className="flex-1 pl-3">Bar</span>
+              <span className="w-[160px] shrink-0">{tq("buffer")}</span>
+              <span className="w-[60px] shrink-0 text-right">{tq("count")}</span>
+              <span className="w-[60px] shrink-0 text-right">{tq("cap")}</span>
+              <span className="w-[50px] shrink-0 text-right">{tq("fill")}</span>
+              <span className="flex-1 pl-3">{tq("bar")}</span>
             </div>
 
             {sorted.map((buf) => {

@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState, useCallback, useRef } from "react";
 import { BarChart3, Upload } from "lucide-react";
 import { QuickGraphs } from "./QuickGraphs";
@@ -22,6 +23,7 @@ const GpsTrackMap = dynamic(
 type LogTab = "live" | "file";
 
 export function LogAnalysisPanel() {
+  const tk = useTranslations("logs.logAnalysisPanel");
   const [tab, setTab] = useState<LogTab>("live");
   const [parsing, setParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
@@ -61,7 +63,7 @@ export function LogAnalysisPanel() {
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-default bg-bg-secondary">
         <BarChart3 size={14} className="text-accent-primary" />
         <span className="text-xs font-semibold text-text-primary">
-          Log Analysis
+          {tk("logAnalysis")}
         </span>
 
         <div className="flex-1" />
@@ -76,7 +78,7 @@ export function LogAnalysisPanel() {
                 : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
-            Live
+            {tk("live")}
           </button>
           <button
             onClick={() => setTab("file")}
@@ -86,7 +88,7 @@ export function LogAnalysisPanel() {
                 : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
-            File
+            {tk("file")}
           </button>
         </div>
 
@@ -125,7 +127,7 @@ export function LogAnalysisPanel() {
               <div className="space-y-3">
                 <div className="border border-border-default bg-bg-secondary p-3">
                   <span className="text-xs font-semibold text-text-primary">
-                    Parsed Log
+                    {tk("parsedLog")}
                   </span>
                   <div className="mt-2 text-[10px] font-mono text-text-secondary space-y-1">
                     <div>
@@ -155,7 +157,7 @@ export function LogAnalysisPanel() {
               <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">
                 <Upload size={24} className="mb-2" />
                 <span className="text-xs">
-                  Load a .bin DataFlash log to analyze
+                  {tk("loadABinDataFlashLog")}
                 </span>
               </div>
             )}

@@ -1,6 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useOptionLabels } from "@/lib/i18n/option-labels";
+import { useTranslations } from "next-intl";
+
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -13,7 +15,7 @@ import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useParamEnums } from "../shared/ParamEnumSelect";
 import { GnssConstellationEditor } from "./GnssConstellationEditor";
-import { MapPin, Navigation, Satellite, Compass, Save, HardDrive, Info } from "lucide-react";
+import { MapPin, Navigation, Satellite, Compass, Save, Info } from "lucide-react";
 import {
   apGpsParamNames,
   apGpsOptionalParamNames,
@@ -29,6 +31,8 @@ import {
 } from "./ap-gps-constants";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+
 /**
  * ArduPilot GPS configuration panel.
  *
@@ -39,6 +43,8 @@ import { FcSection } from "@/components/fc/shared/FcSection";
  * Rescue) is a separate component routed for Betaflight connections.
  */
 export function ArduPilotGpsPanel() {
+  const ol = useOptionLabels();
+  const tk = useTranslations("fcPanels.arduPilotGpsPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("ap-gps");
   const { bitmaskBits } = useParamEnums(useParamMetadataMap());
@@ -54,7 +60,7 @@ export function ArduPilotGpsPanel() {
     loadProgress, hasLoaded, missingOptional,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
+  const { saving, flashing, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -85,7 +91,7 @@ export function ArduPilotGpsPanel() {
       <div className="max-w-2xl space-y-6">
         <PanelHeader
           title="GPS"
-          subtitle="GPS receiver type, GNSS constellations, blending, and GPS-for-yaw"
+          subtitle={tk("gpsReceiverTypeGNSSConstellations")}
           icon={<MapPin size={16} />}
           loading={loading}
           loadProgress={loadProgress}
@@ -97,36 +103,36 @@ export function ArduPilotGpsPanel() {
         />
 
         {/* Receivers */}
-        <FcSection icon={<Satellite size={14} />} title="Receivers">
+        <FcSection icon={<Satellite size={14} />} title={tk("receivers")}>
           {type1 ? (
             <Select
-              label="GPS 1 Type"
+              label={tk("gps1Type")}
               searchable
-              options={AP_GPS_TYPE_OPTIONS}
+              options={ol(AP_GPS_TYPE_OPTIONS)}
               value={p(type1)}
               onChange={(v) => set(type1, v)}
             />
           ) : hasLoaded && notOnFirmware("GPS 1 type")}
           {type2 && (
             <Select
-              label="GPS 2 Type"
+              label={tk("gps2Type")}
               searchable
-              options={AP_GPS_TYPE_OPTIONS}
+              options={ol(AP_GPS_TYPE_OPTIONS)}
               value={p(type2)}
               onChange={(v) => set(type2, v)}
             />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Select
-              label="Auto Switch"
-              options={AP_GPS_AUTO_SWITCH_OPTIONS}
+              label={tk("autoSwitch")}
+              options={ol(AP_GPS_AUTO_SWITCH_OPTIONS)}
               value={p("GPS_AUTO_SWITCH", "1")}
               onChange={(v) => set("GPS_AUTO_SWITCH", v)}
             />
             {has("GPS_PRIMARY") && (
               <Select
-                label="Primary GPS"
-                options={AP_GPS_PRIMARY_OPTIONS}
+                label={tk("primaryGPS")}
+                options={ol(AP_GPS_PRIMARY_OPTIONS)}
                 value={p("GPS_PRIMARY")}
                 onChange={(v) => set("GPS_PRIMARY", v)}
               />
@@ -134,7 +140,7 @@ export function ArduPilotGpsPanel() {
           </div>
           {has("GPS_BLEND_MASK") && (
             <Input
-              label="Blend Mask"
+              label={tk("blendMask")}
               type="number"
               step="1"
               min="0"
@@ -149,38 +155,38 @@ export function ArduPilotGpsPanel() {
         </FcSection>
 
         {/* Constellations & rate */}
-        <FcSection icon={<Navigation size={14} />} title="Constellations & Rate">
+        <FcSection icon={<Navigation size={14} />} title={tk("constellationsRate")}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {rateMs ? (
               <Select
-                label="Update Rate"
-                options={AP_GPS_RATE_OPTIONS}
+                label={tk("updateRate")}
+                options={ol(AP_GPS_RATE_OPTIONS)}
                 value={p(rateMs)}
                 onChange={(v) => set(rateMs, v)}
               />
             ) : hasLoaded && notOnFirmware("GPS update rate")}
             <Select
-              label="SBAS Mode"
-              options={AP_GPS_SBAS_OPTIONS}
+              label={tk("sbasMode")}
+              options={ol(AP_GPS_SBAS_OPTIONS)}
               value={p("GPS_SBAS_MODE", "2")}
               onChange={(v) => set("GPS_SBAS_MODE", v)}
             />
             <Select
-              label="Auto Config"
-              options={AP_GPS_AUTO_CONFIG_OPTIONS}
+              label={tk("autoConfig")}
+              options={ol(AP_GPS_AUTO_CONFIG_OPTIONS)}
               value={p("GPS_AUTO_CONFIG", "1")}
               onChange={(v) => set("GPS_AUTO_CONFIG", v)}
             />
             {has("GPS_NAVFILTER") && (
               <Select
-                label="Nav Filter"
-                options={AP_GPS_NAVFILTER_OPTIONS}
+                label={tk("navFilter")}
+                options={ol(AP_GPS_NAVFILTER_OPTIONS)}
                 value={p("GPS_NAVFILTER", "8")}
                 onChange={(v) => set("GPS_NAVFILTER", v)}
               />
             )}
             <Input
-              label="Min Elevation"
+              label={tk("minElevation")}
               type="number"
               step="1"
               min="-100"
@@ -192,7 +198,7 @@ export function ArduPilotGpsPanel() {
           </div>
           {gnssMode ? (
             <div className="space-y-1">
-              <span className="text-xs text-text-secondary">GNSS Constellations</span>
+              <span className="text-xs text-text-secondary">{tk("gnssConstellations")}</span>
               <GnssConstellationEditor
                 paramName={gnssMode}
                 value={Number(p(gnssMode))}
@@ -205,11 +211,11 @@ export function ArduPilotGpsPanel() {
 
         {/* GPS for yaw + antenna offsets */}
         {(mbType || posNames.some(Boolean) || has("GPS_DRV_OPTIONS")) && (
-          <FcSection icon={<Compass size={14} />} title="GPS for Yaw & Antenna Offsets">
+          <FcSection icon={<Compass size={14} />} title={tk("gpsForYawAntennaOffsets")}>
             {mbType && (
               <Select
-                label="Moving Baseline Type"
-                options={AP_GPS_MB_TYPE_OPTIONS}
+                label={tk("movingBaselineType")}
+                options={ol(AP_GPS_MB_TYPE_OPTIONS)}
                 value={p(mbType)}
                 onChange={(v) => set(mbType, v)}
               />
@@ -228,7 +234,7 @@ export function ArduPilotGpsPanel() {
             )}
             {has("GPS_DRV_OPTIONS") && (
               <Input
-                label="Driver Options"
+                label={tk("driverOptions")}
                 type="number"
                 step="1"
                 min="0"
@@ -239,41 +245,23 @@ export function ArduPilotGpsPanel() {
             <div className="flex items-start gap-2 mt-1 p-2 bg-accent-primary/5 border border-accent-primary/20">
               <Info size={12} className="text-accent-primary shrink-0 mt-0.5" />
               <p className="text-[10px] text-text-secondary">
-                GPS-for-yaw needs a moving-baseline receiver pair (GPS types 17/18 or 22/23). The antenna offset is the position of the primary antenna in the body frame.
+                {tk("gpsForYawNeedsA")}
               </p>
             </div>
           </FcSection>
         )}
 
         {/* Save */}
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Save size={14} />}
-            disabled={!hasDirty || !connected}
-            loading={saving}
-            onClick={handleSave}
-          >
-            Save to Flight Controller
-          </Button>
-          {hasRamWrites && (
-            <Button
-              variant="secondary"
-              size="lg"
-              icon={<HardDrive size={14} />}
-              onClick={handleFlash}
-            >
-              Write to Flash
-            </Button>
-          )}
-          {!connected && (
-            <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>
-          )}
-          {hasDirty && connected && (
-            <span className="text-[10px] text-status-warning">Unsaved changes</span>
-          )}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

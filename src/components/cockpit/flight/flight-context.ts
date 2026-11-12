@@ -43,6 +43,8 @@ export function chromeVars(scale: number): CSSProperties {
     "--fs-border-px": `${c.border_px}px`,
     "--fs-radius": px(c.radius_px),
     "--fs-radius-sm": px(c.radius_small_px),
+    // One visual height for every top-bar control; hit areas stay >= 48.
+    "--fs-control": px(c.control_px),
     "--fs-text": hexa(c.text),
     "--fs-text-dim": hexa(c.text_dim),
     "--fs-ok": hexa(c.severity_ok),

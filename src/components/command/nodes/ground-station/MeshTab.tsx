@@ -40,6 +40,7 @@ export interface MeshTabProps {
 }
 
 export function MeshTab({ nodeDeviceId }: MeshTabProps) {
+  const tq = useTranslations("command.meshTab");
   const t = useTranslations("hardware.mesh");
   const direct = useNodeDirectAgent(nodeDeviceId);
   const agentUrl = direct?.agentUrl ?? null;
@@ -84,8 +85,8 @@ export function MeshTab({ nodeDeviceId }: MeshTabProps) {
   return (
     <div className="flex flex-col">
       <PageIntro
-        title="Mesh & RX"
-        description="Self-healing wireless mesh between ground nodes, and the distributed receive surface it carries. Set this node's role, then watch neighbours, gateways and merged streams."
+        title={tq("meshRX")}
+        description={tq("selfHealingWirelessMeshBetween")}
         trailing={
           <HintChip>
             Direct = solo. Relay forwards. Receiver combines.
@@ -125,7 +126,7 @@ export function MeshTab({ nodeDeviceId }: MeshTabProps) {
               >
                 <span>{meshError}</span>
                 <Button size="sm" variant="ghost" onClick={retry}>
-                  Retry
+                  {tq("retry")}
                 </Button>
               </div>
             ) : null}

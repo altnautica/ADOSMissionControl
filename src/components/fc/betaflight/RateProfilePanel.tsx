@@ -1,7 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
+
 import { Select } from "@/components/ui/select";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -9,12 +10,14 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { Gauge, Save, RotateCcw, HardDrive } from "lucide-react";
+import { Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { AXIS_COLORS } from "../chart-theme";
 import { RateCurvePreview, RATES_TYPE, RATES_TYPE_OPTIONS, type CurveData } from "./rate-curve-preview";
 import { BF_RATE_OPTIONAL_PARAM_NAMES, BF_RATE_PARAM_NAMES } from "./bf-rate-constants";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 const paramNames = [...BF_RATE_PARAM_NAMES];
 const optionalParams = [...BF_RATE_OPTIONAL_PARAM_NAMES];
@@ -22,6 +25,7 @@ const optionalParams = [...BF_RATE_OPTIONAL_PARAM_NAMES];
 const RATE_LIMIT_MAX = 1998;
 
 export function RateProfilePanel() {
+  const tr = useTranslations("fcPanels.rateProfilePanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("rate-profiles");
 
@@ -31,7 +35,7 @@ export function RateProfilePanel() {
     loadProgress, hasLoaded,
     refresh, setLocalValue,
   } = panelParams;
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } =
+  const { saving, flashing, save: handleSave, flash: handleFlash, revert: handleRevert } =
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
@@ -75,17 +79,17 @@ export function RateProfilePanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl space-y-6">
-        <PanelHeader title="Rate Profiles" subtitle="Betaflight rate curve configuration" icon={<Gauge size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
+        <PanelHeader title={tr("rateProfiles")} subtitle={tr("betaflightRateCurveConfiguration")} icon={<Gauge size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={connected} error={error} />
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
           <div className="space-y-6">
             {params.has("BF_RATES_TYPE") && (
               <div className="border border-border-default bg-bg-secondary p-4">
-                <Select label="Rates type" options={RATES_TYPE_OPTIONS} value={String(ratesType)}
+                <Select label={tr("ratesType")} options={RATES_TYPE_OPTIONS} value={String(ratesType)}
                   onChange={(v) => setLocalValue("BF_RATES_TYPE", Number(v))} />
               </div>
             )}
             <div className="border border-border-default bg-bg-secondary p-4">
-              <h2 className="text-sm font-medium text-text-primary mb-3">Roll</h2>
+              <h2 className="text-sm font-medium text-text-primary mb-3">{tr("roll")}</h2>
               <div className="space-y-3">
                 {renderSlider("BF_RC_RATE", "RC Rate (Roll)", 0, 255, 1)}
                 {renderSlider("BF_RC_EXPO", "RC Expo (Roll)", 0, 100, 1)}
@@ -93,7 +97,7 @@ export function RateProfilePanel() {
               </div>
             </div>
             <div className="border border-border-default bg-bg-secondary p-4">
-              <h2 className="text-sm font-medium text-text-primary mb-3">Pitch</h2>
+              <h2 className="text-sm font-medium text-text-primary mb-3">{tr("pitch")}</h2>
               <div className="space-y-3">
                 {renderSlider("BF_RC_PITCH_RATE", "RC Rate (Pitch)", 0, 255, 1)}
                 {renderSlider("BF_RC_PITCH_EXPO", "RC Expo (Pitch)", 0, 100, 1)}
@@ -101,7 +105,7 @@ export function RateProfilePanel() {
               </div>
             </div>
             <div className="border border-border-default bg-bg-secondary p-4">
-              <h2 className="text-sm font-medium text-text-primary mb-3">Yaw</h2>
+              <h2 className="text-sm font-medium text-text-primary mb-3">{tr("yaw")}</h2>
               <div className="space-y-3">
                 {renderSlider("BF_RC_YAW_RATE", "RC Rate (Yaw)", 0, 255, 1)}
                 {renderSlider("BF_RC_YAW_EXPO", "RC Expo (Yaw)", 0, 100, 1)}
@@ -109,7 +113,7 @@ export function RateProfilePanel() {
               </div>
             </div>
             <div className="border border-border-default bg-bg-secondary p-4">
-              <h2 className="text-sm font-medium text-text-primary mb-3">Throttle</h2>
+              <h2 className="text-sm font-medium text-text-primary mb-3">{tr("throttle")}</h2>
               <div className="space-y-3">
                 {renderSlider("BF_THROTTLE_MID", "Mid", 0, 100, 1, "%")}
                 {renderSlider("BF_THROTTLE_EXPO", "Expo", 0, 100, 1)}
@@ -118,18 +122,23 @@ export function RateProfilePanel() {
           </div>
           <div className="space-y-3">
             <div className="border border-border-default bg-bg-secondary p-3">
-              <h2 className="text-sm font-medium text-text-primary mb-2">Rate Curve Preview</h2>
+              <h2 className="text-sm font-medium text-text-primary mb-2">{tr("rateCurvePreview")}</h2>
               <RateCurvePreview ratesType={ratesType} curves={curves} />
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

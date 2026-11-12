@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import {
   play, pause, resume, seek, setSpeed,
@@ -48,6 +49,7 @@ interface ReplayPlaybackBarProps {
 }
 
 export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) {
+  const tq = useTranslations("history.replayPlaybackBar");
   const [status, setStatus] = useState<PlaybackStatus>(getPlaybackState());
   // Play, resume and seek refuse (throw) while a vehicle is connected or no
   // recording is loaded; the refusal is shown in the bar.
@@ -111,10 +113,10 @@ export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) 
     <div className="flex items-center gap-3 px-4 py-2 bg-bg-primary/90 backdrop-blur-sm border-t border-border-default">
       {/* Transport buttons */}
       <div className="flex items-center gap-1">
-        <button onClick={handleSkipStart} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title="Skip to start">
+        <button onClick={handleSkipStart} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title={tq("skipToStart")}>
           <SkipBack size={14} />
         </button>
-        <button onClick={handleStepBack} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title="Step back 5s">
+        <button onClick={handleStepBack} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title={tq("stepBack5s")}>
           <ChevronLeft size={14} />
         </button>
         <button
@@ -124,10 +126,10 @@ export function ReplayPlaybackBar({ events = [] }: ReplayPlaybackBarProps = {}) 
         >
           {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
-        <button onClick={handleStepForward} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title="Step forward 5s">
+        <button onClick={handleStepForward} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title={tq("stepForward5s")}>
           <ChevronRight size={14} />
         </button>
-        <button onClick={handleSkipEnd} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title="Skip to end">
+        <button onClick={handleSkipEnd} className="p-1 text-text-secondary hover:text-text-primary cursor-pointer" title={tq("skipToEnd")}>
           <SkipForward size={14} />
         </button>
       </div>

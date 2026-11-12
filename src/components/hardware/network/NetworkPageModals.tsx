@@ -45,6 +45,7 @@ interface Props {
 }
 
 export function NetworkPageModals(p: Props) {
+  const tq = useTranslations("hardware.networkPageModals");
   const t = useTranslations("hardware.connectionRisk");
   return (
     <>
@@ -58,9 +59,9 @@ export function NetworkPageModals(p: Props) {
 
       <ConfirmDialog
         open={p.leaveWifiConfirmOpen}
-        title="Leave WiFi network?"
-        message="The ground node will fall back to its access-point mode."
-        confirmLabel="Leave"
+        title={tq("leaveWiFiNetwork")}
+        message={tq("theGroundNodeWillFall")}
+        confirmLabel={tq("leave")}
         variant="danger"
         onCancel={() => p.setLeaveWifiConfirmOpen(false)}
         onConfirm={p.onConfirmLeaveWifi}

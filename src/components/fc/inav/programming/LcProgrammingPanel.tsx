@@ -34,6 +34,7 @@ function operandLabel(type: number, value: number): string {
 }
 
 export function LcProgrammingPanel() {
+  const tl = useTranslations("fcPanels.lcProgrammingPanel");
   const [source, setSource] = useState(EXAMPLE);
   const [result, setResult] = useState<CompiledProgram | null>(null);
   const placeProgram = useProgrammingStore((s) => s.placeProgram);
@@ -62,14 +63,12 @@ export function LcProgrammingPanel() {
       <div className="max-w-3xl space-y-4">
         <div className="flex items-center gap-2">
           <Code size={16} className="text-accent-primary" />
-          <h2 className="text-sm font-medium text-text-primary">Programming (JS)</h2>
+          <h2 className="text-sm font-medium text-text-primary">{tl("programmingJS")}</h2>
           <span className="ml-auto text-[10px] text-text-tertiary">compiles to Logic Conditions</span>
         </div>
 
         <p className="text-[10px] text-text-tertiary">
-          Write expressions and compile them into Logic Conditions. Loading places them in the slots the
-          flight controller has free, leaving every condition already in use as it is; review them in the
-          Logic Conditions editor and write them to the FC from there.
+          {tl("writeExpressionsAndCompileThem")}
         </p>
 
         <textarea
@@ -82,11 +81,11 @@ export function LcProgrammingPanel() {
 
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" icon={<Play size={12} />} onClick={handleCompile}>
-            Compile
+            {tl("compile")}
           </Button>
           {result && !result.error && (
             <Button variant="primary" size="sm" icon={<Download size={12} />} onClick={handleLoad}>
-              Load into Logic Conditions
+              {tl("loadIntoLogicConditions")}
             </Button>
           )}
         </div>

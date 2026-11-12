@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -49,6 +50,7 @@ interface CompareModalProps {
 }
 
 export function CompareModal({ open, recordA, recordB, onClose }: CompareModalProps) {
+  const tq = useTranslations("history.compareModal");
   // Esc to close
   useEffect(() => {
     if (!open) return;
@@ -67,14 +69,14 @@ export function CompareModal({ open, recordA, recordB, onClose }: CompareModalPr
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default sticky top-0 bg-bg-secondary z-10">
           <div className="flex items-center gap-3">
             <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">
-              Compare flights
+              {tq("compareFlights")}
             </h3>
             <Legend2 colorA={COLOR_A} labelA={recordA.customName ?? recordA.droneName} colorB={COLOR_B} labelB={recordB.customName ?? recordB.droneName} />
           </div>
           <button
             onClick={onClose}
             className="text-text-tertiary hover:text-text-primary transition-colors p-1"
-            aria-label="Close"
+            aria-label={tq("close")}
           >
             <X size={14} />
           </button>
@@ -82,7 +84,7 @@ export function CompareModal({ open, recordA, recordB, onClose }: CompareModalPr
 
         <div className="p-4 flex flex-col gap-3">
           <StatsDelta recordA={recordA} recordB={recordB} />
-          <Card title="Map" padding={true}>
+          <Card title={tq("map")} padding={true}>
             <CompareMapInner recordA={recordA} recordB={recordB} />
           </Card>
           <CompareCharts recordA={recordA} recordB={recordB} />
@@ -121,6 +123,7 @@ interface DeltaRow {
 }
 
 function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: FlightRecord }) {
+  const tq = useTranslations("history.compareModal");
   const rows: DeltaRow[] = [
     {
       label: "Duration",
@@ -160,15 +163,15 @@ function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: Flig
   const sameLocation = placeA === placeB && placeA !== "—";
 
   return (
-    <Card title="Stats delta" padding={true}>
+    <Card title={tq("statsDelta")} padding={true}>
       {(recordA.takeoffPlaceName || recordB.takeoffPlaceName) && (
         <div className="mb-2 flex flex-col gap-0.5 text-[10px] border-b border-border-default pb-2">
           <div className="flex justify-between gap-2">
-            <span className="text-text-tertiary uppercase tracking-wider">Location A</span>
+            <span className="text-text-tertiary uppercase tracking-wider">{tq("locationA")}</span>
             <span className="text-text-primary truncate max-w-[60%] text-right">{placeA}</span>
           </div>
           <div className="flex justify-between gap-2">
-            <span className="text-text-tertiary uppercase tracking-wider">Location B</span>
+            <span className="text-text-tertiary uppercase tracking-wider">{tq("locationB")}</span>
             <span className="text-text-primary truncate max-w-[60%] text-right">{placeB}</span>
           </div>
           {sameLocation && (
@@ -179,7 +182,7 @@ function StatsDelta({ recordA, recordB }: { recordA: FlightRecord; recordB: Flig
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border-default">
-            <th className="text-left py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">Metric</th>
+            <th className="text-left py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">{tq("metric")}</th>
             <th className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">A</th>
             <th className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">B</th>
             <th className="text-right py-1.5 px-2 text-[10px] uppercase text-text-secondary font-semibold">Δ (B − A)</th>
@@ -226,6 +229,7 @@ interface DualSeriesData {
 }
 
 function CompareCharts({ recordA, recordB }: { recordA: FlightRecord; recordB: FlightRecord }) {
+  const tq = useTranslations("history.compareModal");
   const [data, setData] = useState<DualSeriesData | null>(null);
 
   useEffect(() => {
@@ -246,8 +250,8 @@ function CompareCharts({ recordA, recordB }: { recordA: FlightRecord; recordB: F
 
   if (!data) {
     return (
-      <Card title="Charts" padding={true}>
-        <p className="text-[10px] text-text-tertiary">Loading frames…</p>
+      <Card title={tq("charts")} padding={true}>
+        <p className="text-[10px] text-text-tertiary">{tq("loadingFrames")}</p>
       </Card>
     );
   }
@@ -255,22 +259,22 @@ function CompareCharts({ recordA, recordB }: { recordA: FlightRecord; recordB: F
   return (
     <div className="flex flex-col gap-3">
       <DualPanel
-        title="Altitude (m)"
+        title={tq("altitudeM")}
         seriesA={data.a.altitude.map((p) => ({ t: p.t, v: p.alt }))}
         seriesB={data.b.altitude.map((p) => ({ t: p.t, v: p.alt }))}
       />
       <DualPanel
-        title="Ground speed (m/s)"
+        title={tq("groundSpeedMS")}
         seriesA={data.a.speed.map((p) => ({ t: p.t, v: p.gs ?? 0 }))}
         seriesB={data.b.speed.map((p) => ({ t: p.t, v: p.gs ?? 0 }))}
       />
       <DualPanel
-        title="Battery remaining (%)"
+        title={tq("batteryRemaining")}
         seriesA={data.a.battery.flatMap((p) => (p.pct !== undefined ? [{ t: p.t, v: p.pct }] : []))}
         seriesB={data.b.battery.flatMap((p) => (p.pct !== undefined ? [{ t: p.t, v: p.pct }] : []))}
       />
       <DualPanel
-        title="Vibration X (m/s²)"
+        title={tq("vibrationXMS")}
         seriesA={data.a.vibration.map((p) => ({ t: p.t, v: p.vx ?? 0 }))}
         seriesB={data.b.vibration.map((p) => ({ t: p.t, v: p.vx ?? 0 }))}
       />

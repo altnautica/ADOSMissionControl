@@ -28,6 +28,7 @@ import { registerBuiltins } from "@/lib/skills";
 const POLL_INTERVAL_MS = 2000;
 
 export default function InputDevicesPage() {
+  const tk = useTranslations("appPages.configInput");
   const t = useTranslations("status");
   const ti = useTranslations("inputDevices");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
@@ -90,9 +91,9 @@ export default function InputDevicesPage() {
     if (!client) return;
     const ok = await applyPrimaryGamepad(client, deviceId);
     if (ok) {
-      toast("Primary controller updated.", "success");
+      toast(tk("primaryControllerUpdated"), "success");
     } else {
-      toast("Failed to update primary controller.", "error");
+      toast(tk("failedToUpdatePrimaryController"), "error");
     }
   };
 
@@ -101,7 +102,7 @@ export default function InputDevicesPage() {
     if (!client) return;
     const ok = await forgetBluetooth(client, mac);
     if (ok) {
-      toast("Forgot " + name, "info");
+      toast(tk("forgot") + name, "info");
     }
   };
 
@@ -124,8 +125,8 @@ export default function InputDevicesPage() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-5xl flex flex-col">
         <PageIntro
-          title="Controllers"
-          description="Game controllers, joysticks, and HOTAS devices connected to the ground station agent or directly to your browser."
+          title={tk("controllers")}
+          description={tk("gameControllersJoysticksAndHOTAS")}
         />
         <div className="flex flex-col gap-4">
         {/* Agent-side device list */}
@@ -134,11 +135,11 @@ export default function InputDevicesPage() {
             <section className="rounded border border-border-default bg-bg-secondary p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-medium text-text-primary">Devices</h2>
-                  <HintChip>Set a primary controller to send sticks to the drone.</HintChip>
+                  <h2 className="text-lg font-medium text-text-primary">{tk("devices")}</h2>
+                  <HintChip>{tk("setAPrimaryControllerTo")}</HintChip>
                 </div>
                 <Button variant="primary" size="sm" onClick={() => setPairOpen(true)}>
-                  Scan Bluetooth
+                  {tk("scanBluetooth")}
                 </Button>
               </div>
 
@@ -154,11 +155,11 @@ export default function InputDevicesPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-bg-tertiary text-xs uppercase tracking-wide text-text-secondary">
                       <tr>
-                        <th className="px-3 py-2 text-left">Name</th>
-                        <th className="px-3 py-2 text-left">Device</th>
-                        <th className="px-3 py-2 text-left">Connection</th>
-                        <th className="px-3 py-2 text-left">Status</th>
-                        <th className="px-3 py-2 text-right">Action</th>
+                        <th className="px-3 py-2 text-left">{tk("name")}</th>
+                        <th className="px-3 py-2 text-left">{tk("device")}</th>
+                        <th className="px-3 py-2 text-left">{tk("connection")}</th>
+                        <th className="px-3 py-2 text-left">{tk("status")}</th>
+                        <th className="px-3 py-2 text-right">{tk("action")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -171,7 +172,7 @@ export default function InputDevicesPage() {
                                 <span className="text-text-primary">{dev.name}</span>
                                 {isPrimary ? (
                                   <span className="rounded border border-accent-primary/40 bg-accent-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-primary">
-                                    Primary
+                                    {tk("primary")}
                                   </span>
                                 ) : null}
                               </div>
@@ -202,7 +203,7 @@ export default function InputDevicesPage() {
                                   onClick={() => handleSetPrimary(dev.device_id)}
                                   disabled={!dev.connected}
                                 >
-                                  Set as primary
+                                  {tk("setAsPrimary")}
                                 </Button>
                               ) : null}
                             </td>
@@ -217,10 +218,10 @@ export default function InputDevicesPage() {
             </section>
 
             <section className="rounded border border-border-default bg-bg-secondary p-5">
-              <h2 className="mb-4 text-lg font-medium text-text-primary">Paired Bluetooth devices</h2>
+              <h2 className="mb-4 text-lg font-medium text-text-primary">{tk("pairedBluetoothDevices")}</h2>
               {bluetooth.paired.length === 0 ? (
                 <div className="py-4 text-center text-sm text-text-secondary">
-                  No paired Bluetooth devices.
+                  {tk("noPairedBluetoothDevices")}
                 </div>
               ) : (
                 <ul className="flex flex-col gap-1">
@@ -238,7 +239,7 @@ export default function InputDevicesPage() {
                         size="sm"
                         onClick={() => handleForget(dev.mac, dev.name || dev.mac)}
                       >
-                        Forget
+                        {tk("forget")}
                       </Button>
                     </li>
                   ))}
@@ -251,11 +252,11 @@ export default function InputDevicesPage() {
         {/* Browser-side calibration and tuning (always available) */}
         <section className="rounded border border-border-default bg-bg-secondary p-5">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-medium text-text-primary">Browser Input</h2>
-            <HintChip>Browser controllers only feed sticks while this tab is open.</HintChip>
+            <h2 className="text-lg font-medium text-text-primary">{tk("browserInput")}</h2>
+            <HintChip>{tk("browserControllersOnlyFeedSticks")}</HintChip>
           </div>
           <p className="mb-4 text-xs text-text-secondary">
-            Calibrate and tune controllers connected directly to this browser via the Web Gamepad API.
+            {tk("calibrateAndTuneControllersConnected")}
           </p>
           <ControllersSection />
         </section>

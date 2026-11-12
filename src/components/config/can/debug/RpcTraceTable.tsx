@@ -86,6 +86,7 @@ function applyFilters(events: ReadonlyArray<RpcEvent>, f: LocalFilters): RpcEven
 }
 
 export function RpcTraceTable() {
+  const tq = useTranslations("configUi.rpcTraceTable");
   const t = useTranslations("canConfig.debug.rpcTrace");
   const tCol = useTranslations("canConfig.debug.rpcTrace.column");
 
@@ -126,23 +127,23 @@ export function RpcTraceTable() {
         <div className="flex items-center gap-1.5">
           <input
             type="text"
-            placeholder="Node"
+            placeholder={tq("node")}
             value={filters.nodeIdInput}
             onChange={(e) =>
               setFilters((f) => ({ ...f, nodeIdInput: e.target.value }))
             }
             className="w-12 px-1.5 py-0.5 text-[10px] bg-bg-tertiary border border-border-default rounded text-text-primary"
-            aria-label="Filter by node"
+            aria-label={tq("filterByNode")}
           />
           <input
             type="text"
-            placeholder="Type"
+            placeholder={tq("type")}
             value={filters.typeInput}
             onChange={(e) =>
               setFilters((f) => ({ ...f, typeInput: e.target.value }))
             }
             className="w-24 px-1.5 py-0.5 text-[10px] bg-bg-tertiary border border-border-default rounded text-text-primary"
-            aria-label="Filter by type"
+            aria-label={tq("filterByType")}
           />
           <label className="flex items-center gap-1 text-[10px] text-text-secondary cursor-pointer">
             <input

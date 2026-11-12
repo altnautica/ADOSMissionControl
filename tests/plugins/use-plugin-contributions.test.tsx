@@ -21,7 +21,10 @@ import {
 import { renderHook, waitFor, act, cleanup } from "@testing-library/react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEMO_INLINE_FIXTURE_PLUGIN_ID } from "@/mock/inline-fixture-plugin";
+
+const WE = "com.altnautica.world-engine";
 import { VISION_NAV_PLUGIN_ID } from "@/mock/mock-vision-nav";
+import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 
 // --- Mocks ----------------------------------------------------------
 
@@ -129,24 +132,28 @@ describe("usePluginContributions", () => {
     expect(opts.enabled).toBe(false);
   });
 
-  it("mounts no installed plugin in demo mode, only the demo inline pages", () => {
+  it("mounts no installed plugin and no developer fixture in demo mode, only the demo inline pages", () => {
     useSettingsStore.setState({ demoMode: true });
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     const { result } = renderHook(() => usePluginContributions("drone-1"));
-    expect(result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation])).toEqual([
-      ["com.altnautica.world-engine", "node.agent.page", "live-world", "inline"],
-      [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "hello", "inline"],
-    ]);
+    const rows = result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation]);
+    expect(rows.every(([pluginId, , , isolation]) => pluginId === WE && isolation === "inline")).toBe(true);
+    expect(rows).toContainEqual([WE, "node.agent.page", "live-world", "inline"]);
+    expect(rows.some(([pluginId]) => pluginId === DEMO_INLINE_FIXTURE_PLUGIN_ID)).toBe(false);
   });
 
-  it("adds the demo Vision Nav tab body on the drone running that extension", () => {
+  it("adds the demo Vision Nav and Follow-Me tab bodies on the drone running those extensions", () => {
     useSettingsStore.setState({ demoMode: true });
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     const { result } = renderHook(() => usePluginContributions("alpha-1", undefined, "drone"));
     expect(result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation])).toEqual([
       [VISION_NAV_PLUGIN_ID, "node.detail.tab", "vision-nav-tab", "inline"],
-      ["com.altnautica.world-engine", "node.agent.page", "live-world", "inline"],
-      [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "hello", "inline"],
+      [FOLLOW_ME_PLUGIN_ID, "node.detail.tab", "follow-me-tab", "inline"],
+      [WE, "node.agent.page", "world-model", "inline"],
+      [WE, "node.agent.page", "world-model-setup", "inline"],
+      [WE, "node.agent.page", "live-world", "inline"],
+      [WE, "node.agent.page", "offload", "inline"],
+      [WE, "node.surface", "sessions", "inline"],
     ]);
     const narrowed = renderHook(() =>
       usePluginContributions("alpha-1", "node.detail.tab", "ground-station"),
@@ -164,7 +171,7 @@ describe("usePluginContributions", () => {
     });
 
     const { result } = renderHook(() => usePluginContributions("drone-1"));
-    await waitFor(() => expect(result.current.length).toBe(2));
+    await waitFor(() => expect(result.current.map((c) => c.bundleUrl)).toEqual(["blob:demo", "blob:demo"]));
 
     // Sorted by manifest order asc: video.overlay (10) before node.detail.tab (20).
     const [first, second] = result.current;
@@ -185,7 +192,7 @@ describe("usePluginContributions", () => {
     expect(second.title).toBe("Demo Plugin");
   });
 
-  it("omits contributions until the bundle blob loads", async () => {
+  it("lists contributions as loading, with no frame source, until the bundle blob loads", async () => {
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     let resolveLoad!: (v: { blobUrl: string; revoke: () => void }) => void;
     loadPluginBundleMock.mockReturnValue(
@@ -195,14 +202,18 @@ describe("usePluginContributions", () => {
     );
 
     const { result } = renderHook(() => usePluginContributions("drone-1"));
-    // Blob still loading -> nothing mounts.
-    expect(result.current).toEqual([]);
+    // Blob still loading -> the slot shows the load state, never an empty frame.
+    expect(result.current.map((c) => [c.bundleUrl, c.frame])).toEqual([
+      ["", { status: "loading" }],
+      ["", { status: "loading" }],
+    ]);
 
     await act(async () => {
       resolveLoad({ blobUrl: "blob:late", revoke: vi.fn() });
     });
-    await waitFor(() => expect(result.current.length).toBe(2));
-    expect(result.current[0].bundleUrl).toBe("blob:late");
+    await waitFor(() => expect(result.current[0]?.bundleUrl).toBe("blob:late"));
+    expect(result.current).toHaveLength(2);
+    expect(result.current[0].frame).toBeUndefined();
   });
 
   it("revokes blob URLs and disposes handlers on unmount", async () => {
@@ -215,7 +226,7 @@ describe("usePluginContributions", () => {
     const { result, unmount } = renderHook(() =>
       usePluginContributions("drone-1"),
     );
-    await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
+    await waitFor(() => expect(result.current[0]?.bundleUrl).toBe("blob:x"));
 
     unmount();
     expect(revoke).toHaveBeenCalledTimes(1);
@@ -261,8 +272,10 @@ describe("usePluginContributions", () => {
     const tab = renderHook(() =>
       usePluginContributions("drone-1", "node.detail.tab"),
     );
-    await waitFor(() => expect(overlay.result.current.length).toBe(1));
-    await waitFor(() => expect(tab.result.current.length).toBe(1));
+    await waitFor(() => expect(overlay.result.current[0]?.bundleUrl).toBe("blob:shared"));
+    await waitFor(() => expect(tab.result.current[0]?.bundleUrl).toBe("blob:shared"));
+    expect(overlay.result.current).toHaveLength(1);
+    expect(tab.result.current).toHaveLength(1);
     expect(loadPluginBundleMock).toHaveBeenCalledTimes(1);
     expect(buildPluginHandlersMock).toHaveBeenCalledTimes(1);
     expect(tab.result.current[0].bundleUrl).toBe("blob:shared");

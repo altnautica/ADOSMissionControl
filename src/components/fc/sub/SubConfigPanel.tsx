@@ -1,7 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Waves, Save, RotateCcw, HardDrive, Gamepad2, ShieldAlert } from "lucide-react";
+import { Waves, Gamepad2, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { usePanelCommit } from "@/hooks/use-panel-commit";
@@ -16,6 +17,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+
+import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 /**
  * `params` lists the names the firmware may use, newest first. The position
@@ -74,6 +77,7 @@ const SHIFT_BUTTONS: Field[] = Array.from({ length: 16 }, (_, i) => ({
 const ALL_FIELDS = [...DEPTH, ...HORIZ, ...FAILSAFE, ...BUTTONS, ...SHIFT_BUTTONS];
 
 export function SubConfigPanel() {
+  const tr = useTranslations("fcPanels.subConfigPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
@@ -87,7 +91,7 @@ export function SubConfigPanel() {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, optionalParams: paramNames, panelId: "sub-config", autoLoad: true });
-  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
+  const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -133,7 +137,7 @@ export function SubConfigPanel() {
     <ArmedWarningBanner>
     <div ref={scrollRef} className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-6">
-        <PanelHeader title="Sub Configuration" subtitle="Depth hold, position control, failsafes, and joystick buttons"
+        <PanelHeader title={tr("subConfiguration")} subtitle={tr("depthHoldPositionControlFailsafes")}
           icon={<Waves size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
@@ -144,27 +148,32 @@ export function SubConfigPanel() {
         <div className="border border-border-default bg-bg-secondary">
           <button onClick={() => setShowButtons((v) => !v)} className="flex items-center gap-2 w-full px-4 py-3 text-left cursor-pointer hover:bg-bg-tertiary/50">
             <Gamepad2 size={14} className="text-accent-primary" />
-            <h2 className="text-sm font-medium text-text-primary">Joystick Buttons</h2>
+            <h2 className="text-sm font-medium text-text-primary">{tr("joystickButtons")}</h2>
             <span className="text-[10px] text-text-tertiary ml-auto">{showButtons ? "▾" : "▸"}</span>
           </button>
           {showButtons && (
             <div className="px-4 pb-4 space-y-6">
               <div className="space-y-3 pt-2">{BUTTONS.map(renderField)}</div>
               <div>
-                <p className="text-[10px] text-text-tertiary mb-3">Shifted functions (held while the shift button is active).</p>
+                <p className="text-[10px] text-text-tertiary mb-3">{tr("shiftedFunctionsHeldWhileThe")}</p>
                 <div className="space-y-3">{SHIFT_BUTTONS.map(renderField)}</div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>Save to Flight Controller</Button>
-          <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>Revert</Button>
-          {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>Write to Flash</Button>}
-          {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
-          {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
-        </div>
+        <PanelSaveBar
+          onSave={handleSave}
+          saving={saving}
+          saveDisabled={!hasDirty || !connected}
+          onRevert={handleRevert}
+          revertDisabled={!hasDirty}
+          showFlash={hasRamWrites}
+          onFlash={handleFlash}
+          flashing={flashing}
+          showConnectHint={!connected}
+          showUnsavedHint={hasDirty && connected}
+        />
       </div>
     </div>
     </ArmedWarningBanner>

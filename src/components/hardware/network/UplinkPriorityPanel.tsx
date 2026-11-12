@@ -7,6 +7,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { UplinkPriorityList } from "@/components/hardware/UplinkPriorityList";
 import { HintChip } from "@/components/hardware/HintChip";
 import { Toggle } from "@/components/ui/toggle";
@@ -66,6 +67,7 @@ export function UplinkPriorityPanel({
   onPriorityChange,
   onShareToggle,
 }: Props) {
+  const tq = useTranslations("hardware.uplinkPriorityPanel");
   const recentFailovers = uplink.failover_log.slice(0, 5);
 
   return (
@@ -74,15 +76,15 @@ export function UplinkPriorityPanel({
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-medium text-text-primary">Uplink priority</h2>
-            <HintChip>Drag a row to reorder. The top entry wins on next failover.</HintChip>
+            <h2 className="text-lg font-medium text-text-primary">{tq("uplinkPriority")}</h2>
+            <HintChip>{tq("dragARowToReorder")}</HintChip>
           </div>
           <span className="text-xs text-text-secondary">
             Active: {ifaceLabel(uplink.active)}
           </span>
         </div>
         <p className="mb-3 text-[11px] text-text-tertiary">
-          Drag to reorder. The first healthy uplink takes traffic.
+          {tq("dragToReorderTheFirst")}
         </p>
         {uplink.routeApplied === false && uplink.active !== null && (
           <p
@@ -101,10 +103,10 @@ export function UplinkPriorityPanel({
 
         <div className="mt-4">
           <div className="mb-2 text-xs uppercase tracking-wide text-text-secondary">
-            Last 5 failovers
+            {tq("last5Failovers")}
           </div>
           {recentFailovers.length === 0 ? (
-            <div className="text-xs text-text-tertiary">No failovers recorded this session.</div>
+            <div className="text-xs text-text-tertiary">{tq("noFailoversRecordedThisSession")}</div>
           ) : (
             <ul className="flex flex-col gap-1">
               {recentFailovers.map((entry, idx) => (
@@ -129,9 +131,9 @@ export function UplinkPriorityPanel({
       <section className="rounded border border-border-default bg-bg-secondary p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-medium text-text-primary">Share uplink with AP clients</h2>
+            <h2 className="text-lg font-medium text-text-primary">{tq("shareUplinkWithAPClients")}</h2>
             <p className="mt-1 text-xs text-text-secondary">
-              Routes active uplink traffic out the ground station Access Point. Advanced option.
+              {tq("routesActiveUplinkTrafficOut")}
             </p>
           </div>
           <Toggle

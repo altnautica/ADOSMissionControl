@@ -16,7 +16,7 @@
 
 import { Fragment, useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { Command, Expand, Gauge, LogOut, Minimize, Settings, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
+import { Command, Gauge, Settings, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { VIEW_CYCLE, useCockpitView, useCockpitViewStore, viewDef } from "@/lib/cockpit/views";
@@ -24,7 +24,6 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
-import { useUiStore } from "@/stores/ui-store";
 import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
 import { CameraPanel } from "./CameraSheet";
 import { openFlightSheet } from "./flight-sheet";
@@ -58,13 +57,6 @@ const SETTINGS_HREF = "/config";
 /** The navigation source's popover, which the Menu's chip opens over it. */
 const NAV_POPOVER = "[data-testid='nav-source-popover']";
 
-/** Leave the flight screen for the drone page (its Overview tab). */
-export function exitFlightScreen(): void {
-  const ui = useUiStore.getState();
-  if (ui.immersiveMode) ui.exitImmersiveMode();
-  ui.setPendingDetailTab("overview");
-}
-
 export function FlightMenu({
   droneId,
   hidden,
@@ -80,7 +72,6 @@ export function FlightMenu({
   const { pilot } = usePilotState(droneId);
   // Set up aircraft is offered only while the pilot reports setup is needed.
   const setupNeeded = pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false;
-  const immersive = useUiStore((s) => s.immersiveMode);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -207,29 +198,10 @@ export function FlightMenu({
           {specString("cockpit.menu.palette")}
           <kbd>Ctrl K</kbd>
         </button>
-        <button
-          type="button"
-          data-testid="fs-immersive"
-          aria-pressed={immersive}
-          onClick={run(() => {
-            const ui = useUiStore.getState();
-            if (ui.immersiveMode) ui.exitImmersiveMode();
-            else ui.enterImmersiveMode();
-          })}
-        >
-          {immersive ? <Minimize className="fs-ico" aria-hidden="true" /> : <Expand className="fs-ico" aria-hidden="true" />}
-          {immersive ? specString("cockpit.menu.leave_immersive") : specString("cockpit.menu.immersive")}
-        </button>
       </section>
     ),
-    exit: (
-      <section className="fs-menu-sec fs-menu-actions" data-section="exit">
-        <button type="button" data-testid="fs-exit" onClick={run(exitFlightScreen)}>
-          <LogOut className="fs-ico" aria-hidden="true" />
-          {specString("cockpit.menu.exit_overview")}
-        </button>
-      </section>
-    ),
+    // The Flight tab's strip replaces Exit; full screen is the top-bar button.
+    exit: null,
   };
 
   return (

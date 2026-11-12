@@ -84,7 +84,13 @@ function runAction(droneId: string, b: Ds4Binding): void {
   const pilot = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data ?? null;
   const builtin = DS4_ACTIONS.find((a) => a.id === b.action)?.builtin;
   if (builtin) {
-    void activate(builtin, buildSkillContext(droneId), b.gesture === "hold" ? { confirmedByHold: true } : undefined);
+    void activate(
+      builtin,
+      buildSkillContext(droneId),
+      b.gesture === "hold"
+        ? { confirmedByHold: true, heldMs: b.hold_ms ?? 0 }
+        : undefined,
+    );
     return;
   }
   if (b.action.startsWith("skill:")) {
@@ -174,7 +180,8 @@ export function useDs4Dispatcher(droneId: string): void {
     const when = (cond: string): boolean => {
       const pilot = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data ?? null;
       const rth = !!pilot?.fcModeName && /RTL|QRTL/i.test(pilot.fcModeName);
-      const onGround = pilot ? pilot.landed : useDroneStore.getState().armState !== "armed";
+      // An unknown landed state falls back to the heartbeat, as no pilot does.
+      const onGround = pilot?.landed ?? useDroneStore.getState().armState !== "armed";
       switch (cond) {
         case "picker_open":
           return usePickerStore.getState().open;

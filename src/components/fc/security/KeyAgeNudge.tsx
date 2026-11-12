@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { Clock, RotateCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,6 +28,7 @@ export const KEY_AGE_SNOOZE_DAYS = 30;
 const STORAGE_KEY_PREFIX = "signing-age-nudge-snooze:";
 
 export function KeyAgeNudge({ droneId, enrolledAt, onRotate, busy }: Props) {
+  const tk = useTranslations("fcPanels.keyAgeNudge");
   const [dismissed, setDismissed] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export function KeyAgeNudge({ droneId, enrolledAt, onRotate, busy }: Props) {
             className="px-2.5 py-1 text-xs border border-border-default hover:bg-bg-tertiary disabled:opacity-40 inline-flex items-center gap-1.5"
           >
             <RotateCw size={12} aria-hidden="true" />
-            Rotate now
+            {tk("rotateNow")}
           </button>
           <button
             type="button"
@@ -76,7 +78,7 @@ export function KeyAgeNudge({ droneId, enrolledAt, onRotate, busy }: Props) {
             className="px-2.5 py-1 text-xs text-text-tertiary hover:text-text-secondary inline-flex items-center gap-1.5"
           >
             <X size={12} aria-hidden="true" />
-            Remind me in 30 days
+            {tk("remindMeIn30Days")}
           </button>
         </div>
       </div>

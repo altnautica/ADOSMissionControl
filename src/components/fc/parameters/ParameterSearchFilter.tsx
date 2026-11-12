@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ColumnVisibilityToggle } from "../shared/ColumnVisibilityToggle";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ import {
   Star,
   Zap,
 } from "lucide-react";
+import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
 
 interface ParameterSearchFilterProps {
   filter: string;
@@ -82,6 +84,8 @@ export function ParameterSearchFilter({
   resetBlockedReason,
   onSave,
 }: ParameterSearchFilterProps) {
+  const tr = useTranslations("fcPanels.parameterSearchFilter");
+  const tShared = useTranslations("fcShared");
   // Clamped defensively: current is meant to never exceed total (both sides
   // dedupe by parameter index), but a status surface must never display an
   // impossible reading if some future edge case lets it happen anyway.
@@ -103,7 +107,7 @@ export function ParameterSearchFilter({
               type="text"
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
-              placeholder="Search parameters..."
+              placeholder={tr("searchParameters")}
               className="w-full h-8 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
             />
           </div>
@@ -114,10 +118,10 @@ export function ParameterSearchFilter({
             size="sm"
             icon={<Filter size={12} />}
             onClick={onToggleModified}
-            title="Show only parameters you've changed this session"
+            title={tr("showOnlyParametersYouVe")}
             className={cn(showModifiedOnly && "bg-status-warning text-bg-primary hover:bg-status-warning/90")}
           >
-            Modified
+            {tr("modified")}
           </Button>
 
           <Button
@@ -125,19 +129,19 @@ export function ParameterSearchFilter({
             size="sm"
             icon={<Zap size={12} />}
             onClick={onToggleNonDefault}
-            title="Show parameters that differ from firmware defaults"
+            title={tr("showParametersThatDifferFrom")}
             className={cn(showNonDefault && "bg-accent-primary text-bg-primary hover:bg-accent-primary/90")}
           >
-            Non-Default
+            {tr("nonDefault")}
           </Button>
 
           {showNonDefault && (
             <button
               onClick={onDefaultsDiff}
               className="text-[10px] text-accent-primary hover:underline cursor-pointer"
-              title="Open detailed diff view comparing current values to firmware defaults"
+              title={tr("openDetailedDiffViewComparing")}
             >
-              View diff
+              {tr("viewDiff")}
             </button>
           )}
 
@@ -146,10 +150,10 @@ export function ParameterSearchFilter({
             size="sm"
             icon={<Star size={12} />}
             onClick={onToggleFavorites}
-            title="Show only starred parameters"
+            title={tr("showOnlyStarredParameters")}
             className={cn(showFavorites && "bg-status-warning text-bg-primary hover:bg-status-warning/90")}
           >
-            Favorites
+            {tr("favorites")}
           </Button>
 
           <ColumnVisibilityToggle />
@@ -157,16 +161,16 @@ export function ParameterSearchFilter({
           <div className="w-px h-5 bg-border-default" />
 
           {/* File ops */}
-          <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={onExport} disabled={paramCount === 0} title="Download all parameters as a Mission Planner .param file">Export</Button>
+          <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={onExport} disabled={paramCount === 0} title={tr("downloadAllParametersAsA")}>{tr("export")}</Button>
           {onExportQgc && (
-            <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={onExportQgc} disabled={paramCount === 0} title="Download all parameters as a QGroundControl .params file">Export QGC</Button>
+            <Button variant="secondary" size="sm" icon={<Download size={12} />} onClick={onExportQgc} disabled={paramCount === 0} title={tr("downloadAllParametersAsA2")}>{tr("exportQGC")}</Button>
           )}
-          <Button variant="secondary" size="sm" icon={<GitCompareArrows size={12} />} onClick={onCompare} disabled={paramCount === 0} title="Load a .param or .params file and compare against current FC values">Compare</Button>
+          <Button variant="secondary" size="sm" icon={<GitCompareArrows size={12} />} onClick={onCompare} disabled={paramCount === 0} title={tr("loadAParamOrParams")}>{tr("compare")}</Button>
 
           <div className="w-px h-5 bg-border-default" />
 
           {/* Changes */}
-          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={onRevert} disabled={modifiedCount === 0} title="Discard all unsaved changes (does not affect FC)">Revert</Button>
+          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={onRevert} disabled={modifiedCount === 0} title={tr("discardAllUnsavedChangesDoes")}><SaveBarLabel k="revert" /></Button>
           <Button
             variant="ghost"
             size="sm"
@@ -179,10 +183,12 @@ export function ParameterSearchFilter({
                 : "Reset ALL FC parameters to firmware factory defaults"
             }
           >
-            Reset to Default
+            {tr("resetToDefault")}
           </Button>
-          <Button variant="primary" size="sm" icon={<PenLine size={12} />} onClick={onSave} disabled={modifiedCount === 0} loading={saving} title="Send changed parameters to the flight controller">
-            {saving ? `Writing ${writeProgress.current}/${writeProgress.total}...` : `Write to FC (${modifiedCount})`}
+          <Button variant="primary" size="sm" icon={<PenLine size={12} />} onClick={onSave} disabled={modifiedCount === 0} loading={saving} title={tShared("writeToFcHint")}>
+            {saving
+              ? tShared("writingProgress", { current: writeProgress.current, total: writeProgress.total })
+              : tShared("writeToFcCount", { n: modifiedCount })}
           </Button>
         </div>
       </div>

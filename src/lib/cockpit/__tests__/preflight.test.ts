@@ -10,7 +10,25 @@ import {
   type PreflightItem,
 } from "@/lib/cockpit/preflight";
 import type { NavSourceResult } from "@/lib/hud/nav-source";
+import { preflightChecks, type PreflightCheck } from "@/lib/hud/preflight";
 import { useChecklistStore } from "@/stores/checklist-store";
+import { specText } from "@/lib/hud/spec-text";
+
+/** The shared checks for a live, fixed, charged vehicle with a home. */
+function shared(over: { live?: boolean; fix?: number; remaining?: number | null; home?: boolean } = {}): PreflightCheck[] {
+  const live = over.live ?? true;
+  const remaining = over.remaining === undefined ? 80 : over.remaining;
+  return preflightChecks({
+    telemetry: {
+      battery: remaining === null ? null : { remaining, voltage: 16.2 },
+      gps: { fix_type: over.fix ?? 3 },
+      home: over.home === false ? null : { lat_e7: 129716000, lon_e7: 775946000 },
+      ekf: null,
+    },
+    battery: null,
+    live,
+  });
+}
 
 const GPS_3D: NavSourceResult = { kind: "gps", quality: "good", tone: "good", activeSet: 1, fix: "3d", sats: 12 };
 
@@ -18,10 +36,9 @@ function inputs(over: Partial<PreflightInputs> = {}): PreflightInputs {
   return {
     readiness: [],
     prearm: [],
+    checks: shared(),
     live: true,
     nav: GPS_3D,
-    battery: { pct: 80, timeToReserveS: null, source: "fc" },
-    batteryLowPct: 20,
     controlMode: null,
     controller: { connected: false, name: null },
     onScreenSticks: false,
@@ -50,7 +67,7 @@ describe("pre-flight FC pre-arm item", () => {
   it("fails on a pre-arm text, showing the newest", () => {
     expect(fcPrearmItem(["PreArm: Compass not calibrated", "PreArm: Throttle below failsafe"])).toEqual({
       id: "fc_prearm",
-      label: "Flight controller: Throttle below failsafe",
+      label: "Throttle below failsafe",
       state: "fail",
     });
   });
@@ -93,11 +110,13 @@ describe("pre-flight checklist", () => {
       }),
     );
     expect(items.map((i) => [i.id, i.label, i.state])).toEqual([
+      ["link", "Vehicle link fresh", "pass"],
+      ["gps", "GPS fix 3D or better", "pass"],
+      ["battery", "Battery above the low band", "pass"],
+      ["home", "Home position set", "pass"],
       ["pilot:profile", "Flight profile loaded", "pass"],
       ["fc_prearm", "Flight controller checks", "pass"],
-      ["link", "Link", "pass"],
       ["nav_source", "Navigation source", "pass"],
-      ["battery", "Battery", "pass"],
       ["controller", "Controller connected (Wireless Controller)", "pass"],
       ["storage", "On-board storage 40% used", "pass"],
     ]);
@@ -119,7 +138,7 @@ describe("pre-flight checklist", () => {
         ],
       }),
     );
-    expect(items.slice(0, 2)).toEqual([
+    expect(items.filter((i) => i.id.startsWith("pilot:"))).toEqual([
       { id: "pilot:pos", label: "No position estimate", state: "fail" },
       { id: "pilot:rf", label: "rf", state: "warn" },
     ]);
@@ -127,23 +146,39 @@ describe("pre-flight checklist", () => {
   });
 
   it("fails the link and an unknown or low battery; warns the nav source", () => {
-    const down = preflightItems(inputs({ live: false }));
+    const down = preflightItems(inputs({ live: false, checks: shared({ live: false }) }));
     expect(state(down, "link")).toBe("fail");
     expect(state(down, "nav_source")).toBe("warn");
-    expect(state(preflightItems(inputs({ battery: null })), "battery")).toBe("fail");
-    expect(state(preflightItems(inputs({ battery: { pct: 20, timeToReserveS: null, source: "fc" } })), "battery")).toBe("fail");
+    expect(state(preflightItems(inputs({ checks: shared({ remaining: null }) })), "battery")).toBe("fail");
+    expect(state(preflightItems(inputs({ checks: shared({ remaining: 20 }) })), "battery")).toBe("fail");
+    expect(state(preflightItems(inputs({ checks: shared({ home: false }) })), "home")).toBe("fail");
     const noFix = preflightItems(inputs({ nav: { ...GPS_3D, quality: "noFix", tone: "crit", fix: "2d" } }));
     expect(state(noFix, "nav_source")).toBe("warn");
     expect(firstArmAllowed(noFix)).toBe(true);
   });
 
+  it("words a failing own item as the fault, without a source prefix", () => {
+    const noFix = preflightItems(inputs({ nav: { ...GPS_3D, quality: "noFix", tone: "crit", fix: "2d" } }));
+    expect(noFix.find((i) => i.id === "nav_source")?.label).toBe(
+      specText("alert.nav_source_degraded", { source: specText("nav_source.gps") }),
+    );
+    const down = preflightItems(inputs({ live: false }));
+    expect(down.find((i) => i.id === "nav_source")?.label).toBe("Navigation source (not reported)");
+    const pad = preflightItems(inputs({ controlMode: "ados" }));
+    expect(pad.find((i) => i.id === "controller")?.label).toBe(specText("controls.no_controller"));
+    const fc = preflightItems(inputs({ prearm: ["PreArm: Compass not calibrated"] }));
+    expect(fc.find((i) => i.id === "fc_prearm")?.label).toBe("Compass not calibrated");
+  });
+
   it("shows the controller only when the pilot flies the sticks, warning when absent", () => {
     expect(state(preflightItems(inputs()), "controller")).toBeUndefined();
     const items = preflightItems(inputs({ controlMode: "ados" }));
-    expect(items.find((i) => i.id === "controller")).toEqual({
+    expect(items.find((i) => i.id === "controller")?.state).toBe("warn");
+    const sticks = preflightItems(inputs({ controlMode: "ados", onScreenSticks: true }));
+    expect(sticks.find((i) => i.id === "controller")).toEqual({
       id: "controller",
       label: "Controller connected (or on-screen sticks / skills only)",
-      state: "warn",
+      state: "pass",
     });
   });
 

@@ -12,23 +12,18 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Trash2, Archive } from "lucide-react";
 import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
 import { batteryHealthPercent } from "@/lib/battery-pack-health";
 import type { BatteryPack, BatteryChemistry } from "@/lib/types/operator";
 
-const CHEMISTRY_OPTIONS: { value: BatteryChemistry; label: string }[] = [
-  { value: "LiPo", label: "LiPo" },
-  { value: "Li-Ion", label: "Li-Ion" },
-  { value: "LiFePO4", label: "LiFePO4" },
-  { value: "Li-HV", label: "Li-HV" },
-  { value: "NiMH", label: "NiMH" },
-  { value: "Other", label: "Other" },
-];
+const CHEMISTRIES: BatteryChemistry[] = ["LiPo", "Li-Ion", "LiFePO4", "Li-HV", "NiMH", "Other"];
 
 function genId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -37,7 +32,10 @@ function genId(): string {
   return `pack-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+type PendingAction = { kind: "delete" | "retire"; id: string };
+
 export function BatteryRegistryEditor() {
+  const t = useTranslations("operatorRegistry.battery");
   const packsMap = useBatteryRegistryStore((s) => s.packs);
   const upsert = useBatteryRegistryStore((s) => s.upsert);
   const update = useBatteryRegistryStore((s) => s.update);
@@ -48,13 +46,19 @@ export function BatteryRegistryEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedId ? packsMap[selectedId] : undefined;
   const [showRetired, setShowRetired] = useState(false);
+  const [pending, setPending] = useState<PendingAction | null>(null);
   const visible = showRetired ? packs : packs.filter((p) => !p.retiredAt);
+
+  const chemistryOptions = CHEMISTRIES.map((value) => ({
+    value,
+    label: value === "Other" ? t("chemistryOther") : value,
+  }));
 
   const handleAdd = () => {
     const id = genId();
     const fresh: BatteryPack = {
       id,
-      label: "New battery pack",
+      label: t("newLabel"),
       chemistry: "LiPo",
       cells: 6,
       capacityMah: 1300,
@@ -64,25 +68,29 @@ export function BatteryRegistryEditor() {
     setSelectedId(id);
   };
 
-  const handleDelete = (id: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Delete this battery pack permanently?")) return;
-    remove(id);
-    if (selectedId === id) setSelectedId(null);
-  };
-
-  const handleRetire = (id: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Retire this pack? It will be hidden from active loadout pickers.")) return;
-    retire(id);
+  const confirmPending = () => {
+    const action = pending;
+    setPending(null);
+    if (!action) return;
+    if (action.kind === "retire") {
+      retire(action.id);
+      return;
+    }
+    remove(action.id);
+    if (selectedId === action.id) setSelectedId(null);
   };
 
   return (
-    <Card title="Batteries" padding={true}>
+    <Card title={t("title")} padding={true}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-text-secondary">
-            {visible.length} pack{visible.length === 1 ? "" : "s"}
+            {t("packCount", { count: visible.length })}
             {!showRetired && packs.length > visible.length && (
-              <span className="text-text-tertiary"> · {packs.length - visible.length} retired hidden</span>
+              <span className="text-text-tertiary">
+                {" · "}
+                {t("retiredHidden", { count: packs.length - visible.length })}
+              </span>
             )}
           </span>
           <div className="flex items-center gap-2">
@@ -92,29 +100,27 @@ export function BatteryRegistryEditor() {
                 checked={showRetired}
                 onChange={(e) => setShowRetired(e.target.checked)}
               />
-              Show retired
+              {t("showRetired")}
             </label>
             <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={handleAdd}>
-              Add pack
+              {t("add")}
             </Button>
           </div>
         </div>
 
         {visible.length === 0 ? (
-          <p className="text-[10px] text-text-tertiary">
-            No battery packs registered yet. Click Add to register your first pack.
-          </p>
+          <p className="text-[10px] text-text-tertiary">{t("empty")}</p>
         ) : (
           <div className="border border-border-default rounded">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border-default">
-                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">Label</th>
-                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">Chem</th>
-                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">Cells</th>
-                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">mAh</th>
-                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">Cycles</th>
-                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">Health</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">{t("colLabel")}</th>
+                  <th className="px-2 py-1.5 text-left text-[10px] uppercase text-text-secondary">{t("colChem")}</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{t("colCells")}</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{t("colMah")}</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{t("colCycles")}</th>
+                  <th className="px-2 py-1.5 text-right text-[10px] uppercase text-text-secondary">{t("colHealth")}</th>
                   <th className="px-2 py-1.5" />
                 </tr>
               </thead>
@@ -129,7 +135,7 @@ export function BatteryRegistryEditor() {
                   >
                     <td className="px-2 py-1.5 text-text-primary">
                       {p.label}
-                      {p.retiredAt && <span className="ml-1 text-[9px] text-text-tertiary">retired</span>}
+                      {p.retiredAt && <span className="ml-1 text-[9px] text-text-tertiary">{t("retiredTag")}</span>}
                     </td>
                     <td className="px-2 py-1.5 text-text-secondary">{p.chemistry ?? "—"}</td>
                     <td className="px-2 py-1.5 text-right text-text-primary font-mono tabular-nums">
@@ -150,11 +156,11 @@ export function BatteryRegistryEditor() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRetire(p.id);
+                              setPending({ kind: "retire", id: p.id });
                             }}
                             className="text-text-tertiary hover:text-status-warning transition-colors"
-                            aria-label="Retire"
-                            title="Retire pack"
+                            aria-label={t("retire")}
+                            title={t("retirePack")}
                           >
                             <Archive size={12} />
                           </button>
@@ -162,11 +168,11 @@ export function BatteryRegistryEditor() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(p.id);
+                            setPending({ kind: "delete", id: p.id });
                           }}
                           className="text-text-tertiary hover:text-status-error transition-colors"
-                          aria-label="Delete"
-                          title="Delete pack"
+                          aria-label={t("delete")}
+                          title={t("deletePack")}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -184,63 +190,63 @@ export function BatteryRegistryEditor() {
             <h4 className="text-[11px] uppercase tracking-wider text-text-secondary mb-2">{selected.label}</h4>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Label"
+                label={t("label")}
                 value={selected.label}
                 onChange={(e) => update(selected.id, { label: e.target.value })}
               />
               <Input
-                label="Serial number"
+                label={t("serialNumber")}
                 value={selected.serial ?? ""}
                 onChange={(e) => update(selected.id, { serial: e.target.value })}
               />
               <Select
-                label="Chemistry"
+                label={t("chemistry")}
                 value={selected.chemistry ?? "LiPo"}
                 onChange={(v) => update(selected.id, { chemistry: v as BatteryChemistry })}
-                options={CHEMISTRY_OPTIONS}
+                options={chemistryOptions}
               />
               <Input
-                label="Cell count (S)"
+                label={t("cellCount")}
                 type="number"
                 value={selected.cells?.toString() ?? ""}
                 onChange={(e) => update(selected.id, { cells: e.target.value ? Number(e.target.value) : undefined })}
               />
               <Input
-                label="Capacity (mAh)"
+                label={t("capacityMah")}
                 type="number"
                 value={selected.capacityMah?.toString() ?? ""}
                 onChange={(e) => update(selected.id, { capacityMah: e.target.value ? Number(e.target.value) : undefined })}
               />
               <Input
-                label="C rating"
+                label={t("cRating")}
                 value={selected.cRating ?? ""}
                 onChange={(e) => update(selected.id, { cRating: e.target.value })}
                 placeholder="65C"
               />
               <Input
-                label="Manufacturer"
+                label={t("manufacturer")}
                 value={selected.manufacturer ?? ""}
                 onChange={(e) => update(selected.id, { manufacturer: e.target.value })}
               />
               <Input
-                label="Model"
+                label={t("model")}
                 value={selected.model ?? ""}
                 onChange={(e) => update(selected.id, { model: e.target.value })}
               />
               <Input
-                label="Purchase date"
+                label={t("purchaseDate")}
                 type="date"
                 value={selected.purchaseDate ?? ""}
                 onChange={(e) => update(selected.id, { purchaseDate: e.target.value })}
               />
               <Input
-                label="Last charged"
+                label={t("lastCharged")}
                 type="date"
                 value={selected.lastChargedAt?.slice(0, 10) ?? ""}
                 onChange={(e) => update(selected.id, { lastChargedAt: e.target.value })}
               />
               <Input
-                label="Cycle count"
+                label={t("cycleCount")}
                 type="number"
                 value={selected.cycleCount?.toString() ?? "0"}
                 onChange={(e) =>
@@ -250,11 +256,13 @@ export function BatteryRegistryEditor() {
                 }
               />
               <Input
-                label="Health % override"
+                label={t("healthOverride")}
                 type="number"
                 min={0}
                 max={100}
-                placeholder={`${batteryHealthPercent({ ...selected, healthOverridePercent: undefined }).toFixed(1)} (projected)`}
+                placeholder={t("healthProjected", {
+                  value: batteryHealthPercent({ ...selected, healthOverridePercent: undefined }).toFixed(1),
+                })}
                 value={selected.healthOverridePercent?.toString() ?? ""}
                 onChange={(e) =>
                   update(selected.id, {
@@ -268,6 +276,16 @@ export function BatteryRegistryEditor() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        onConfirm={confirmPending}
+        onCancel={() => setPending(null)}
+        title={pending?.kind === "retire" ? t("retireTitle") : t("deleteTitle")}
+        message={pending?.kind === "retire" ? t("retireMessage") : t("deleteMessage")}
+        confirmLabel={pending?.kind === "retire" ? t("retire") : t("delete")}
+        variant="danger"
+      />
     </Card>
   );
 }

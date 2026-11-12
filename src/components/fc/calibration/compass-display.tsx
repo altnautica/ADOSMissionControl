@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { CheckCircle, XCircle } from "lucide-react";
 import type { CompassProgressEntry, CompassResultEntry } from "./CalibrationWizard";
@@ -151,6 +152,7 @@ function FitnessGauge({ fitness }: { fitness: number }) {
 // ── Compass Progress Display ────────────────────────────
 
 export function CompassProgressDisplay({ entries }: { entries: CompassProgressEntry[] }) {
+  const tm = useTranslations("fcPanels.compass-display");
   return (
     <div className="mb-3 space-y-3">
       {entries.map(({ compassId, completionPct, calStatus: cs, completionMask, direction }) => {
@@ -173,7 +175,7 @@ export function CompassProgressDisplay({ entries }: { entries: CompassProgressEn
               {completionMask.length > 0 && <SphereGrid mask={completionMask} />}
             </div>
             <div className="mt-1.5">
-              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-1">Angular rate (rad/s)</p>
+              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-1">{tm("angularRateRadS")}</p>
               <div className="space-y-0.5">
                 {(["x", "y", "z"] as const).map((axis) => {
                   const val = direction?.[axis];
@@ -205,6 +207,7 @@ export function CompassProgressDisplay({ entries }: { entries: CompassProgressEn
 // ── Compass Results Display ─────────────────────────────
 
 export function CompassResultsDisplay({ results }: { results: CompassResultEntry[] }) {
+  const tm = useTranslations("fcPanels.compass-display");
   return (
     <div className="mb-3 space-y-2">
       {results.map((r) => {
@@ -223,14 +226,14 @@ export function CompassResultsDisplay({ results }: { results: CompassResultEntry
             </div>
             <FitnessGauge fitness={r.fitness} />
             <div>
-              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-0.5">Hard-iron offsets</p>
+              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-0.5">{tm("hardIronOffsets")}</p>
               <div className={cn("text-[10px] font-mono", offsetColor(r.ofsX, r.ofsY, r.ofsZ))}>
                 X={r.ofsX.toFixed(1)} Y={r.ofsY.toFixed(1)} Z={r.ofsZ.toFixed(1)}
                 <span className="text-text-tertiary ml-1">(|{Math.round(mag)}|)</span>
               </div>
             </div>
             <div>
-              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-0.5">Soft-iron diagonal</p>
+              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-0.5">{tm("softIronDiagonal")}</p>
               <div className="text-[10px] font-mono flex gap-2">
                 <span className={diagColor(r.diagX)}>X={r.diagX.toFixed(3)}</span>
                 <span className={diagColor(r.diagY)}>Y={r.diagY.toFixed(3)}</span>
@@ -238,7 +241,7 @@ export function CompassResultsDisplay({ results }: { results: CompassResultEntry
               </div>
             </div>
             <div>
-              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-0.5">Soft-iron off-diagonal</p>
+              <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-0.5">{tm("softIronOffDiagonal")}</p>
               <div className="text-[10px] font-mono flex gap-2">
                 <span className={offdiagColor(r.offdiagX)}>X={r.offdiagX.toFixed(3)}</span>
                 <span className={offdiagColor(r.offdiagY)}>Y={r.offdiagY.toFixed(3)}</span>

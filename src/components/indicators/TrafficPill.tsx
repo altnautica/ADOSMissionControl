@@ -10,6 +10,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockStore } from "@/stores/clock-store";
@@ -72,6 +73,7 @@ function VehicleRow({ vehicle, ownLat, ownLon }: { vehicle: INavAdsbVehicle; own
 // ── Component ────────────────────────────────────────────────
 
 export function TrafficPill() {
+  const tk = useTranslations("indicators.trafficPill");
   const allVehicles = useTelemetryStore((s) => s.adsbVehicles);
   const listAt = useTelemetryStore((s) => s.adsbUpdatedAt);
   useClockTick();
@@ -138,7 +140,7 @@ export function TrafficPill() {
 
       {open && (
         <div className="absolute top-full right-0 mt-1 z-50 w-56 bg-bg-secondary border border-border-default shadow-lg p-2">
-          <p className="text-[9px] text-text-tertiary mb-1 uppercase tracking-wider">Nearby traffic</p>
+          <p className="text-[9px] text-text-tertiary mb-1 uppercase tracking-wider">{tk("nearbyTraffic")}</p>
           {vehicles.map((v) => (
             <VehicleRow key={v.icao} vehicle={v} ownLat={ownLat} ownLon={ownLon} />
           ))}

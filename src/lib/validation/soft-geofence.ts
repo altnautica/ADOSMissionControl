@@ -26,8 +26,10 @@ export interface SoftBufferWarning {
   waypointIndex: number;
   /** Distance from the waypoint to the nearest fence boundary, in meters. */
   distanceToEdgeM: number;
-  /** Human-readable warning message. */
+  /** Human-readable warning message (English, for logs). */
   message: string;
+  /** Translation key under `planner.issue` and its params. */
+  text: { key: string; params?: Record<string, string | number> };
 }
 
 /** Default warning buffer width in meters. */
@@ -92,6 +94,7 @@ export function checkSoftBuffer(
         waypointIndex: index,
         distanceToEdgeM,
         message: `WP${index + 1}: ${rounded}m from the geofence boundary (within the ${bufferM}m warning buffer)`,
+        text: { key: "wpMFromTheGeofenceBoundary", params: { v0: index + 1, v1: rounded, v2: bufferM } },
       });
     }
   });

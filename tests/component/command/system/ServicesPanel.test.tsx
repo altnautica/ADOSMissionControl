@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { renderWithIntl as render } from "../../../helpers/intl-wrapper";
 
 vi.mock("@/stores/agent-system-store", () => ({
   useAgentSystemStore: (sel: (s: unknown) => unknown) =>

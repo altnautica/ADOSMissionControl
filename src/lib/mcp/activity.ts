@@ -123,8 +123,9 @@ export function categoryForTool(tool: string): McpCategory {
 
 /**
  * The GCS surface a tool acts on. Node-detail tabs (`overview`/`parameters`/
- * `system`/`plugins`/`vision`/`logs`/`flight`/`cockpit`) resolve to
- * `setPendingDetailTab`; whole-page tools resolve to a route. Fleet/MCP-level
+ * `system`/`plugins`/`vision`/`logs`/`cockpit`, the last one labelled
+ * Flight) resolve to `setPendingDetailTab`; whole-page tools resolve to a
+ * route. Fleet/MCP-level
  * tools have no single surface -> the MCP tab. Unknowns -> null (feed-only).
  */
 export function surfaceForTool(tool: string): McpSurface {
@@ -132,7 +133,6 @@ export function surfaceForTool(tool: string): McpSurface {
     case "params":
       return { kind: "tab", id: "parameters" };
     case "flight":
-      return { kind: "tab", id: "flight" };
     case "video":
       return { kind: "tab", id: "cockpit" };
     case "config":

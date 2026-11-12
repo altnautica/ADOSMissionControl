@@ -50,7 +50,7 @@ import { demoActiveCameraId, mockNavStream } from "./mock-nav";
 import { mockPilot } from "./mock-pilot";
 
 /** The demo drone whose agent reports its vision engine unreachable. */
-export const VISION_OFF_DEMO_DRONE = "kilo-11";
+export const VISION_OFF_DEMO_DRONE = "lima-12";
 
 /** Push rate (ms) — ~10 Hz, matching a typical on-companion inference loop. */
 const TICK_MS = 100;

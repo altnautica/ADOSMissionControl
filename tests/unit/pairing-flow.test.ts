@@ -12,6 +12,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
+// The hook's operator messages come from the real English catalogue.
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl")>();
+  const messages = (await import("../../locales/en.json")).default;
+  const cache = new Map<string, unknown>();
+  return {
+    ...actual,
+    useTranslations: (namespace?: string) => {
+      const key = namespace ?? "";
+      if (!cache.has(key)) {
+        cache.set(key, actual.createTranslator({ locale: "en", messages, namespace: namespace as never }));
+      }
+      return cache.get(key);
+    },
+  };
+});
+
 vi.hoisted(() => {
   const map = new Map<string, string>();
   const storage = {

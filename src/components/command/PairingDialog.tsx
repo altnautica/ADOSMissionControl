@@ -178,6 +178,9 @@ function PairingDialogDeepLinkBase({
         {requiresSignIn && (
           <PairingPrompt variant="sign-in" onSignIn={() => setSignInOpen(true)} />
         )}
+        {!requiresSignIn && flow.state === "setup" && initialCode && (
+          <PairingPrompt variant="claiming" code={initialCode} />
+        )}
         {flow.state === "success" && flow.pairedInfo && (
           <PairingResult variant="success" info={flow.pairedInfo} />
         )}

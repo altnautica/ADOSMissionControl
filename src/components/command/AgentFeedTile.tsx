@@ -249,7 +249,7 @@ function ConsoleAgentFeedTile({
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
               <StatTile icon={<Radio size={12} />} label={t("mem")} value={pct(agent.system.memoryPercent)} />
               <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={formatOr(agent.system.temperature, 0, "C")} />
-              <StatTile icon={<Video size={12} />} label={t("video")} value={t(agent.video.state)} />
+              <StatTile icon={<Video size={12} />} label={t("video")} value={t(agent.video.state)} wrapValue />
             </>
           )}
 

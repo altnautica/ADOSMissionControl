@@ -33,6 +33,7 @@ interface ParamCompareProps {
 }
 
 export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProps) {
+  const tl = useTranslations("fcPanels.paramCompare");
   const { toast } = useToast();
   const t = useTranslations("fcToasts.parameters");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -180,7 +181,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
           icon={<Upload size={12} />}
           onClick={() => fileInputRef.current?.click()}
         >
-          Load .param File
+          {tl("loadParamFile")}
         </Button>
         <input
           ref={fileInputRef}
@@ -207,10 +208,10 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
             <Badge variant="neutral" size="sm">{stats.unchanged} unchanged</Badge>
             <div className="w-px h-4 bg-border-default" />
             <Button variant="ghost" size="sm" icon={<CheckSquare size={12} />} onClick={handleSelectAll} disabled={selectableCount === 0}>
-              Select All
+              {tl("selectAll")}
             </Button>
             <Button variant="ghost" size="sm" icon={<Square size={12} />} onClick={handleSelectNone} disabled={selected.size === 0}>
-              Select None
+              {tl("selectNone")}
             </Button>
           </div>
 
@@ -222,7 +223,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter params..."
+                placeholder={tl("filterParams")}
                 className="w-full h-7 pl-7 pr-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
               />
             </div>
@@ -247,10 +248,10 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-bg-tertiary border-b border-border-default z-10"><tr>
                 <th className="w-8 px-2 py-1.5 text-left"></th>
-                <th className={cn(TH, "text-left")}>Parameter</th>
-                <th className={cn(TH, "text-right w-28")}>FC Value</th>
-                <th className={cn(TH, "text-right w-28")}>File Value</th>
-                <th className={cn(TH, "text-center w-20")}>Status</th>
+                <th className={cn(TH, "text-left")}>{tl("parameter")}</th>
+                <th className={cn(TH, "text-right w-28")}>{tl("fcValue")}</th>
+                <th className={cn(TH, "text-right w-28")}>{tl("fileValue")}</th>
+                <th className={cn(TH, "text-center w-20")}>{tl("status")}</th>
               </tr></thead>
               <tbody>
                 {filteredDiffs.map((d) => {
@@ -297,7 +298,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
                 {filteredDiffs.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-text-tertiary text-xs">
-                      No parameters match the current filter.
+                      {tl("noParametersMatchTheCurrent")}
                     </td>
                   </tr>
                 )}
@@ -326,7 +327,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
       {!fileName && (
         <div className="flex flex-col items-center justify-center gap-2 py-8 text-text-tertiary">
           <FileText size={24} strokeWidth={1.5} />
-          <p className="text-xs">Load a .param file to compare against current FC parameters</p>
+          <p className="text-xs">{tl("loadAParamFileTo")}</p>
         </div>
       )}
     </div>

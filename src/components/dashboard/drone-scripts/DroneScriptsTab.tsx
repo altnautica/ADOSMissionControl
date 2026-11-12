@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FileWarning } from "lucide-react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -21,6 +22,7 @@ import { AppletCatalog } from "./AppletCatalog";
 import { ScriptConsole } from "./ScriptConsole";
 
 export function DroneScriptsTab({ droneId }: { droneId?: string }) {
+  const tk = useTranslations("dashboard.droneScriptsTab");
   void droneId; // the tab operates on the selected protocol (this node is selected)
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const supportsFtp = !!selectedProtocol?.uploadFileViaFtp;
@@ -32,7 +34,7 @@ export function DroneScriptsTab({ droneId }: { droneId?: string }) {
       <div className="max-w-2xl space-y-6">
         <div>
           <h1 className="text-lg font-display font-semibold text-text-primary">
-            Lua Scripts
+            {tk("luaScripts")}
           </h1>
           <p className="text-xs text-text-tertiary mt-0.5">
             Manage the flight controller&rsquo;s onboard Lua scripts. Scripts run
@@ -47,13 +49,10 @@ export function DroneScriptsTab({ droneId }: { droneId?: string }) {
             <FileWarning size={16} className="text-status-warning shrink-0 mt-0.5" />
             <div className="text-xs text-text-secondary">
               <p className="font-medium text-text-primary">
-                File transfer unavailable on this connection
+                {tk("fileTransferUnavailableOnThis")}
               </p>
               <p className="mt-1">
-                Managing scripts needs MAVLink file transfer. Connect to the
-                flight controller directly (USB/serial/TCP) or through an ADOS
-                agent to upload and manage scripts. The scripting-engine settings
-                below still apply.
+                {tk("managingScriptsNeedsMAVLinkFile")}
               </p>
             </div>
           </div>

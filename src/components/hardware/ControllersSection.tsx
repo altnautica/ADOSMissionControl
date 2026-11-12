@@ -50,6 +50,7 @@ function AxisBar({ label, value }: { label: string; value: number }) {
 }
 
 export function ControllersSection() {
+  const tq = useTranslations("hardware.controllersSection");
   const t = useTranslations("inputDevices");
   const activeController = useInputStore((s) => s.activeController);
   const axes = useInputStore((s) => s.axes);
@@ -100,19 +101,15 @@ export function ControllersSection() {
       </Card>
 
       {/* Stick control opt-in */}
-      <Card title="Stick control">
+      <Card title={tq("stickControl")}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0">
             <p className="text-xs text-text-secondary leading-relaxed">
-              Lets the gamepad fly the selected aircraft. Sticks are sent as a
-              receiver override, so nothing is transmitted until the aircraft is
-              armed and in a mode where the pilot holds the sticks. Turning it on
-              here is the only thing that opens the stream, and unplugging the
-              controller turns it back off.
+              {tq("letsTheGamepadFlyThe")}
             </p>
             {!hasGamepad && (
               <p className="text-[10px] text-text-tertiary">
-                No gamepad is reporting. Connect one and press a button.
+                {tq("noGamepadIsReportingConnect")}
               </p>
             )}
             {manualControlLinkBlock && (
@@ -128,7 +125,7 @@ export function ControllersSection() {
             type="button"
             role="switch"
             aria-checked={manualControlEnabled}
-            aria-label="Stick control"
+            aria-label={tq("stickControl")}
             disabled={!hasGamepad}
             onClick={() => setManualControlEnabled(!manualControlEnabled)}
             className={cn(
@@ -146,15 +143,15 @@ export function ControllersSection() {
 
       {/* Calibration: per controller, per physical axis */}
       {hasGamepad && gamepadId && (
-        <Card title="Calibration">
+        <Card title={tq("calibration")}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {calibration ? (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-status-success/15 text-status-success">
-                  Calibrated
+                  {tq("calibrated")}
                 </span>
               ) : (
-                <span className="text-xs text-text-tertiary">Not calibrated</span>
+                <span className="text-xs text-text-tertiary">{tq("notCalibrated")}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -163,7 +160,7 @@ export function ControllersSection() {
                   onClick={() => clearCalibration(gamepadId)}
                   className="text-[10px] text-text-tertiary hover:text-status-error transition-colors"
                 >
-                  Reset
+                  {tq("reset")}
                 </button>
               )}
               <button

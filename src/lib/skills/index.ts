@@ -22,6 +22,8 @@ import {
   setSkillNotifier,
 } from "./registry";
 import { builtinSkills } from "./builtins";
+import { lastResortPath, viaPilot } from "./builtins/_shared";
+import { SPEC_BUILTINS } from "@/lib/cockpit/spec-builtins";
 import {
   hasCharge,
   spendCharge,
@@ -155,8 +157,16 @@ export async function activate(
   // wrong arm state even if getState was momentarily stale. An unknown arm
   // state (no heartbeat to read it from) satisfies neither requirement, and is
   // reported as the missing link it is rather than as armed or disarmed.
+  // The exception is a built-in the shared spec sends blind on a stale link
+  // (pause): link loss leaves the arm state unknown, and its brake must still
+  // go out on whatever route remains.
   const armReq = skill.armRequirement ?? "any";
-  if (armReq !== "any" && ctx.armState !== armReq) {
+  const blindThroughUnknown =
+    ctx.armState === "unknown" &&
+    skill.source === "builtin" &&
+    SPEC_BUILTINS.some((b) => b.id === skill.id && b.stale_link === "send_blind") &&
+    (lastResortPath(ctx) !== null || viaPilot(ctx));
+  if (armReq !== "any" && ctx.armState !== armReq && !blindThroughUnknown) {
     ctx.notify(
       ctx.armState === "unknown"
         ? "refusal.no_fc_link"
@@ -178,16 +188,20 @@ export async function activate(
   // Confirm gate — open the shared sheet and await the operator. A `tap`
   // policy is confirmed by the press itself and opens nothing; so is a `hold`
   // policy fired by a controller hold binding (`confirmedByHold`), whose own
-  // hold time is the confirmation. The sheet names the target drone and, on a
-  // stale link, warns the command may not arrive.
+  // hold time is the confirmation. A `guarded` policy (the emergency stop)
+  // counts the pad hold too, once it ran at least the policy's own hold. The
+  // sheet names the target drone and, on a stale link, warns the command may
+  // not arrive.
   let activateArgs = args;
   let sendCtx = ctx;
   const policy = skill.confirmFor ? skill.confirmFor(args, ctx) : skill.confirm;
   // An incomplete pre-flight checklist always opens the sheet, so the
   // operator sees what is failing before an arm.
   const heldOnPad =
-    policy?.gesture === "hold" &&
+    policy !== undefined &&
     args?.confirmedByHold === true &&
+    (policy.gesture === "hold" ||
+      (policy.gesture === "guarded" && (args.heldMs ?? 0) >= (policy.holdMs ?? Infinity))) &&
     !(policy.checklistAware && !useChecklistStore.getState().isReadyToArm(ctx.droneId));
   if (policy && policy.gesture !== "tap" && !heldOnPad) {
     busy.add(key);
@@ -243,6 +257,10 @@ export async function activate(
   if (PREEMPTS_FOLLOW_ME[skillId] === true || skillId.startsWith("mode.")) {
     if (useFollowMeStore.getState().droneId === ctx.droneId) stopFollowMe();
     void stopMotionSkills(ctx);
+  } else if (skill.motion && useFollowMeStore.getState().droneId === ctx.droneId) {
+    // An extension's motion skill and the GCS-position follow both steer the
+    // drone; one at a time, so the follow ends before the skill starts.
+    stopFollowMe();
   }
 
   busy.add(key);

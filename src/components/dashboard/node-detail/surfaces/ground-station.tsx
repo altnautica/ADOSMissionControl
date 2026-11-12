@@ -82,11 +82,11 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     ),
   },
   {
-    // A ground station flies the drone it carries: its cockpit hands over to
-    // that drone's cockpit, or says no drone is linked. Shown for every ground
-    // node (no role gate).
+    // A ground station flies the drone it carries: its Flight tab hands over
+    // to that drone's cockpit, or says no drone is linked. Shown for every
+    // ground node (no role gate).
     id: "cockpit",
-    labelKey: "dronePanel.cockpit",
+    labelKey: "dronePanel.flight",
     group: STATUS_GROUP,
     render: (ctx) => <GroundStationCockpit groundDeviceId={surfaceNodeDeviceId(ctx)} />,
   },

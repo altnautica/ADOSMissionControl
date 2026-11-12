@@ -30,7 +30,6 @@ import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { formatChord } from "@/lib/skills/chord";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import type { HotbarSlot } from "@/stores/settings/keybindings-slice";
-import { SKILL_BUTTON_DEFAULTS } from "@/lib/input/skill-button-defaults";
 import { useKeyCapture, useButtonCapture } from "@/hooks/use-binding-capture";
 import { acquireGamepadPolling } from "@/lib/input/gamepad-poller";
 import { LoadoutPresetBar } from "@/components/cockpit/LoadoutPresetBar";
@@ -147,20 +146,6 @@ export function SkillBindingsSection() {
     buttonCapture.start();
   };
 
-  const handleApplyDefaults = () => {
-    if (!loadout) return;
-    let applied = 0;
-    for (const def of SKILL_BUTTON_DEFAULTS) {
-      const slot = loadout.slots.find((s) => s.skillId === def.skillId);
-      if (slot) {
-        setSlotGamepadButton(loadout.id, slot.index, def.button);
-        applied += 1;
-      }
-    }
-    toast(t("controllerDefaultsApplied", { count: applied }), "success");
-    setAnnouncement(t("controllerDefaultsApplied", { count: applied }));
-  };
-
   const [confirmReset, setConfirmReset] = useState(false);
   const handleReset = () => {
     setConfirmReset(false);
@@ -181,14 +166,6 @@ export function SkillBindingsSection() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-medium text-text-primary">{t("title")}</h2>
         <div className="flex items-center gap-1">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Gamepad2 size={12} />}
-            onClick={handleApplyDefaults}
-          >
-            {t("applyControllerDefaults")}
-          </Button>
           <Button
             variant="ghost"
             size="sm"
