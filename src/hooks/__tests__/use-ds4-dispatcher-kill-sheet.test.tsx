@@ -29,6 +29,7 @@ import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useInputStore } from "@/stores/input-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { requestStop } from "@/components/cockpit/flight/FlightTopBar";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
 
 const DRONE = "pad-drone";
@@ -90,5 +91,29 @@ describe("pad emergency stop with the stop sheet open", () => {
     expect(killSwitch).toHaveBeenCalledTimes(1);
     expect(killSwitch).toHaveBeenCalledWith(true);
     expect(useSkillConfirmStore.getState().pending).toBeNull();
+  });
+
+  it("closes the top bar's stop sheet so it cannot send a second stop", async () => {
+    // Clear the stop debounce the case above armed on the shared fake clock.
+    act(() => vi.advanceTimersByTime(5000));
+    render(<Dispatcher />);
+    const sheet = requestStop(DRONE);
+    await act(async () => {});
+    expect(useSkillConfirmStore.getState().pending?.policy.gesture).toBe("guarded");
+
+    hold(["l2"]);
+    hold(["l2", "r2"]);
+    hold(["l2", "r2", "circle"]);
+    act(() => vi.advanceTimersByTime(3200));
+    hold([]);
+    for (let i = 0; i < 5; i++) await act(async () => {});
+
+    expect(killSwitch).toHaveBeenCalledTimes(1);
+    expect(useSkillConfirmStore.getState().pending).toBeNull();
+    // Past the debounce, a sheet left up and then completed would send again.
+    act(() => vi.advanceTimersByTime(2000));
+    act(() => useSkillConfirmStore.getState().resolvePending(true));
+    await act(async () => { await sheet; });
+    expect(killSwitch).toHaveBeenCalledTimes(1);
   });
 });

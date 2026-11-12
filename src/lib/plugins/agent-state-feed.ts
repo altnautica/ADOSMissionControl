@@ -62,28 +62,35 @@ function cloudState(pluginId: string, deviceId: string): PluginStateResponse | n
 
 /** The LAN poll answers at the feed's own cadence, so it wins whenever it
  * answers; the slower cloud heartbeat slice is only the fallback for a node
- * with no LAN reach or a failed poll (mixing the two flips 2 s staleness rules). */
-async function readState(pluginId: string, deviceId: string): Promise<PluginStateResponse | null> {
+ * with no LAN reach or a failed poll (mixing the two flips 2 s staleness rules).
+ * `lan` says which of the two answered. */
+async function readState(
+  pluginId: string,
+  deviceId: string,
+): Promise<{ state: PluginStateResponse; lan: boolean } | null> {
   const reach = resolveNodeAgentReach(deviceId);
   if (reach) {
     const lan = await pluginClientForReach(reach).getState(pluginId).catch(() => null);
-    if (lan) return lan;
+    if (lan) return { state: lan, lan: true };
   }
-  return cloudState(pluginId, deviceId);
+  const cloud = cloudState(pluginId, deviceId);
+  return cloud ? { state: cloud, lan: false } : null;
 }
 
 async function tick(key: string, feed: Feed, pluginId: string, deviceId: string): Promise<void> {
   if (feed.inFlight) return;
   feed.inFlight = true;
   try {
-    const state = await readState(pluginId, deviceId);
-    if (!state || feeds.get(key) !== feed) return;
+    const read = await readState(pluginId, deviceId);
+    if (!read || feeds.get(key) !== feed) return;
     const origin = agentStateOrigin(pluginId, deviceId);
-    for (const [topic, entry] of Object.entries(state)) {
-      // Only a newer report goes out: a fallback slice older than the last
-      // LAN answer must not walk the topic back in time.
+    for (const [topic, entry] of Object.entries(read.state)) {
+      // A LAN answer is the agent's current state and goes out on any change,
+      // an older stamp included (the agent clock stepped back after a power
+      // cycle or a clock fix). The cloud fallback goes out only when newer,
+      // so a slice older than the last LAN answer never walks the topic back.
       const last = feed.published.get(topic);
-      if (last !== undefined && entry.ts_ms <= last) continue;
+      if (last !== undefined && (read.lan ? entry.ts_ms === last : entry.ts_ms <= last)) continue;
       feed.published.set(topic, entry.ts_ms);
       publishPluginEvent(topic, agentStatePayload(entry.payload, entry.ts_ms), origin);
     }

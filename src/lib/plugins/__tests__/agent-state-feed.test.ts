@@ -156,6 +156,24 @@ describe("agent-extended telemetry on a node-bound mount", () => {
     dispose();
   });
 
+  it("keeps delivering LAN answers after the agent's clock steps back", async () => {
+    vi.useFakeTimers();
+    let ts = 5000;
+    fetchMock.mockImplementation(async () => stateBody(ts, { jobs: ts }));
+    const { postEvent, dispose } = subscribeStatus();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 5000, ts_ms: 5000 });
+
+    // Power cycle with no clock source: the agent restarts its clock near zero.
+    ts = 40;
+    await vi.advanceTimersByTimeAsync(AGENT_STATE_POLL_MS);
+    expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 40, ts_ms: 40 });
+    const calls = postEvent.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(AGENT_STATE_POLL_MS);
+    expect(postEvent).toHaveBeenCalledTimes(calls);
+    dispose();
+  });
+
   it("runs one poll per (node, plugin) and stops when the last holder lets go", async () => {
     vi.useFakeTimers();
     fetchMock.mockImplementation(async () => stateBody(1, {}));

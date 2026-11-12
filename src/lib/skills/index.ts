@@ -286,6 +286,17 @@ export async function activate(
     }
   }
 
+  // A completed pad hold of the emergency stop is the operator's
+  // confirmation. A stop sheet raised outside this pipeline (the top bar's
+  // STOP) for the same drone closes unconfirmed, so completing it later
+  // cannot send a second stop.
+  if (heldOnPad && policy?.gesture === "guarded") {
+    const confirms = useSkillConfirmStore.getState();
+    if (confirms.pending?.droneId === ctx.droneId && confirms.pending.policy.gesture === "guarded") {
+      confirms.resolvePending(false);
+    }
+  }
+
   // Idempotency: swallow a repeat one-shot inside the debounce window. Toggles
   // self-guard via the toggle-off path, so the debounce applies to one-shots.
   if (!skill.toggle) {
