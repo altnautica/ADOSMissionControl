@@ -11,6 +11,7 @@
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { MockProtocol } from "./mock-protocol";
+import { SENSOR_MASK } from "./engine-telemetry";
 
 /** Sticks centred, throttle and the mode channel low. */
 const IDLE_RC = [1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500];
@@ -23,7 +24,8 @@ export function tickGroundedDrone(
   now: number,
 ): void {
   const registry = useNodeRegistryStore.getState();
-  const last = registry.getEntry(nodeId)?.fc.position;
+  const fc = registry.getEntry(nodeId)?.fc;
+  const last = fc?.position;
   const position = last && {
     ...last,
     timestamp: now,
@@ -40,9 +42,15 @@ export function tickGroundedDrone(
   if (!selected) return;
 
   const heading = position?.heading ?? 0;
+  const battery = fc?.battery && { ...fc.battery, timestamp: now, current: 0 };
+  const gps = fc?.gps && { ...fc.gps, timestamp: now };
   useTelemetryStore.getState().pushBatch({
     attitude: { timestamp: now, roll: 0, pitch: 0, yaw: heading, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0 },
     ...(position ? { position } : {}),
+    // A landed drone keeps reporting its pack and fix, so the take-off checks
+    // read real values again after a Land instead of going stale.
+    ...(battery ? { battery } : {}),
+    ...(gps ? { gps } : {}),
     vfr: { timestamp: now, airspeed: 0, groundspeed: 0, heading, throttle: 0, alt: position?.alt ?? 0, climb: 0 },
     rc: { timestamp: now, channels: IDLE_RC, rssi: 230 },
   });
@@ -51,5 +59,14 @@ export function tickGroundedDrone(
     protocol.emitHeartbeat(protocol.flight.armed, protocol.flight.mode);
     // EXTENDED_SYS_STATE: MAV_LANDED_STATE_ON_GROUND.
     protocol.emitExtendedSysState({ timestamp: now, vtolState: 0, landedState: 1 });
+    protocol.emitSysStatus({
+      timestamp: now, cpuLoad: 150, sensorsPresent: SENSOR_MASK, sensorsEnabled: SENSOR_MASK, sensorsHealthy: SENSOR_MASK,
+      voltageMv: Math.round((battery?.voltage ?? 0) * 1000), currentCa: 0,
+      batteryRemaining: Math.round(battery?.remaining ?? -1), dropRateComm: 0, errorsComm: 0,
+    });
+    // TERRAIN_REPORT with the vehicle on the ground: height above terrain 0.
+    if (position) {
+      protocol.emitTerrain({ timestamp: now, lat: position.lat, lon: position.lon, terrainHeight: position.alt, currentHeight: position.alt, spacing: 30, pending: 0, loaded: 4 });
+    }
   }
 }

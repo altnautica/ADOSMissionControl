@@ -24,8 +24,9 @@ import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { decodeBoardId } from "@/lib/protocol/handlers/info-handlers";
 import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
-import { PX4_MOCK_PARAMS } from "./mock-params-px4";
+import { PX4_MOCK_PARAMS, PX4_VTOL_MOCK_PARAMS } from "./mock-params-px4";
 import { BETAFLIGHT_MOCK_PARAMS } from "./mock-params-betaflight";
+import { createMockBfRx } from "./mock-bf-rx";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample } from "./mock-control-samples";
 import { setMockEkfSourceSet } from "./mock-ekf-source";
@@ -76,7 +77,7 @@ export class MockProtocol extends MockProtocolPeripherals implements DroneProtoc
       case 'px4':
         this.handler = new PX4Handler(); this.defaults = PX4_MOCK_PARAMS; this._vehicleInfo = PX4_VEHICLE_INFO; break;
       case 'px4-vtol':
-        this.handler = new PX4Handler('vtol'); this.defaults = PX4_MOCK_PARAMS; this._vehicleInfo = PX4_VTOL_VEHICLE_INFO; break;
+        this.handler = new PX4Handler('vtol'); this.defaults = PX4_VTOL_MOCK_PARAMS; this._vehicleInfo = PX4_VTOL_VEHICLE_INFO; break;
       case 'ardupilot-heli':
         this.handler = new ArduCopterHandler(); this.defaults = HELI_MOCK_PARAMS; this._vehicleInfo = HELI_VEHICLE_INFO; break;
       case 'ardupilot-plane':
@@ -94,7 +95,9 @@ export class MockProtocol extends MockProtocolPeripherals implements DroneProtoc
       case 'ardupilot-sub':
         this.handler = new ArduSubHandler(); this.defaults = MOCK_PARAMS; this._vehicleInfo = ARDUSUB_VEHICLE_INFO; break;
       case 'betaflight':
-        this.handler = betaflightHandler; this.defaults = BETAFLIGHT_MOCK_PARAMS; this._vehicleInfo = BETAFLIGHT_VEHICLE_INFO; break;
+        this.handler = betaflightHandler; this.defaults = BETAFLIGHT_MOCK_PARAMS; this._vehicleInfo = BETAFLIGHT_VEHICLE_INFO;
+        Object.assign(this, createMockBfRx());
+        break;
       case 'inav-plane':
         // iNav is a name-based MSP settings surface, not a MAVLink parameter set,
         // so there are no mock MAVLink params to seed; the iNav nav items surface
@@ -123,7 +126,13 @@ export class MockProtocol extends MockProtocolPeripherals implements DroneProtoc
       });
     }
   }
-  emitHeartbeat(armed: boolean, mode: UnifiedFlightMode): void { E.emitHeartbeat(this.cbs, armed, mode, this._vehicleInfo); }
+  /** Heartbeat with the firmware's own custom mode, as a real FC sends it
+   * (omitted for a mode the firmware handler cannot encode). */
+  emitHeartbeat(armed: boolean, mode: UnifiedFlightMode): void {
+    let customMode: number | undefined;
+    try { customMode = this.handler.encodeFlightMode(mode).customMode; } catch { customMode = undefined; }
+    E.emitHeartbeat(this.cbs, armed, mode, this._vehicleInfo, customMode);
+  }
   emitSysStatus(d: Parameters<SysStatusCallback>[0]): void { E.emitSysStatus(this.cbs, d); }
   emitRadio(d: Parameters<RadioCallback>[0]): void { E.emitRadio(this.cbs, d); }
   emitEkf(d: Parameters<EkfCallback>[0]): void { E.emitEkf(this.cbs, d); }

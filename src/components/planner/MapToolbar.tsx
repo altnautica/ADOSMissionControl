@@ -164,7 +164,9 @@ function SplitTool({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "relative flex h-8 w-4 items-center justify-center rounded-md cursor-pointer text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary focus-ring",
-          "after:absolute after:-inset-y-2 after:left-0 after:-right-4",
+          // 48 × 48 hit area: 8 px above and below, 32 px out over the map
+          // edge, never back over the face button on the left.
+          "after:absolute after:-inset-y-2 after:left-0 after:-right-8",
           open && "text-text-primary",
         )}
       >

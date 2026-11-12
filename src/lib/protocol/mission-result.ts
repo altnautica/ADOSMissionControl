@@ -12,6 +12,10 @@ export const MISSION_TRANSFER_NO_ANSWER = -1;
 export const MISSION_TRANSFER_STALLED = -2;
 /** The link to the vehicle was not up when the upload started. */
 export const MISSION_TRANSFER_NOT_CONNECTED = -3;
+/** The upload was acknowledged but the mission read back differs from it. */
+export const MISSION_TRANSFER_VERIFY_MISMATCH = -4;
+/** The upload was acknowledged but reading it back for the check failed. */
+export const MISSION_TRANSFER_VERIFY_FAILED = -5;
 
 /**
  * The locale key (under `planner.send.result`) that names a mission upload
@@ -23,6 +27,8 @@ export function missionResultKey(code: number): string {
     case MISSION_TRANSFER_NO_ANSWER: return "noAnswer";
     case MISSION_TRANSFER_STALLED: return "stalled";
     case MISSION_TRANSFER_NOT_CONNECTED: return "notConnected";
+    case MISSION_TRANSFER_VERIFY_MISMATCH: return "verifyMismatch";
+    case MISSION_TRANSFER_VERIFY_FAILED: return "verifyFailed";
     case 1: return "error";
     case 2: return "unsupportedFrame";
     case 3: return "unsupported";

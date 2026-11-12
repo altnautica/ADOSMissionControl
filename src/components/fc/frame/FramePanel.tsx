@@ -103,17 +103,19 @@ export function FramePanel() {
 
   const uniqueTypes = useMemo(() => getUniqueTypesForClass(frameClass), [frameClass]);
   const frameTypeOptions = useMemo(() => {
-    if (uniqueTypes.length === 0) return [{ value: "0", label: "0 — Default" }];
+    // A class with no type list (e.g. Heli) does not use FRAME_TYPE: show the
+    // vehicle's own value rather than a fabricated "0 — Default".
+    if (uniqueTypes.length === 0) return [{ value: String(frameType), label: `${frameType} — ${tk("frameTypeNotUsed")}` }];
     return uniqueTypes.map((ut) => {
       const dupCount = ut.duplicateTypes.length;
       const desc = ut.description ?? (dupCount > 1 ? `Covers types ${ut.duplicateTypes.join(", ")}` : undefined);
       return { value: String(ut.value), label: `${ut.value} — ${ut.name}`, description: desc };
     });
-  }, [uniqueTypes]);
+  }, [uniqueTypes, frameType, tk]);
 
   const effectiveFrameType = useMemo(() => {
     for (const ut of uniqueTypes) { if (ut.duplicateTypes.includes(frameType)) return ut.value; }
-    return uniqueTypes[0]?.value ?? 0;
+    return uniqueTypes[0]?.value ?? frameType;
   }, [uniqueTypes, frameType]);
 
   /**
@@ -134,13 +136,16 @@ export function FramePanel() {
     uniqueTypes.length > 0 && !uniqueTypes.some((ut) => ut.duplicateTypes.includes(frameType));
 
   const layout = useMemo(() => getMotorLayout(frameClass, frameType), [frameClass, frameType]);
-  const className = FRAME_CLASS_NAMES[frameClass] ?? "Unknown";
-  const typeName = layout?.typeName ?? "Unknown";
+  const className = FRAME_CLASS_NAMES[frameClass] ?? tk("unknown");
+  const typeName = layout?.typeName ?? tk("unknown");
   const motorCountStr = layout ? formatMotorCount(layout) : "—";
   const classNote = FRAME_CLASS_NOTES[frameClass];
   const classDescription = FRAME_CLASS_DESCRIPTIONS[frameClass];
   const activeTypeEntry = uniqueTypes.find((ut) => ut.value === effectiveFrameType);
-  const typeDescription = activeTypeEntry?.description ?? FRAME_TYPE_DESCRIPTIONS[frameType];
+  // Type descriptions are only meaningful for a class that uses FRAME_TYPE.
+  const typeDescription = uniqueTypes.length === 0
+    ? undefined
+    : activeTypeEntry?.description ?? FRAME_TYPE_DESCRIPTIONS[frameType];
 
   const handleLocalChange = useCallback((name: string, value: number) => {
     setLocalValue(name, value);
@@ -207,7 +212,7 @@ export function FramePanel() {
                     // An unrecognised type shows the vehicle's OWN value as an
                     // extra option rather than resolving to a neighbouring one.
                     options={frameTypeUnknown
-                      ? [...frameTypeOptions, { value: String(frameType), label: `${frameType} — Unrecognised (on this vehicle)` }]
+                      ? [...frameTypeOptions, { value: String(frameType), label: `${frameType} — ${tk("typeUnrecognised")}` }]
                       : frameTypeOptions}
                     value={String(frameTypeUnknown ? frameType : effectiveFrameType)}
                     onChange={(v) => handleLocalChange(typeParam, Number(v))}
@@ -218,9 +223,7 @@ export function FramePanel() {
                   <div className="flex items-start gap-2 mt-3 px-2.5 py-2 border border-status-warning/30 bg-status-warning/5">
                     <Info size={12} className="text-status-warning shrink-0 mt-0.5" />
                     <p className="text-[10px] text-text-secondary leading-relaxed">
-                      This vehicle reports {typeParam} = {frameType}, which this build has no motor
-                      layout for. The value is shown as-is and is NOT being changed; pick a listed
-                      type only if you intend to reconfigure the airframe.
+                      {tk("typeUnknownNote", { param: typeParam, value: frameType })}
                     </p>
                   </div>
                 )}
@@ -242,8 +245,8 @@ export function FramePanel() {
                   <MotorDiagram3D layout={layout} />
                 ) : (
                   <div className="py-8 text-center space-y-2">
-                    <p className="text-xs text-text-secondary">{frameClass === 0 ? "Select a frame class to see the motor layout." : frameTypeUnknown ? `No motor layout for ${className} frame type ${frameType}.` : `No motor layout diagram for ${className}.`}</p>
-                    {classDescription && frameClass !== 0 && <p className="text-[10px] text-text-tertiary">{classDescription}. {classParam} will still be sent to the flight controller.</p>}
+                    <p className="text-xs text-text-secondary">{frameClass === 0 ? tk("selectClassForLayout") : frameTypeUnknown ? tk("noLayoutForType", { cls: className, type: frameType }) : tk("noLayoutForClass", { cls: className })}</p>
+                    {classDescription && frameClass !== 0 && <p className="text-[10px] text-text-tertiary">{tk("classStillSent", { description: classDescription, param: classParam })}</p>}
                   </div>
                 )}
               </FcSection>

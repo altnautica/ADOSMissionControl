@@ -77,6 +77,18 @@ const GROUND: FleetNodeEntry = {
   isLocal: false,
 } as FleetNodeEntry;
 
+/** A drone with no LAN credentials and no cloud queue: unreachable. */
+const UNREACHABLE_DRONE: FleetNodeEntry = {
+  ...GROUND,
+  _id: "node:delta",
+  deviceId: "delta",
+  name: "Delta",
+  profile: "drone",
+  role: undefined,
+  fcFirmware: "ardupilot",
+  frameType: "copter",
+} as FleetNodeEntry;
+
 /** Ten minutes of silence: past the offline threshold on every clock. */
 const SILENT_SINCE = NOW - 10 * 60_000;
 
@@ -251,10 +263,10 @@ describe("NodesView", () => {
 
   it("disables an unreachable node's actions and names the cause", async () => {
     const user = userEvent.setup();
-    renderBoard();
+    renderBoard([DRONE, GROUND, UNREACHABLE_DRONE]);
 
     await user.click(
-      within(rowFor("Bravo")).getByRole("button", { name: /bravo actions/i }),
+      within(rowFor("Delta")).getByRole("button", { name: /delta actions/i }),
     );
 
     const item = within(screen.getByRole("menu")).getByRole("menuitem", {
@@ -269,10 +281,10 @@ describe("NodesView", () => {
 
   it("keeps a disabled action inert even though it is focusable", async () => {
     const user = userEvent.setup();
-    renderBoard();
+    renderBoard([DRONE, GROUND, UNREACHABLE_DRONE]);
 
     await user.click(
-      within(rowFor("Bravo")).getByRole("button", { name: /bravo actions/i }),
+      within(rowFor("Delta")).getByRole("button", { name: /delta actions/i }),
     );
 
     const item = within(screen.getByRole("menu")).getByRole("menuitem", {

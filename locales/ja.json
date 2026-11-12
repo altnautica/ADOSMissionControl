@@ -283,6 +283,8 @@
       "unknown": "エージェントノード"
     },
     "hero": {
+      "subjectAgent": "エージェント",
+      "subjectFc": "フライトコントローラー",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "アラートのミュートを解除",
       "resetPersonalization": "個人設定をリセット",
       "personalizationReset": "個人設定をリセットしました",
-      "forget": "削除",
-      "forgetTitle": "ノードを削除",
-      "forgetMessage": "{node} を削除しますか？ペアリングを解除し、個人設定を消去します。"
+      "forget": "ペアリング解除",
+      "forgetTitle": "ノードのペアリング解除",
+      "forgetMessage": "{node} のペアリングを解除しますか？ペアリングが解放され、再度ペアリングするまでフリートから消えます。"
     },
     "dotEditor": {
       "title": "ドットを設定",
@@ -432,7 +434,8 @@
       "openSource": "GPL-3.0 オープンソース",
       "getStarted": "はじめる",
       "privacy": "データはこの端末内に保存されます。",
-      "privacyDetail": "収集やトラッキングは一切行いません。"
+      "privacyDetail": "収集やトラッキングは一切行いません。",
+      "descriptionDesktop": "ArduPilot、PX4、Betaflightドローンを設定し、ミッションを計画し、飛行させましょう。ADOS Drone Agentと組み合わせてエッジでインテリジェンスを実行。オープンソース。お使いのコンピューターで動作します。"
     },
     "disclaimer": {
       "title": "飛行する前に",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "テーマを{count}台のノードに同期しました",
+      "syncFailedCount": "{count}台のノードに接続できませんでした"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "ダークテーマ",
       "groupLightThemes": "ライトテーマ",
       "groupMidTone": "中間トーン",
-      "selectTheme": "テーマを選択"
+      "selectTheme": "テーマを選択",
+      "nvg": "ナイトビジョン"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "クラウド同期にはサインインが必要です",
     "localOnly": "ローカルのみ",
     "commandPalette": "コマンドパレット",
+    "menu": "メニュー",
     "joinDiscord": "Discordに参加",
     "starOnGitHub": "GitHubでスター",
     "star": "スター",
@@ -836,7 +841,7 @@
     "notifications": "通知",
     "theme": "テーマ",
     "data": "データ",
-    "operator": "Operator & Aircraft",
+    "operator": "運航者と機体",
     "plugins": "拡張機能",
     "can": "DroneCAN",
     "aircraftSetup": "Aircraft setup",
@@ -846,9 +851,9 @@
     "title": "一般設定",
     "jurisdiction": "規制管轄区域（任意）",
     "notSet": "— 未設定",
-    "units": "単位",
-    "metric": "メートル法 (m, km/h, °C)",
-    "imperial": "ヤード・ポンド法 (ft, mph, °F)",
+    "units": "プランナーの単位",
+    "metric": "メートル法 (m、m/s)",
+    "imperial": "ヤード・ポンド法 (ft、mph)",
     "autoConnect": "起動時に自動接続",
     "autoReconnect": "切断時に自動再接続",
     "demoMode": "デモモード",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "ヒントが再び表示されます。",
+    "unitsScope": "ミッションプランナーと地図描画ツールに適用されます。飛行画面はコックピットのメートル法単位を使います。"
   },
   "notifications": {
     "title": "通知",
@@ -967,11 +974,11 @@
     "testMode": "テストモード",
     "testModeUnavailable": "デモではゲームパッドのテストモードは利用できません",
     "manualControlLinkBlocked": "スティック操作はこの機体に届きません: {reason}。送信されていません。",
-    "stickMode": "Stick mode",
+    "stickMode": "スティックモード",
     "stickMode2": "Mode 2 (throttle on the left stick)",
     "stickMode1": "Mode 1 (throttle on the right stick)",
-    "groundStationEmpty": "No controllers on the ground station.",
-    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
+    "groundStationEmpty": "地上局にコントローラーがありません。",
+    "groundStationEmptyHint": "USB または Bluetooth のゲームパッド、ジョイスティック、HOTAS を地上局に接続してください。このコンピューターに接続したコントローラーは「ブラウザー入力」に表示されます。"
   },
   "data": {
     "title": "データ管理",
@@ -990,10 +997,10 @@
   "communityNav": {
     "changelog": "変更履歴",
     "contact": "お問い合わせ",
-    "unavailableTitle": "コミュニティデータ（変更履歴、ロードマップ、お問い合わせ）はホスト版で利用可能です",
-    "unavailableSetup": "ローカルビルドではデフォルトで無効です。独自のコミュニティボードを運用するには、Convexバックエンドをセットアップして設定してください",
+    "unavailableTitle": "コミュニティデータ（変更履歴、お問い合わせ）はホスト版で利用可能です",
+    "unavailableSetup": "ローカルビルドではデフォルトで無効です。独自のコミュニティボードを運用するには、Convexバックエンドをセットアップして {envVar} を設定してください。",
     "unavailableOptional": "完全に任意です。GCSはバックエンドなしでも動作します。",
-    "sectionError": "This page failed to load. Switch tabs or reload to try again."
+    "sectionError": "このページを読み込めませんでした。タブを切り替えるか、再読み込みしてもう一度お試しください。"
   },
   "contact": {
     "title": "お問い合わせ",
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "新規ミッション",
-      "connectDrone": "ドローンを接続",
+      "connectDrone": "ノードを追加",
       "rthAll": "全機RTH"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
-    "title": "ドローンに接続",
+    "title": "ノードを追加",
     "usbSerial": "USBシリアル",
     "webSocket": "WebSocket",
     "savePreset": "プリセットを保存",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "利用可能",
       "chromiumOnly": "Chrome または Edge",
-      "desktopOrBridge": "デスクトップまたはブリッジ"
+      "desktopOrBridge": "デスクトップまたはブリッジ",
+      "desktopUnsupported": "このOSのデスクトップアプリでは非対応"
     },
     "getDesktopApp": "デスクトップアプリを入手",
     "agentUdpNote": "エージェントとペアリングされたドローンは、外部の地上局向けに udp:[agent-ip]:14550 も公開します。",
@@ -1488,14 +1496,35 @@
     "flightSuite": "スイート",
     "px4EventsFeed": {
       "searchEvents": "イベントを検索",
-      "flightControllerEvents": "フライトコントローラーイベント"
+      "flightControllerEvents": "フライトコントローラーイベント",
+      "emptyNone": "まだイベントはありません。フライトコントローラーの構造化イベントがここに表示されます。",
+      "emptyNoMatch": "検索に一致するイベントはありません。",
+      "severityLevel": "レベル {level}",
+      "severity": {
+        "emergency": "緊急",
+        "alert": "アラート",
+        "critical": "重大",
+        "error": "エラー",
+        "warning": "警告",
+        "notice": "通知",
+        "info": "情報",
+        "debug": "デバッグ"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "一部のパネル（OSD、LED）は PX4 では利用できません。",
-      "betaflightFirmwareSomePanelsDiffer": "Betaflight ファームウェアです。一部のパネルは ArduPilot と異なります。"
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight ファームウェアです。一部のパネルは ArduPilot と異なります。",
+      "flightController": "フライトコントローラー",
+      "loadingPanel": "パネルを読み込み中…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "接続するとテレメトリデータがここに表示されます"
+      "telemetryDataWillAppearHere": "接続するとテレメトリデータがここに表示されます",
+      "channel": {
+        "altitude": "高度",
+        "speed": "速度",
+        "battery": "電池",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "GPS 軌跡",
       "waitingForGPSData": "GPS データを待機中..."
     },
-    "clear": "クリア"
+    "clear": "クリア",
+    "severityLevel": {
+      "emergency": "緊急",
+      "alert": "警報",
+      "critical": "重大",
+      "error": "エラー",
+      "warning": "警告",
+      "notice": "通知",
+      "info": "情報",
+      "debug": "デバッグ"
+    },
+    "autoScrollOn": "自動スクロール オン",
+    "autoScrollOff": "自動スクロール オフ"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "機体セットアップ"
+    "aircraftSetup": "機体セットアップ",
+    "px4Safety": "故障検出と帰還"
   },
   "droneStatus": {
     "online": "オンライン",
@@ -1832,7 +1874,8 @@
     "battery": "Battery",
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "この拡張機能にはここにタブを表示する権限が付与されていません。"
     },
     "rebootNoFc": "No flight controller connected",
     "rebootSent": "Reboot command sent",
@@ -1842,6 +1885,9 @@
     "scrollTabsRight": "Scroll tabs right"
   },
   "vision": {
+    "coreUsageUnreachable": "このノードへの接続がありません",
+    "stateUnknownBody": "このノードはこのGCSに機能を報告していません。ビジョンエンジンが動作しているか確認するには接続してください。",
+    "stateUnknownTitle": "ビジョンの状態は不明です",
     "title": "Vision Engine",
     "subtitle": "Manage detection models and watch live detections from this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "ノードを追加",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "ノードを追加",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -4082,7 +4128,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "ウェイポイント {n} の操作",
       "resumeFromHere": "ここから再開…",
-      "resumeFirstReason": "プランはここから始まります。通常どおりアップロードしてください"
+      "resumeFirstReason": "プランはここから始まります。通常どおりアップロードしてください",
+      "rtlAltitude": "機体の RTL 高度で帰還します"
     },
     "bar": {
       "plans": "Plans",
@@ -4159,8 +4206,11 @@
         "invalidSequence": "ミッション項目の順序が正しくありません。再度アップロードしてください。",
         "denied": "フライトコントローラーは現在ミッションを受け付けていません。",
         "cancelled": "フライトコントローラーがアップロードをキャンセルしました。",
-        "unknown": "フライトコントローラーがミッションを拒否しました（コード {code}）。"
-      }
+        "unknown": "フライトコントローラーがミッションを拒否しました（コード {code}）。",
+        "verifyMismatch": "フライトコントローラーはミッションを受け付けましたが、読み戻した内容が異なります。再度アップロードしてください。",
+        "verifyFailed": "フライトコントローラーはミッションを受け付けましたが、確認のための読み戻しに失敗しました。リンクを確認して再度アップロードしてください。"
+      },
+      "fenceCrossed": "ミッションがこのフェンスを越えています。フェンスを送る前にミッションを修正してください。"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}: 地形クリアランス未確認 — この相対フレーム高度に対するホーム標高がありません",
       "terrainUnknown": "WP{wp}: 地形不明 — このウェイポイントの地表標高サンプルがなく、クリアランスは未確認です",
       "terrainClearanceGround": "WP{v0}: 地形からの高さがわずか {v1}m です（最小: {v2}m）。地表: {ground}m MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}: 地形からの高さがわずか {v1}m です（最小: {v2}m）。地表: 不明"
+      "terrainClearanceGroundUnknown": "WP{v0}: 地形からの高さがわずか {v1}m です（最小: {v2}m）。地表: 不明",
+      "rtlAltitudeBelowTerrain": "ホームから {v0}m の RTL 高度は、帰還経路の最も高い地形より {v1}m 低くなっています (WP{v2}, {v3}m MSL)",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}: ホームから {v1}m の高度は法定上限 {v2}m を超えています"
     }
   },
   "geofence": {
@@ -4739,7 +4791,8 @@
     "viewUnavailable": "このデバイスでは3D表示を利用できません",
     "switchTo2d": "2Dに切り替え",
     "moreIssues": "他{count}件",
-    "dismissWarning": "警告を閉じる"
+    "dismissWarning": "警告を閉じる",
+    "showPanel": "パネルを表示"
   },
   "history": {
     "title": "フライトログ",
@@ -5082,7 +5135,28 @@
       "sealed": "封印済み",
       "verify": "検証",
       "unseal": "封印解除",
-      "replay": "リプレイ"
+      "replay": "リプレイ",
+      "tabs": {
+        "overview": "概要",
+        "map": "地図",
+        "charts": "グラフ",
+        "events": "イベント",
+        "analysis": "分析",
+        "notes": "メモ",
+        "media": "メディア",
+        "export": "エクスポート"
+      },
+      "flightDetail": "フライト詳細",
+      "showList": "フライト一覧を表示",
+      "hideList": "フライト一覧を隠す",
+      "signing": "署名中…",
+      "signAndLock": "署名してロック",
+      "signFailed": "署名に失敗しました: {error}",
+      "unsealConfirm": "この記録の封印を解除しますか？以降の編集で以前の署名は無効になります。監査イベントが記録されます。",
+      "unsealedEvent": "{time} に封印解除",
+      "verifyOk": "署名は有効です: 記録は変更されていません。",
+      "verifyBad": "署名が無効です: 署名後に記録が変更されました。",
+      "recordingStopped": "{time} で記録停止 (ストレージ不足)"
     },
     "chartsTab": {
       "charts": "チャート",
@@ -5122,7 +5196,11 @@
       "compliance": "コンプライアンス",
       "jurisdiction": "管轄区域",
       "noTelemetryRecordingAttachedConnect": "テレメトリ記録が添付されていません。ドローンを接続してアームすると記録が始まります。",
-      "fullFlightRecordIncludingStatsPath": "統計、経路、メタデータを含む完全なFlightRecord。"
+      "fullFlightRecordIncludingStatsPath": "統計、経路、メタデータを含む完全なFlightRecord。",
+      "errorCount": "{count, plural, other {# 件のエラー}}",
+      "warningCount": "{count, plural, other {# 件の警告}}",
+      "ready": "準備完了",
+      "generating": "生成中…"
     },
     "analysisTab": {
       "healthSummary": "ヘルス概要",
@@ -5183,7 +5261,8 @@
       "dropLogFilesHereOr": "ログファイルをここにドロップ、またはクリックして参照",
       "importFlightLogs": "フライトログをインポート",
       "cancel": "キャンセル",
-      "close": "閉じる"
+      "close": "閉じる",
+      "unknownFormat": "不明な形式"
     },
     "preflightCard": {
       "noChecklistCaptured": "チェックリストの記録なし",
@@ -5342,7 +5421,8 @@
     "connect": "接続",
     "writeToFcCount": "{n} 件をフライトコントローラーに書き込む",
     "writingProgress": "書き込み中 {current}/{total}…",
-    "writeToFcHint": "変更したパラメーターをフライトコントローラーに送信"
+    "writeToFcHint": "変更したパラメーターをフライトコントローラーに送信",
+    "notPresent": "このボードにはありません"
   },
   "calibration": {
     "title": "キャリブレーション",
@@ -5832,7 +5912,7 @@
   "commandPalette": {
     "placeholder": "コマンドを入力...",
     "noResults": "結果が見つかりません",
-    "connectDrone": "ドローンを接続",
+    "connectDrone": "ノードを追加",
     "disconnectDrone": "ドローンを切断",
     "armVehicle": "ドローンをアーム",
     "disarmVehicle": "機体をディスアーム",
@@ -5842,7 +5922,7 @@
     "switchTab": "{tab} に切替",
     "toggleImmersive": "没入モードの切替",
     "goToDashboard": "ダッシュボードへ",
-    "goToPlan": "ミッションプランナーへ",
+    "goToPlan": "プランへ移動",
     "goToHistory": "フライトログへ移動",
     "goToAnalytics": "分析へ",
     "goToConfig": "設定へ",
@@ -5867,7 +5947,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "パラメーターを検索するには機体を選択してください"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6313,7 +6394,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "このノードが有線パネルに表示する HDMI キオスクを設定します: 読み込むページとタッチ較正。",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -7028,15 +7109,15 @@
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
-    "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
+    "pageBlurb": "拡張機能はノードごとに、そのノードの Agent → Extensions タブからインストールします。このページはフリート全体のインストール状況の読み取り専用の概要とレジストリブラウザーです。",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
-    "emptyTitle": "No extensions installed yet.",
-    "emptyBlurb": "Drag a .adosplug file or pick one to install.",
+    "emptyTitle": "まだどのノードにも何もインストールされていません。",
+    "emptyBlurb": "下のレジストリを参照し、ノードの Extensions タブからインストールしてください。",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -8231,7 +8312,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "PX4 は CAN ドライバーを「パラメーター」の UAVCAN_* で設定します。ここのバス設定は ArduPilot の CAN パラメーターを編集するため、このボードでは表示されません。"
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8289,6 +8371,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "このGCSからこのノードに到達できません",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8526,8 +8609,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "ゲームパッド: ×ボタンを長押し。キーボード: Enter を長押し。",
     "plugin": {
       "confirm": {
+        "titleNamed": "{drone} で {skill} を有効化",
         "title": "Activate skill",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8657,6 +8742,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "機能が報告されていません",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9266,11 +9352,11 @@
       "open-cockpit": "Open cockpit",
       "configure": "Configure",
       "view-logs": "View logs",
-      "unpair": "Unpair"
+      "unpair": "ペアリング解除"
     },
     "unpair": {
-      "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "title": "ノードのペアリング解除",
+      "message": "{name} のペアリングを解除しますか？ペアリングが解放され、再度ペアリングするまでフリートから消えます。"
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9336,6 +9422,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "ノードに接続できません",
+      "message": "{name} はペアリングを解放できなかったため、まだペアリングされています。このGCSでのみ削除しますか？ノードはリセットされるまで古いペアリングを保持します。",
+      "forgetHere": "このGCSでのみ削除"
     }
   },
   "rcElrsLink": {
@@ -9465,7 +9556,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "バージョン {version}",
+    "thirdPartyNotices": "サードパーティのライセンス"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "フレーム",
         "rc_tx": "RC TX"
       }
-    }
+    },
+    "pageTitle": "運航者と機体",
+    "pageBlurb": "パイロット、組織、保険、機体、バッテリー、装備の登録。コンプライアンス出力と、各フライトのパイロット・機体・搭載品スナップショットに使われます。"
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "コピーせずに閉じる",
       "copyAgain": "再度コピー",
       "tryAgain": "再試行",
-      "iClearedIt": "消去しました"
+      "iClearedIt": "消去しました",
+      "typeToContinue": "続行するには <word>EXPORT</word> と入力してください。"
     },
     "framePanel": {
       "frameConfiguration": "フレーム設定",
@@ -10591,7 +10687,15 @@
       "type": "タイプ:",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "このフレームクラスでは未使用",
+      "unknown": "不明",
+      "typeUnrecognised": "未対応（この機体の値）",
+      "typeUnknownNote": "この機体は {param} = {value} を報告していますが、このビルドにはそのモーター配置がありません。値はそのまま表示され、変更されません。機体構成を変える場合にのみ一覧の型を選んでください。",
+      "selectClassForLayout": "モーター配置を見るにはフレームクラスを選択してください。",
+      "noLayoutForType": "{cls} のフレームタイプ {type} のモーター配置はありません。",
+      "noLayoutForClass": "{cls} のモーター配置図はありません。",
+      "classStillSent": "{description}。{param} はそのままフライトコントローラーに送信されます。"
     },
     "sensorsPanel": {
       "sensors": "センサー",
@@ -10652,7 +10756,11 @@
       "patternPreview": "パターンプレビュー",
       "visualRepresentationOfLEDStrip": "LEDストリップの表示",
       "betaflightLEDStripUsesPacked": "Betaflight LEDストリップは位置/機能/色をまとめたビットマスクを使用するため、CLIでの設定を推奨します。",
-      "useThe": "使用："
+      "useThe": "使用：",
+      "useLedCommand": "LED ストリップの割り当ては FC コンソールパネルの <cmd>led</cmd> コマンドで設定します。",
+      "ledCmdShow": "現在の LED ストリップ設定を表示",
+      "ledCmdExample": "例: LED 0 を設定",
+      "colorCmd": "LED の色を表示/設定"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "ミキサープロファイル",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "ESCキャリブレーションを保存しました",
       "compassmotMotorInterference": "CompassMot（モーター干渉）",
       "measuresMagneticInterferenceFromMotors": "各スロットルレベルでモーター/ESCからの磁気干渉を測定し、コンパスの読み取り値を補正します。",
-      "compassmotCalibrationSaved": "CompassMotキャリブレーションを保存しました"
+      "compassmotCalibrationSaved": "CompassMotキャリブレーションを保存しました",
+      "escAck": "すべてのプロペラを外した",
+      "compassmotAck": "機体は固定され、周囲に人や物はない",
+      "escTip1": "重要: 開始前にすべてのプロペラを外してください",
+      "escTip2": "手順を始める前にバッテリーを外してください",
+      "escTip3": "初回使用時にこの校正が必要な ESC があります",
+      "escTip4": "BLHeli/SimonK ESC は専用ツールで校正してください",
+      "escTip5": "再起動時のスロットル直結として動作し、MAVLink で完了を報告しません。ESC のビープに従ってください。タイムアウトで終わるのは正常です。",
+      "compassmotTip1": "開始前に GPS の 3D フィックスを確認してください",
+      "compassmotTip2": "金属から離れた開けた場所に置いてください",
+      "compassmotTip3": "プロペラ装着: このテストでモーターが回転します",
+      "compassmotTip4": "干渉 30% 未満は許容、15% 未満は良好"
     },
     "telRadioPanel": {
       "telemetryRadio": "テレメトリー無線",
@@ -10705,7 +10824,13 @@
       "protocol": "プロトコル",
       "baudRate": "ボーレート",
       "systemIdentification": "システム識別",
-      "mavlinkSystemAndGCSIDs": "複数機体構成用の MAVLink システム ID と GCS ID"
+      "mavlinkSystemAndGCSIDs": "複数機体構成用の MAVLink システム ID と GCS ID",
+      "notPresent": "なし",
+      "noRadioTelemetry": "ライブ無線テレメトリなし: 最近 RADIO_STATUS を受信していません",
+      "px4BaudUnderPorts": "PX4 ではテレメトリポートのボーレートを「ポート」で設定します (SER_TEL1_BAUD、SER_TEL2_BAUD)。このページはフライトコントローラーに何も書き込みません。",
+      "vehicleSystemId": "機体システム ID",
+      "gcsSystemId": "GCS システム ID",
+      "uniqueSysidHint": "同じリンク上の各機体には固有の SYSID_THISMAV が必要です。既定の GCS ID は 255 です。"
     },
     "signingEnabledSection": {
       "signingEnabled": "署名有効",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "マスタースロットル",
       "motorsWillSpinWhenTested": "テスト時にモーターが回転します。プロペラを外さないと、けがや損傷の原因になります。",
       "enableMotorTest": "モーターテストを有効化",
-      "stopAllMotors": "全モーター停止"
+      "stopAllMotors": "全モーター停止",
+      "removePropellers": "テスト前にすべてのプロペラを外してください",
+      "motorN": "モーター {n}",
+      "motorThrottleN": "モーター {n} スロットル",
+      "setPct": "設定 {pct}%",
+      "mixed": "混在"
     },
     "iNavMissionPanel": {
       "inavMission": "iNavミッション",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "現在のプランを置き換えますか？",
       "replacePlan": "プランを置き換え",
       "noMissionLoadedOpenThe": "ミッションが読み込まれていません。「計画」タブを開いて作成してください。",
-      "openMissionPlanner": "ミッションプランナーを開く"
+      "openMissionPlanner": "ミッションプランナーを開く",
+      "waypointActionsTitle": "iNav ウェイポイントアクション",
+      "waypointActionsBody": "iNav は 8 種類のウェイポイントアクションに対応します。Plan タブで Waypoint、Poshold（無制限または時間指定）、RTH、Land を選び、ウェイポイントのアクション一覧から Set POI、Jump、Set heading を追加します。"
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "すべてのプロペラを取り外したことを確認しました",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "機体を変更すると再起動が必要です。すべてのパラメータが機体のデフォルトにリセットされます。",
       "searchAirframes": "機体を検索...",
       "noAirframesMatchYourSearch": "検索に一致する機体はありません。",
-      "customAirframeID": "カスタム機体ID"
+      "customAirframeID": "カスタム機体ID",
+      "custom": "カスタム ({id})",
+      "allCategories": "すべてのカテゴリ",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "再試行",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "すべてのプロペラが取り外されていることを確認しました",
       "disarmToTestActuators": "アクチュエーターをテストするにはディスアームしてください。",
       "output": "出力",
-      "stop": "停止"
+      "stop": "停止",
+      "removePropellers": "テスト前にすべてのプロペラを外してください",
+      "testExplain": "選択したモーターが {seconds} 秒間指定値で回転（またはサーボが動作）し、その後 FC が元に戻します。アーム中は FC がテストを拒否します。",
+      "throttle": "スロットル",
+      "position": "位置",
+      "runSeconds": "{seconds} 秒実行"
     },
     "px4PowerSections": {
       "batterySettings": "バッテリー設定",
@@ -11134,19 +11274,31 @@
       "pidTuning": "PIDチューニング",
       "presetProfiles": "プリセットプロファイル",
       "filterSettings": "フィルター設定",
-      "insGyroAccelLowPass": "INS ジャイロ/加速度ローパスフィルターとハーモニックノッチフィルター"
+      "insGyroAccelLowPass": "INS ジャイロ/加速度ローパスフィルターとハーモニックノッチフィルター",
+      "subtitleCopter": "ArduCopter レート PID — ロール、ピッチ、ヨー",
+      "subtitleCopterPx4": "PX4 マルチコプター レート PID (MC_*) — ロール、ピッチ、ヨー。VTOL の固定翼レートは固定翼チューニングにあります。",
+      "subtitleRover": "ArduRover ステアリングレートと速度/スロットル PID",
+      "subtitleRoverPx4": "PX4 ローバーのステアリングレートと速度 PID",
+      "subtitlePlane": "ArduPlane ロール・ピッチ・ヨー サーボ PID ゲイン",
+      "subtitlePlanePx4": "PX4 固定翼レート PID (FW_*) — ロール、ピッチ、ヨー。姿勢と速度のチューニングは固定翼チューニングにあります。"
     },
     "outputsPanel": {
       "servoMotorOutputs": "サーボ / モーター出力",
       "connectToADroneTo": "出力を設定するにはドローンに接続してください。",
       "outputFunctionAssignmentPWMLimits": "出力機能の割り当て、PWM制限、モーターテスト",
-      "save": "保存"
+      "save": "保存",
+      "unsaved": "未保存"
     },
     "motorTestSection": {
       "motorTest": "モーターテスト",
       "enableMotorTestSafetyMaster": "モーターテストを有効化（安全マスター）",
       "motor": "モーター",
-      "removePropellersBeforeTestingMotors": "モーターをテストする前にプロペラを外してください。ドローンが固定されていることを確認してください。"
+      "removePropellersBeforeTestingMotors": "モーターをテストする前にプロペラを外してください。ドローンが固定されていることを確認してください。",
+      "throttleLabel": "スロットル: {value}%（最大 {max}%）",
+      "durationLabel": "時間: {value} 秒",
+      "testMotorN": "モーター {n} をテスト",
+      "motorN": "モーター {n}",
+      "stop": "停止"
     },
     "navConfigPanel": {
       "navigationConfig": "ナビゲーション設定",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "テレメトリーストリームレート",
       "perPortMAVLinkMessageGroup": "ポートごとのMAVLinkメッセージグループレート (Hz)",
       "mavlinkChannel": "MAVLinkチャンネル",
-      "gcsManagesTelemetryRatesOn": "GCS がテレメトリレートを管理します。接続時、リンク復旧時、フライトコントローラー再起動時に、この GCS は接続中のチャンネルで独自のレートを要求します。ここで設定したレート、またはエージェントのルーターが設定したレートを変更しないようにするにはオフにしてください。"
+      "gcsManagesTelemetryRatesOn": "GCS がテレメトリレートを管理します。接続時、リンク復旧時、フライトコントローラー再起動時に、この GCS は接続中のチャンネルで独自のレートを要求します。ここで設定したレート、またはエージェントのルーターが設定したレートを変更しないようにするにはオフにしてください。",
+      "notPresent": "なし"
     },
     "signingHistorySection": {
       "history": "履歴",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "OSDプレビュー",
-      "liveReconstructionOfTheOSD": "フライトコントローラーが描画する OSD（MSP DisplayPort）のライブ再現です。FC がこの接続で MSP DisplayPort 経由で OSD を出力するよう設定されている場合（HD ゴーグル / DJI 構成）にのみフレームが届きます。カスタムフォントのグリフはドットで表示され、テキストと数値フィールドは送信されたとおりに表示されます。"
+      "liveReconstructionOfTheOSD": "フライトコントローラーが描画する OSD（MSP DisplayPort）のライブ再現です。FC がこの接続で MSP DisplayPort 経由で OSD を出力するよう設定されている場合（HD ゴーグル / DJI 構成）にのみフレームが届きます。カスタムフォントのグリフはドットで表示され、テキストと数値フィールドは送信されたとおりに表示されます。",
+      "noFramesYet": "OSD フレームはまだありません"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "温度センサー",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "フライトモード",
-      "read": "読み込み"
+      "read": "読み込み",
+      "unsavedCount": "未保存 {count}",
+      "save": "保存",
+      "saveCount": "保存 ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "書き込みツール"
+      "flashTool": "書き込みツール",
+      "subtitle": "USB DFU またはシリアルブートローダーでファームウェアを書き込み"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "再起動が必要です"
+      "rebootRequired": "再起動が必要です",
+      "applyHint": "{label}。適用するにはフライトコントローラーを再起動してください。"
     },
     "pwmRangeSlider": {
       "rangeStart": "範囲の開始",
@@ -11471,7 +11630,9 @@
       "loadParamFile": ".paramファイルを読み込む",
       "selectAll": "すべて選択",
       "selectNone": "選択解除",
-      "noParametersMatchTheCurrent": "現在のフィルターに一致するパラメーターはありません。"
+      "noParametersMatchTheCurrent": "現在のフィルターに一致するパラメーターはありません。",
+      "applyN": "{count} 個を適用",
+      "selectedOf": "選択可能な {total} 件中 {selected} 件を選択"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "パラメータ書き込みの確認",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "このバッチには飛行安全に関わるパラメーターが含まれています。書き込む前に慎重に確認してください。",
       "flightSafety": "飛行安全",
       "iUnderstandThisChangeAffects": "この変更が飛行安全に影響することを理解しました",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "willBeWritten": "{count} 個のパラメーターをフライトコントローラーに書き込みます。",
+      "writeN": "{count} 個を書き込む",
+      "outOfRange": "許容範囲外 ({min} .. {max})",
+      "outOfRangeBlocked": "書き込む前に範囲外の値を修正してください。"
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "未確定のパラメータ変更",
@@ -11517,7 +11682,9 @@
       "link": "リンク",
       "verified": "検証済み",
       "failed": "失敗",
-      "unsigned": "未署名"
+      "unsigned": "未署名",
+      "primary": "プライマリ",
+      "requireSignedBody": "署名付きテレメトリを必須にします。鍵の読み込み中は、署名のないフレームや検証に失敗したフレームはすべて破棄されます。応答に署名しない機体は沈黙します。"
     },
     "servoMixerTable": {
       "targetCh": "対象ch",
@@ -11553,7 +11720,9 @@
       "programmingJS": "プログラミング (JS)",
       "writeExpressionsAndCompileThem": "式を記述してLogic Conditionsにコンパイルします。読み込むとフライトコントローラーの空きスロットに配置され、使用中の条件はそのまま保持されます。Logic Conditionsエディターで確認し、そこからFCに書き込んでください。",
       "compile": "コンパイル",
-      "loadIntoLogicConditions": "Logic Conditionsに読み込む"
+      "loadIntoLogicConditions": "Logic Conditionsに読み込む",
+      "compilesToLogicConditions": "Logic Conditions にコンパイル",
+      "operation": "演算"
     },
     "customOsdElementsPanel": {
       "customOSD": "カスタム OSD",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "着陸方位 1 (度、0 = オフ)",
       "landHeading2Deg0": "着陸方位 2 (度、0 = オフ)",
       "altitudeReference": "高度基準",
-      "thisPanelAppliesToFixed": "このパネルは固定翼機とトライコプター向けです。接続中のフライトコントローラーはマルチローターとして設定されています。"
+      "thisPanelAppliesToFixed": "このパネルは固定翼機とトライコプター向けです。接続中のフライトコントローラーはマルチローターとして設定されています。",
+      "unsaved": "未保存",
+      "approachN": "進入 {n}",
+      "save": "保存",
+      "saving": "保存中…",
+      "seaLevel": "海面",
+      "relativeToHome": "ホーム基準"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "センサーグラフ",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "コンパス飛行前チェック",
       "enabled": "有効",
-      "fix": "修正"
+      "fix": "修正",
+      "loading": "読み込み中…",
+      "unavailable": "利用不可",
+      "disabledHint": "無効 — まず COMPASS_USE を有効にしてください",
+      "none": "なし",
+      "lenient": "寛容",
+      "recommendLenient": "{value} — 寛容な向き検出には 3 を推奨",
+      "lowLimit": "上限が低い",
+      "increaseTo": "{value} に上げる",
+      "unknownValue": "不明 ({value})",
+      "extInternal": "内蔵",
+      "extExternal": "外付け",
+      "extForced": "強制外付け",
+      "learnOff": "オフ",
+      "learnInternal": "内部",
+      "learnEkf": "EKF",
+      "learnInFlight": "飛行中",
+      "unknown": "不明",
+      "notChanged": "{name} は変更されませんでした: {reason}",
+      "noReply": "フライトコントローラーから応答なし",
+      "setTo": "{name} を {value} に設定しました"
     },
     "pidAnalysisSummary": {
       "tuneScore": "チューニングスコア",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "非GPS測位",
       "ekf3SourceSetsAndExternal": "EKF3ソースセットと外部ナビ／ビーコンバックエンド",
       "externalNavigationVISO": "外部ナビゲーション (VISO)",
-      "beaconBCN": "ビーコン (BCN)"
+      "beaconBCN": "ビーコン (BCN)",
+      "sourceSet": "ソースセット {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "ヘリコプター",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "グリッド",
       "live": "ライブ",
-      "dragElementsToRepositionClick": "要素をドラッグして配置を変更します。サイドバーの要素をクリックすると表示/非表示を切り替えます。"
+      "dragElementsToRepositionClick": "要素をドラッグして配置を変更します。サイドバーの要素をクリックすると表示/非表示を切り替えます。",
+      "osdPreview": "OSD プレビュー"
     },
     "keyAgeNudge": {
       "rotateNow": "今すぐローテーション",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "パラメータをバックアップ",
-      "restoreParameters": "パラメータを復元"
+      "restoreParameters": "パラメータを復元",
+      "downloading": "パラメーターをダウンロード中…",
+      "backedUp": "{count} 個のパラメーターをバックアップしました",
+      "backupFailed": "バックアップに失敗しました: {error}",
+      "unknownError": "不明なエラー",
+      "flashing": "書き込み中…",
+      "flashFirmware": "ファームウェアを書き込む",
+      "restored": "パラメーターを復元しました"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "受信機のデフォルト"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "閉じる"
+    },
+    "bfFailsafe": {
+      "title": "フェイルセーフ",
+      "subtitle": "無線リンク喪失時の機体の動作",
+      "stage2": "ステージ 2 フェイルセーフ",
+      "procedure": "手順（0 停止、1 着陸、2 GPS レスキュー）",
+      "delay": "ガード時間（0.1 秒）",
+      "offDelay": "モーター停止遅延（0.1 秒）",
+      "throttle": "着陸スロットル（µs）",
+      "throttleLowDelay": "スロットル低遅延（0.1 秒）",
+      "switchMode": "フェイルセーフスイッチ（0 ステージ1、1 停止、2 ステージ2）"
+    },
+    "px4Safety": {
+      "title": "故障検出と帰還",
+      "subtitle": "故障と判定する姿勢の限界と帰還経路。サーキットブレーカーはパラメーターで設定します。",
+      "failureDetector": "故障検出",
+      "maxPitch": "最大ピッチ (°)",
+      "maxRoll": "最大ロール (°)",
+      "pitchTrigger": "ピッチ判定時間 (秒)",
+      "rollTrigger": "ロール判定時間 (秒)",
+      "returnToLaunch": "離陸地点へ帰還",
+      "rtlType": "帰還方式",
+      "returnAlt": "帰還高度 (m)",
+      "descendAlt": "降下高度 (m)",
+      "landDelay": "着陸前ホバー (秒、-1 = 着陸しない)",
+      "coneAngle": "帰還コーン半角"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "操作して割り当て",
       "stickMode": "スティックモード",
       "none": "なし",
-      "close": "閉じる"
+      "close": "閉じる",
+      "saved": "保存しました",
+      "imported": "読み込みました。保持するには保存してください。",
+      "resetPending": "ADOS 既定を読み込みました。保存で確定、キャンセルで元に戻します。",
+      "cancel": "キャンセル",
+      "tourReplayDone": "次にフライトを開いたときにコントローラーツアーが再生されます。"
     },
     "rpcTraceTable": {
       "node": "ノード",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "完了（スティックを離す）",
-      "start": "開始"
+      "start": "開始",
+      "noControllerGranted": "許可されたコントローラーがありません"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "プライマリに設定",
       "noPairedBluetoothDevices": "ペアリング済みのBluetoothデバイスはありません。",
       "forget": "削除",
-      "calibrateAndTuneControllersConnected": "Web Gamepad API経由でこのブラウザに直接接続されたコントローラーのキャリブレーションと調整を行います。"
+      "calibrateAndTuneControllersConnected": "Web Gamepad API経由でこのブラウザに直接接続されたコントローラーのキャリブレーションと調整を行います。",
+      "typeUnknown": "不明",
+      "kindJoystick": "ジョイスティック",
+      "kindWheel": "ホイール",
+      "kindGamepad": "ゲームパッド",
+      "forgetTitle": "{name} を削除しますか？",
+      "forgetMessage": "地上局でペアリングを解除します。使うには再度ペアリングが必要です。",
+      "forgotDevice": "{name} を削除しました",
+      "forgetFailed": "{name} を削除できませんでした"
     },
     "community": {
       "communityNavigation": "コミュニティナビゲーション",

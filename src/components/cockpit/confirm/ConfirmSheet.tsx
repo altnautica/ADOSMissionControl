@@ -284,7 +284,10 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
             disabled={!gestureEnabled}
           />
         )}
-        <p className="text-[11px] text-text-tertiary">{specString("confirm.input_hint")}</p>
+        <p className="text-[11px] text-text-tertiary" data-testid="confirm-input-hint">
+          {/* "The same button" only when a pad button opened it; otherwise Cross confirms. */}
+          {policy.gamepadButton !== undefined ? specString("confirm.input_hint") : t("skills.confirmPadHint")}
+        </p>
 
         <button
           type="button"

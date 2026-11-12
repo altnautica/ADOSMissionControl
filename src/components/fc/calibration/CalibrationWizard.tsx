@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle, XCircle, Circle } from "lucide-react";
@@ -57,6 +58,11 @@ interface CalibrationWizardProps {
    * shows the reason; an already running calibration can still be cancelled.
    */
   blockedReason?: string;
+  /**
+   * A safety statement the operator must tick before Start is enabled
+   * (props removed, vehicle secured). Cleared again on every start.
+   */
+  startAcknowledgement?: string;
   className?: string;
 }
 
@@ -73,10 +79,17 @@ export function CalibrationWizard({
   title, description, steps, currentStep, status, progress, statusMessage,
   waitingForConfirm, onConfirm, confirmLabel,
   compassProgress, compassResults, failureFixes, preTips,
-  onStart, onCancel, onForceSave, unsupportedNotice, blockedReason, className,
+  onStart, onCancel, onForceSave, unsupportedNotice, blockedReason, startAcknowledgement, className,
 }: CalibrationWizardProps) {
   const t = useTranslations("fcCalibration.wizard");
   const badgeClassName = statusBadge[status];
+  const [acknowledged, setAcknowledged] = useState(false);
+  const startBlocked = !!blockedReason || (!!startAcknowledgement && !acknowledged);
+  const start = () => {
+    setAcknowledged(false);
+    onStart();
+  };
+  const showAck = !!startAcknowledgement && status !== "in_progress" && !waitingForConfirm && !unsupportedNotice;
 
   return (
     <div className={cn("border border-border-default bg-bg-secondary p-4", className)}>
@@ -169,10 +182,17 @@ export function CalibrationWizard({
         <p className="text-[10px] font-mono text-status-warning mb-3">{blockedReason}</p>
       )}
 
+      {showAck && (
+        <label className="mb-3 flex items-center gap-2 text-[11px] text-text-primary">
+          <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
+          {startAcknowledgement}
+        </label>
+      )}
+
       <div className="flex gap-2">
         {status === "cal_warning" && onForceSave ? (
           <><Button variant="primary" size="sm" onClick={onForceSave}>{t("forceSave")}</Button>
-            <Button variant="secondary" size="sm" onClick={onStart} disabled={!!blockedReason}>{t("retry")}</Button></>
+            <Button variant="secondary" size="sm" onClick={start} disabled={startBlocked}>{t("retry")}</Button></>
         ) : waitingForConfirm && onConfirm ? (
           <><Button variant="primary" size="sm" onClick={onConfirm}>{confirmLabel ?? t("confirmPosition")}</Button>
             {onCancel && <Button variant="danger" size="sm" onClick={onCancel}>{t("cancel")}</Button>}</>
@@ -182,7 +202,7 @@ export function CalibrationWizard({
         ) : unsupportedNotice ? (
           <Button variant="secondary" size="sm" disabled>{t("notAvailable")}</Button>
         ) : (
-          <Button variant="primary" size="sm" onClick={onStart} disabled={!!blockedReason}>
+          <Button variant="primary" size="sm" onClick={start} disabled={startBlocked}>
             {status === "success" ? t("recalibrate") : status === "error" || status === "cal_warning" ? t("retry") : t("start")}
           </Button>
         )}

@@ -20,7 +20,7 @@ import { openFlightScreen } from "@/components/cockpit/flight/open-flight-screen
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { useForgetNode } from "@/hooks/use-forget-node";
+import { useUnpairNode } from "@/hooks/use-unpair-node";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePairingStore } from "@/stores/pairing-store";
@@ -50,7 +50,7 @@ export function NodeHeaderActions({
   // The lock and the reboot both target this panel's drone, never whichever
   // drone another surface has selected meanwhile.
   const { isHardBlocked, hardBlockMessage } = useArmedLock(droneId);
-  const forget = useForgetNode();
+  const { unpair, fallbackDialog } = useUnpairNode();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [rebootOpen, setRebootOpen] = useState(false);
 
@@ -82,10 +82,14 @@ export function NodeHeaderActions({
       usePairingStore
         .getState()
         .pairedDrones.find((d) => nodeIdForDevice(d.deviceId) === droneId)?._id ?? null;
-    const result = await forget(droneId, { convexId });
-    if (!result.ok) return;
-    toast(t("nodeRemoved", { name: displayName }), "warning");
-    onClose();
+    await unpair(droneId, {
+      convexId,
+      name: displayName,
+      onDone: () => {
+        toast(t("nodeRemoved", { name: displayName }), "warning");
+        onClose();
+      },
+    });
   };
 
   return (
@@ -143,6 +147,7 @@ export function NodeHeaderActions({
         confirmLabel={t("delete")}
         variant="danger"
       />
+      {fallbackDialog}
       <ConfirmDialog
         open={rebootOpen}
         onConfirm={() => void handleReboot()}

@@ -24,7 +24,9 @@ import {
   ChevronDown,
   CloudUpload,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isDemoMode } from "@/lib/utils";
+import { AgentClient } from "@/lib/agent/client";
+import { relayProxyBaseUrl, type RelayReach } from "@/lib/nodes/relay-reach";
 import { useSurfaceGate } from "@/hooks/use-surface-gate";
 import { agentGateFallback } from "./shared/agent-gate-fallback";
 import { useToast } from "@/components/ui/toast";
@@ -67,7 +69,18 @@ function fmtBytes(bytes: number): string {
   return `${mb.toFixed(1)} MB`;
 }
 
-export function BlackBoxTab({ nodeDeviceId }: { nodeDeviceId: string | null }) {
+export function BlackBoxTab({
+  nodeDeviceId,
+  directReach = true,
+  relayReach = null,
+}: {
+  nodeDeviceId: string | null;
+  /** The GCS reaches this node's agent directly, so its connection is coming
+   *  once focus lands on it. */
+  directReach?: boolean;
+  /** A relayed drone's ground-station relay-proxy reach. */
+  relayReach?: RelayReach | null;
+}) {
   const t = useTranslations("blackbox");
   const tAgent = useTranslations("agent");
   const gate = useSurfaceGate("agent-online");
@@ -75,7 +88,18 @@ export function BlackBoxTab({ nodeDeviceId }: { nodeDeviceId: string | null }) {
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   // The rendered node's own connection; null until focus reaches it.
   const direct = useNodeDirectAgent(nodeDeviceId);
-  const client = direct?.client ?? null;
+  // With no direct connection, a relayed drone's store is read through its
+  // ground station's relay-proxy, the same route Battery uses.
+  const relayClient = useMemo(
+    () =>
+      !direct && relayReach && !isDemoMode()
+        ? new AgentClient(relayProxyBaseUrl(relayReach), relayReach.apiKey, { relay: true })
+        : null,
+    [direct, relayReach],
+  );
+  const client = direct?.client ?? relayClient;
+  // No direct connection, none coming, and no relay: nothing can reach it.
+  const unreachable = !direct && !relayClient && !directReach;
   // The node's cloud identity is its cloud pairing row, whichever transport
   // the session currently uses.
   const cloudPaired = usePairingStore((s) =>
@@ -207,11 +231,12 @@ export function BlackBoxTab({ nodeDeviceId }: { nodeDeviceId: string | null }) {
   const windows = pushedWindows ?? [];
 
   // Not yet attached to this node: a connecting state, never the previous
-  // node's data or a verdict about this one's store.
-  const connecting = !direct || attachedClient !== client;
+  // node's data or a verdict about this one's store. Only while a connection
+  // is actually coming; an unreachable node says so instead.
+  const connecting = !unreachable && ((!direct && !relayClient) || attachedClient !== client);
   // Cloud mode + no LAN reader, or an older agent without a durable store:
   // show a clear empty state instead of an inert blank surface.
-  const showUnavailable = !connecting && !available && !loadingRows;
+  const showUnavailable = unreachable || (!connecting && !available && !loadingRows);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -317,7 +342,11 @@ export function BlackBoxTab({ nodeDeviceId }: { nodeDeviceId: string | null }) {
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-center">
             <Database size={28} className="text-text-tertiary" />
             <span className="text-sm text-text-secondary">
-              {!client || cloudMode ? t("cloudUnavailable") : t("unavailable")}
+              {unreachable
+                ? t("unreachable")
+                : !client || cloudMode
+                  ? t("cloudUnavailable")
+                  : t("unavailable")}
             </span>
             <span className="text-xs text-text-tertiary max-w-md">
               {t("unavailableHint")}

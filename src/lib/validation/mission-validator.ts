@@ -380,14 +380,31 @@ export function validateMission(
       const cruiseMsl = homeGroundElevation + options.rtlAltitude;
       const clearance = cruiseMsl - highestGround;
       if (clearance < minClearance) {
-        errors.push({
-          severity: "blocking",
-          code: "RTL_ALTITUDE_LOW",
-          message: `RTL altitude ${Math.round(options.rtlAltitude)}m above home clears the highest terrain on the return path (WP${highestIndex + 1}, ${Math.round(highestGround)}m MSL) by only ${Math.round(clearance)}m (min: ${minClearance}m)`,
-          text: { key: "rtlAltitudeMAboveHomeClears", params: { v0: Math.round(options.rtlAltitude), v1: highestIndex + 1, v2: Math.round(highestGround), v3: Math.round(clearance), v4: minClearance } },
-          waypointIndex: highestIndex,
-          waypointId: waypoints[highestIndex].id,
-        });
+        const rtlAlt = Math.round(options.rtlAltitude);
+        const ground = Math.round(highestGround);
+        // Under a metre, a rounded figure reads "0m" or "-0m": keep one decimal.
+        const metres = (v: number) => (Math.abs(v) < 1 ? Math.round(v * 10) / 10 : Math.round(v));
+        if (clearance < 0) {
+          const below = metres(-clearance);
+          errors.push({
+            severity: "blocking",
+            code: "RTL_ALTITUDE_LOW",
+            message: `RTL altitude ${rtlAlt}m above home is ${below}m below the highest terrain on the return path (WP${highestIndex + 1}, ${ground}m MSL)`,
+            text: { key: "rtlAltitudeBelowTerrain", params: { v0: rtlAlt, v1: below, v2: highestIndex + 1, v3: ground } },
+            waypointIndex: highestIndex,
+            waypointId: waypoints[highestIndex].id,
+          });
+        } else {
+          const by = metres(clearance);
+          errors.push({
+            severity: "blocking",
+            code: "RTL_ALTITUDE_LOW",
+            message: `RTL altitude ${rtlAlt}m above home clears the highest terrain on the return path (WP${highestIndex + 1}, ${ground}m MSL) by only ${by}m (min: ${minClearance}m)`,
+            text: { key: "rtlAltitudeMAboveHomeClears", params: { v0: rtlAlt, v1: highestIndex + 1, v2: ground, v3: by, v4: minClearance } },
+            waypointIndex: highestIndex,
+            waypointId: waypoints[highestIndex].id,
+          });
+        }
       }
     }
   }

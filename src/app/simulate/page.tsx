@@ -40,6 +40,7 @@ export default function SimulatePage() {
   const defaultSpeed = usePlannerStore((s) => s.defaultSpeed);
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const tSim = useTranslations("simulate");
   const router = useRouter();
 
   useSimulationKeyboard(true);
@@ -75,7 +76,10 @@ export default function SimulatePage() {
           {/* Collapsed panel toggle */}
           {panelCollapsed && (
             <button
+              type="button"
               onClick={() => setPanelCollapsed(false)}
+              aria-label={tSim("showPanel")}
+              title={tSim("showPanel")}
               className="w-8 shrink-0 flex items-center justify-center border-l border-border-default bg-bg-secondary hover:bg-bg-tertiary cursor-pointer"
             >
               <ChevronLeft size={14} className="text-text-tertiary" />

@@ -4,11 +4,11 @@
  * @module pair/page
  * @description Deep-link entry for pairing a new ADOS Drone Agent.
  * The agent's setup wizard generates a 6-character code and links the
- * operator here. The page reads the code from `?code=`, opens the
- * pairing dialog, and lets the existing `claimPairingCode` mutation
- * finish the work. If the operator is not signed in yet, the code is
- * stashed in sessionStorage so it survives the round-trip through
- * sign-in.
+ * operator here. The page reads the code (and optional `host`) from the URL,
+ * opens the pairing dialog, and lets the existing `claimPairingCode`
+ * mutation finish the work. The URL is the only source: sign-in happens
+ * inside the dialog, so nothing has to survive a navigation, and a code is
+ * used once rather than replayed into a later code-less visit.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,38 +18,8 @@ import { PairingDialog } from "@/components/command/PairingDialog";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 
-const STORAGE_KEY = "ados.pair.deep_link";
-
-interface StoredDeepLink {
-  code: string;
-  host?: string;
-}
-
-function readStored(): StoredDeepLink | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredDeepLink;
-    if (!parsed.code) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(value: StoredDeepLink | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (value) {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    } else {
-      window.sessionStorage.removeItem(STORAGE_KEY);
-    }
-  } catch {
-    // sessionStorage can be denied in private mode; non-fatal.
-  }
-}
+/** Session key an older build stashed the last deep-link code under. */
+const LEGACY_STORAGE_KEY = "ados.pair.deep_link";
 
 function normalizeCode(raw: string | null): string {
   if (!raw) return "";
@@ -65,70 +35,52 @@ export default function PairDeepLinkPage() {
     () => normalizeCode(searchParams.get("code")),
     [searchParams],
   );
-  const urlHost = searchParams.get("host") || undefined;
+  const effectiveCode = urlCode.length === 6 ? urlCode : null;
+  const effectiveHost = searchParams.get("host") || undefined;
 
-  // Lazy initializer reads sessionStorage on the client only. URL params
-  // win and overwrite the stash; we persist that overwrite as a side
-  // effect so a later sign-in round-trip can recover it.
-  const [stored] = useState<StoredDeepLink | null>(() => {
-    const fromStorage = readStored();
-    if (urlCode && urlCode.length === 6) {
-      return { code: urlCode, host: urlHost };
-    }
-    return fromStorage;
-  });
-
-  const persistedRef = useRef(false);
+  // Drop a code an older build left in this tab so it can never reopen.
   useEffect(() => {
-    if (persistedRef.current) return;
-    if (urlCode && urlCode.length === 6) {
-      writeStored({ code: urlCode, host: urlHost });
-      persistedRef.current = true;
+    try {
+      window.sessionStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      // sessionStorage can be denied in private mode; non-fatal.
     }
-  }, [urlCode, urlHost]);
-
-  const effectiveCode = stored?.code || urlCode || null;
-  const effectiveHost = stored?.host || urlHost;
+  }, []);
 
   const [open, setOpen] = useState(true);
 
-  // After a successful pair, drop the deep-link record. The dialog calls
-  // onPaired with the agent's connection URL; we route the operator to
-  // the dashboard so they see the new drone.
+  // After a successful pair, route the operator to the dashboard so they see
+  // the new drone.
   function handlePaired(_deviceId: string, _apiKey: string, _url: string) {
-    writeStored(null);
     setOpen(false);
     router.push("/");
   }
 
   function handleClose() {
-    writeStored(null);
     setOpen(false);
     router.push("/");
   }
 
-  // A build without a cloud backend cannot claim a code. Hand the code (or
-  // the host, when the link carries one) to the shell's own pairing dialog,
-  // whose Add-a-drone field takes it and probes the node, instead of opening
-  // an empty form over it.
+  // A build without a cloud backend cannot claim a code. Hand the host (or
+  // the code) to the shell's own pairing dialog, whose Add-a-drone field
+  // takes it and probes the node, instead of opening an empty form over it.
   const convexAvailable = useConvexAvailable();
-  const handOffToShell = !convexAvailable && !!effectiveCode;
+  const handOff = !convexAvailable ? (effectiveHost ?? effectiveCode) : null;
   const handedOffRef = useRef(false);
   useEffect(() => {
-    if (!handOffToShell || !effectiveCode || handedOffRef.current) return;
+    if (!handOff || handedOffRef.current) return;
     handedOffRef.current = true;
-    writeStored(null);
-    usePairDialogStore.getState().openDialog("add", effectiveHost ?? effectiveCode);
+    usePairDialogStore.getState().openDialog("add", handOff);
     router.replace("/");
-  }, [effectiveCode, effectiveHost, handOffToShell, router]);
+  }, [handOff, router]);
 
-  if (handOffToShell) return null;
+  if (handOff) return null;
 
   // No usable code: open the manual pairing body rather than a dead end.
   if (!effectiveCode) {
     return (
       <main className="flex h-full items-center justify-center bg-bg-primary text-text-primary">
-        <PairingDialog open={open} onClose={handleClose} onPaired={handlePaired} />
+        <PairingDialog open={open} onClose={handleClose} onPaired={handlePaired} initialHost={effectiveHost} />
       </main>
     );
   }
@@ -155,6 +107,7 @@ export default function PairDeepLinkPage() {
         onClose={handleClose}
         onPaired={handlePaired}
         initialCode={effectiveCode}
+        initialHost={effectiveHost}
       />
     </main>
   );

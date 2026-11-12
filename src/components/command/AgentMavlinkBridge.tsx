@@ -27,6 +27,7 @@ import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { dialAgentFc, planDialPaths } from "./agent-mavlink-dial";
+import { isDemoMode } from "@/lib/utils";
 
 /** Gap between session checks, and so between re-dials of a missing session. */
 export const AGENT_FC_REDIAL_MS = 3_000;
@@ -100,7 +101,8 @@ export function AgentMavlinkBridge() {
   // The session supervisor. Every AGENT_FC_REDIAL_MS it checks the session and
   // dials when there is none, for as long as the agent is connected with an FC.
   useEffect(() => {
-    if (!connected || !fcActive) return;
+    // The demo flies its own simulated aircraft; nothing real to dial.
+    if (!connected || !fcActive || isDemoMode()) return;
     const readPlan = () => {
       const conn = useAgentConnectionStore.getState();
       return {

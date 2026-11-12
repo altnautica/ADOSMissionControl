@@ -47,13 +47,18 @@ export function ConfigNav() {
   const t = useTranslations("configNav");
 
   return (
-    <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
-      <div className="px-3 py-3 border-b border-border-default">
+    // Below md the nav is a horizontal tab strip above the content, so the
+    // page gets the full width on a phone; from md up it is the side column.
+    <nav
+      aria-label={t("title")}
+      className="w-full md:w-[200px] border-b md:border-b-0 md:border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-x-auto md:overflow-x-visible md:overflow-y-auto"
+    >
+      <div className="hidden md:block px-3 py-3 border-b border-border-default">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
           {t("title")}
         </h2>
       </div>
-      <div className="flex flex-col py-1">
+      <div className="flex md:flex-col py-1">
         {GCS_NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/config/plugins"
@@ -63,11 +68,12 @@ export function ConfigNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors",
+                "flex shrink-0 items-center gap-2 px-3 py-2 min-h-12 md:min-h-0 whitespace-nowrap text-xs text-left transition-colors",
                 isActive
-                  ? "text-accent-primary bg-accent-primary/10 border-l-2 border-l-accent-primary"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border-l-2 border-l-transparent"
+                  ? "text-accent-primary bg-accent-primary/10 border-b-2 md:border-b-0 md:border-l-2 border-accent-primary"
+                  : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border-b-2 md:border-b-0 md:border-l-2 border-transparent"
               )}
             >
               {item.icon}

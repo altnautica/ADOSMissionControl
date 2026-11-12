@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import {
   Eye, EyeOff, Save, RotateCcw,
-  Layers, HardDrive, Copy, ClipboardPaste,
+  Layers, HardDrive, Copy, ClipboardPaste, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OSD_SCREENS, PRESETS, type OsdElement, type VideoFormat } from "./ap-osd-elements";
@@ -13,6 +13,8 @@ interface OsdElementGridProps {
   elements: OsdElement[];
   activeScreen: number;
   saving: boolean;
+  /** True while Write to Flash runs. */
+  flashing?: boolean;
   selectedDroneId: string | null;
   hasRamWrites: boolean;
   /** False when the screen's OSDn_ENABLE is 0 on the vehicle. */
@@ -34,6 +36,7 @@ export function OsdElementGrid({
   elements,
   activeScreen,
   saving,
+  flashing = false,
   selectedDroneId,
   hasRamWrites,
   screenEnabled,
@@ -160,17 +163,20 @@ export function OsdElementGrid({
         <button
           onClick={onSave}
           disabled={!selectedDroneId || saving}
+          aria-busy={saving}
           className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-semibold bg-accent-primary text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
-          <Save size={12} />
-          {saving ? "Saving..." : "Save to FC"}
+          {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+          <SaveBarLabel k="saveToFc" />
         </button>
         {hasRamWrites && (
           <button
             onClick={onCommitFlash}
-            className="flex items-center justify-center gap-2 w-full px-3 py-1.5 text-xs font-semibold text-text-secondary border border-accent-primary/50 hover:text-accent-primary hover:bg-accent-primary/10 cursor-pointer"
+            disabled={flashing}
+            aria-busy={flashing}
+            className="flex items-center justify-center gap-2 w-full px-3 py-1.5 text-xs font-semibold text-text-secondary border border-accent-primary/50 hover:text-accent-primary hover:bg-accent-primary/10 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            <HardDrive size={12} />
+            {flashing ? <Loader2 size={12} className="animate-spin" /> : <HardDrive size={12} />}
             <SaveBarLabel k="writeToFlash" />
           </button>
         )}

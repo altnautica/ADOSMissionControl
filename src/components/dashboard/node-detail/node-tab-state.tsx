@@ -105,7 +105,7 @@ export function AgentSubpageHandoff({ subpage }: { subpage: string }) {
 }
 
 /**
- * Persists the node's tab, and scrolls it into view in the overflowing strip.
+ * Persists the node's tab. (The tab strip keeps the selected tab in view.)
  *
  * `resolved` is false when the node could not offer the requested tab and the
  * panel fell back to the first surface. Persisting in that case would destroy
@@ -114,12 +114,10 @@ export function AgentSubpageHandoff({ subpage }: { subpage: string }) {
  */
 export function TabMemory({
   droneId,
-  visibleTab,
   requestedTab,
   resolved,
 }: {
   droneId: string;
-  visibleTab: string;
   requestedTab: string;
   resolved: boolean;
 }) {
@@ -127,13 +125,6 @@ export function TabMemory({
     if (!resolved) return;
     useUiPrefsStore.getState().setLastTab(droneId, requestedTab);
   }, [droneId, requestedTab, resolved]);
-  useEffect(() => {
-    // The strip hides its scrollbar, so a restored tab off the left edge reads
-    // as "the panel is showing the wrong content" with no hint more exists.
-    document
-      .getElementById(`drone-tab-${visibleTab}`)
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [visibleTab]);
   return null;
 }
 

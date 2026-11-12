@@ -19,6 +19,7 @@ const STYLE: Record<
   available: { variant: "success", key: "chip.available" },
   "chromium-only": { variant: "warning", key: "chip.chromiumOnly" },
   "desktop-or-bridge": { variant: "info", key: "chip.desktopOrBridge" },
+  "desktop-unsupported": { variant: "warning", key: "chip.desktopUnsupported" },
 };
 
 export function AvailabilityChip({

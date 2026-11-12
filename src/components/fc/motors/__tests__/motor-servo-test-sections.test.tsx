@@ -35,12 +35,31 @@ describe("MotorTestSection", () => {
     } as Partial<DroneProtocol> as DroneProtocol;
     renderWithIntl(<MotorTestSection protocol={protocol} isHardBlocked={false} hardBlockMessage="" />);
     fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByRole("button", { name: /Test Motor 1/ }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /Test motor 1/ }));
     await waitFor(() => expect(toast).toHaveBeenCalled());
     const [message, level] = toast.mock.calls[0];
     expect(level).toBe("error");
     expect(message).toContain("Command denied");
     expect(message).not.toMatch(/complete/i);
+  });
+});
+
+describe("MotorTestSection safety", () => {
+  it("needs the props-off check, caps throttle and stops with zero throttle", async () => {
+    const motorTest = vi.fn(ok);
+    const protocol = { motorTest } as Partial<DroneProtocol> as DroneProtocol;
+    renderWithIntl(<MotorTestSection protocol={protocol} isHardBlocked={false} hardBlockMessage="" />);
+    fireEvent.click(screen.getByRole("switch"));
+    const run = screen.getByRole("button", { name: /Test motor 1/ }) as HTMLButtonElement;
+    expect(run.disabled).toBe(true);
+    const slider = screen.getAllByRole("slider")[0] as HTMLInputElement;
+    expect(slider.max).toBe("20");
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(run);
+    await waitFor(() => expect(motorTest).toHaveBeenCalledWith(1, 5, 3));
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(motorTest).toHaveBeenLastCalledWith(1, 0, 1);
   });
 });
 

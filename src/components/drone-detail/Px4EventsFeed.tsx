@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ScrollText, Search } from "lucide-react";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -26,12 +26,13 @@ function severityLevel(level: number): StatusLevel {
   return "idle"; // notice / info / debug
 }
 
-const SEVERITY_LABEL = [
-  "Emergency", "Alert", "Critical", "Error", "Warning", "Notice", "Info", "Debug",
-];
+const SEVERITY_KEYS = [
+  "emergency", "alert", "critical", "error", "warning", "notice", "info", "debug",
+] as const;
 
 export function Px4EventsFeed() {
   const tq = useTranslations("droneDetail.px4EventsFeed");
+  const format = useFormatter();
   const events = usePx4EventsStore((s) => s.events);
   const [query, setQuery] = useState("");
 
@@ -67,9 +68,7 @@ export function Px4EventsFeed() {
 
       {shown.length === 0 ? (
         <p className="flex flex-1 items-center justify-center text-[11px] text-text-tertiary">
-          {events.length === 0
-            ? "No events yet. Structured flight-controller events appear here."
-            : "No events match the search."}
+          {events.length === 0 ? tq("emptyNone") : tq("emptyNoMatch")}
         </p>
       ) : (
         <ul className="flex-1 min-h-0 overflow-y-auto divide-y divide-border-default">
@@ -79,14 +78,17 @@ export function Px4EventsFeed() {
                 status={severityLevel(e.severity)}
                 size="xs"
                 className="mt-1 flex-shrink-0"
-                label={SEVERITY_LABEL[e.severity] ?? `level ${e.severity}`}
+                label={SEVERITY_KEYS[e.severity] ? tq(`severity.${SEVERITY_KEYS[e.severity]}`) : tq("severityLevel", { level: e.severity })}
               />
               <div className="min-w-0 flex-1">
                 <p className="break-words text-[12px] text-text-primary leading-tight">
                   {e.text}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] text-text-tertiary">
-                  {e.name}
+                <p className="mt-0.5 flex gap-2 font-mono text-[10px] text-text-tertiary">
+                  <time dateTime={new Date(e.receivedAt).toISOString()} className="tabular-nums">
+                    {format.dateTime(e.receivedAt, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </time>
+                  <span>{e.name}</span>
                 </p>
               </div>
             </li>

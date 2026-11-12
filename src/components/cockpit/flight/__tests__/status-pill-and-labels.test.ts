@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import ds4Hotspots from "@/lib/cockpit-spec/ds4-hotspots.json";
 import genericHotspots from "@/lib/cockpit-spec/gamepad-generic-hotspots.json";
 import { layoutLeaderLabels, type LeaderInput } from "@/components/config/leader-labels";
-import { pillAlertsFor, type PillAlert, type PillSources } from "../StatusPill";
+import { pillAlertsFor, pillArmed, type PillAlert, type PillSources } from "../StatusPill";
 import { pillSummary } from "@/lib/hud/status-pill";
 import { specString } from "@/lib/cockpit/spec-strings";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
@@ -69,7 +69,7 @@ function sources(over: Partial<PillSources>): PillSources {
     pilot: flying,
     pilotAgeMs: 100,
     agentReachable: true,
-    disarmed: false,
+    armed: true,
     preflight: null,
     storagePct: null,
     ...over,
@@ -81,7 +81,7 @@ describe("status pill: the pilot's FC status text", () => {
   const onGround = { ...flying, readiness: [], statustext: ring } as unknown as PilotState;
 
   it("lists each line once, critical at severity 2 or worse, the PreArm line as the pre-arm item", () => {
-    const out = pillAlertsFor(sources({ pilot: onGround, disarmed: true }));
+    const out = pillAlertsFor(sources({ pilot: onGround, armed: false }));
     expect(out.map((a) => [a.source, a.severity, a.text])).toEqual([
       ["fc_status_text", "critical", "Crash: Disarming"],
       ["fc_prearm", "warning", specString("flow.preflight.fc_prearm.failing", { text: "Compass not calibrated" })],
@@ -90,7 +90,7 @@ describe("status pill: the pilot's FC status text", () => {
 
   it("does not repeat the surface's own pre-arm alert or status line, and drops PreArm lines once armed", () => {
     const own: PillAlert = { id: "alert:prearm:x", severity: "warning", text: "PreArm", source: "fc_prearm" };
-    expect(texts({ pilot: onGround, disarmed: true, surface: [own] })).toEqual(["Crash: Disarming", "PreArm"]);
+    expect(texts({ pilot: onGround, armed: false, surface: [own] })).toEqual(["Crash: Disarming", "PreArm"]);
     expect(texts({ pilot: onGround })).toEqual(["Crash: Disarming"]);
     const line: PillAlert = { id: "alert:statusText:", severity: "critical", text: "Crash: Disarming", source: "fc_status_text" };
     expect(texts({ pilot: onGround, surface: [line] })).toEqual(["Crash: Disarming"]);
@@ -140,14 +140,26 @@ describe("status pill: pre-flight checks", () => {
   ];
 
   it("lists a failing check on the ground, so the pill never reads OK while one fails", () => {
-    expect(texts({ pilot: clean, disarmed: true, preflight })).toEqual([
+    expect(texts({ pilot: clean, armed: false, preflight })).toEqual([
       specString("alert.preflight_failing", { item: "Battery" }),
     ]);
   });
 
   it("skips a check whose source the pill already lists, and lists none in the air", () => {
-    expect(texts({ pilot: clean, disarmed: true, preflight, surface: [crit] })).toEqual(["Battery critical"]);
-    expect(texts({ pilot: clean, disarmed: false, preflight })).toEqual([]);
+    expect(texts({ pilot: clean, armed: false, preflight, surface: [crit] })).toEqual(["Battery critical"]);
+    expect(texts({ pilot: clean, armed: true, preflight })).toEqual([]);
+  });
+
+  it("hides pre-flight items while the arm state is unknown (possibly airborne)", () => {
+    const unknown = { ...clean, armed: null, landed: null } as unknown as PilotState;
+    expect(texts({ pilot: unknown, armed: null, preflight })).toEqual([]);
+  });
+
+  it("reads a fresh pilot's unknown arm as unknown, over the FC's last word", () => {
+    expect(pillArmed({ armed: null }, true, "disarmed")).toBeNull();
+    expect(pillArmed({ armed: false }, true, "armed")).toBe(false);
+    expect(pillArmed({ armed: null }, false, "disarmed")).toBe(false);
+    expect(pillArmed(null, false, "unknown")).toBeNull();
   });
 
   it("reads storage as percent used from the spec", () => {

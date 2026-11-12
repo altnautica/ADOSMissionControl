@@ -94,7 +94,7 @@ function ImportLogDialog({ onClose }: { onClose: () => void }) {
         if (run.signal.aborted) break;
         const pf = files[i];
         if (pf.format === "unknown") {
-          setStatus(i, { status: "error", error: "Unknown format" });
+          setStatus(i, { status: "error", error: tq("unknownFormat") });
           continue;
         }
         setStatus(i, { status: "importing", progress: 0 });
@@ -120,7 +120,7 @@ function ImportLogDialog({ onClose }: { onClose: () => void }) {
       setImporting(false);
       if (!run.signal.aborted) setDone(true);
     }
-  }, [files]);
+  }, [files, tq]);
 
   const handleCancel = useCallback(() => runRef.current?.abort(), []);
 

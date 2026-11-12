@@ -61,6 +61,7 @@ import { NodeHeaderActions } from "./NodeHeaderActions";
 import { NodeAuthorityChip, NodeConnectChip, NodeSimChip } from "./NodeHeaderChips";
 import { RelayedNodeNotices } from "./RelayedNodeNotices";
 import { AgentDiagnosticsStrip } from "./AgentDiagnosticsStrip";
+import { nodeDisplayName } from "./node-brand";
 
 interface NodeDetailPanelProps {
   droneId: string;
@@ -69,6 +70,7 @@ interface NodeDetailPanelProps {
 
 export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const t = useTranslations("dronePanel");
+  const tNode = useTranslations("nodeConsole");
   // The panel is deliberately not remounted per node (no `key` at the call
   // site: the Agent page's sub-page memory depends on the instance
   // surviving), so the tab is reseeded per node.
@@ -137,7 +139,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   const fcLinking = !isConnected && ownStatus !== null && agentFcReachable;
 
   const immersiveMode = useUiStore((s) => s.immersiveMode);
-  const displayName = metadata?.displayName ?? drone?.name ?? droneId;
+  const displayName = nodeDisplayName(metadata?.displayName, drone?.name, [droneId, bareDeviceId]);
 
   // Live per-node plugin contributions feed the host provider so the
   // node.detail.tab bodies mount as sandboxed iframes; the node's profile
@@ -211,7 +213,6 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
       <ImmersiveGuard visibleTab={visibleTab} />
       <TabMemory
         droneId={droneId}
-        visibleTab={visibleTab}
         requestedTab={requestedTab}
         resolved={resolved}
       />
@@ -225,8 +226,14 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
           )}
         >
             <h1 className="text-sm font-semibold text-text-primary shrink-0">{displayName}</h1>
-            {/* Flight vocabulary belongs to a node that flies. */}
-            {drone.profile === "drone" && <DroneStatusBadge status={drone.status} />}
+            {/* Flight vocabulary belongs to a node that flies. Labelled as the
+                node's reach so it is not read as the hero's FC state. */}
+            {drone.profile === "drone" && (
+              <span className="flex items-center gap-1 shrink-0" title={tNode("provenance.reach")}>
+                <span className="text-[10px] text-text-tertiary">{tNode("provenance.reach")}</span>
+                <DroneStatusBadge status={drone.status} />
+              </span>
+            )}
             <NodeConnectChip focusDeviceId={focusDeviceId} />
             <NodeAuthorityChip droneId={droneId} />
             <NodeSimChip focusDeviceId={focusDeviceId} />

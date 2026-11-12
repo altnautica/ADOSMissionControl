@@ -189,6 +189,31 @@ describe("forgetNode", () => {
     expect(projectedIds()).not.toContain(nodeId);
   });
 
+  it("keeps an unreachable LAN node paired and says so", async () => {
+    seedLocalNode();
+    const nodeId = nodeIdForDevice(LOCAL_DEV);
+    unpairLocalMock.mockRejectedValueOnce(new Error("timeout"));
+
+    expect(await forgetNode(nodeId)).toEqual({
+      ok: false,
+      reason: "agentUnreachable",
+      message: "timeout",
+    });
+    // Nothing cleared: the credential and the fleet row survive.
+    expect(useLocalNodesStore.getState().nodes).toHaveLength(1);
+    expect(projectedIds()).toContain(nodeId);
+  });
+
+  it("forgets on this GCS only without asking the node", async () => {
+    seedLocalNode();
+    const nodeId = nodeIdForDevice(LOCAL_DEV);
+
+    expect(await forgetNode(nodeId, { localOnly: true })).toEqual({ ok: true });
+    expect(unpairLocalMock).not.toHaveBeenCalled();
+    expect(useLocalNodesStore.getState().nodes).toHaveLength(0);
+    expect(projectedIds()).not.toContain(nodeId);
+  });
+
   it("does not throw when the node is unknown (idempotent)", async () => {
     await expect(forgetNode(nodeIdForDevice("ghost-9999"))).resolves.toEqual({ ok: true });
     expect(projectedIds()).toHaveLength(0);

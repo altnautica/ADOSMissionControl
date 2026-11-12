@@ -114,7 +114,12 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
     const canvas = canvasRef.current;
     if (!canvas) return false;
     const offer = mapPointOffer(droneId);
-    if (!offer.flyHere && !offer.launchHere) return false;
+    if (!offer.flyHere && !offer.launchHere) {
+      // A known refusal is worded; no dialog opens.
+      if (offer.refusal === null) return false;
+      toast(specString(`refusal.${offer.refusal}`), "warning");
+      return true;
+    }
     const origin = useGpsOriginStore.getState().byDrone[droneId];
     if (!origin) {
       toast(

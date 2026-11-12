@@ -63,6 +63,12 @@ export const OutlineWaypointRow = memo(function OutlineWaypointRow({
   const clearance = waypointAltitudeAgl(waypoint, { homeGroundElevation, defaultFrame });
   // Takeoff, landing and RTL rows sit at the surface by design: no hazard colour.
   const clearanceHazard = clearance !== null && !isGroundContactCommand(waypoint.command);
+  // RTL flies at the vehicle's own return altitude; the item's altitude field
+  // is not used, so neither it nor a clearance under it means anything.
+  const isRtl = cmd === "RTL";
+  // A terrain-frame altitude already is the height above ground: a second
+  // AGL figure repeats it and crowds the command name out of the row.
+  const showClearance = !isRtl && frame !== "terrain";
   const actionCount = waypoint.actions?.length ?? 0;
   const highlighted = selected || multiSelected;
 
@@ -101,10 +107,18 @@ export const OutlineWaypointRow = memo(function OutlineWaypointRow({
         >
           {index + 1}
         </span>
-        <span className="min-w-0 flex-1 truncate text-[12px] text-text-primary">{label}</span>
-        <span className="shrink-0 font-mono text-[11px] text-text-secondary">{waypoint.alt}m</span>
-        <span className="shrink-0 rounded bg-bg-tertiary px-1 text-[11px] text-text-tertiary">{frameLabel}</span>
-        {waypoint.groundElevation !== undefined && clearance !== null && (
+        <span className="min-w-0 flex-1 truncate text-[12px] text-text-primary" title={label}>{label}</span>
+        {isRtl ? (
+          <span className="shrink-0 font-mono text-[11px] text-text-tertiary" title={t("outline.rtlAltitude")}>
+            —
+          </span>
+        ) : (
+          <>
+            <span className="shrink-0 font-mono text-[11px] text-text-secondary">{waypoint.alt}m</span>
+            <span className="shrink-0 rounded bg-bg-tertiary px-1 text-[11px] text-text-tertiary">{frameLabel}</span>
+          </>
+        )}
+        {showClearance && clearance !== null && waypoint.groundElevation !== undefined && (
           <span
             title={t("aboveGround", { alt: Math.round(clearance), elev: Math.round(waypoint.groundElevation) })}
             className={cn(

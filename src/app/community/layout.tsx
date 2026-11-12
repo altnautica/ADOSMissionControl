@@ -84,7 +84,7 @@ export default function CommunityLayout({
             </a>
           </p>
           <p className="text-text-tertiary text-xs">
-            {t("unavailableSetup")}
+            {t("unavailableSetup", { envVar: "NEXT_PUBLIC_CONVEX_URL" })}
           </p>
           <p className="text-text-tertiary text-xs">
             {t("unavailableOptional")}

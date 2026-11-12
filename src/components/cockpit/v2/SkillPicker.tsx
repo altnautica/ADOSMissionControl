@@ -22,7 +22,7 @@ import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginConfigCache, pluginConfigKey } from "@/lib/plugins/config-cache";
 import { activate, buildSkillContext, deactivate, useSkillRegistry, type Skill } from "@/lib/skills";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
-import { skillDisplayLabel } from "@/lib/skills/skill-label";
+import { resolveContribLabel, skillDisplayLabel } from "@/lib/skills/skill-label";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { onPickerCommand, usePickerStore } from "@/lib/cockpit/picker-commands";
@@ -60,6 +60,14 @@ export function pickerSkills(skills: Skill[], vehicleClass: PilotState["vehicleC
       s.source === "plugin" &&
       (!vehicleClass || !s.vehicleClasses || s.vehicleClasses.includes(vehicleClass)),
   );
+}
+
+/** A plugin group's heading: the manifest's name, else the last part of the
+ *  plugin id made readable (`com.example.follow-me` → "Follow Me"). */
+export function pluginGroupTitle(pluginId: string, manifest: readonly { pluginId: string; title: string }[]): string {
+  const title = manifest.find((m) => m.pluginId === pluginId)?.title;
+  if (title) return title;
+  return resolveContribLabel(pluginId.split(".").pop() ?? pluginId);
 }
 
 /** Group a tab's skills under their plugin, in registration order. */
@@ -261,7 +269,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
           {groups.map(([pid, list]) => (
             <section key={pid} className="flex flex-col gap-1">
               <h4 className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
-                {pid}
+                {pluginGroupTitle(pid, manifest)}
               </h4>
               {list.map((s) => {
                 const st = stateOf(s.id);

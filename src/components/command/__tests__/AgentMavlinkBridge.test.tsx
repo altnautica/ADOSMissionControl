@@ -160,6 +160,7 @@ vi.mock("@/stores/drone-manager", () => {
 import { AgentMavlinkBridge } from "../AgentMavlinkBridge";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { setMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
+import { useSettingsStore } from "@/stores/settings-store";
 
 const { wsConnect, mqttConnect, mintWsTicket, addDrone, probeAgent, setMavlinkPairRequired } = h;
 
@@ -386,5 +387,19 @@ describe("AgentMavlinkBridge session supervision", () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(wsConnect).toHaveBeenCalledTimes(1);
     expect(addDrone).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AgentMavlinkBridge in demo", () => {
+  it("never dials: the demo flies its own simulated aircraft", async () => {
+    useSettingsStore.setState({ demoMode: true, _hasHydrated: true });
+    try {
+      render(<AgentMavlinkBridge />);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+      expect(wsConnect).not.toHaveBeenCalled();
+      expect(mqttConnect).not.toHaveBeenCalled();
+    } finally {
+      useSettingsStore.setState({ demoMode: false });
+    }
   });
 });

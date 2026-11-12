@@ -15,7 +15,12 @@ import { useTelemetryStore } from "./telemetry-store";
 import { useUploadReceiptsStore } from "./upload-receipts-store";
 import { withPlannerHistory } from "@/lib/planner-history";
 import { flyingMissionRefusal } from "@/lib/mission/upload-guard";
-import { MISSION_TRANSFER_NO_ANSWER } from "@/lib/protocol/mission-result";
+import {
+  MISSION_TRANSFER_NO_ANSWER,
+  MISSION_TRANSFER_VERIFY_FAILED,
+  MISSION_TRANSFER_VERIFY_MISMATCH,
+} from "@/lib/protocol/mission-result";
+import { missionReadBackMatches } from "@/lib/mission/mission-verify";
 // The pure mission ⇄ wire collapser: re-nests a downloaded flat item list into
 // the waypoint model. The upload side goes through `mission-upload`, which also
 // owns the receipt hash and the seq → waypoint mapping, so the three agree.
@@ -145,6 +150,24 @@ export async function uploadPlanMission(
   } catch (err) {
     failure = err instanceof Error && err.message ? err.message : "The mission transfer failed";
     failureCode = MISSION_TRANSFER_NO_ANSWER;
+  }
+  // An acknowledgement only says the transfer finished. Read the mission back
+  // and compare before anything vouches for it (MAVLink vehicles; an MSP
+  // vehicle stores its own encoding, which does not echo item for item).
+  const mavlink = !(info?.firmwareType === "inav" || info?.firmwareType === "betaflight");
+  if (success && mavlink) {
+    try {
+      const readBack = await protocol.downloadMission();
+      if (!missionReadBackMatches(items, readBack, isArduPilot)) {
+        success = false;
+        failure = "The mission read back from the flight controller differs from the one sent";
+        failureCode = MISSION_TRANSFER_VERIFY_MISMATCH;
+      }
+    } catch (err) {
+      success = false;
+      failure = err instanceof Error && err.message ? err.message : "Reading the mission back failed";
+      failureCode = MISSION_TRANSFER_VERIFY_FAILED;
+    }
   }
   set({ uploadState: success ? "uploaded" : "error", uploadError: failure, uploadErrorCode: failureCode });
   if (droneId) {

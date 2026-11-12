@@ -21,7 +21,9 @@ export type MethodAvailability =
   /** Needs a Chromium browser (Chrome/Edge) in a secure context. */
   | "chromium-only"
   /** Native in the desktop app; in the browser needs the local bridge. */
-  | "desktop-or-bridge";
+  | "desktop-or-bridge"
+  /** The desktop app cannot offer it on this OS (Web Bluetooth on Linux). */
+  | "desktop-unsupported";
 
 export interface ConnectionMethod {
   id: DirectMethodId;
@@ -71,7 +73,9 @@ export function getDirectConnectionMethods(): ConnectionMethod[] {
       id: "bluetooth",
       labelKey: "method.bluetooth.label",
       blurbKey: "method.bluetooth.blurb",
-      availability: bleOk ? "available" : "chromium-only",
+      // The desktop runtime ships no Web Bluetooth on Linux; telling the
+      // operator to switch to Chrome or Edge from inside the app is wrong.
+      availability: bleOk ? "available" : electron ? "desktop-unsupported" : "chromium-only",
     },
   ];
 }

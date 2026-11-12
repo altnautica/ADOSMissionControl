@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 
 import { useVisionPipelines } from "@/hooks/use-vision-pipelines";
-import { useVisionEngineStatus } from "@/hooks/use-vision-engine-models";
+import { useVisionEngineStatus, type VisionEngineConnection } from "@/hooks/use-vision-engine-models";
 
 function CountCell({ label, value }: { label: string; value: number | null }) {
   return (
@@ -30,10 +30,17 @@ function CountCell({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-export function VisionModelCountTile({ droneId }: { droneId: string }) {
+export function VisionModelCountTile({
+  droneId,
+  agent,
+}: {
+  droneId: string;
+  /** The node's own connection (null: none). Omitted: the attached one. */
+  agent?: VisionEngineConnection | null;
+}) {
   const t = useTranslations("vision");
   const pipelines = useVisionPipelines(droneId);
-  const status = useVisionEngineStatus();
+  const status = useVisionEngineStatus(agent);
 
   const activeCount = pipelines.filter((p) => p.active).length;
   // A live stream proves a running model; with no stream and no engine

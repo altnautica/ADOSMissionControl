@@ -24,21 +24,27 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock("convex/react", () => ({ useMutation: () => removeMutation }));
+const installQuery: { state: "ready" | "skipped" | "error" | "loading" } = { state: "ready" };
+const INSTALL = {
+  install: {
+    name: "Thermal",
+    version: "1.0.0",
+    pluginId: "com.example.thermal",
+    droneId: "dev-1",
+    status: "enabled",
+    source: "registry",
+    halves: ["agent"],
+    installedAt: 0,
+    manifestHash: "abcdef0123456789abcdef",
+  },
+  permissions: [],
+};
 vi.mock("@/hooks/use-convex-skip-query", () => ({
-  useConvexSkipQuery: () => ({
-    install: {
-      name: "Thermal",
-      version: "1.0.0",
-      pluginId: "com.example.thermal",
-      droneId: "dev-1",
-      status: "enabled",
-      source: "registry",
-      halves: ["agent"],
-      installedAt: 0,
-      manifestHash: "abcdef0123456789abcdef",
-    },
-    permissions: [],
-  }),
+  useConvexSkipQuery: () => undefined,
+  useConvexSkipQueryState: () =>
+    installQuery.state === "ready"
+      ? { data: INSTALL, state: "ready" }
+      : { data: undefined, state: installQuery.state },
 }));
 vi.mock("@/components/command/settings/use-node-direct-agent", () => ({
   useNodeDirectAgent: () =>
@@ -116,5 +122,19 @@ describe("PluginDetailPage · failure reason", () => {
     lanRows.current = [{ plugin_id: "com.example.thermal", failure_reason: null }];
     renderPage();
     expect(screen.queryByText(messages.plugins.detail.field.failureReason)).toBeNull();
+  });
+});
+
+describe("PluginDetailPage without cloud data", () => {
+  it.each(["skipped", "error"] as const)("a %s query shows not found with the back link, not Loading", (state) => {
+    installQuery.state = state;
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <PluginDetailPage />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.queryByText(messages.plugins.detail.loading)).toBeNull();
+    expect(screen.getByText(messages.plugins.detail.notFound)).toBeTruthy();
+    installQuery.state = "ready";
   });
 });

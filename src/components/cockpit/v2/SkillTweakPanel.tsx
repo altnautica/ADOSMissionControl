@@ -34,15 +34,29 @@ function bundled(strings: PluginLocaleBundle | undefined, key: string): string {
   return strings && Object.prototype.hasOwnProperty.call(strings, key) ? strings[key] : key;
 }
 
+/** Unit suffixes a parameter key may end in, shown in brackets. */
+const KEY_UNITS = new Set(["m", "s", "ms", "deg", "dps", "mps", "hz", "pct"]);
+
+/** A readable label for an unlabelled parameter key:
+ *  `orbit_radius_m` → "Orbit radius (m)". */
+export function humanizeParamKey(key: string): string {
+  const words = key.split(/[_\-.]+/).filter(Boolean);
+  if (words.length === 0) return key;
+  const unit = words.length > 1 && KEY_UNITS.has(words[words.length - 1].toLowerCase()) ? words.pop() : undefined;
+  const text = words.join(" ");
+  const head = text.charAt(0).toUpperCase() + text.slice(1);
+  return unit ? `${head} (${unit})` : head;
+}
+
 /** The Tweak row label: the manifest parameter's `ui.label` (a key into the
- *  extension's locale bundle, or a literal), else the raw key. */
+ *  extension's locale bundle, or a literal), else the key made readable. */
 export function paramLabel(
   params: readonly { key: string; ui?: { label?: string } }[] | undefined,
   key: string,
   strings?: PluginLocaleBundle,
 ): string {
   const label = params?.find((p) => p.key === key)?.ui?.label;
-  return label ? bundled(strings, label) : key;
+  return label ? bundled(strings, label) : humanizeParamKey(key);
 }
 
 /** The next value of a stepper press: one schema step (1 when none), inside

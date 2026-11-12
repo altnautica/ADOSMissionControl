@@ -17,6 +17,7 @@ import { MapControl } from "@/components/map/MapControl";
 import type { FlightRecord } from "@/lib/types";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { pointInPolygon } from "@/lib/geo/distance";
+import { TILE_PROVIDERS } from "@/lib/tile-math";
 
 // leaflet.heat adds heatLayer to the L namespace at import time and ships no
 // type declarations of its own.
@@ -403,8 +404,9 @@ export default function FleetCoverageMapInner({
         className="h-full w-full bg-bg-tertiary"
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+          url={TILE_PROVIDERS.dark.url}
+          attribution={TILE_PROVIDERS.dark.attribution}
+          maxNativeZoom={TILE_PROVIDERS.dark.maxZoom}
           maxZoom={20}
         />
         <HeatLayer points={heatPoints} show={showHeat} />

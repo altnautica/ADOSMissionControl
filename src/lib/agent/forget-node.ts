@@ -62,28 +62,52 @@ export interface ForgetNodeOptions {
   convexId?: string | null;
   /** The Convex unpair mutation handle from the calling component. */
   unpairMutation?: UnpairDroneMutation;
+  /** Forget on this GCS only: skip releasing the pairing on the node itself.
+   * The operator chooses this after the node could not be reached. */
+  localOnly?: boolean;
 }
 
 /** The outcome of a forget. `cloudUnavailable`: the node is cloud-paired and
- * Convex is not reachable; `cloudFailed`: the unpair mutation was rejected. In
- * both cases nothing was forgotten. */
+ * Convex is not reachable; `cloudFailed`: the unpair mutation was rejected;
+ * `agentUnreachable`: the node could not release its LAN pairing. In every
+ * failure no local source was cleared. */
 export type ForgetNodeResult =
   | { ok: true }
   | { ok: false; reason: "cloudUnavailable" }
-  | { ok: false; reason: "cloudFailed"; message: string };
+  | { ok: false; reason: "cloudFailed"; message: string }
+  | { ok: false; reason: "agentUnreachable"; message: string };
 
 /**
  * Forget the node identified by the canonical `node:<deviceId>` id across every
- * store + the agent + Convex. Idempotent: a missing source is a no-op, and an
- * unreachable agent still forgets locally. Resolves once the cloud row is gone
- * and the local stores are cleared, or with the reason the cloud row could not
- * be removed (in which case nothing was cleared).
+ * store + the agent + Convex. Idempotent: a missing source is a no-op. A node
+ * that cannot release its LAN pairing stops the forget (`agentUnreachable`)
+ * unless the caller passes `localOnly`. Resolves once the cloud row is gone
+ * and the local stores are cleared, or with the reason nothing was cleared.
  */
 export async function forgetNode(
   nodeId: string,
   options: ForgetNodeOptions = {},
 ): Promise<ForgetNodeResult> {
   const deviceId = deviceIdFromNodeId(nodeId);
+
+  // 0. LAN: ask the node to release its pairing before anything is
+  // cleared. Forgetting the credential while the node still holds the pairing
+  // left the node paired to a GCS that no longer knows it, and the failure
+  // was silent. The caller offers "forget on this GCS only" on failure.
+  const localNode = deviceId
+    ? useLocalNodesStore.getState().nodes.find((n) => n.deviceId === deviceId)
+    : undefined;
+  if (localNode && !options.localOnly) {
+    try {
+      await unpairLocal(localNode.hostname, localNode.apiKey);
+    } catch (err) {
+      return {
+        ok: false,
+        reason: "agentUnreachable",
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
 
   // 1. Cloud: delete the Convex row first, so the reactive `listMyDrones`
   // query stops returning it (otherwise CloudDroneBridge + useFleetSync re-add
@@ -125,19 +149,10 @@ export async function forgetNode(
   // Forget any per-node display metadata (name override, etc.).
   useDroneMetadataStore.getState().deleteProfile(nodeId);
 
-  // 4. LAN: release the agent's pairing (so it returns to advertising a fresh
-  // code) and forget the local credential. Best-effort — an offline agent must
-  // not block the forget.
-  if (deviceId) {
-    const localNode = useLocalNodesStore
-      .getState()
-      .nodes.find((n) => n.deviceId === deviceId);
-    if (localNode) {
-      void unpairLocal(localNode.hostname, localNode.apiKey).catch(() => {
-        // Agent gone / unreachable — local forget proceeds regardless.
-      });
-      useLocalNodesStore.getState().removeNode(deviceId);
-    }
+  // 4. LAN: forget the local credential (the node released it above, or the
+  // operator chose to forget on this GCS only).
+  if (deviceId && localNode) {
+    useLocalNodesStore.getState().removeNode(deviceId);
   }
 
   // 5. Registry: drop BOTH presence sources + the command-fleet status row NOW,

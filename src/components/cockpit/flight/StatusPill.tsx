@@ -98,7 +98,9 @@ export interface PillSources {
   pilotAgeMs: number | null | undefined;
   /** Undefined unless the focused agent is this drone's. */
   agentReachable: boolean | undefined;
-  disarmed: boolean;
+  /** Whether the vehicle is armed; null when unknown (possibly airborne),
+   *  which hides the pre-flight items. */
+  armed: boolean | null;
   /** The pre-flight checklist, or null before it was evaluated. */
   preflight: readonly PreflightItem[] | null;
   storagePct: number | null;
@@ -120,7 +122,7 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
   const surfacePrearm = s.surface.some((a) => a.source === "fc_prearm");
   // The ring is newest first; the shared rule reads the newest last.
   const prearm =
-    s.disarmed && !surfacePrearm ? ring.filter((r) => PREARM.test(r.text)).map((r) => r.text).reverse() : [];
+    s.armed === false && !surfacePrearm ? ring.filter((r) => PREARM.test(r.text)).map((r) => r.text).reverse() : [];
   const surfaceTexts = new Set(s.surface.map((a) => a.text));
   const shared = pillAlerts({
     alerts: [],
@@ -135,7 +137,7 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
     ...pilotFailsafe(s.pilot),
   }).filter((a) => !(a.source === "fc_status_text" && surfaceTexts.has(a.text)));
   const listed = new Set<PillSource>([...s.surface, ...shared].map((a) => a.source));
-  const failing = s.disarmed
+  const failing = s.armed === false
     ? (s.preflight ?? []).filter(
         (p) => p.state === "fail" && !p.id.startsWith("pilot:") && !listed.has(PREFLIGHT_SOURCE[p.id] ?? "preflight"),
       )
@@ -145,11 +147,23 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
     readiness: [],
     prearm: undefined,
     storagePct: null,
+    armed: s.armed,
     preflightFailing: failing.map(({ id, label }) => ({ id, label })),
   });
   return [...s.surface, ...shared, ...preflight].sort((a, b) =>
     a.severity === b.severity ? 0 : a.severity === "critical" ? -1 : 1,
   );
+}
+
+/** The arm state the pill reads: a fresh pilot state's own, else the FC's;
+ *  null when neither knows. */
+export function pillArmed(
+  pilot: Pick<PilotState, "armed"> | null,
+  pilotFresh: boolean,
+  fcArmState: string,
+): boolean | null {
+  if (pilotFresh && pilot) return pilot.armed;
+  return fcArmState === "armed" ? true : fcArmState === "disarmed" ? false : null;
 }
 
 /** Re-render cadence so a pilot state ages out of the pill. */
@@ -158,7 +172,7 @@ const PILL_TICK_MS = 500;
 export function usePillAlerts(droneId: string): PillAlert[] {
   const { alerts, label } = useCockpitAlertList(droneId);
   const { pilot, receivedAt } = usePilotState(droneId);
-  const disarmed = useDroneStore((s) => s.armState === "disarmed");
+  const fcArmState = useDroneStore((s) => s.armState);
   const nav = useNavSource(droneId).result;
   const disk = useAgentSystemStore((s) => s.status?.health?.disk_percent ?? null);
   // The focused agent's polls describe its own node; another drone (a direct
@@ -187,7 +201,11 @@ export function usePillAlerts(droneId: string): PillAlert[] {
     pilot,
     pilotAgeMs: receivedAt !== null ? now - receivedAt : paired ? null : undefined,
     agentReachable: focused ? failures < AGENT_UNREACHABLE_FAILURES : undefined,
-    disarmed,
+    armed: pillArmed(
+      pilot,
+      receivedAt !== null && pilotFresh(0, now - receivedAt),
+      fcArmState,
+    ),
     preflight,
     storagePct: typeof disk === "number" ? disk : null,
     navSource: nav,

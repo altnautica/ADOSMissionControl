@@ -11,7 +11,7 @@ import { act, configure, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import tipsJson from "@/lib/cockpit-spec/tips.json";
-import { useCockpitTips, type CockpitTipsUi } from "../use-cockpit-tips";
+import { tipsArmFacts, useCockpitTips, type CockpitTipsUi } from "../use-cockpit-tips";
 import { useCockpitTipsStore } from "@/stores/cockpit-tips-store";
 import { useControlsStore } from "@/stores/controls-store";
 import { useDroneStore } from "@/stores/drone-store";
@@ -160,5 +160,17 @@ describe("useCockpitTips", () => {
     advance(300);
     expect(result.current.tip).toBeNull();
     expect(useCockpitTipsStore.getState().seen).not.toContain("status_pill");
+  });
+});
+
+describe("tipsArmFacts", () => {
+  it("keeps a fresh pilot's unknown arm unknown, even over an FC disarm", () => {
+    expect(tipsArmFacts({ armed: null, landed: null }, "disarmed", null)).toEqual({ armed: null, airborne: null });
+  });
+  it("reads a known ground and a known flight", () => {
+    expect(tipsArmFacts({ armed: false, landed: true }, "unknown", null)).toEqual({ armed: false, airborne: false });
+    expect(tipsArmFacts({ armed: true, landed: false }, "armed", null)).toEqual({ armed: true, airborne: true });
+    expect(tipsArmFacts(null, "unknown", null)).toEqual({ armed: null, airborne: null });
+    expect(tipsArmFacts(null, "disarmed", null)).toEqual({ armed: false, airborne: false });
   });
 });

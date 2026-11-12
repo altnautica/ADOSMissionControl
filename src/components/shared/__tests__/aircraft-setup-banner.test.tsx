@@ -24,6 +24,7 @@ import { AircraftSetupBanner } from "../AircraftSetupBanner";
 import { SETUP_OFFERED_KEY, useAircraftSetupOfferStore } from "@/stores/aircraft-setup-offer-store";
 import { useFlightScreenStore } from "@/stores/flight-screen-store";
 import { useNodeRegistryStore } from "@/stores/node-registry/node-registry-store";
+import { useDroneManager } from "@/stores/drone-manager";
 
 function statusFor(uid: string, ground: WizardState): SetupStatus {
   return {
@@ -119,5 +120,22 @@ describe("AircraftSetupBanner", () => {
     expect(banner()).toBeNull();
     act(() => setArmed(false));
     expect(banner()).not.toBeNull();
+  });
+
+  it("never shows over a selection without flight-controller surfaces", () => {
+    engine.status = statusFor("fc-7", "not_started");
+    useDroneManager.setState({ selectedDroneId: "node:forge" });
+    useNodeRegistryStore.setState({
+      nodes: { "node:forge": { presence: { profile: "workstation" } } } as never,
+    });
+    render(<AircraftSetupBanner />);
+    expect(banner()).toBeNull();
+    act(() =>
+      useNodeRegistryStore.setState({
+        nodes: { "node:forge": { presence: { profile: "drone" } } } as never,
+      }),
+    );
+    expect(banner()).not.toBeNull();
+    useDroneManager.setState({ selectedDroneId: null });
   });
 });

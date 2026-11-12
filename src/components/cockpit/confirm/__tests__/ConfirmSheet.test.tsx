@@ -13,6 +13,7 @@ vi.mock("../confirm-text", () => ({
 }));
 
 import { ConfirmSheet } from "../ConfirmSheet";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { GUARD_WINDOW_MS, type ConfirmPolicy } from "@/lib/skills/types";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useInputStore } from "@/stores/input-store";
@@ -115,5 +116,15 @@ describe("ConfirmSheet", () => {
     render(<ConfirmSheet policy={policy()} droneId="d1" onResolve={onResolve} />);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onResolve).toHaveBeenCalledWith(false, undefined);
+  });
+
+  it("names Cross as the pad confirm when no pad button opened the sheet", () => {
+    render(<ConfirmSheet policy={policy()} droneId="d1" onResolve={vi.fn()} />);
+    expect(screen.getByTestId("confirm-input-hint").textContent).toBe("skills.confirmPadHint");
+  });
+
+  it("says 'the same button' when a pad button opened the sheet", () => {
+    render(<ConfirmSheet policy={policy({ gamepadButton: 3 })} droneId="d1" onResolve={vi.fn()} />);
+    expect(screen.getByTestId("confirm-input-hint").textContent).toBe(specString("confirm.input_hint"));
   });
 });

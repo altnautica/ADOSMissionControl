@@ -38,6 +38,9 @@ import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan
 import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
 import { usePlanVehicleProfile } from "@/hooks/use-plan-profile";
 import { useLegGroundProfiles } from "@/hooks/use-terrain-profile";
+import { useSettingsStore } from "@/stores/settings-store";
+import type { Jurisdiction } from "@/lib/jurisdiction";
+import { regulatoryCeilingMetres } from "@/lib/validation/regulatory-ceiling";
 
 /** The store fields the validation options are derived from. */
 export interface ValidationOptionsSnapshot {
@@ -57,6 +60,8 @@ export interface ValidationOptionsSnapshot {
   plannedHome: PlannedHome | null;
   /** Profile the plan is validated for; null for a non-MAVLink target. */
   profile: PlanVehicleProfile | null;
+  /** Operator jurisdiction; sets the advisory altitude ceiling (120 m when unset). */
+  jurisdiction?: Jurisdiction | null;
 }
 
 /**
@@ -91,6 +96,7 @@ export function buildValidationOptions(s: ValidationOptionsSnapshot): Validation
       ? { lat: s.plannedHome.lat, lon: s.plannedHome.lon, groundElevation: s.plannedHome.groundAmsl }
       : undefined,
     profile: s.profile ?? undefined,
+    advisoryCeiling: regulatoryCeilingMetres(s.jurisdiction ?? null),
     homeCircleRadiusM:
       s.enabled && s.homeCircleRadiusM !== null && s.homeCircleRadiusM > 0 ? s.homeCircleRadiusM : undefined,
   };
@@ -130,6 +136,7 @@ export function readValidationOptionsSnapshot(target?: DroneProtocol | null): Va
     homeCircleRadiusM: g.homeCircleRadiusM,
     plannedHome: mission.plannedHome,
     profile,
+    jurisdiction: useSettingsStore.getState().jurisdiction,
   };
 }
 
@@ -202,6 +209,7 @@ export function useValidationOptions(): ValidationOptions {
   const terrainEnabled = useTerrainEnabled();
   const rtlAutoland = useRtlAutoland();
   const legGroundProfiles = useLegGroundProfiles(waypoints);
+  const jurisdiction = useSettingsStore((s) => s.jurisdiction);
 
   return useMemo(
     () => ({
@@ -220,6 +228,7 @@ export function useValidationOptions(): ValidationOptions {
         homeCircleRadiusM,
         plannedHome,
         profile,
+        jurisdiction,
       }),
       rtlAltitude,
       terrainEnabled,
@@ -228,7 +237,7 @@ export function useValidationOptions(): ValidationOptions {
     }),
     [
       enabled, fenceType, maxAltitude, minAltitude, polygonPoints, circleCenter, circleRadius, zones,
-      rallyPoints, defaultFrame, defaultSpeed, homeCircleRadiusM, plannedHome, profile, rtlAltitude,
+      rallyPoints, defaultFrame, defaultSpeed, homeCircleRadiusM, plannedHome, profile, jurisdiction, rtlAltitude,
       terrainEnabled, rtlAutoland, legGroundProfiles,
     ],
   );

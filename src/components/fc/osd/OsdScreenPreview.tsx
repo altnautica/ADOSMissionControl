@@ -141,7 +141,7 @@ export function OsdScreenPreview({
         {/* "NO SIGNAL" if not connected */}
         {!selectedDroneId && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-text-tertiary font-mono text-sm tracking-widest">OSD PREVIEW</span>
+            <span className="text-text-tertiary font-mono text-sm tracking-widest">{tk("osdPreview")}</span>
           </div>
         )}
       </div>

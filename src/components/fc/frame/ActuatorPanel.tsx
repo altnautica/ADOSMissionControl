@@ -94,8 +94,11 @@ export function ActuatorPanel() {
     else toast(t("actuatorSaveFailed"), "error");
   }
 
+  const [flashing, setFlashing] = useState(false);
   async function handleFlash() {
+    setFlashing(true);
     const ok = await commitToFlash();
+    setFlashing(false);
     showFlashResult(ok, { successMessage: t("flashWritten") });
   }
 
@@ -225,10 +228,10 @@ export function ActuatorPanel() {
 
             {/* Save / Flash */}
             <div className="flex gap-2 pt-2">
-              <Button size="sm" disabled={!hasDirty || saving} onClick={handleSave}>
-                <Save size={14} className="mr-1" /> {saving ? "Saving..." : "Save"}
+              <Button size="sm" disabled={!hasDirty || saving} loading={saving} onClick={handleSave}>
+                <Save size={14} className="mr-1" /> <SaveBarLabel k="saveToFc" />
               </Button>
-              <Button size="sm" variant="secondary" disabled={!hasRamWrites} onClick={handleFlash}>
+              <Button size="sm" variant="secondary" disabled={!hasRamWrites || flashing} loading={flashing} onClick={handleFlash}>
                 <HardDrive size={14} className="mr-1" /> <SaveBarLabel k="writeToFlash" />
               </Button>
             </div>

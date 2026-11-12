@@ -11,7 +11,8 @@
  */
 "use client";
 
-import { useState, useCallback, useEffect, type CSSProperties } from "react";
+import { useState, useCallback, useEffect, useRef, type CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -26,13 +27,24 @@ import { fmtDistance, fmtEta } from "@/lib/hud/format";
 import { useConfirmHold } from "@/components/cockpit/confirm/use-confirm-hold";
 import { HoldControl } from "@/components/cockpit/confirm/HoldControl";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
-import { sheetPlacement, useFlightRoot } from "@/components/cockpit/flight/flight-sheet";
+import {
+  sheetPlacement,
+  useFlightRoot,
+  useFlightSheet,
+  useSheetDismiss,
+} from "@/components/cockpit/flight/flight-sheet";
 
 /** The Fly Here confirm hold, the same on every surface (spec `holds_ms`). */
 const HOLD_DURATION_MS = SPEC_HOLD_MS.fly_here;
 const DEFAULT_ALT_M = 10;
 
-export function GuidedConfirmDialog() {
+/**
+ * `flightScreenHost`: the one instance the flight screen mounts. While a
+ * flight screen is up every other instance (a map pane's own) renders
+ * nothing, so one right-click opens one dialog.
+ */
+export function GuidedConfirmDialog({ flightScreenHost = false }: { flightScreenHost?: boolean } = {}) {
+  const t = useTranslations();
   const storedPending = useGuidedStore((s) => s.confirmPending);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   // A confirmation belongs to the drone it was raised for; it never re-opens
@@ -48,7 +60,13 @@ export function GuidedConfirmDialog() {
   const [altitudeText, setAltitudeText] = useState(String(DEFAULT_ALT_M));
   const [error, setError] = useState<string | null>(null);
   const grid = useFlightGrid();
-  const onFlightScreen = useFlightRoot() !== null;
+  const flightRoot = useFlightRoot();
+  const onFlightScreen = flightScreenHost || flightRoot !== null;
+  const shown = confirmPending !== null && (flightScreenHost || !onFlightScreen);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Escape and a press outside close it; focus returns where it was.
+  useSheetDismiss(ref, dismissConfirm, undefined, shown);
 
   const altitude = parseFlyHereAltitude(altitudeText);
 
@@ -98,7 +116,7 @@ export function GuidedConfirmDialog() {
     onComplete: () => void handleConfirm(),
   });
 
-  if (!confirmPending) return null;
+  if (!confirmPending || !shown) return null;
 
   // On the flight screen the dialog follows the sheet rules; elsewhere it
   // keeps to the bottom centre of its map.
@@ -108,10 +126,14 @@ export function GuidedConfirmDialog() {
 
   return (
     <div
+      ref={ref}
+      role="dialog"
+      aria-label={specString("map.fly_here")}
       data-testid="fly-here-dialog"
       style={placement}
       className={`${onFlightScreen ? "" : "absolute bottom-4 left-1/2 -translate-x-1/2 "}z-[1100] w-[320px] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden`}
     >
+      {flightScreenHost && <FlyHereSheetClaim onClosed={dismissConfirm} />}
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2">
@@ -212,11 +234,30 @@ export function GuidedConfirmDialog() {
           hold={hold}
           holdMs={HOLD_DURATION_MS}
           label={specString("map.fly_here.hold")}
-          hint={specString("confirm.input_hint")}
+          hint={t("skills.confirmPadHint")}
           danger={false}
           disabled={altitude === null}
         />
       </div>
     </div>
   );
+}
+
+/**
+ * The flight screen's one-sheet-at-a-time rule for Fly Here: while the
+ * dialog shows it holds the `fly_here` sheet, so opening it closes any other
+ * sheet and another sheet opening closes it.
+ */
+function FlyHereSheetClaim({ onClosed }: { onClosed: () => void }) {
+  const [open, setOpen] = useFlightSheet("fly_here");
+  const claimed = useRef(false);
+  useEffect(() => {
+    if (!claimed.current) {
+      claimed.current = true;
+      setOpen(true);
+    } else if (!open) {
+      onClosed();
+    }
+  }, [open, setOpen, onClosed]);
+  return null;
 }

@@ -17,6 +17,8 @@ import { Fan, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EnumSelect } from "../parameters/EnumSelect";
+import { useArmedLock } from "@/hooks/use-armed-lock";
+import { isFrameGeometryParam } from "../shared/frame-geometry-params";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
@@ -49,13 +51,15 @@ const OPTIONAL_PARAMS = [
 ];
 
 function MetaField({
-  name, label, metadata, params, setLocalValue,
+  name, label, metadata, params, setLocalValue, locked = false,
 }: {
   name: string;
   label: string;
   metadata: Map<string, ParamMetadata>;
   params: Map<string, number>;
   setLocalValue: (name: string, value: number) => void;
+  /** Frame geometry while the vehicle may be armed: shown, not editable. */
+  locked?: boolean;
 }): ReactNode {
   if (!params.has(name)) return null;
   const meta = metadata.get(name);
@@ -66,13 +70,14 @@ function MetaField({
         {label} <span className="font-mono text-text-tertiary">({name})</span>
       </label>
       {meta?.values && meta.values.size > 0 ? (
-        <EnumSelect values={meta.values} value={value} onChange={(v) => setLocalValue(name, v)} />
+        <EnumSelect values={meta.values} value={value} onChange={(v) => setLocalValue(name, v)} disabled={locked} />
       ) : (
         <Input
           type="number"
           step="any"
           unit={meta?.units}
           value={String(value)}
+          disabled={locked}
           onChange={(e) => setLocalValue(name, Number(e.target.value) || 0)}
         />
       )}
@@ -83,6 +88,7 @@ function MetaField({
 export function ArduPilotHeliPanel() {
   const tm = useTranslations("fcPanels.arduPilotHeliPanel");
   const scrollRef = usePanelScroll("ap-heli");
+  const { isHardBlocked } = useArmedLock();
   const metadata = useParamMetadataMap();
 
   const panelParams = usePanelParams({
@@ -103,7 +109,7 @@ export function ArduPilotHeliPanel() {
   const connected = useDroneManager(selectSelectedProtocol) !== null;
   const hasDirty = dirtyParams.size > 0;
   const field = (name: string, label: string) => (
-    <MetaField key={name} name={name} label={label} metadata={metadata} params={params} setLocalValue={setLocalValue} />
+    <MetaField key={name} name={name} label={label} metadata={metadata} params={params} setLocalValue={setLocalValue} locked={isHardBlocked && isFrameGeometryParam(name)} />
   );
 
   const frameClass = params.get("FRAME_CLASS");

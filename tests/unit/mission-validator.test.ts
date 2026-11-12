@@ -535,6 +535,22 @@ describe('validateMission — newly added dangerous conditions', () => {
     expect(safe.errors.some((e) => e.code === 'RTL_ALTITUDE_LOW')).toBe(false);
   });
 
+  it('says "below" when the RTL cruise is under the terrain, and keeps a decimal under 1 m', () => {
+    const mission = [
+      wp({ lat: 12.97, lon: 77.59, alt: 0, command: 'TAKEOFF', frame: 'terrain', groundElevation: 100 }),
+      wp({ lat: 12.98, lon: 77.60, alt: 80, command: 'WAYPOINT', frame: 'terrain', groundElevation: 123 }),
+    ];
+    // Cruise 100 + 15 = 115m MSL against 123m terrain: 8m below.
+    const below = validateMission(mission, { rtlAltitude: 15, minTerrainClearance: 5 });
+    const e = below.errors.find((x) => x.code === 'RTL_ALTITUDE_LOW');
+    expect(e?.message).toBe('RTL altitude 15m above home is 8m below the highest terrain on the return path (WP2, 123m MSL)');
+    expect(e?.text.key).toBe('rtlAltitudeBelowTerrain');
+
+    // 23.6m above home: 0.6m over the terrain, not "1m".
+    const close = validateMission(mission, { rtlAltitude: 23.6, minTerrainClearance: 5 });
+    expect(close.errors.find((x) => x.code === 'RTL_ALTITUDE_LOW')?.message).toContain('by only 0.6m');
+  });
+
   it('flags a leg and a waypoint that exceed the configured link range', () => {
     const result = validateMission(
       [

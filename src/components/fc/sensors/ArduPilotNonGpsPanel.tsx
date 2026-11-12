@@ -158,7 +158,7 @@ export function ArduPilotNonGpsPanel() {
             const present = SRC_FIELDS.some((f) => params.has(`EK3_SRC${n}_${f.field}`));
             if (!present) return null;
             return (
-              <FcSection key={n} title={'Source Set {n}'}>
+              <FcSection key={n} title={tm("sourceSet", { n })}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {SRC_FIELDS.map((f) => field(`EK3_SRC${n}_${f.field}`, f.label))}
                 </div>

@@ -13,6 +13,7 @@
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import { isDemoMode } from "@/lib/utils";
 
 /** How long the agent holds one rate before zeroing it itself. */
 export const GIMBAL_RATE_HOLD_MS = 500;
@@ -36,6 +37,8 @@ function agentFor(droneId: string) {
 /** POST the rate to the drone's agent; resolves the HTTP status, or null
  * when the drone has no LAN agent or the request failed. */
 export const postGimbalRate: GimbalRateSend = async (droneId, pitchDps, yawDps) => {
+  // Demo drones have no real agent: accept the rate without a request.
+  if (isDemoMode()) return 200;
   const agent = agentFor(droneId);
   if (!agent) return null;
   try {
@@ -56,6 +59,7 @@ export const postGimbalRate: GimbalRateSend = async (droneId, pitchDps, yawDps) 
  * (404), a drone with no LAN agent or a failed request reads unavailable.
  */
 export async function gimbalRateAvailable(droneId: string): Promise<boolean> {
+  if (isDemoMode()) return true;
   const agent = agentFor(droneId);
   if (!agent) return false;
   try {

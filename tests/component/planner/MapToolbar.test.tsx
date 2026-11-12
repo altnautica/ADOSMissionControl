@@ -153,16 +153,16 @@ describe("MapToolbar rail", () => {
 });
 
 describe("MapToolbar tool-group hit targets", () => {
-  it("draws each group opener as a 16 × 32 strip with a 32 × 48 hit area", () => {
+  it("draws each group opener as a 16 × 32 strip with a 48 × 48 hit area", () => {
     renderRail();
     for (const group of ["rail.waypointTools", "rail.drawTools", "rail.markerTools"]) {
       const opener = screen.getByRole("button", { name: group });
       // h-8 = 32 px tall, w-4 = 16 px wide; the ::after box adds 8 px above
-      // and below (48 px) and 16 px to the right (32 px).
+      // and below (48 px) and 32 px to the right (48 px).
       expect(opener.className).toMatch(/(^|\s)h-8(\s|$)/);
       expect(opener.className).toMatch(/(^|\s)w-4(\s|$)/);
       expect(opener.className).toContain("after:-inset-y-2");
-      expect(opener.className).toContain("after:-right-4");
+      expect(opener.className).toContain("after:-right-8");
     }
   });
 

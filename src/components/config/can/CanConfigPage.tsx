@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
+import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { CanStatusBanner } from "./CanStatusBanner";
 import { BusSetupSection } from "./BusSetupSection";
 import { NodeBrowserSection } from "./NodeBrowserSection";
@@ -63,12 +64,17 @@ export function CanConfigPage() {
   const selectedDrone = useDroneManager((s) => s.getSelectedDrone());
   const hasDrone = !!selectedDrone;
   const canForward = typeof selectedDrone?.protocol?.enableCanForward === "function";
+  // Bus setup edits ArduPilot's CAN_P*/CAN_D* family; PX4 configures its CAN
+  // driver with UAVCAN_* under Parameters, so it gets the node tools only.
+  const isPx4 = useFirmwareCapabilities().firmwareType === "px4";
 
   const { state: sessionState, open: openSession, close: closeSession } = useDroneCanSession();
   const client = sessionState.status === "open" ? sessionState.session.client : null;
   const transport = sessionState.status === "open" ? sessionState.session.transport : null;
 
-  const [activeSection, setActiveSection] = useState<SectionId>("busSetup");
+  const [selectedSection, setActiveSection] = useState<SectionId>("busSetup");
+  // The firmware can resolve after mount; never land PX4 on a hidden section.
+  const activeSection: SectionId = isPx4 && selectedSection === "busSetup" ? "nodeBrowser" : selectedSection;
   const [selectedNodeIdForParams, setSelectedNodeIdForParams] = useState<number | null>(null);
 
   // Warm the param cache for the banner. This subscribes us to the
@@ -80,11 +86,11 @@ export function CanConfigPage() {
     paramNames,
     optionalParams,
     panelId: "can-banner",
-    autoLoad: hasDrone,
+    autoLoad: hasDrone && !isPx4,
   });
 
   const sections: { id: SectionId; label: string }[] = [
-    { id: "busSetup", label: tSection("busSetup") },
+    ...(isPx4 ? [] : [{ id: "busSetup" as const, label: tSection("busSetup") }]),
     { id: "nodeBrowser", label: tSection("nodeBrowser") },
     { id: "perNodeParams", label: tSection("perNodeParams") },
     { id: "busMonitor", label: tSection("busMonitor") },
@@ -97,6 +103,7 @@ export function CanConfigPage() {
       <div className="px-6 pt-6 pb-3">
         <h1 className="text-sm font-display font-semibold text-text-primary">{t("title")}</h1>
         <p className="text-[11px] text-text-tertiary mt-1">{t("subtitle")}</p>
+        {isPx4 && <p className="text-[11px] text-text-tertiary mt-1">{t("px4BusSetup")}</p>}
       </div>
 
       <div className="px-6 pb-3">

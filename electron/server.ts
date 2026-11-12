@@ -136,7 +136,7 @@ function wireChildLogging(child: ChildProcess): void {
  * process exits before becoming ready (surfacing its crash instead of waiting
  * out the full timeout).
  */
-async function waitForReady(
+export async function waitForReady(
   port: number,
   child: ChildProcess,
   timeoutMs: number = 15000
@@ -169,22 +169,30 @@ async function waitForReady(
         return;
       }
 
+      // One probe schedules at most one retry. A timed-out request is
+      // destroyed, which also emits `error`; scheduling from both paths
+      // doubled the probes on every slow attempt.
+      let retried = false;
+      const retry = () => {
+        if (retried) return;
+        retried = true;
+        setTimeout(check, interval);
+      };
+
       const req = http.get(`http://127.0.0.1:${port}`, (res) => {
         if (res.statusCode && res.statusCode < 500) {
           settle(() => resolve());
         } else {
-          setTimeout(check, interval);
+          retry();
         }
         res.resume();
       });
 
-      req.on("error", () => {
-        setTimeout(check, interval);
-      });
+      req.on("error", retry);
 
       req.setTimeout(1000, () => {
         req.destroy();
-        setTimeout(check, interval);
+        retry();
       });
     };
 
@@ -222,7 +230,7 @@ function spawnDevChild(port: number, options: StartOptions): ChildProcess {
   // env var above bound `next dev` to 0.0.0.0 — every interface — and
   // `npm run desktop:dev` published the operator's dev GCS to the LAN.
   return fork(nextBin, ["dev", "--turbo", "--hostname", "127.0.0.1", "--port", String(port)], {
-    env,
+    env: env as NodeJS.ProcessEnv,
     stdio: "pipe",
     cwd: repoRoot,
   });
@@ -263,7 +271,7 @@ function spawnStandaloneChild(port: number, options: StartOptions): ChildProcess
   }
 
   return fork(serverPath, [], {
-    env,
+    env: env as NodeJS.ProcessEnv,
     stdio: "pipe",
     // Cwd is the directory containing server.js (and its node_modules), not the
     // monorepo root — important when the standalone output is still nested.

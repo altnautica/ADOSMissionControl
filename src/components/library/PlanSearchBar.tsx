@@ -56,7 +56,10 @@ export function PlanSearchBar() {
 
   return (
     <div className="px-3 py-2 border-b border-border-default flex items-center gap-2">
-      <div className="flex-1 flex items-center gap-2 px-2 py-1 bg-bg-primary border border-border-default">
+      {/* min-w-0 / w-0: an input has an intrinsic width, so without them the
+          search field refuses to shrink and pushes the sort buttons out of a
+          narrow panel. */}
+      <div className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 bg-bg-primary border border-border-default">
         <Search size={12} className="text-text-tertiary shrink-0" />
         <input
           ref={inputRef}
@@ -64,13 +67,13 @@ export function PlanSearchBar() {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t("search")}
           aria-label={t("search")}
-          className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none"
+          className="w-0 min-w-0 flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none"
         />
       </div>
       <button
         type="button"
         onClick={cycleSortBy}
-        className="flex items-center gap-1 p-1 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+        className="shrink-0 flex items-center gap-1 p-1 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
         title={t(SORT_TITLE_KEY[sortBy])}
         aria-label={t(SORT_TITLE_KEY[sortBy])}
       >
@@ -80,7 +83,7 @@ export function PlanSearchBar() {
       <button
         type="button"
         onClick={toggleSortDirection}
-        className="p-1 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+        className="shrink-0 p-1 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
         title={directionLabel}
         aria-label={directionLabel}
       >

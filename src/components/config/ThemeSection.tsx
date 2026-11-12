@@ -22,6 +22,7 @@ export function ThemeSection(): React.ReactNode {
       options: [
         { value: "dark", label: t("dark") },
         { value: "light", label: t("light") },
+        { value: "nvg", label: t("nvg") },
       ],
     },
     {
@@ -90,8 +91,10 @@ export function ThemeSection(): React.ReactNode {
               key={color.value}
               type="button"
               onClick={() => setAccentColor(color.value)}
+              aria-label={t(color.value)}
+              aria-pressed={accentColor === color.value}
               className={cn(
-                "w-8 h-8 border-2 transition-all cursor-pointer",
+                "w-12 h-12 border-2 transition-all cursor-pointer",
                 accentColor === color.value
                   ? "border-text-primary scale-110"
                   : "border-transparent hover:border-border-default",

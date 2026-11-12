@@ -33,6 +33,14 @@ export function useToast() {
 }
 
 /**
+ * The dismiss "×" is a 12 px glyph; the padding (cancelled by a negative
+ * margin so the layout does not move) gives it a 32 px hit area, 48 px on a
+ * coarse pointer. A "never" warning can only be cleared through it.
+ */
+export const TOAST_DISMISS_CLASS =
+  "p-2.5 -m-2.5 pointer-coarse:p-[18px] pointer-coarse:-m-[18px] text-text-tertiary hover:text-text-primary focus-ring";
+
+/**
  * How long a toast stays up. Warnings and errors are the alert popups the
  * operator sets a duration for ("never" keeps them until dismissed); info and
  * success confirmations always clear after 3 s.
@@ -137,7 +145,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={() => dismiss(t.id)}
                 aria-label={tToast("dismiss")}
-                className="text-text-tertiary hover:text-text-primary focus-ring"
+                className={TOAST_DISMISS_CLASS}
               >
                 <X size={12} aria-hidden="true" />
               </button>
@@ -174,7 +182,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     ? tToast("dismissWarning")
                     : tToast("dismissError")
                 }
-                className="text-text-tertiary hover:text-text-primary focus-ring"
+                className={TOAST_DISMISS_CLASS}
               >
                 <X size={12} aria-hidden="true" />
               </button>

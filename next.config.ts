@@ -86,7 +86,11 @@ const nextConfig: NextConfig = {
           // origins explicit; the bare schemes are the catch-all for
           // mDNS hostnames (`*.local:*`) and direct-IP fetches the
           // GCS needs for paired drone agents.
-          "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:* http: ws: https: wss:",
+          //
+          // `data:` lets Cesium's KTX2 texture transcoder fetch the
+          // WebAssembly module it ships inline as a base64 data URL; a data
+          // URL carries its bytes with it and reaches no host.
+          "connect-src 'self' data: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:* http: ws: https: wss:",
           "worker-src 'self' blob:",
           // The MSE relay lane sets `<video>.src` to a `blob:` URL from
           // `URL.createObjectURL(mediaSource)`, and with no `media-src` the

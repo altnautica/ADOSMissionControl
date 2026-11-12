@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useDroneManager } from "@/stores/drone-manager";
-import { useLogActivityStore } from "@/stores/log-activity-store";
+import { useDroneStatusLog, useDroneStatusLogStore } from "@/stores/drone-status-log-store";
 import {
   Download,
   Trash2,
@@ -20,7 +19,6 @@ import {
   SEVERITY_LABELS,
   SEVERITY_COLORS,
   SEVERITY_BG,
-  type LogMessage,
   type SortField,
   type SortDir,
   type CategoryFilter,
@@ -34,7 +32,17 @@ interface DroneLogsPanelProps {
   droneId: string;
 }
 
-const MAX_LOG_MESSAGES = 1000;
+/** Locale keys for MAVLink severities 0-7 under `logs.severityLevel`. */
+const SEVERITY_KEYS = [
+  "emergency",
+  "alert",
+  "critical",
+  "error",
+  "warning",
+  "notice",
+  "info",
+  "debug",
+] as const;
 
 // ── Highlight helper ─────────────────────────────────────────
 
@@ -49,7 +57,7 @@ const MAX_LOG_MESSAGES = 1000;
  * alternated true/false down the row, highlighting the wrong halves.
  *
  * The regex is also built ONCE per query rather than once per rendered
- * row: this list holds up to `MAX_LOG_MESSAGES` rows and re-renders on
+ * row: this list holds up to `MAX_STATUS_LOG_MESSAGES` rows and re-renders on
  * every STATUSTEXT.
  */
 function HighlightedText({
@@ -102,13 +110,20 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
 
 export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
   const t = useTranslations("logs");
-  // This drone's live protocol: a reconnect installs a new one, and the
-  // STATUSTEXT subscription follows it.
-  const protocol = useDroneManager((s) => s.drones.get(droneId)?.protocol ?? null);
+  const severityName = (severity: number) => {
+    const key = SEVERITY_KEYS[severity];
+    return key ? t(`severityLevel.${key}`) : "?";
+  };
 
-  // Status message log
-  const [messages, setMessages] = useState<LogMessage[]>([]);
+  // Filled by the shell-level StatusTextLogBridge for every connected drone,
+  // so messages that arrived while this rail was closed are here too.
+  const messages = useDroneStatusLog(droneId);
+  // The operator's Auto / Paused choice, and a separate pause while the
+  // pointer is over the list. Leaving the list used to switch autoscroll back
+  // on even when the operator had paused it.
   const [autoscroll, setAutoscroll] = useState(true);
+  const [hovering, setHovering] = useState(false);
+  const following = autoscroll && !hovering;
 
   // Filtering via hook
   const {
@@ -126,7 +141,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
   } = useDroneLogFilter(messages);
 
   // One regex per query, not one per rendered row: this list holds up to
-  // MAX_LOG_MESSAGES rows and re-renders on every STATUSTEXT.
+  // MAX_STATUS_LOG_MESSAGES rows and re-renders on every STATUSTEXT.
   const searchRegex = useMemo(
     () => highlightRegex(debouncedSearch),
     [debouncedSearch],
@@ -136,39 +151,14 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
   const [showGraph, setShowGraph] = useState(false);
 
   const logRef = useRef<HTMLDivElement>(null);
-  const msgIdRef = useRef(0);
-
-  // ── Subscribe to STATUSTEXT messages from the protocol ─────
-
-  useEffect(() => {
-    if (!protocol) return;
-
-    const unsub = protocol.onStatusText((data) => {
-      // Count every message (even while the panel is collapsed/hidden) so the
-      // Dashboard can show an "updates available" indicator on the rail.
-      useLogActivityStore.getState().bump(droneId);
-      setMessages((prev) => {
-        const msg: LogMessage = {
-          id: msgIdRef.current++,
-          timestamp: Date.now(),
-          severity: data.severity,
-          text: data.text,
-        };
-        const next = [...prev, msg];
-        return next.length > MAX_LOG_MESSAGES ? next.slice(-MAX_LOG_MESSAGES) : next;
-      });
-    });
-
-    return unsub;
-  }, [protocol, droneId]);
 
   // ── Auto-scroll log to bottom ──────────────────────────────
 
   useEffect(() => {
-    if (autoscroll && logRef.current) {
+    if (following && logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
-  }, [messages, autoscroll]);
+  }, [messages, following]);
 
   // ── Export log to text file ────────────────────────────────
 
@@ -204,7 +194,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
         <Select
           value={String(minSeverity)}
           onChange={(v) => setMinSeverity(Number(v))}
-          options={SEVERITY_LABELS.map((label, i) => ({ value: String(i), label }))}
+          options={SEVERITY_KEYS.map((_, i) => ({ value: String(i), label: severityName(i) }))}
           className="text-[11px]"
         />
 
@@ -240,7 +230,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] transition-colors cursor-pointer ${
             autoscroll ? "text-accent-primary" : "text-text-tertiary"
           }`}
-          title={autoscroll ? "Auto-scroll on" : "Auto-scroll off"}
+          title={t(autoscroll ? "autoScrollOn" : "autoScrollOff")}
         >
           {autoscroll ? <Play size={10} /> : <Pause size={10} />}
           {autoscroll ? t("auto") : t("paused")}
@@ -257,7 +247,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
 
         {/* Clear */}
         <button
-          onClick={() => setMessages([])}
+          onClick={() => useDroneStatusLogStore.getState().clear(droneId)}
           className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           title={t("clearLog")}
         >
@@ -302,19 +292,19 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
           onClick={() => handleSort("timestamp")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer shrink-0 w-[60px]"
         >
-          TIME <SortIcon field="timestamp" sortField={sortField} sortDir={sortDir} />
+          {t("time")} <SortIcon field="timestamp" sortField={sortField} sortDir={sortDir} />
         </button>
         <button
           onClick={() => handleSort("severity")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer shrink-0 w-[72px]"
         >
-          SEVERITY <SortIcon field="severity" sortField={sortField} sortDir={sortDir} />
+          {t("severity")} <SortIcon field="severity" sortField={sortField} sortDir={sortDir} />
         </button>
         <button
           onClick={() => handleSort("text")}
           className="flex items-center gap-0.5 text-[9px] font-mono text-text-tertiary hover:text-text-secondary cursor-pointer flex-1"
         >
-          MESSAGE <SortIcon field="text" sortField={sortField} sortDir={sortDir} />
+          {t("message")} <SortIcon field="text" sortField={sortField} sortDir={sortDir} />
         </button>
       </div>
 
@@ -322,8 +312,8 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
       <div
         ref={logRef}
         className="flex-1 min-h-0 overflow-y-auto font-mono text-[11px] leading-5"
-        onMouseEnter={() => setAutoscroll(false)}
-        onMouseLeave={() => setAutoscroll(true)}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
       >
         {processedMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary text-xs">
@@ -348,7 +338,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
                   SEVERITY_COLORS[msg.severity] ?? "text-text-tertiary"
                 }`}
               >
-                {SEVERITY_LABELS[msg.severity] ?? "?"}
+                {severityName(msg.severity)}
               </span>
               <span className="text-text-primary break-all">
                 <HighlightedText

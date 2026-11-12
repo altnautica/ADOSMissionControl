@@ -33,6 +33,7 @@ export function LanguageSection() {
               key={code}
               type="button"
               onClick={() => setLocale(code)}
+              aria-pressed={isSelected}
               className={`flex flex-col items-center gap-1 p-3 border rounded-sm text-center transition-all ${
                 isSelected
                   ? "border-accent-primary bg-accent-primary/10 text-text-primary"

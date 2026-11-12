@@ -121,6 +121,7 @@ export function NotificationsSection() {
                 max={100}
                 value={Math.round(audioVolume * 100)}
                 onChange={handleVolumeChange}
+                aria-label={t("volume", { percent: Math.round(audioVolume * 100) })}
                 className="w-full h-1.5 bg-bg-tertiary appearance-none cursor-pointer accent-accent-primary"
               />
             </div>
@@ -144,7 +145,12 @@ export function NotificationsSection() {
               className="flex items-center justify-between gap-2"
             >
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-text-primary">{t(row.labelKey)}</div>
+                <Toggle
+                  label={t(row.labelKey)}
+                  checked={alertStates[row.key]}
+                  onChange={(v) => setAlert(row.key, v)}
+                  className="min-h-12 [&>span]:text-text-primary"
+                />
                 <div className="text-[10px] text-text-tertiary truncate">
                   {t(row.descriptionKey)}
                 </div>
@@ -152,16 +158,12 @@ export function NotificationsSection() {
               <button
                 type="button"
                 onClick={() => audioEngine.playForce(row.testSound)}
-                className="shrink-0 w-6 h-6 flex items-center justify-center text-text-tertiary hover:text-accent-primary transition-colors"
+                className="shrink-0 w-12 h-12 flex items-center justify-center text-text-tertiary hover:text-accent-primary transition-colors"
                 title={t("preview", { name: t(row.labelKey) })}
+                aria-label={t("preview", { name: t(row.labelKey) })}
               >
-                <Volume2 size={12} />
+                <Volume2 size={14} />
               </button>
-              <Toggle
-                label=""
-                checked={alertStates[row.key]}
-                onChange={(v) => setAlert(row.key, v)}
-              />
             </div>
           ))}
         </div>

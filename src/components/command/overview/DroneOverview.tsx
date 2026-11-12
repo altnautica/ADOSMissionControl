@@ -46,7 +46,7 @@ import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 import { surfaceNodeDeviceId } from "@/components/dashboard/node-detail/surface-types";
-import { effectiveNodeProfile } from "@/components/dashboard/node-detail/node-brand";
+import { effectiveNodeProfile, useFcHeartbeatFresh } from "@/components/dashboard/node-detail/node-brand";
 import { useReachedViaName } from "@/lib/nodes/reach-provenance";
 import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
@@ -300,6 +300,9 @@ function AddCompanionCta() {
  */
 function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   const t = useTranslations("nodeConsole");
+  // An open session whose FC has gone silent (a port with no MAVLink) holds
+  // only a stale cache; the tile reads live only on a fresh heartbeat.
+  const fcLive = useFcHeartbeatFresh(isConnected);
   // A parameter WRITE is an FC frame, so this tile's jump-off leads somewhere
   // that cannot land while the browser holds no publish grant. Grading it on
   // `isConnected` alone is the same mistake the Flight Data link dot was fixed
@@ -334,7 +337,7 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   }, [selectedProtocol]);
 
   const value =
-    !isConnected || count === null ? "—" : count === 0 ? "0" : String(count);
+    !fcLive || count === null ? "—" : count === 0 ? "0" : String(count);
 
   return (
     <button
@@ -355,7 +358,7 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
         icon={<Sliders className="h-3 w-3" />}
         label={t("params.label")}
         value={value}
-        level={!isConnected ? "offline" : notice.show ? notice.level : "good"}
+        level={!fcLive ? "offline" : notice.show ? notice.level : "good"}
         hint={
           canRequestControl
             ? t("authority.requestControl")

@@ -16,6 +16,8 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 vi.mock("@/lib/agent/resolve-agent", () => ({
   resolveLanAgent: (droneId: string) =>
     droneId === "drone-1" ? { agentUrl: "http://192.168.1.50:8080", apiKey: "k1" } : null,
+  resolvePairedAgentUrl: () => null,
+  resolvePairedApiKey: () => null,
 }));
 
 import { PluginIframeHost } from "@/components/plugins/PluginIframeHost";

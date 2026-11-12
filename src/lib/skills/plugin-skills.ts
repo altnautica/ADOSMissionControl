@@ -29,6 +29,8 @@ import type {
   SkillContext,
   SkillState,
 } from "./types";
+import { pluginSkillString } from "./plugin-skill-strings";
+import { resolveContribLabel } from "./skill-label";
 import {
   usePluginSkillHostStore,
   writePluginConfig,
@@ -115,6 +117,12 @@ export const PLUGIN_CONFIRM_POLICY: ConfirmPolicy = {
   confirmLabel: "skills.plugin.confirm.button",
   variant: "primary",
   gesture: "hold",
+};
+
+/** A plugin skill's own confirm: the generic policy, titled with the skill. */
+export const PLUGIN_SKILL_CONFIRM_POLICY: ConfirmPolicy = {
+  ...PLUGIN_CONFIRM_POLICY,
+  title: "skills.plugin.confirm.titleNamed",
 };
 
 /**
@@ -206,8 +214,12 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
   // manifest asks for it.
   skill.confirmFor = (_args, ctx) =>
     c.confirm || (ctx !== undefined && ctx.armState !== "disarmed")
-      ? PLUGIN_CONFIRM_POLICY
+      ? PLUGIN_SKILL_CONFIRM_POLICY
       : undefined;
+  // The sheet names the skill it activates.
+  skill.confirmValues = () => ({
+    skill: pluginSkillString(c.pluginId, c.label) ?? resolveContribLabel(c.label),
+  });
 
   if (c.toggle) {
     skill.deactivate = async (ctx) => {

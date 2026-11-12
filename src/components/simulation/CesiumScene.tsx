@@ -1,7 +1,7 @@
 /**
  * @module CesiumScene
  * @description CesiumJS Viewer wrapper with terrain, imagery, and dark theme configuration.
- * Sets CESIUM_BASE_URL before import, creates viewer with dark CARTO tiles.
+ * Sets CESIUM_BASE_URL before import, creates viewer with dark basemap tiles.
  * Split into multiple effects: mount-only viewer creation, token update,
  * imagery switching, buildings toggle, terrain exaggeration.
  * @license GPL-3.0-only
@@ -39,13 +39,14 @@ import {
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { keepRenderingUntilGraphicsReady } from "./render-until-graphics-ready";
+import { TILE_PROVIDERS } from "@/lib/tile-math";
 
 interface CesiumSceneProps {
   onReady?: (viewer: CesiumViewer) => void;
   onError?: (error: Error) => void;
   /** Cesium Ion access token. When set, enables Cesium World Terrain. Otherwise falls back to ArcGIS elevation. */
   cesiumToken?: string;
-  /** Imagery mode: "dark" for CARTO dark tiles, "satellite" for Esri World Imagery. */
+  /** Imagery mode: "dark" for the shared dark basemap, "satellite" for Esri World Imagery. */
   imageryMode?: "dark" | "satellite";
   /** Rendering quality preset. "balanced" (default) or "high" (adds MSAA 8x,
    * sharper terrain LOD, and terrain relief lighting). */
@@ -98,16 +99,16 @@ function attachLayerErrorListener(layer: ImageryLayer, label: string) {
   });
 }
 
-function createDarkCartoLayer(): ImageryLayer {
+function createDarkBaseLayer(): ImageryLayer {
   const provider = new UrlTemplateImageryProvider({
-    url: "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-    credit: "CARTO",
+    url: TILE_PROVIDERS.dark.url,
+    credit: new Credit("Esri, HERE, Garmin, OpenStreetMap contributors"),
     minimumLevel: 0,
-    maximumLevel: 18,
+    maximumLevel: TILE_PROVIDERS.dark.maxZoom,
   });
-  attachImageryErrorListener(provider, "carto-dark");
+  attachImageryErrorListener(provider, "esri-dark-gray");
   const layer = new ImageryLayer(provider);
-  attachLayerErrorListener(layer, "carto-dark");
+  attachLayerErrorListener(layer, "esri-dark-gray");
   return layer;
 }
 
@@ -321,7 +322,7 @@ export default function CesiumScene({
       // Esri World Imagery. Free, no token needed, same provider as Leaflet maps.
       crossFade(createEsriSatelliteLayer());
     } else {
-      crossFade(createDarkCartoLayer());
+      crossFade(createDarkBaseLayer());
     }
 
     return () => {

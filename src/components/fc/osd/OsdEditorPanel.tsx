@@ -25,6 +25,9 @@ import {
   type OsdElement, type VideoFormat,
 } from "./ap-osd-elements";
 
+/** Stable empty list: a fresh `[]` each render re-ran the param load forever. */
+const NO_REQUIRED_PARAMS: string[] = [];
+
 // Live telemetry preview values for OSD elements. Each channel re-renders on
 // new frames and falls back to the element's label once it goes stale.
 function useLiveTelemetryPreview(): Record<string, string> {
@@ -70,13 +73,14 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
   const { showFlashResult } = useFlashCommitToast();
   const t = useTranslations("fcToasts.osd");
   const [saving, setSaving] = useState(false);
+  const [flashing, setFlashing] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [livePreview, setLivePreview] = useState(false);
   const liveTelemetry = useLiveTelemetryPreview();
 
   const optionalParams = useMemo(() => osdScreenParamNames(screen), [screen]);
   const { params, dirtyParams, hasRamWrites, hasLoaded, setLocalValue, saveAllToRam, commitToFlash } = usePanelParams({
-    paramNames: [], optionalParams, panelId: `ap-osd-${screen}`, autoLoad: true,
+    paramNames: NO_REQUIRED_PARAMS, optionalParams, panelId: `ap-osd-${screen}`, autoLoad: true,
   });
   useUnsavedGuard(dirtyParams.size > 0);
 
@@ -130,7 +134,10 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
   };
 
   const handleFlash = async () => {
-    showFlashResult(await commitToFlash(), { successMessage: t("flashWritten") });
+    setFlashing(true);
+    const ok = await commitToFlash();
+    setFlashing(false);
+    showFlashResult(ok, { successMessage: t("flashWritten") });
   };
 
   const handleElementMove = useCallback((id: string, row: number, col: number) => {
@@ -146,6 +153,7 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
         elements={elements}
         activeScreen={screen}
         saving={saving}
+        flashing={flashing}
         selectedDroneId={selectedDroneId}
         hasRamWrites={hasRamWrites}
         screenEnabled={screenEnable === undefined ? null : screenEnable === 1}

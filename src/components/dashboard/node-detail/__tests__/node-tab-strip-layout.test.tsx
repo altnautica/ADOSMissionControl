@@ -82,3 +82,21 @@ describe("NodeTabStrip layout", () => {
     expect(wheel.defaultPrevented).toBe(true);
   });
 });
+
+describe("NodeTabStrip keeps the selected tab in view", () => {
+  it("scrolls only the strip, never the page", () => {
+    const pageScroll = vi.fn();
+    Element.prototype.scrollIntoView = pageScroll;
+    render(
+      <NodeTabStrip
+        surfaces={SURFACES}
+        pluginIds={[]}
+        visibleTab="display"
+        onSelect={() => {}}
+        bareDeviceId="node-1"
+        nodeProfile={undefined}
+      />,
+    );
+    expect(pageScroll).not.toHaveBeenCalled();
+  });
+});

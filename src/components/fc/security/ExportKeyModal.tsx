@@ -199,7 +199,7 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
             </p>
             <label className="block text-sm text-text-secondary">
               <span className="block mb-1">
-                {tr("type")} <span className="font-mono font-bold text-text-primary">EXPORT</span> to continue.
+                {tr.rich("typeToContinue", { word: (c) => <span className="font-mono font-bold text-text-primary">{c}</span> })}
               </span>
               <input
                 type="text"

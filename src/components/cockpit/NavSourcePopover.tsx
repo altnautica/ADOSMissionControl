@@ -7,7 +7,9 @@
  * odometry rate, the GPS readout and the EKF flag words, plus `Use set N`
  * switches. A switch is a hold-to-confirm (the `hold` tier) that calls the
  * protocol's existing `setEkfSourceSet(N)`, records the commanded set and
- * reports the result as a toast.
+ * reports the result as a toast: "active" only once the nav state shows the
+ * set, "sent" until then. Without live flight controller telemetry the
+ * switches are disabled and say so.
  *
  * @license GPL-3.0-only
  */
@@ -22,6 +24,10 @@ import { EKF_FLAG, gpsFixWord, sourceValueKey } from "@/lib/hud/nav-source";
 import { specString } from "@/lib/cockpit/spec-strings";
 import type { NavSourceView } from "@/hooks/use-nav-source";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
+import { isSkillLinkFresh } from "@/lib/skills/registry";
 import { useEkfSourceStore, type EkfSourceSet } from "@/stores/ekf-source-store";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useToast } from "@/components/ui/toast";
@@ -75,6 +81,13 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
   const [armed, setArmed] = useState<EkfSourceSet | null>(null);
   const [busy, setBusy] = useState(false);
   const { result, params, nav, gps, ekfFlags } = view;
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
+  const live = isSkillLinkFresh(lastHeartbeat, now);
+  // The nav state as of the switch's completion, read through a ref.
+  const navRef = useRef(nav);
+  navRef.current = nav;
 
   // Render at the cockpit root so the popover stacks above the band (z 50).
   useLayoutEffect(() => {
@@ -120,7 +133,9 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
       const res = await protocol.setEkfSourceSet(set);
       if (res.ok) {
         useEkfSourceStore.getState().setLastCommanded(droneId, set);
-        toast(specString("nav_source.set_active", { n: set }), "success");
+        // "active" only once the nav state shows it; the ACK alone is "sent".
+        if (navRef.current?.activeSet === set) toast(specString("nav_source.set_active", { n: set }), "success");
+        else toast(specString("nav_source.set_sent", { n: set }), "info");
       } else {
         toast(specString("nav_source.switch_failed", { reason: res.reason }), "error");
       }
@@ -135,7 +150,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
   const holdMs = CONFIRM_HOLD_DEFAULT_MS.hold;
   const hold = useConfirmHold({
     holdMs,
-    enabled: armed !== null && !busy,
+    enabled: armed !== null && !busy && live,
     onComplete: () => {
       if (armed !== null) void runSwitch(armed);
     },
@@ -150,13 +165,13 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     <div
       ref={rootRef}
       role="dialog"
-      aria-label={specString("nav_source.popover_title")}
+      aria-label={specString("cockpit.status.source.nav_source")}
       className="navpop glass-panel"
       style={{ top: pos.top, left: pos.left, width: POPOVER_W }}
       data-testid="nav-source-popover"
     >
       <div className="navpop-head">
-        <span>{specString("nav_source.popover_title")}</span>
+        <span>{specString("cockpit.status.source.nav_source")}</span>
         <button type="button" onClick={onClose} aria-label={specString("cockpit.close")} className="navpop-x fs-hit">
           <X size={14} aria-hidden="true" />
         </button>
@@ -189,7 +204,8 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
                       type="button"
                       className="navpop-use fs-hit"
                       aria-pressed={armed === n}
-                      disabled={busy}
+                      disabled={busy || !live}
+                      title={live ? undefined : specString("nav_source.no_fc")}
                       onClick={() => setArmed((cur) => (cur === n ? null : n))}
                     >
                       {specString("nav_source.use_set", { n })}
@@ -201,6 +217,11 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
           })}
         </tbody>
       </table>
+      {!live && (
+        <p className="navpop-note fs-warn" data-testid="nav-no-fc">
+          {specString("nav_source.no_fc")}
+        </p>
+      )}
       {!params && <p className="navpop-note">{specString("nav_source.params_unknown")}</p>}
 
       {armed !== null && (
@@ -210,7 +231,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
           label={busy ? specString("nav_source.switching") : specString("nav_source.use_set", { n: armed })}
           hint={specString("nav_source.hold_use_set", { n: armed })}
           danger={false}
-          disabled={busy}
+          disabled={busy || !live}
         />
       )}
 
@@ -219,6 +240,11 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
           {specString("nav_source.extnav_readout", {
             health: health ? navQualityText(health) : NO_DATA_GLYPH,
             hz: nav?.odomRateHz != null ? nav.odomRateHz.toFixed(0) : NO_DATA_GLYPH,
+          })}
+        </div>
+        <div data-testid="nav-pose-age">
+          {specString("nav_source.pose_age", {
+            ms: nav?.poseAgeMs != null ? Math.round(nav.poseAgeMs) : NO_DATA_GLYPH,
           })}
         </div>
         <div>

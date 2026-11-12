@@ -37,14 +37,24 @@ import { isFlyingMission } from "@/lib/mission/upload-guard";
 import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS, countCheckedPreflightItems } from "@/components/planner/preflight-items";
 import { flyThisMission } from "@/components/planner/fly-this-mission";
+import { useDescribeUploadFailure } from "@/components/planner/use-describe-upload-failure";
 import type { Planner } from "@/app/plan/use-planner";
 
 type SendItem = "mission" | "geofence" | "rally";
 const ORDER: readonly SendItem[] = ["mission", "geofence", "rally"];
 
+/** Mission errors that mean the mission crosses the plan's own fence. */
+const FENCE_BREACH_CODES: Record<string, true> = {
+  OUTSIDE_GEOFENCE: true,
+  LEG_OUTSIDE_GEOFENCE: true,
+  INSIDE_EXCLUSION_ZONE: true,
+};
+
 interface TransferResult {
   success: boolean;
   message: string;
+  /** On failure, the vehicle's MAV_MISSION_RESULT or a GCS-side outcome code. */
+  resultCode?: number;
 }
 
 type RowState =
@@ -84,10 +94,16 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
     `${t(`autopilot.${profile.autopilot}`)} ${t(`vehicleClass.${profile.vehicleClass}`)}`;
 
   const validationOptions = useValidationOptions();
-  const errorCount = useMemo(
-    () => (p.waypoints.length > 0 ? validateMission(p.waypoints, validationOptions).errors.length : 0),
-    [p.waypoints, validationOptions],
-  );
+  const describeUploadFailure = useDescribeUploadFailure();
+  const { errorCount, crossesFence } = useMemo(() => {
+    const errors = p.waypoints.length > 0 ? validateMission(p.waypoints, validationOptions).errors : [];
+    return {
+      errorCount: errors.length,
+      // A fence the plan's own mission breaks: sending it would leave the
+      // vehicle holding a fence that its mission flies through.
+      crossesFence: errors.some((e) => FENCE_BREACH_CODES[e.code] === true),
+    };
+  }, [p.waypoints, validationOptions]);
 
   const fenceType = useGeofenceStore((s) => s.fenceType);
   const polygonPoints = useGeofenceStore((s) => s.polygonPoints);
@@ -110,7 +126,7 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
   };
   const blocked: Record<SendItem, boolean> = {
     mission: errorCount > 0 || flyingMission,
-    geofence: flyingMission,
+    geofence: crossesFence || flyingMission,
     rally: flyingMission,
   };
   const items = ORDER.filter((item) => available[item]);
@@ -149,7 +165,13 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
       } catch (err) {
         result = { success: false, message: err instanceof Error ? err.message : String(err) };
       }
-      setRows((r) => ({ ...r, [item]: { status: result.success ? "ok" : "failed", message: result.message } }));
+      // A fence or rally refusal carries the vehicle's result code: put it
+      // into words through the same table the mission row uses.
+      const message =
+        !result.success && result.resultCode !== undefined
+          ? (describeUploadFailure(result.resultCode, result.message) ?? result.message)
+          : result.message;
+      setRows((r) => ({ ...r, [item]: { status: result.success ? "ok" : "failed", message } }));
     }
     setRunning(false);
   };
@@ -287,6 +309,11 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
                     {flyingMission && (
                       <p className="pl-6 text-[11px] text-status-error" data-testid={`send-${item}-flying`}>
                         {t("missionInFlight")}
+                      </p>
+                    )}
+                    {item === "geofence" && crossesFence && (
+                      <p className="pl-6 text-[11px] text-status-error" data-testid="send-geofence-crossed">
+                        {t("fenceCrossed")}
                       </p>
                     )}
                     {item === "mission" && errorCount > 0 && (

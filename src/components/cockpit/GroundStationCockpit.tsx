@@ -22,6 +22,31 @@ import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useUiStore } from "@/stores/ui-store";
 import { extractLinkedPeers } from "@/lib/agent/relayed-peers";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { useNodeRegistryStore, type NodeEntry } from "@/stores/node-registry";
+import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
+
+/**
+ * The carried drone's operator-visible name: the operator's profile name, then
+ * the operator's row label, then the name its agent reports through the node
+ * registry. The raw device id is the last resort.
+ */
+export function carriedDroneName(
+  deviceId: string,
+  profileName: string | undefined,
+  label: string | undefined,
+  nodes: Record<string, NodeEntry>,
+): string {
+  const fromProfile = profileName?.trim();
+  if (fromProfile) return fromProfile;
+  const fromLabel = label?.trim();
+  if (fromLabel) return fromLabel;
+  for (const entry of Object.values(nodes)) {
+    if (entry.presence.deviceId === deviceId && entry.presence.name.trim()) {
+      return entry.presence.name.trim();
+    }
+  }
+  return deviceId;
+}
 
 interface GroundStationCockpitProps {
   /** The ground station's agent device id, or null when it has none. */
@@ -35,9 +60,13 @@ export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitPro
       : null,
   );
   const carriedNodeId = peerDeviceId ? nodeIdForDevice(peerDeviceId) : null;
-  const carriedName = useDroneMetadataStore((s) =>
+  const carriedProfileName = useDroneMetadataStore((s) =>
     carriedNodeId ? s.profiles[carriedNodeId]?.displayName : undefined,
   );
+  const carriedLabel = useNodePersonalizationStore((s) =>
+    peerDeviceId ? s.byNode[peerDeviceId]?.label : undefined,
+  );
+  const registryNodes = useNodeRegistryStore((s) => s.nodes);
 
   if (!carriedNodeId || !peerDeviceId) {
     return (
@@ -56,7 +85,7 @@ export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitPro
     );
   }
 
-  const name = carriedName ?? peerDeviceId;
+  const name = carriedDroneName(peerDeviceId, carriedProfileName, carriedLabel, registryNodes);
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
       <Gamepad2 size={28} className="text-accent-primary" aria-hidden="true" />

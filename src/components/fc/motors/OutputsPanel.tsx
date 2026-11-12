@@ -159,7 +159,7 @@ export function OutputsPanel() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-4xl space-y-4">
         <PanelHeader title={tr("servoMotorOutputs")} subtitle={tr("outputFunctionAssignmentPWMLimits")} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded} onRead={refresh} connected={!!protocol} error={error}>
-          {hasDirty && <span className="text-[10px] font-mono text-status-warning px-1.5 py-0.5 bg-status-warning/10 border border-status-warning/20">UNSAVED</span>}
+          {hasDirty && <span className="text-[10px] font-mono text-status-warning px-1.5 py-0.5 bg-status-warning/10 border border-status-warning/20">{tr("unsaved")}</span>}
           <Button variant="primary" size="sm" icon={<Save size={12} />} loading={saving} disabled={!hasDirty} onClick={handleSave}>{tr("save")}</Button>
           {hasRamWrites && <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} loading={flashing} onClick={handleFlash}><SaveBarLabel k="writeToFlash" /></Button>}
         </PanelHeader>

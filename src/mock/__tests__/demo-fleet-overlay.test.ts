@@ -28,7 +28,9 @@ async function fleetBundles(): Promise<Map<string, string>> {
   );
 }
 
-describe("demo fleet bundles", () => {
+// Each test re-imports the whole demo plugin catalog after resetModules; on a
+// loaded full-suite run that cold import alone can pass the 5 s default.
+describe("demo fleet bundles", { timeout: 30_000 }, () => {
   it("keeps the map-overlay card out of the map centre", async () => {
     const html = (await fleetBundles()).get("map.overlay") ?? "";
     expect(html).toContain("Map overlay");

@@ -117,13 +117,8 @@ export function ArduPilotCalibrations({
         status={esc.status}
         progress={esc.progress}
         statusMessage={esc.message}
-        preTips={[
-          "CRITICAL: Remove ALL propellers before starting",
-          "Disconnect battery before beginning the sequence",
-          "Some ESCs require this calibration on first use",
-          "If using BLHeli/SimonK ESCs, use their own calibration tools instead",
-          "This runs as a physical throttle passthrough on reboot and does not report a completion over MAVLink — follow the ESC beep sequence; the wizard ending on a timeout is expected.",
-        ]}
+        preTips={[1, 2, 3, 4, 5].map((n) => tr(`escTip${n}`))}
+        startAcknowledgement={tr("escAck")}
         onStart={() => startCalibration("esc", setEsc, ESC_CAL_STEPS.length)}
         blockedReason={blockedReason}
         onCancel={() => cancelCalibration("esc", setEsc)}
@@ -141,12 +136,8 @@ export function ArduPilotCalibrations({
         status={compassmot.status}
         progress={compassmot.progress}
         statusMessage={compassmot.message}
-        preTips={[
-          "Ensure GPS has 3D fix before starting",
-          "Vehicle must be in open area away from metal objects",
-          "Props ON — motors WILL spin during this test",
-          "Interference below 30% is acceptable, below 15% is good",
-        ]}
+        preTips={[1, 2, 3, 4].map((n) => tr(`compassmotTip${n}`))}
+        startAcknowledgement={tr("compassmotAck")}
         onStart={() => startCalibration("compassmot", setCompassmot, COMPASSMOT_STEPS.length)}
         blockedReason={blockedReason}
         onCancel={() => cancelCalibration("compassmot", setCompassmot)}

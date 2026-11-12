@@ -38,6 +38,14 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useSlcanModeStore } from "@/stores/slcan-mode-store";
+import {
+  DRIVER_OPTIONS,
+  FD_BITRATE_OPTIONS,
+  PROTOCOL_OPTIONS,
+  SLCAN_CPORT_OPTIONS,
+  SLCAN_SERIAL_OPTIONS,
+  BITRATE_QUICK_PICKS,
+} from "./bus-setup-options";
 
 const BUS_SETUP_PARAMS = [
   "CAN_P1_DRIVER",
@@ -64,53 +72,6 @@ const BUS_SETUP_PARAMS = [
 // FDBITRATE to throw the whole panel into an error state.
 const OPTIONAL_BUS_SETUP_PARAMS = [...BUS_SETUP_PARAMS] as string[];
 
-const DRIVER_OPTIONS = [
-  { value: "0", label: "0 — Disabled" },
-  { value: "1", label: "1 — First driver" },
-  { value: "2", label: "2 — Second driver" },
-  { value: "3", label: "3 — Third driver" },
-];
-
-const FD_BITRATE_OPTIONS = [
-  { value: "1", label: "1 — 1 Mbit/s" },
-  { value: "2", label: "2 — 2 Mbit/s" },
-  { value: "4", label: "4 — 4 Mbit/s" },
-  { value: "5", label: "5 — 5 Mbit/s" },
-  { value: "8", label: "8 — 8 Mbit/s" },
-];
-
-const PROTOCOL_OPTIONS = [
-  { value: "0", label: "0 — Disabled" },
-  { value: "1", label: "1 — DroneCAN" },
-  { value: "4", label: "4 — PiccoloCAN" },
-  { value: "5", label: "5 — CAN Tester" },
-  { value: "6", label: "6 — EFI NWPMU" },
-  { value: "7", label: "7 — USD1" },
-  { value: "8", label: "8 — KDECAN" },
-  { value: "10", label: "10 — Scripting" },
-  { value: "11", label: "11 — Benewake" },
-  { value: "12", label: "12 — Scripting 2" },
-];
-
-const SLCAN_CPORT_OPTIONS = [
-  { value: "0", label: "0 — Disabled" },
-  { value: "1", label: "1 — CAN1" },
-  { value: "2", label: "2 — CAN2" },
-];
-
-const SLCAN_SERIAL_OPTIONS = [
-  { value: "-1", label: "-1 — Disabled" },
-  { value: "0", label: "0 — Serial0 (USB)" },
-  { value: "1", label: "1 — Serial1" },
-  { value: "2", label: "2 — Serial2" },
-  { value: "3", label: "3 — Serial3" },
-  { value: "4", label: "4 — Serial4" },
-  { value: "5", label: "5 — Serial5" },
-  { value: "6", label: "6 — Serial6" },
-];
-
-const BITRATE_QUICK_PICKS = [1_000_000, 500_000, 250_000, 125_000];
-
 interface ParamCellProps {
   label: string;
   description?: string;
@@ -136,6 +97,7 @@ function ParamCell({ label, description, missing, children }: ParamCellProps) {
 export function BusSetupSection() {
   const t = useTranslations("canConfig.busSetup");
   const tParam = useTranslations("canConfig.busSetup.param");
+  const tReboot = useTranslations("parameters");
 
   const paramNames = useMemo(() => [...BUS_SETUP_PARAMS], []);
   const optionalParams = useMemo(() => OPTIONAL_BUS_SETUP_PARAMS, []);
@@ -165,6 +127,7 @@ export function BusSetupSection() {
   const slcanReboot = dirtyParams.has("CAN_SLCAN_CPORT");
 
   const [slcanConfirmOpen, setSlcanConfirmOpen] = useState(false);
+  const [rebootConfirmOpen, setRebootConfirmOpen] = useState(false);
   const [rebootPending, setRebootPending] = useState(false);
   const [rebootStatus, setRebootStatus] = useState<"idle" | "sending" | "accepted" | "error">("idle");
   const [rebootError, setRebootError] = useState<string | null>(null);
@@ -465,7 +428,7 @@ export function BusSetupSection() {
               variant="secondary"
               size="sm"
               icon={<Power size={12} />}
-              onClick={rebootFc}
+              onClick={() => setRebootConfirmOpen(true)}
               disabled={!connected || isHardBlocked || rebootStatus === "sending"}
               title={isHardBlocked ? hardBlockMessage : undefined}
               loading={rebootStatus === "sending"}
@@ -492,6 +455,15 @@ export function BusSetupSection() {
         title={t("enterSlcan")}
         message={t("enterSlcanConfirm")}
         variant="danger"
+      />
+      <ConfirmDialog
+        open={rebootConfirmOpen}
+        onConfirm={() => { setRebootConfirmOpen(false); void rebootFc(); }}
+        onCancel={() => setRebootConfirmOpen(false)}
+        title={tReboot("rebootTitle")}
+        message={tReboot("rebootMessage")}
+        confirmLabel={tReboot("rebootConfirmLabel")}
+        variant="primary"
       />
     </div>
   );

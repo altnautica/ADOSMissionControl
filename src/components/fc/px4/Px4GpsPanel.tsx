@@ -38,6 +38,7 @@ const SECONDARY: Field[] = [
 ];
 
 const ALL_FIELDS = [...PRIMARY, ...SECONDARY];
+const SECONDARY_PARAMS = SECONDARY.map((f) => f.param);
 
 export function Px4GpsPanel() {
   const tr = useTranslations("fcPanels.px4GpsPanel");
@@ -51,7 +52,7 @@ export function Px4GpsPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
-  } = usePanelParams({ paramNames, optionalParams: SECONDARY.map((f) => f.param), panelId: "px4-gps", autoLoad: true });
+  } = usePanelParams({ paramNames, optionalParams: SECONDARY_PARAMS, panelId: "px4-gps", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;

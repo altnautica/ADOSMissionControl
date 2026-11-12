@@ -82,6 +82,24 @@ export function setupText(
   return template === undefined ? key : interpolate(template, args);
 }
 
+/** Text for an engine refusal or blocker, which may arrive as a full key
+ *  (`setup.err.armed`, `setup.blocker.detecting`) or a bare code (`armed`,
+ *  `wizard_running`). A bare code resolves as `setup.err.<code>`, then
+ *  `setup.blocker.<code>`; anything the spec does not carry reads as the
+ *  worded `setup.err.precondition`, never the raw code. */
+export function setupRefusalText(
+  code: string,
+  args: Record<string, SetupValue> = {},
+  table: Readonly<Record<string, string>> = STRINGS,
+): string {
+  const bare = code.replace(/^setup\.(err|blocker)\./, "");
+  const candidates = code.startsWith("setup.")
+    ? [code, `setup.err.${bare}`, `setup.blocker.${bare}`]
+    : [`setup.err.${bare}`, `setup.blocker.${bare}`];
+  const hit = candidates.find((k) => k in table);
+  return setupText(hit ?? "setup.err.precondition", args, table);
+}
+
 /** An enum option's text: its own `label_key`, else the engine's convention
  *  `<input label_key>.<value>` when the spec carries it, else the value. */
 export function optionText(inputLabelKey: string, value: SetupValue, labelKey: string | null): string {

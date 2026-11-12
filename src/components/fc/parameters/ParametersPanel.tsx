@@ -116,10 +116,13 @@ export function ParametersPanel() {
     );
   }, [vehicleInfo, selectedDroneId]);
 
+  // The palette passes an exact name: filter to it and focus that row.
+  const [focusParam, setFocusParam] = useState<string | null>(null);
   useEffect(() => {
     if (pendingParamSearch) {
       setFilter(pendingParamSearch); setCategory(null);
       setShowModifiedOnly(false); setShowFavorites(false); setShowNonDefault(false);
+      setFocusParam(pendingParamSearch);
       setPendingParamSearch(null);
     }
   }, [pendingParamSearch, setPendingParamSearch]);
@@ -249,7 +252,7 @@ export function ParametersPanel() {
               )}
               <ParameterGrid parameters={filteredParams} modified={modified} onModify={handleModify}
                 filter={debouncedFilter} showModifiedOnly={showModifiedOnly} metadata={metadata} columnVisibility={columnVisibility}
-                docContext={docContext} docsLinkLabel={t("docsLink")} />
+                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} />
             </div>
           </>
         )}

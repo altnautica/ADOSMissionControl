@@ -105,7 +105,7 @@ export function FirmwarePanel() {
           <div>
             <h1 className="text-lg font-semibold text-text-primary">{tr("flashTool")}</h1>
             <p className="text-xs text-text-tertiary">
-              {isAdos ? t("subtitle") : "Flash firmware via USB DFU or serial bootloader"}
+              {isAdos ? t("subtitle") : tr("subtitle")}
             </p>
           </div>
         </div>

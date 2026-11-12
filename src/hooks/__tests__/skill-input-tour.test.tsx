@@ -77,6 +77,18 @@ describe("skill input while the controller tour shows", () => {
     expect(activateSpy.mock.calls[0][0]).toBe("rth");
   });
 
+  it("routes a bound skill's refusal through the shared translating notifier", async () => {
+    const { setSkillNotifier } = await import("@/lib/skills");
+    const notifier = vi.fn();
+    setSkillNotifier(notifier);
+    mount();
+    pressPad(FREE_BUTTON);
+    const ctx = activateSpy.mock.calls[0][1] as { notify: (m: string, s?: string) => void };
+    ctx.notify("refusal.needs_armed", "warning");
+    expect(notifier).toHaveBeenCalledWith("refusal.needs_armed", "warning");
+    setSkillNotifier(() => {});
+  });
+
   it("never fires a skill saved on a cockpit-owned button", () => {
     const loadout = cloneDefaultLoadout();
     loadout.slots = loadout.slots.map((s) => (s.skillId === "land" ? { ...s, gamepadButton: 2 } : s));

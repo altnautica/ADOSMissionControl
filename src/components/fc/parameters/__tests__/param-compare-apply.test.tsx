@@ -62,7 +62,7 @@ async function loadFileAndApply(onApplied = vi.fn()) {
   const input = container.querySelector("input[type=file]") as HTMLInputElement;
   const file = new File(["ATC_RAT_PIT_P,11\nWPNAV_SPEED,510\n"], "other.param");
   fireEvent.change(input, { target: { files: [file] } });
-  const apply = await screen.findByRole("button", { name: /Apply 2 Parameters/ });
+  const apply = await screen.findByRole("button", { name: /Apply 2 parameters/ });
   fireEvent.click(apply);
   return onApplied;
 }
@@ -78,30 +78,24 @@ beforeEach(() => {
 });
 
 describe("ParamCompare apply", () => {
-  it("asks for one armed confirmation before writing, and a cancel writes nothing", async () => {
-    useDroneStore.setState({ armState: "armed", connectionState: "armed" });
-    const onApplied = await loadFileAndApply();
-
-    await waitFor(() => expect(useArmedConfirmStore.getState().open).toBe(true));
-    expect(useArmedConfirmStore.getState().context).toEqual({
-      panelId: "parameters",
-      paramNames: ["ATC_RAT_PIT_P", "WPNAV_SPEED"],
-      armStateUnknown: false,
-    });
+  it("refuses a batch import while the vehicle may be armed", async () => {
+    useDroneStore.setState({ armState: "armed", connectionState: "connected" });
+    const { container } = render(
+      <ParamCompare fcParams={FC} metadata={META} onApplied={vi.fn()} />,
+      { wrapper: IntlWrapper },
+    );
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["ATC_RAT_PIT_P,11\n"], "other.param")] } });
+    const apply = await screen.findByRole("button", { name: /Apply 1 parameter/ });
+    expect((apply as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(apply);
     expect(written).toEqual([]);
-
-    useArmedConfirmStore.getState().cancel();
-    await waitFor(() => expect(useArmedConfirmStore.getState().open).toBe(false));
-    expect(written).toEqual([]);
-    expect(onApplied).not.toHaveBeenCalled();
+    expect(useArmedConfirmStore.getState().open).toBe(false);
   });
 
-  it("writes after an armed confirmation and records each write as pending", async () => {
-    useDroneStore.setState({ armState: "armed", connectionState: "armed" });
+  it("records each write as pending until the flash commit lands", async () => {
     flashResult = { success: false, resultCode: -1, message: "Not connected" };
     await loadFileAndApply();
-    await waitFor(() => expect(useArmedConfirmStore.getState().open).toBe(true));
-    useArmedConfirmStore.getState().confirm();
 
     await waitFor(() => expect(written).toHaveLength(2));
     await waitFor(() =>
@@ -130,6 +124,6 @@ describe("ParamCompare apply", () => {
       "info",
     );
     // The failure stays selected for a retry; the landed one is no longer offered.
-    expect(await screen.findByRole("button", { name: /Apply 1 Parameter$/ })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Apply 1 parameter$/ })).toBeTruthy();
   });
 });

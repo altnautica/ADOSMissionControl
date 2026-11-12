@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Cpu, Eye, Camera, HardDrive, Activity, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,9 @@ import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 interface ComputeMetricsCardProps {
   className?: string;
 }
+
+/** How long the card waits for a capability document before saying none came. */
+export const CAPABILITIES_WAIT_MS = 10_000;
 
 const RUNTIME_LABELS: Record<string, string> = {
   rknn: "RKNN",
@@ -73,6 +77,15 @@ export function ComputeMetricsCard({ className }: ComputeMetricsCardProps) {
   const vision = useAgentCapabilitiesStore((s) => s.vision);
   const models = useAgentCapabilitiesStore((s) => s.models);
   const loaded = useAgentCapabilitiesStore((s) => s.loaded);
+  const [waitExpired, setWaitExpired] = useState(false);
+  useEffect(() => {
+    if (loaded) return;
+    const timer = setTimeout(() => setWaitExpired(true), CAPABILITIES_WAIT_MS);
+    return () => {
+      clearTimeout(timer);
+      setWaitExpired(false);
+    };
+  }, [loaded]);
 
   if (!loaded) {
     return (
@@ -82,7 +95,7 @@ export function ComputeMetricsCard({ className }: ComputeMetricsCardProps) {
           <span className="text-xs font-medium text-text-secondary">{t("compute")}</span>
         </div>
         <div className="text-[10px] text-text-tertiary text-center py-3">
-          {t("waitingForCapabilities")}
+          {waitExpired ? t("capabilitiesNotReported") : t("waitingForCapabilities")}
         </div>
       </div>
     );

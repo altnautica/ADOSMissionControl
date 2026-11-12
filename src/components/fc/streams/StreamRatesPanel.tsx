@@ -104,7 +104,7 @@ export function StreamRatesPanel() {
                     <div key={g.suffix} className="grid grid-cols-[240px_1fr_80px] items-center gap-3">
                       <ParamFieldLabel label={g.label} param={pn(param)} meta={paramMeta.get(param)} />
                       {value === undefined ? (
-                        <span className="col-span-2 text-[10px] font-mono text-text-tertiary">not present</span>
+                        <span className="col-span-2 text-[10px] font-mono text-text-tertiary">{tr("notPresent")}</span>
                       ) : (
                         <>
                           <div className="relative">

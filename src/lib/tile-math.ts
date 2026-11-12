@@ -44,14 +44,16 @@ const VECTOR_BASEMAP_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &middot; <a href="https://protomaps.com">Protomaps</a>';
 
 export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
+  // Dark Gray Canvas needs no API key; the previous dark source started
+  // answering keyless requests with an "API key required" placeholder tile.
   dark: {
     kind: "raster",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    subdomains: ["a", "b", "c", "d"],
-    maxZoom: 20,
-    avgTileKB: 20,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    name: "CARTO Dark",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    subdomains: [],
+    maxZoom: 16,
+    avgTileKB: 10,
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    name: "Esri Dark Gray",
     label: "DARK",
   },
   osm: {

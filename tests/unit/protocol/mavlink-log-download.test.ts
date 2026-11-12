@@ -12,6 +12,7 @@ import {
   downloadLog,
   handleLogData,
   cancelLogDownload,
+  eraseAllLogs,
   type LogContext,
 } from "@/lib/protocol/mavlink-adapter-logs";
 import type { MAVLinkFrame } from "@/lib/protocol/mavlink-parser";
@@ -156,5 +157,35 @@ describe("onboard log download", () => {
     handleLogData(ctx, logData(0, 90));
     cancelLogDownload(ctx);
     await expect(p).rejects.toThrow(/cancelled/);
+  });
+
+  it("resumes a cancelled log from the bytes it already has", async () => {
+    const { ctx, sent } = makeCtx();
+    const first = downloadLog(ctx, LOG_ID);
+    handleLogData(ctx, logData(0, 90));
+    handleLogData(ctx, logData(90, 90));
+    cancelLogDownload(ctx);
+    await expect(first).rejects.toThrow(/cancelled/);
+
+    const progress: number[] = [];
+    const second = downloadLog(ctx, LOG_ID, (received) => progress.push(received));
+    expect(dataRequests(sent).at(-1)?.ofs).toBe(180);
+    expect(progress[0]).toBe(180);
+    handleLogData(ctx, logData(180, 30));
+    expect(await second).toEqual(expectedLog(210));
+  });
+
+  it("starts again from byte 0 once the logs are erased", async () => {
+    const { ctx, sent } = makeCtx();
+    const first = downloadLog(ctx, LOG_ID);
+    handleLogData(ctx, logData(0, 90));
+    cancelLogDownload(ctx);
+    await expect(first).rejects.toThrow(/cancelled/);
+    await eraseAllLogs(ctx);
+    const second = track(downloadLog(ctx, LOG_ID));
+    expect(dataRequests(sent).at(-1)?.ofs).toBe(0);
+    cancelLogDownload(ctx);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(second.error?.message).toMatch(/cancelled/);
   });
 });

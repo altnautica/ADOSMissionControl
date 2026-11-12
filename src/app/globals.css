@@ -774,7 +774,9 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-reserve { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--fs-text); border-radius: 1px; }
 .ados-cockpit .fs-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
 .ados-cockpit .fs-sig > b { width: 3px; border-radius: 1px; }
-.ados-cockpit .fs-chip-wrap { flex: none; display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* At least the chip's face tall, so an overflowing bar that clips the wrap
+   never cuts the chip's text. */
+.ados-cockpit .fs-chip-wrap { flex: none; display: flex; align-items: center; gap: 6px; min-width: 0; min-height: var(--fs-control); }
 /* One line, an outline in the state colour: a dot, the state, then the
    secondary facts dimmed (they truncate before the state does). */
 .ados-cockpit .fs-chip {

@@ -62,10 +62,13 @@ export function PidTuningPanel() {
   const detectedVehicle: TuningVehicleType | null = useMemo(() => {
     const vc = drone?.vehicleInfo?.vehicleClass;
     if (vc === "copter") return "copter";
+    // A PX4 VTOL's rate PIDs here are the multicopter ones (MC_*); its
+    // fixed-wing rates live under Fixed-Wing Tuning.
+    if (vc === "vtol" && isPx4) return "copter";
     if (vc === "plane" || vc === "vtol") return "plane";
     if (vc === "rover") return "rover";
     return null;
-  }, [drone?.vehicleInfo?.vehicleClass]);
+  }, [drone?.vehicleInfo?.vehicleClass, isPx4]);
 
   const [vehicleType, setVehicleType] = useState<TuningVehicleType>(detectedVehicle ?? "copter");
   const [showFilters, setShowFilters] = useState(false);
@@ -124,10 +127,10 @@ export function PidTuningPanel() {
   }
 
   const subtitle = vehicleType === "copter"
-    ? "ArduCopter rate PIDs — roll, pitch, yaw"
+    ? tr(isPx4 ? "subtitleCopterPx4" : "subtitleCopter")
     : vehicleType === "rover"
-      ? "ArduRover steering-rate and speed/throttle PIDs"
-      : "ArduPlane roll, pitch, yaw servo PID gains";
+      ? tr(isPx4 ? "subtitleRoverPx4" : "subtitleRover")
+      : tr(isPx4 ? "subtitlePlanePx4" : "subtitlePlane");
 
   const paramRow = (pidP: PidParam, gridClass: string, unit?: string) => (
     <PidParamRow

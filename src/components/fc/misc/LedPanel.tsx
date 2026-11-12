@@ -93,12 +93,12 @@ export function LedPanel() {
                 {tr("betaflightLEDStripUsesPacked")}
               </p>
               <p className="text-xs text-text-tertiary">
-                {tr("useThe")} <span className="font-mono text-accent-primary">led</span> command in the FC Console panel to configure LED strip assignments.
+                {tr.rich("useLedCommand", { cmd: (c) => <span className="font-mono text-accent-primary">{c}</span> })}
               </p>
               <div className="bg-bg-tertiary px-3 py-2 font-mono text-[10px] text-text-secondary space-y-1">
-                <p><span className="text-accent-primary">led</span> — Show current LED strip configuration</p>
-                <p><span className="text-accent-primary">led 0 0,0::C:0</span> — Example: set LED 0</p>
-                <p><span className="text-accent-primary">color</span> — Show/set LED colors</p>
+                <p><span className="text-accent-primary">led</span> — {tr("ledCmdShow")}</p>
+                <p><span className="text-accent-primary">led 0 0,0::C:0</span> — {tr("ledCmdExample")}</p>
+                <p><span className="text-accent-primary">color</span> — {tr("colorCmd")}</p>
               </div>
             </FcSection>
           )}

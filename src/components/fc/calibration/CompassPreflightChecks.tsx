@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { cn } from "@/lib/utils";
+import { confirmArmedParamWrite } from "@/lib/protocol/param-write";
 import type { CompassParams } from "./calibration-types";
 
 interface CompassPreflightChecksProps {
@@ -11,13 +12,14 @@ interface CompassPreflightChecksProps {
   setCompassParams: React.Dispatch<React.SetStateAction<CompassParams>>;
 }
 
-/** ArduPilot COMPASS_EXTERNAL values. */
-const EXTERNAL_LABELS: Record<number, string> = { 0: "Internal", 1: "External", 2: "Forced external" };
+/** ArduPilot COMPASS_EXTERNAL values (locale keys). */
+const EXTERNAL_KEYS: Record<number, string> = { 0: "extInternal", 1: "extExternal", 2: "extForced" };
 
-const LEARN_LABELS: Record<number, string> = { 0: "Off", 1: "Internal", 2: "EKF", 3: "InFlight" };
+const LEARN_KEYS: Record<number, string> = { 0: "learnOff", 1: "learnInternal", 2: "learnEkf", 3: "learnInFlight" };
 
 function Pending({ value }: { value: number | null | undefined }) {
-  return <span className="text-text-tertiary">{value === undefined ? "Loading..." : "Unavailable"}</span>;
+  const tm = useTranslations("fcPanels.compassPreflightChecks");
+  return <span className="text-text-tertiary">{value === undefined ? tm("loading") : tm("unavailable")}</span>;
 }
 
 export function CompassPreflightChecks({ compassParams, setCompassParams }: CompassPreflightChecksProps) {
@@ -30,13 +32,14 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
   async function writeParam(name: "COMPASS_AUTO_ROT" | "COMPASS_OFFS_MAX", value: number) {
     const protocol = selectedProtocol;
     if (!protocol) return;
+    if (!(await confirmArmedParamWrite("compass-preflight", [name]))) return;
     const result = await protocol.setParameter(name, value).catch(() => null);
     if (!result?.success) {
-      toast(`${name} was not changed: ${result?.message ?? "no reply from the flight controller"}`, "error");
+      toast(tm("notChanged", { name, reason: result?.message || tm("noReply") }), "error");
       return;
     }
     setCompassParams((p) => ({ ...p, [name]: value }));
-    toast(`${name} set to ${value}`, "success");
+    toast(tm("setTo", { name, value }), "success");
   }
 
   const { COMPASS_USE, COMPASS_ORIENT, COMPASS_AUTO_ROT, COMPASS_OFFS_MAX, COMPASS_LEARN, COMPASS_EXTERNAL } = compassParams;
@@ -53,7 +56,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
           ) : COMPASS_USE === 1 ? (
             <span className="text-status-success font-mono">{tm("enabled")}</span>
           ) : (
-            <span className="text-status-error font-mono">Disabled — enable COMPASS_USE first</span>
+            <span className="text-status-error font-mono">{tm("disabledHint")}</span>
           )}
         </div>
         {/* COMPASS_ORIENT */}
@@ -63,7 +66,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
             <Pending value={COMPASS_ORIENT} />
           ) : (
             <span className="text-text-primary font-mono">
-              {COMPASS_ORIENT} {COMPASS_ORIENT === 0 ? "(None)" : COMPASS_ORIENT === 6 ? "(Yaw270)" : ""}
+              {COMPASS_ORIENT} {COMPASS_ORIENT === 0 ? `(${tm("none")})` : COMPASS_ORIENT === 6 ? "(Yaw270)" : ""}
             </span>
           )}
         </div>
@@ -73,10 +76,10 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
           {typeof COMPASS_AUTO_ROT !== "number" ? (
             <Pending value={COMPASS_AUTO_ROT} />
           ) : COMPASS_AUTO_ROT === 3 ? (
-            <span className="text-status-success font-mono">3 (Lenient)</span>
+            <span className="text-status-success font-mono">3 ({tm("lenient")})</span>
           ) : (
             <span className="flex items-center gap-2">
-              <span className="text-status-warning font-mono">{COMPASS_AUTO_ROT} — recommend 3 for lenient orientation detection</span>
+              <span className="text-status-warning font-mono">{tm("recommendLenient", { value: COMPASS_AUTO_ROT })}</span>
               <button
                 className="text-[9px] text-accent-primary hover:underline"
                 onClick={() => writeParam("COMPASS_AUTO_ROT", 3)}
@@ -95,14 +98,14 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
             ) : (
               <span className="flex items-center gap-2">
                 <span className={cn("font-mono", COMPASS_OFFS_MAX < 850 ? "text-status-warning" : "text-text-primary")}>
-                  {COMPASS_OFFS_MAX} {COMPASS_OFFS_MAX < 850 ? "— low limit" : ""}
+                  {COMPASS_OFFS_MAX} {COMPASS_OFFS_MAX < 850 ? `— ${tm("lowLimit")}` : ""}
                 </span>
                 {COMPASS_OFFS_MAX < 2000 && (
                   <button
                     className="text-[9px] text-accent-primary hover:underline"
                     onClick={() => writeParam("COMPASS_OFFS_MAX", 2000)}
                   >
-                    Increase to 2000
+                    {tm("increaseTo", { value: 2000 })}
                   </button>
                 )}
               </span>
@@ -117,7 +120,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
               <Pending value={COMPASS_LEARN} />
             ) : (
               <span className="text-text-primary font-mono">
-                {COMPASS_LEARN} ({LEARN_LABELS[COMPASS_LEARN] ?? "Unknown"})
+                {COMPASS_LEARN} ({LEARN_KEYS[COMPASS_LEARN] ? tm(LEARN_KEYS[COMPASS_LEARN]) : tm("unknown")})
               </span>
             )}
           </div>
@@ -130,7 +133,7 @@ export function CompassPreflightChecks({ compassParams, setCompassParams }: Comp
               <Pending value={COMPASS_EXTERNAL} />
             ) : (
               <span className="text-text-primary font-mono">
-                {EXTERNAL_LABELS[COMPASS_EXTERNAL] ?? `Unknown (${COMPASS_EXTERNAL})`}
+                {EXTERNAL_KEYS[COMPASS_EXTERNAL] ? tm(EXTERNAL_KEYS[COMPASS_EXTERNAL]) : tm("unknownValue", { value: COMPASS_EXTERNAL })}
               </span>
             )}
           </div>

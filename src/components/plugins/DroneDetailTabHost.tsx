@@ -32,6 +32,7 @@
  */
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { PluginSlot } from "@/components/plugins/PluginSlot";
@@ -40,6 +41,7 @@ import { PluginParametersPanel } from "@/components/plugins/parameters/PluginPar
 import {
   PER_DRONE_SLOTS,
   isPerDroneSlot,
+  slotToCapability,
   type PairedNodeProfile,
 } from "@/lib/plugins/types";
 import { cn } from "@/lib/utils";
@@ -212,6 +214,21 @@ export function DroneDetailTabBody({
   );
   if (!active) return null;
 
+  // A tab header with nothing under it says why: no contribution carries the
+  // slot permission, or the bundle is not loaded on this node yet. A
+  // parameters-only extension's panel is the whole body, so it gets neither.
+  const emptyState =
+    active.parameters.length > 0 ? null : (
+      <PluginTabEmpty
+        denied={
+          activeSlot.length > 0 &&
+          !activeSlot.some((c) =>
+            c.grantedCapabilities.has(slotToCapability(NODE_DETAIL_TAB_SLOT)),
+          )
+        }
+      />
+    );
+
   const tabId = pluginTabId(active);
   const hasParameters = active.parameters.length > 0;
   return (
@@ -263,7 +280,18 @@ export function DroneDetailTabBody({
               : "min-h-0",
         )}
         iframeClassName="flex-1 w-full"
+        emptyState={emptyState}
       />
     </div>
+  );
+}
+
+/** The body of a plugin tab whose slot mounted nothing: not permitted, or not loaded yet. */
+export function PluginTabEmpty({ denied }: { denied: boolean }) {
+  const t = useTranslations("dronePanel.pluginSurface");
+  return (
+    <p className="p-6 text-center text-xs text-text-tertiary" data-testid="plugin-tab-empty">
+      {denied ? t("notPermitted") : t("unavailable")}
+    </p>
   );
 }

@@ -47,8 +47,8 @@ export function emitStatusText(cbs: MockCallbackArrays, severity: number, text: 
 }
 
 /** Fire heartbeat callbacks. */
-export function emitHeartbeat(cbs: MockCallbackArrays, armed: boolean, mode: UnifiedFlightMode, vehicleInfo: VehicleInfo): void {
-  for (const cb of cbs.heartbeatCbs) cb({ armed, mode, systemStatus: armed ? 4 : 3, vehicleInfo });
+export function emitHeartbeat(cbs: MockCallbackArrays, armed: boolean, mode: UnifiedFlightMode, vehicleInfo: VehicleInfo, customMode?: number): void {
+  for (const cb of cbs.heartbeatCbs) cb({ armed, mode, systemStatus: armed ? 4 : 3, vehicleInfo, customMode });
 }
 
 /** Fire accelCalPos callbacks. */

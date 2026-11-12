@@ -77,9 +77,9 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
 
   return (
     <FloatingPanel
-      corner="bottom-center"
+      docked
       padded={false}
-      className="flex items-center gap-2 px-4 py-2"
+      className="flex max-w-full min-w-0 flex-wrap items-center justify-center gap-2 px-4 py-2"
     >
       {/* Skip to start — seeks to the start, does not halt playback */}
       <TransportButton
@@ -143,7 +143,7 @@ export function PlaybackControls({ waypoints, totalDuration }: PlaybackControlsP
           onChange={(e) => seek(Number(e.target.value))}
           disabled={disabled}
           aria-label={t("scrubber")}
-          className="w-40 h-1 accent-accent-primary cursor-pointer disabled:cursor-default disabled:opacity-30"
+          className="w-40 min-w-16 shrink h-1 accent-accent-primary cursor-pointer disabled:cursor-default disabled:opacity-30"
         />
       </Tooltip>
 

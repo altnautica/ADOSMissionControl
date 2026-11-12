@@ -214,3 +214,25 @@ export const PX4_MOCK_PARAMS: MockParam[] = [
   { name: "CA_SV_TL_COUNT", value: 1, type: 9 },
   { name: "CA_SV_TL0_CT", value: 1, type: 9 }, { name: "CA_SV_TL0_MINA", value: 0, type: 9 }, { name: "CA_SV_TL0_MAXA", value: 90, type: 9 }, { name: "CA_SV_TL0_TD", value: 0, type: 9 },
 ];
+
+/** PX4 standard VTOL: the multicopter set plus the VT_* transition group, so
+ * the VTOL Transition panel reads real values in demo. */
+export const PX4_VTOL_MOCK_PARAMS: MockParam[] = [
+  ...PX4_MOCK_PARAMS,
+  { name: "VT_TYPE", value: 2, type: 9 }, // standard VTOL
+  { name: "VT_FWD_THRUST_EN", value: 0, type: 9 },
+  { name: "VT_FWD_THRUST_SC", value: 0.7, type: 9 },
+  { name: "VT_ARSP_TRANS", value: 17, type: 9 },
+  { name: "VT_ARSP_BLEND", value: 12, type: 9 },
+  { name: "VT_F_TRANS_DUR", value: 5, type: 9 },
+  { name: "VT_F_TRANS_THR", value: 1, type: 9 },
+  { name: "VT_B_TRANS_DUR", value: 4, type: 9 },
+  { name: "VT_B_TRANS_RAMP", value: 3, type: 9 },
+  { name: "VT_TRANS_MIN_TM", value: 2, type: 9 },
+  { name: "VT_TRANS_TIMEOUT", value: 15, type: 9 },
+  { name: "VT_FW_MIN_ALT", value: 0, type: 9 },
+  { name: "VT_QC_ALT_LOSS", value: 0, type: 9 },
+  { name: "VT_FW_QC_P", value: 0, type: 9 },
+  { name: "VT_FW_QC_R", value: 0, type: 9 },
+  { name: "VT_PSHER_SLEW", value: 0.33, type: 9 },
+];

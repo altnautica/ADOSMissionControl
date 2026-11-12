@@ -8,6 +8,8 @@
  */
 
 import { useTranslations } from "next-intl";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { isElectron } from "@/lib/utils";
 import { PRIMARY_CTA_CLASS } from "../constants";
 import { StepDots } from "../parts/StepDots";
 import { BackButton } from "./BackButton";
@@ -22,6 +24,9 @@ interface Props {
 export function IntroStep({ next, back, dotStep, totalSteps }: Props) {
   const tk = useTranslations("onboarding.introStep");
   const t = useTranslations("welcome");
+  // The browser line ("Runs in your browser") is wrong in the desktop app.
+  // Read after mount so the server render and first client render agree.
+  const desktop = useHasMounted() && isElectron();
 
   return (
     <>
@@ -43,7 +48,7 @@ export function IntroStep({ next, back, dotStep, totalSteps }: Props) {
           {t("intro.tagline")}
         </p>
         <p className="text-sm text-text-secondary leading-relaxed mb-8">
-          {t("intro.description")}
+          {t(desktop ? "intro.descriptionDesktop" : "intro.description")}
         </p>
 
         {/* Badges */}

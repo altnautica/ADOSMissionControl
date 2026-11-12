@@ -45,6 +45,9 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
     [changes]
   );
   const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
+  // A value outside the parameter's documented range is refused, not
+  // written after a warning colour.
+  const hasOutOfRange = changes.some((c) => isValueOutOfRange(c.newValue, metadata?.get(c.name)));
 
   // Reset checkbox when dialog opens/closes
   const handleCancel = () => {
@@ -73,7 +76,7 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
         <div className="flex items-center gap-2 text-status-warning">
           <AlertTriangle size={16} />
           <span className="text-sm">
-            {changes.length} parameter{changes.length !== 1 ? "s" : ""} will be written to the flight controller.
+            {tl("willBeWritten", { count: changes.length })}
           </span>
         </div>
 
@@ -107,7 +110,7 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
                       {outOfRange && meta?.range && (
                         <div className="flex items-center gap-1 mt-0.5 text-[10px] text-status-warning">
                           <AlertTriangle size={9} />
-                          Outside expected range ({meta.range.min} .. {meta.range.max})
+                          {tl("outOfRange", { min: meta.range.min, max: meta.range.max })}
                         </div>
                       )}
                     </td>
@@ -158,6 +161,10 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
           </label>
         )}
 
+        {hasOutOfRange && (
+          <p role="alert" className="text-xs text-status-error">{tl("outOfRangeBlocked")}</p>
+        )}
+
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" icon={<X size={12} />} onClick={handleCancel}>
             {tl("cancel")}
@@ -167,9 +174,9 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
             size="sm"
             icon={<Check size={12} />}
             onClick={handleConfirm}
-            disabled={hasCritical && !safetyAcknowledged}
+            disabled={hasOutOfRange || (hasCritical && !safetyAcknowledged)}
           >
-            Write {changes.length} Parameter{changes.length !== 1 ? "s" : ""}
+            {tl("writeN", { count: changes.length })}
           </Button>
         </div>
       </div>

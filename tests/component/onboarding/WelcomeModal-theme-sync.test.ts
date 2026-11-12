@@ -119,3 +119,20 @@ describe("pushThemeToAllAgents", () => {
     expect(applySetup).toHaveBeenCalledWith({ ui: { theme: "dark" } });
   });
 });
+
+describe("pushThemeToAllAgents in demo", () => {
+  it("sends nothing to simulated nodes", async () => {
+    const { useSettingsStore } = await import("@/stores/settings-store");
+    useSettingsStore.setState({ demoMode: true, _hasHydrated: true });
+    try {
+      const applySetup = vi.fn().mockResolvedValue({ ok: true });
+      const result = await pushThemeToAllAgents([drone({ lastIp: "10.0.0.2" })], "dark", {
+        clientFactory: (() => ({ applySetup })) as never,
+      });
+      expect(applySetup).not.toHaveBeenCalled();
+      expect(result.attempted).toBe(0);
+    } finally {
+      useSettingsStore.setState({ demoMode: false });
+    }
+  });
+});

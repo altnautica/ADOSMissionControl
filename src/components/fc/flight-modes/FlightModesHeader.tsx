@@ -11,6 +11,8 @@ interface FlightModesHeaderProps {
   dirtySlotCount: number;
   loading: boolean;
   saving: boolean;
+  /** True while Write to Flash runs: the button shows busy and is disabled. */
+  flashing?: boolean;
   showCommitButton: boolean;
   onRead: () => void;
   onSave: () => void;
@@ -23,6 +25,7 @@ export function FlightModesHeader({
   dirtySlotCount,
   loading,
   saving,
+  flashing = false,
   showCommitButton,
   onRead,
   onSave,
@@ -36,7 +39,7 @@ export function FlightModesHeader({
         {isDirty && (
           <span className="flex items-center gap-1 text-[10px] text-status-warning">
             <span className="w-1.5 h-1.5 rounded-full bg-status-warning" />
-            {totalDirtyCount} unsaved
+            {tr("unsavedCount", { count: totalDirtyCount })}
           </span>
         )}
       </div>
@@ -58,7 +61,7 @@ export function FlightModesHeader({
           disabled={!isDirty}
           onClick={onSave}
         >
-          Save{dirtySlotCount > 0 ? ` (${dirtySlotCount})` : ""}
+          {dirtySlotCount > 0 ? tr("saveCount", { count: dirtySlotCount }) : tr("save")}
         </Button>
         {showCommitButton && (
           <Button
@@ -66,6 +69,8 @@ export function FlightModesHeader({
             size="sm"
             icon={<HardDrive size={12} />}
             onClick={onCommit}
+            disabled={flashing}
+            loading={flashing}
           >
             <SaveBarLabel k="writeToFlash" />
           </Button>

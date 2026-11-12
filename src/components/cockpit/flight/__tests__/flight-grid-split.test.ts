@@ -140,3 +140,15 @@ describe("split divider handle", () => {
     expect(seen[3]).toBeCloseTo(0.65, 5);
   });
 });
+
+describe("map view pane", () => {
+  it("sits in the free centre, clear of the top bar, columns, card and bottom row", () => {
+    const g = flightGrid({ width: 1280, height: 800, widthClass: "expanded" });
+    const c = g.zones.center!;
+    expect(mapPlacement(true, g)).toEqual({ left: c.x, top: c.y, width: c.w, height: c.h });
+    const bar = g.zones.top_bar!;
+    const card = g.zones.bottom_left_card!;
+    expect(c.y).toBeGreaterThanOrEqual(bar.y + bar.h);
+    expect(c.y + c.h).toBeLessThanOrEqual(card.y);
+  });
+});

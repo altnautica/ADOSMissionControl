@@ -18,6 +18,7 @@ import { ControlsSettings } from "@/components/config/ControlsSettings";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -43,6 +44,7 @@ export default function InputDevicesPage() {
 
   const { toast } = useToast();
   const [pairOpen, setPairOpen] = useState(false);
+  const [forgetTarget, setForgetTarget] = useState<{ mac: string; name: string } | null>(null);
 
   const agentUrlRef = useRef(agentUrl);
   const apiKeyRef = useRef(apiKey);
@@ -99,26 +101,27 @@ export default function InputDevicesPage() {
 
   const handleForget = async (mac: string, name: string) => {
     const client = groundStationApiFromAgent(agentUrl, apiKey);
-    if (!client) return;
-    const ok = await forgetBluetooth(client, mac);
-    if (ok) {
-      toast(tk("forgot") + name, "info");
+    if (!client) {
+      toast(tk("forgetFailed", { name }), "error");
+      return;
     }
+    const ok = await forgetBluetooth(client, mac);
+    toast(ok ? tk("forgotDevice", { name }) : tk("forgetFailed", { name }), ok ? "info" : "error");
   };
 
   const hasAgent = Boolean(agentUrl);
   const formatType = (t: string) => {
     if (t === "usb") return "USB";
     if (t === "bluetooth") return "Bluetooth";
-    return "Unknown";
+    return tk("typeUnknown");
   };
 
   const formatDeviceType = (name: string, type: string): string => {
     const lower = name.toLowerCase();
     if (lower.includes("hotas") || lower.includes("throttle")) return "HOTAS";
-    if (lower.includes("joystick") || lower.includes("stick")) return "Joystick";
-    if (lower.includes("wheel") || lower.includes("racing")) return "Wheel";
-    return "Gamepad";
+    if (lower.includes("joystick") || lower.includes("stick")) return tk("kindJoystick");
+    if (lower.includes("wheel") || lower.includes("racing")) return tk("kindWheel");
+    return tk("kindGamepad");
   };
 
   return (
@@ -231,13 +234,13 @@ export default function InputDevicesPage() {
                       className="flex items-center justify-between rounded border border-border-default px-3 py-2"
                     >
                       <div className="flex flex-col">
-                        <span className="text-sm text-text-primary">{dev.name || "Unknown"}</span>
+                        <span className="text-sm text-text-primary">{dev.name || tk("typeUnknown")}</span>
                         <span className="font-mono text-xs text-text-secondary">{dev.mac}</span>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleForget(dev.mac, dev.name || dev.mac)}
+                        onClick={() => setForgetTarget({ mac: dev.mac, name: dev.name || dev.mac })}
                       >
                         {tk("forget")}
                       </Button>
@@ -266,6 +269,19 @@ export default function InputDevicesPage() {
         <SkillBindingsSection />
 
         <BluetoothPairModal open={pairOpen} onClose={() => setPairOpen(false)} />
+        <ConfirmDialog
+          open={forgetTarget !== null}
+          onCancel={() => setForgetTarget(null)}
+          onConfirm={() => {
+            const target = forgetTarget;
+            setForgetTarget(null);
+            if (target) void handleForget(target.mac, target.name);
+          }}
+          title={tk("forgetTitle", { name: forgetTarget?.name ?? "" })}
+          message={tk("forgetMessage")}
+          confirmLabel={tk("forget")}
+          variant="danger"
+        />
         </div>
       </div>
     </div>

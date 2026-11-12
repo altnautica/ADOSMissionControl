@@ -17,6 +17,8 @@ import dynamic from "next/dynamic";
 import { useAutoReconnect } from "@/hooks/use-auto-reconnect";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DemoResidueSweep } from "./DemoResidueSweep";
+import { StatusTextLogBridge } from "./StatusTextLogBridge";
+import { AudioSettingsBridge } from "@/components/config/AudioSettingsBridge";
 import { AgentMavlinkBridge } from "@/components/command/AgentMavlinkBridge";
 import { AgentBridges } from "@/components/command/AgentBridges";
 import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
@@ -49,6 +51,9 @@ export function ShellBridges() {
       {/* Owns the FC link and persists across selection changes. */}
       <AgentMavlinkBridge />
       <AgentBridges />
+      {/* Every drone's STATUSTEXT, kept whether or not the Logs rail is open. */}
+      <StatusTextLogBridge />
+      <AudioSettingsBridge />
       {/* The presence bridges WRITE the node registry (local + cloud
           presence, plus relayed presence for a WFB-linked drone reached
           through a directly-paired ground node); the fleet projection

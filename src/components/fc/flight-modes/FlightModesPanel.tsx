@@ -22,7 +22,7 @@ export function FlightModesPanel() {
   const protocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { toast } = useToast();
-  const { isArmed, lockMessage } = useArmedLock();
+  const { isHardBlocked, lockMessage } = useArmedLock();
   const firmwareHandler = protocol?.getFirmwareHandler() ?? null;
   const isCopter = firmwareHandler?.vehicleClass === "copter";
 
@@ -36,6 +36,7 @@ export function FlightModesPanel() {
     globalConfig,
     loading,
     saving,
+    flashing,
     showCommitButton,
     totalDirtyCount,
     isDirty,
@@ -119,6 +120,7 @@ export function FlightModesPanel() {
           dirtySlotCount={dirtySlots.size}
           loading={loading}
           saving={saving}
+          flashing={flashing}
           showCommitButton={showCommitButton}
           onRead={fetchParams}
           onSave={saveParams}
@@ -167,7 +169,7 @@ export function FlightModesPanel() {
           </div>
         )}
 
-        {isArmed && (
+        {isHardBlocked && (
           <div className="flex items-center gap-2 p-2 bg-status-warning/10 border border-status-warning/50">
             <span className="text-[10px] text-status-warning">{lockMessage}</span>
           </div>

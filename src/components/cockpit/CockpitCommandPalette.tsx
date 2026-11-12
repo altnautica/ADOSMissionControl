@@ -27,7 +27,7 @@ import { useTranslations } from "next-intl";
 import { Command, Search } from "lucide-react";
 
 import {
-  activateBound,
+  activate,
   buildSkillContext,
   useSkillRegistry,
   type Skill,
@@ -127,7 +127,7 @@ export function CockpitCommandPalette({
       // shows over the cockpit, not under the palette. `activate` still routes
       // through confirm / arm-gating / the reason toast for a disabled skill.
       onClose();
-      void activateBound(row.skill.id, buildSkillContext(droneId));
+      void activate(row.skill.id, buildSkillContext(droneId));
     },
     [droneId, onClose],
   );

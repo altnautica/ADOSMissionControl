@@ -283,6 +283,8 @@
       "unknown": "Node agen"
     },
     "hero": {
+      "subjectAgent": "Agen",
+      "subjectFc": "Pengendali penerbangan",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "Aktifkan peringatan",
       "resetPersonalization": "Setel ulang personalisasi",
       "personalizationReset": "Personalisasi disetel ulang",
-      "forget": "Lupakan",
-      "forgetTitle": "Lupakan node",
-      "forgetMessage": "Lupakan {node}? Ini melepas penyandingan dan menghapus personalisasinya."
+      "forget": "Lepas pasangan",
+      "forgetTitle": "Lepas pasangan node",
+      "forgetMessage": "Lepas pasangan {node}? Pemasangannya dilepas dan node hilang dari armada sampai dipasangkan lagi."
     },
     "dotEditor": {
       "title": "Konfigurasi titik",
@@ -432,7 +434,8 @@
       "openSource": "Open Source GPL-3.0",
       "getStarted": "Mulai",
       "privacy": "Data Anda tetap di perangkat ini.",
-      "privacyDetail": "Kami tidak mengumpulkan atau melacak apa pun."
+      "privacyDetail": "Kami tidak mengumpulkan atau melacak apa pun.",
+      "descriptionDesktop": "Konfigurasi, rencanakan misi, dan terbangkan drone ArduPilot, PX4, atau Betaflight apa pun. Pasangkan dengan ADOS Drone Agent untuk menjalankan kecerdasan di edge. Open source. Berjalan di komputer Anda."
     },
     "disclaimer": {
       "title": "Sebelum Terbang",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "Tema disinkronkan ke {count} node",
+      "syncFailedCount": "Tidak dapat menjangkau {count} node"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "Tema gelap",
       "groupLightThemes": "Tema terang",
       "groupMidTone": "Nada sedang",
-      "selectTheme": "Pilih tema"
+      "selectTheme": "Pilih tema",
+      "nvg": "Penglihatan malam"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "Masuk untuk sinkronisasi cloud",
     "localOnly": "Lokal saja",
     "commandPalette": "Palet perintah",
+    "menu": "Menu",
     "joinDiscord": "Bergabung di Discord",
     "starOnGitHub": "Beri bintang di GitHub",
     "star": "Bintang",
@@ -836,7 +841,7 @@
     "notifications": "Notifikasi",
     "theme": "Tema",
     "data": "Data",
-    "operator": "Operator & Aircraft",
+    "operator": "Operator & Pesawat",
     "plugins": "Ekstensi",
     "can": "DroneCAN",
     "aircraftSetup": "Aircraft setup",
@@ -846,9 +851,9 @@
     "title": "Pengaturan Umum",
     "jurisdiction": "Yurisdiksi Regulasi (opsional)",
     "notSet": "— Belum diatur",
-    "units": "Satuan",
-    "metric": "Metrik (m, km/h, °C)",
-    "imperial": "Imperial (ft, mph, °F)",
+    "units": "Satuan perencana",
+    "metric": "Metrik (m, m/s)",
+    "imperial": "Imperial (ft, mph)",
     "autoConnect": "Hubungkan otomatis saat memulai",
     "autoReconnect": "Hubungkan ulang otomatis saat terputus",
     "demoMode": "Mode Demo",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "Tips akan tampil lagi.",
+    "unitsScope": "Berlaku untuk perencana misi dan alat gambar peta. Tampilan penerbangan memakai satuan metrik kokpit."
   },
   "notifications": {
     "title": "Notifikasi",
@@ -967,11 +974,11 @@
     "testMode": "Mode Uji",
     "testModeUnavailable": "Mode uji gamepad tidak tersedia dalam demo",
     "manualControlLinkBlocked": "Stik tidak sampai ke pesawat ini: {reason}. Tidak ada yang dikirim.",
-    "stickMode": "Stick mode",
+    "stickMode": "Mode stik",
     "stickMode2": "Mode 2 (throttle on the left stick)",
     "stickMode1": "Mode 1 (throttle on the right stick)",
-    "groundStationEmpty": "No controllers on the ground station.",
-    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
+    "groundStationEmpty": "Tidak ada pengontrol di stasiun darat.",
+    "groundStationEmptyHint": "Hubungkan gamepad, joystick, atau HOTAS USB atau Bluetooth ke stasiun darat. Pengontrol yang dicolok ke komputer ini muncul di Input Browser."
   },
   "data": {
     "title": "Manajemen Data",
@@ -990,10 +997,10 @@
   "communityNav": {
     "changelog": "Catatan Perubahan",
     "contact": "Kontak",
-    "unavailableTitle": "Data komunitas (catatan perubahan, peta jalan, kontak) tersedia di versi yang di-host di",
-    "unavailableSetup": "Dinonaktifkan secara default di build lokal. Untuk menjalankan papan komunitas internal Anda sendiri, siapkan backend Convex dan konfigurasikan",
+    "unavailableTitle": "Data komunitas (catatan perubahan, kontak) tersedia di versi yang di-host di",
+    "unavailableSetup": "Dinonaktifkan secara default di build lokal. Untuk menjalankan papan komunitas internal Anda sendiri, siapkan backend Convex dan atur {envVar}.",
     "unavailableOptional": "Sepenuhnya opsional. GCS berfungsi tanpa fitur ini.",
-    "sectionError": "This page failed to load. Switch tabs or reload to try again."
+    "sectionError": "Halaman ini gagal dimuat. Ganti tab atau muat ulang untuk mencoba lagi."
   },
   "contact": {
     "title": "Kontak",
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "Misi Baru",
-      "connectDrone": "Hubungkan Drone",
+      "connectDrone": "Tambah node",
       "rthAll": "RTH Semua"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
-    "title": "Hubungkan ke Drone",
+    "title": "Tambah node",
     "usbSerial": "USB Serial",
     "webSocket": "WebSocket",
     "savePreset": "Simpan Preset",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "Tersedia",
       "chromiumOnly": "Chrome atau Edge",
-      "desktopOrBridge": "Desktop atau bridge"
+      "desktopOrBridge": "Desktop atau bridge",
+      "desktopUnsupported": "Tidak ada di aplikasi desktop pada OS ini"
     },
     "getDesktopApp": "Dapatkan aplikasi desktop",
     "agentUdpNote": "Drone yang dipasangkan dengan agent juga membuka udp:[agent-ip]:14550 untuk ground station eksternal mana pun.",
@@ -1488,14 +1496,35 @@
     "flightSuite": "Suite",
     "px4EventsFeed": {
       "searchEvents": "Cari peristiwa",
-      "flightControllerEvents": "Peristiwa Flight Controller"
+      "flightControllerEvents": "Peristiwa Flight Controller",
+      "emptyNone": "Belum ada event. Event terstruktur flight controller muncul di sini.",
+      "emptyNoMatch": "Tidak ada event yang cocok dengan pencarian.",
+      "severityLevel": "Level {level}",
+      "severity": {
+        "emergency": "Darurat",
+        "alert": "Peringatan",
+        "critical": "Kritis",
+        "error": "Galat",
+        "warning": "Peringatan",
+        "notice": "Pemberitahuan",
+        "info": "Info",
+        "debug": "Debug"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "Beberapa panel (OSD, LED) tidak tersedia untuk PX4.",
-      "betaflightFirmwareSomePanelsDiffer": "Firmware Betaflight. Beberapa panel berbeda dari ArduPilot."
+      "betaflightFirmwareSomePanelsDiffer": "Firmware Betaflight. Beberapa panel berbeda dari ArduPilot.",
+      "flightController": "Flight controller",
+      "loadingPanel": "Memuat panel…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "Data telemetri akan muncul di sini saat terhubung"
+      "telemetryDataWillAppearHere": "Data telemetri akan muncul di sini saat terhubung",
+      "channel": {
+        "altitude": "Ketinggian",
+        "speed": "Kec",
+        "battery": "Baterai",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "Jejak GPS",
       "waitingForGPSData": "Menunggu data GPS..."
     },
-    "clear": "Hapus"
+    "clear": "Hapus",
+    "severityLevel": {
+      "emergency": "DARURAT",
+      "alert": "PERINGATAN",
+      "critical": "KRITIS",
+      "error": "GALAT",
+      "warning": "PERINGATAN",
+      "notice": "PEMBERITAHUAN",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "autoScrollOn": "Gulir otomatis aktif",
+    "autoScrollOff": "Gulir otomatis nonaktif"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "Pengaturan pesawat"
+    "aircraftSetup": "Pengaturan pesawat",
+    "px4Safety": "Kegagalan & kembali"
   },
   "droneStatus": {
     "online": "Online",
@@ -1832,7 +1874,8 @@
     "battery": "Battery",
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "Ekstensi ini tidak diberi izin untuk menampilkan tab di sini."
     },
     "rebootNoFc": "No flight controller connected",
     "rebootSent": "Reboot command sent",
@@ -1842,6 +1885,9 @@
     "scrollTabsRight": "Scroll tabs right"
   },
   "vision": {
+    "coreUsageUnreachable": "Tidak ada koneksi ke node ini",
+    "stateUnknownBody": "Node ini belum melaporkan kemampuannya ke GCS ini. Hubungkan untuk melihat apakah mesin visi berjalan.",
+    "stateUnknownTitle": "Status visi tidak diketahui",
     "title": "Vision Engine",
     "subtitle": "Manage detection models and watch live detections from this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "Tambah node",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "Tambah node",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -4082,7 +4128,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "Tindakan waypoint {n}",
       "resumeFromHere": "Lanjutkan dari sini…",
-      "resumeFirstReason": "Rencana dimulai di sini; unggah seperti biasa"
+      "resumeFirstReason": "Rencana dimulai di sini; unggah seperti biasa",
+      "rtlAltitude": "Kembali pada ketinggian RTL kendaraan"
     },
     "bar": {
       "plans": "Plans",
@@ -4159,8 +4206,11 @@
         "invalidSequence": "Item misi diterima tidak berurutan. Coba unggah lagi.",
         "denied": "Flight controller sedang tidak menerima misi.",
         "cancelled": "Flight controller membatalkan unggahan.",
-        "unknown": "Flight controller menolak misi (kode {code})."
-      }
+        "unknown": "Flight controller menolak misi (kode {code}).",
+        "verifyMismatch": "Pengendali terbang menerima misi, tetapi salinan yang dibaca kembali berbeda. Unggah lagi.",
+        "verifyFailed": "Pengendali terbang menerima misi, tetapi pembacaan ulang untuk pemeriksaan gagal. Periksa tautan dan unggah lagi."
+      },
+      "fenceCrossed": "Misi melintasi pagar ini. Perbaiki misi sebelum mengirim pagar."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}: jarak bebas terrain tidak diperiksa — tidak ada elevasi home untuk ketinggian frame relatif ini",
       "terrainUnknown": "WP{wp}: terrain tidak diketahui — tidak ada sampel elevasi darat di waypoint ini, jarak bebas tidak diperiksa",
       "terrainClearanceGround": "WP{v0}: Hanya {v1}m di atas terrain (min: {v2}m). Darat: {ground}m MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}: Hanya {v1}m di atas terrain (min: {v2}m). Darat tidak diketahui"
+      "terrainClearanceGroundUnknown": "WP{v0}: Hanya {v1}m di atas terrain (min: {v2}m). Darat tidak diketahui",
+      "rtlAltitudeBelowTerrain": "Ketinggian RTL {v0}m di atas home berada {v1}m di bawah medan tertinggi pada jalur kembali (WP{v2}, {v3}m MSL)",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}: Ketinggian {v1}m di atas home melebihi batas legal {v2}m"
     }
   },
   "geofence": {
@@ -4739,7 +4791,8 @@
     "viewUnavailable": "Tampilan 3D tidak tersedia di perangkat ini",
     "switchTo2d": "Beralih ke 2D",
     "moreIssues": "+{count} lainnya",
-    "dismissWarning": "Tutup peringatan"
+    "dismissWarning": "Tutup peringatan",
+    "showPanel": "Tampilkan panel"
   },
   "history": {
     "title": "Log penerbangan",
@@ -5082,7 +5135,28 @@
       "sealed": "Tersegel",
       "verify": "Verifikasi",
       "unseal": "Buka segel",
-      "replay": "Putar ulang"
+      "replay": "Putar ulang",
+      "tabs": {
+        "overview": "Ikhtisar",
+        "map": "Peta",
+        "charts": "Grafik",
+        "events": "Peristiwa",
+        "analysis": "Analisis",
+        "notes": "Catatan",
+        "media": "Media",
+        "export": "Ekspor"
+      },
+      "flightDetail": "Detail penerbangan",
+      "showList": "Tampilkan daftar penerbangan",
+      "hideList": "Sembunyikan daftar penerbangan",
+      "signing": "Menandatangani…",
+      "signAndLock": "Tanda tangani & kunci",
+      "signFailed": "Gagal menandatangani: {error}",
+      "unsealConfirm": "Buka segel catatan ini? Perubahan berikutnya akan membatalkan tanda tangan sebelumnya. Peristiwa audit akan dicatat.",
+      "unsealedEvent": "Catatan dibuka segelnya pada {time}",
+      "verifyOk": "Tanda tangan valid: catatan tidak berubah.",
+      "verifyBad": "Tanda tangan tidak valid: catatan berubah setelah ditandatangani.",
+      "recordingStopped": "Perekaman berhenti pada {time} (penyimpanan penuh)"
     },
     "chartsTab": {
       "charts": "Grafik",
@@ -5122,7 +5196,11 @@
       "compliance": "Kepatuhan",
       "jurisdiction": "Yurisdiksi",
       "noTelemetryRecordingAttachedConnect": "Tidak ada rekaman telemetri terlampir. Hubungkan dan arm drone untuk mulai merekam.",
-      "fullFlightRecordIncludingStatsPath": "FlightRecord lengkap termasuk statistik, jalur, dan metadata."
+      "fullFlightRecordIncludingStatsPath": "FlightRecord lengkap termasuk statistik, jalur, dan metadata.",
+      "errorCount": "{count, plural, other {# kesalahan}}",
+      "warningCount": "{count, plural, other {# peringatan}}",
+      "ready": "Siap",
+      "generating": "Membuat…"
     },
     "analysisTab": {
       "healthSummary": "Ringkasan Kesehatan",
@@ -5183,7 +5261,8 @@
       "dropLogFilesHereOr": "Letakkan file log di sini, atau klik untuk menelusuri",
       "importFlightLogs": "Impor Log Penerbangan",
       "cancel": "Batal",
-      "close": "Tutup"
+      "close": "Tutup",
+      "unknownFormat": "Format tidak dikenal"
     },
     "preflightCard": {
       "noChecklistCaptured": "Tidak ada checklist yang terekam",
@@ -5342,7 +5421,8 @@
     "connect": "Hubungkan",
     "writeToFcCount": "Tulis {n} ke flight controller",
     "writingProgress": "Menulis {current}/{total}…",
-    "writeToFcHint": "Kirim parameter yang diubah ke flight controller"
+    "writeToFcHint": "Kirim parameter yang diubah ke flight controller",
+    "notPresent": "tidak ada di board ini"
   },
   "calibration": {
     "title": "Kalibrasi",
@@ -5832,7 +5912,7 @@
   "commandPalette": {
     "placeholder": "Ketik perintah...",
     "noResults": "Tidak ada hasil ditemukan",
-    "connectDrone": "Hubungkan Drone",
+    "connectDrone": "Tambah node",
     "disconnectDrone": "Putuskan Drone",
     "armVehicle": "Aktifkan Drone",
     "disarmVehicle": "Nonaktifkan Wahana",
@@ -5842,7 +5922,7 @@
     "switchTab": "Beralih ke {tab}",
     "toggleImmersive": "Alihkan Mode Imersif",
     "goToDashboard": "Ke Dasbor",
-    "goToPlan": "Ke Perencana Misi",
+    "goToPlan": "Buka Rencana",
     "goToHistory": "Buka Log penerbangan",
     "goToAnalytics": "Ke Analitik",
     "goToConfig": "Ke Konfigurasi",
@@ -5867,7 +5947,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "Pilih kendaraan untuk mencari parameternya"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6313,7 +6394,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "Atur kios HDMI yang ditampilkan node ini di panel berkabel: halaman yang dimuat dan kalibrasi sentuh.",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -7028,15 +7109,15 @@
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
-    "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
+    "pageBlurb": "Ekstensi dipasang per node, dari tab Agent → Extensions milik node itu. Halaman ini adalah ringkasan hanya-baca dari yang terpasang di armada, plus penjelajah registri.",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
-    "emptyTitle": "No extensions installed yet.",
-    "emptyBlurb": "Drag a .adosplug file or pick one to install.",
+    "emptyTitle": "Belum ada yang terpasang di node mana pun.",
+    "emptyBlurb": "Jelajahi registri di bawah, lalu pasang dari tab Extensions milik node.",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -8231,7 +8312,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "PX4 mengonfigurasi driver CAN-nya dengan UAVCAN_* di Parameter. Pengaturan bus di sini mengubah parameter CAN ArduPilot dan tidak ditampilkan pada board ini."
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8289,6 +8371,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "Node ini tidak dapat dijangkau dari GCS ini",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8526,8 +8609,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "Gamepad: tahan Cross. Keyboard: tahan Enter.",
     "plugin": {
       "confirm": {
+        "titleNamed": "Aktifkan {skill} di {drone}",
         "title": "Activate skill",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8657,6 +8742,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "Kemampuan tidak dilaporkan",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9266,11 +9352,11 @@
       "open-cockpit": "Open cockpit",
       "configure": "Configure",
       "view-logs": "View logs",
-      "unpair": "Unpair"
+      "unpair": "Lepas pasangan"
     },
     "unpair": {
-      "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "title": "Lepas pasangan node",
+      "message": "Lepas pasangan {name}? Pemasangannya dilepas dan node hilang dari armada sampai dipasangkan lagi."
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9336,6 +9422,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "Node tidak terjangkau",
+      "message": "{name} tidak dapat melepas pemasangannya, jadi masih terpasang. Lupakan hanya di GCS ini? Node menyimpan pemasangan lama sampai direset.",
+      "forgetHere": "Lupakan hanya di GCS ini"
     }
   },
   "rcElrsLink": {
@@ -9465,7 +9556,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "Versi {version}",
+    "thirdPartyNotices": "Lisensi pihak ketiga"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "Frame",
         "rc_tx": "TX RC"
       }
-    }
+    },
+    "pageTitle": "Operator & Pesawat",
+    "pageBlurb": "Registri pilot, organisasi, asuransi, pesawat, baterai, dan peralatan. Dipakai untuk ekspor kepatuhan dan snapshot pilot, pesawat, dan muatan per penerbangan."
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "Tutup tanpa menyalin",
       "copyAgain": "Salin lagi",
       "tryAgain": "Coba lagi",
-      "iClearedIt": "Sudah saya kosongkan"
+      "iClearedIt": "Sudah saya kosongkan",
+      "typeToContinue": "Ketik <word>EXPORT</word> untuk melanjutkan."
     },
     "framePanel": {
       "frameConfiguration": "Konfigurasi Frame",
@@ -10591,7 +10687,15 @@
       "type": "Tipe:",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "Tidak dipakai oleh kelas rangka ini",
+      "unknown": "Tidak diketahui",
+      "typeUnrecognised": "Tidak dikenali (pada kendaraan ini)",
+      "typeUnknownNote": "Kendaraan ini melaporkan {param} = {value}, yang tata letak motornya tidak ada di build ini. Nilai ditampilkan apa adanya dan TIDAK diubah; pilih jenis yang tercantum hanya jika ingin mengonfigurasi ulang rangka.",
+      "selectClassForLayout": "Pilih kelas rangka untuk melihat tata letak motor.",
+      "noLayoutForType": "Tidak ada tata letak motor untuk {cls} jenis {type}.",
+      "noLayoutForClass": "Tidak ada diagram tata letak motor untuk {cls}.",
+      "classStillSent": "{description}. {param} tetap dikirim ke flight controller."
     },
     "sensorsPanel": {
       "sensors": "Sensor",
@@ -10652,7 +10756,11 @@
       "patternPreview": "Pratinjau Pola",
       "visualRepresentationOfLEDStrip": "Representasi visual strip LED",
       "betaflightLEDStripUsesPacked": "LED strip Betaflight menggunakan bitmask posisi/fungsi/warna terpaket yang paling baik dikonfigurasi melalui CLI.",
-      "useThe": "Gunakan"
+      "useThe": "Gunakan",
+      "useLedCommand": "Gunakan perintah <cmd>led</cmd> di panel Konsol FC untuk mengatur penetapan strip LED.",
+      "ledCmdShow": "Tampilkan konfigurasi strip LED saat ini",
+      "ledCmdExample": "Contoh: atur LED 0",
+      "colorCmd": "Tampilkan/atur warna LED"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "Profil Mixer",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "Kalibrasi ESC disimpan",
       "compassmotMotorInterference": "CompassMot (Interferensi Motor)",
       "measuresMagneticInterferenceFromMotors": "Mengukur interferensi magnetik dari motor/ESC pada berbagai tingkat throttle. Mengompensasi pembacaan kompas.",
-      "compassmotCalibrationSaved": "Kalibrasi CompassMot disimpan"
+      "compassmotCalibrationSaved": "Kalibrasi CompassMot disimpan",
+      "escAck": "Semua baling-baling sudah dilepas",
+      "compassmotAck": "Kendaraan sudah diamankan dan area sekitarnya kosong",
+      "escTip1": "PENTING: Lepas SEMUA baling-baling sebelum mulai",
+      "escTip2": "Cabut baterai sebelum memulai urutan",
+      "escTip3": "Beberapa ESC memerlukan kalibrasi ini saat pertama dipakai",
+      "escTip4": "ESC BLHeli/SimonK: gunakan alat kalibrasinya sendiri",
+      "escTip5": "Ini berjalan sebagai throttle passthrough saat reboot dan tidak melaporkan selesai lewat MAVLink. Ikuti bunyi ESC; wizard berakhir karena batas waktu itu wajar.",
+      "compassmotTip1": "Pastikan GPS sudah fix 3D sebelum mulai",
+      "compassmotTip2": "Kendaraan harus di area terbuka jauh dari logam",
+      "compassmotTip3": "Baling-baling TERPASANG: motor AKAN berputar",
+      "compassmotTip4": "Interferensi < 30% dapat diterima, < 15% bagus"
     },
     "telRadioPanel": {
       "telemetryRadio": "Radio Telemetri",
@@ -10705,7 +10824,13 @@
       "protocol": "Protokol",
       "baudRate": "Baud Rate",
       "systemIdentification": "Identifikasi Sistem",
-      "mavlinkSystemAndGCSIDs": "ID sistem MAVLink dan GCS untuk penyiapan multi-wahana"
+      "mavlinkSystemAndGCSIDs": "ID sistem MAVLink dan GCS untuk penyiapan multi-wahana",
+      "notPresent": "tidak ada",
+      "noRadioTelemetry": "Tidak ada telemetri radio langsung: RADIO_STATUS tidak diterima baru-baru ini",
+      "px4BaudUnderPorts": "PX4 mengatur baud rate port telemetri di Port (SER_TEL1_BAUD, SER_TEL2_BAUD). Halaman ini tidak menulis apa pun ke flight controller.",
+      "vehicleSystemId": "ID sistem kendaraan",
+      "gcsSystemId": "ID sistem GCS",
+      "uniqueSysidHint": "Setiap kendaraan pada tautan yang sama memerlukan SYSID_THISMAV unik. ID GCS bawaan adalah 255."
     },
     "signingEnabledSection": {
       "signingEnabled": "Penandatanganan aktif",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "Throttle utama",
       "motorsWillSpinWhenTested": "Motor akan berputar saat diuji. Tidak melepas baling-baling dapat menyebabkan cedera atau kerusakan.",
       "enableMotorTest": "Aktifkan Uji Motor",
-      "stopAllMotors": "Hentikan Semua Motor"
+      "stopAllMotors": "Hentikan Semua Motor",
+      "removePropellers": "LEPAS SEMUA BALING-BALING SEBELUM PENGUJIAN",
+      "motorN": "Motor {n}",
+      "motorThrottleN": "Throttle motor {n}",
+      "setPct": "atur {pct}%",
+      "mixed": "campuran"
     },
     "iNavMissionPanel": {
       "inavMission": "Misi iNav",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "Ganti rencana saat ini?",
       "replacePlan": "Ganti rencana",
       "noMissionLoadedOpenThe": "Belum ada misi yang dimuat. Buka tab Rencana untuk membuatnya.",
-      "openMissionPlanner": "Buka Perencana Misi"
+      "openMissionPlanner": "Buka Perencana Misi",
+      "waypointActionsTitle": "Aksi waypoint iNav",
+      "waypointActionsBody": "iNav mendukung delapan jenis aksi waypoint. Di tab Plan, pilih Waypoint, Poshold (tanpa batas atau berwaktu), RTH, atau Land sebagai aksi, lalu tambahkan Set POI, Jump, atau Set heading dari daftar aksi waypoint."
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "Saya konfirmasi semua baling-baling telah dilepas",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "Mengganti airframe memerlukan reboot. Semua parameter akan direset ke default airframe.",
       "searchAirframes": "Cari airframe...",
       "noAirframesMatchYourSearch": "Tidak ada airframe yang cocok dengan pencarian Anda.",
-      "customAirframeID": "ID Airframe Kustom"
+      "customAirframeID": "ID Airframe Kustom",
+      "custom": "Kustom ({id})",
+      "allCategories": "Semua kategori",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "Coba lagi",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "Saya konfirmasi semua baling-baling telah dilepas",
       "disarmToTestActuators": "Disarm untuk menguji aktuator.",
       "output": "Output",
-      "stop": "Berhenti"
+      "stop": "Berhenti",
+      "removePropellers": "LEPAS SEMUA BALING-BALING SEBELUM PENGUJIAN",
+      "testExplain": "Motor terpilih berputar (atau servo bergerak) pada nilai pilihan selama {seconds} dtk, lalu FC memulihkannya. FC menolak uji saat armed.",
+      "throttle": "Throttle",
+      "position": "Posisi",
+      "runSeconds": "Jalankan {seconds} dtk"
     },
     "px4PowerSections": {
       "batterySettings": "Pengaturan Baterai",
@@ -11134,19 +11274,31 @@
       "pidTuning": "Penyetelan PID",
       "presetProfiles": "Profil Preset",
       "filterSettings": "Pengaturan Filter",
-      "insGyroAccelLowPass": "Filter low-pass gyro/accel INS dan filter notch harmonik"
+      "insGyroAccelLowPass": "Filter low-pass gyro/accel INS dan filter notch harmonik",
+      "subtitleCopter": "PID laju ArduCopter — roll, pitch, yaw",
+      "subtitleCopterPx4": "PID laju multikopter PX4 (MC_*) — roll, pitch, yaw. Laju sayap tetap VTOL ada di Penyetelan Sayap Tetap.",
+      "subtitleRover": "PID laju kemudi dan kecepatan/throttle ArduRover",
+      "subtitleRoverPx4": "PID laju kemudi dan kecepatan rover PX4",
+      "subtitlePlane": "Gain PID servo ArduPlane — roll, pitch, yaw",
+      "subtitlePlanePx4": "PID laju sayap tetap PX4 (FW_*) — roll, pitch, yaw. Penyetelan sikap dan kecepatan ada di Penyetelan Sayap Tetap."
     },
     "outputsPanel": {
       "servoMotorOutputs": "Output Servo / Motor",
       "connectToADroneTo": "Hubungkan ke drone untuk mengonfigurasi output.",
       "outputFunctionAssignmentPWMLimits": "Penetapan fungsi output, batas PWM, dan uji motor",
-      "save": "Simpan"
+      "save": "Simpan",
+      "unsaved": "BELUM DISIMPAN"
     },
     "motorTestSection": {
       "motorTest": "Uji Motor",
       "enableMotorTestSafetyMaster": "Aktifkan uji motor (pengaman utama)",
       "motor": "Motor",
-      "removePropellersBeforeTestingMotors": "Lepas baling-baling sebelum menguji motor. Pastikan drone terpasang aman."
+      "removePropellersBeforeTestingMotors": "Lepas baling-baling sebelum menguji motor. Pastikan drone terpasang aman.",
+      "throttleLabel": "Throttle: {value}% (maks {max}%)",
+      "durationLabel": "Durasi: {value} dtk",
+      "testMotorN": "Uji motor {n}",
+      "motorN": "Motor {n}",
+      "stop": "Hentikan"
     },
     "navConfigPanel": {
       "navigationConfig": "Konfigurasi Navigasi",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "Laju Stream Telemetri",
       "perPortMAVLinkMessageGroup": "Laju grup pesan MAVLink per port (Hz)",
       "mavlinkChannel": "Kanal MAVLink",
-      "gcsManagesTelemetryRatesOn": "GCS mengelola rate telemetri. Saat terhubung, pemulihan tautan, dan reboot flight controller, GCS ini meminta rate-nya sendiri pada kanal yang digunakan untuk terhubung. Matikan agar rate yang diatur di sini, atau oleh router agen, tidak diubah."
+      "gcsManagesTelemetryRatesOn": "GCS mengelola rate telemetri. Saat terhubung, pemulihan tautan, dan reboot flight controller, GCS ini meminta rate-nya sendiri pada kanal yang digunakan untuk terhubung. Matikan agar rate yang diatur di sini, atau oleh router agen, tidak diubah.",
+      "notPresent": "tidak ada"
     },
     "signingHistorySection": {
       "history": "Riwayat",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "Pratinjau OSD",
-      "liveReconstructionOfTheOSD": "Rekonstruksi langsung OSD yang digambar flight controller (MSP DisplayPort). Frame hanya diterima jika FC dikonfigurasi untuk mengeluarkan OSD melalui MSP DisplayPort pada koneksi ini (pengaturan goggle HD / DJI). Glyph font kustom ditampilkan sebagai titik; kolom teks dan angka ditampilkan sesuai yang dikirim."
+      "liveReconstructionOfTheOSD": "Rekonstruksi langsung OSD yang digambar flight controller (MSP DisplayPort). Frame hanya diterima jika FC dikonfigurasi untuk mengeluarkan OSD melalui MSP DisplayPort pada koneksi ini (pengaturan goggle HD / DJI). Glyph font kustom ditampilkan sebagai titik; kolom teks dan angka ditampilkan sesuai yang dikirim.",
+      "noFramesYet": "belum ada frame OSD"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "Sensor Suhu",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "Mode Terbang",
-      "read": "Baca"
+      "read": "Baca",
+      "unsavedCount": "{count} belum disimpan",
+      "save": "Simpan",
+      "saveCount": "Simpan ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "Alat Flash"
+      "flashTool": "Alat Flash",
+      "subtitle": "Flash firmware melalui USB DFU atau bootloader serial"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "Perlu Reboot"
+      "rebootRequired": "Perlu Reboot",
+      "applyHint": "{label}. Mulai ulang flight controller untuk menerapkan."
     },
     "pwmRangeSlider": {
       "rangeStart": "Awal rentang",
@@ -11471,7 +11630,9 @@
       "loadParamFile": "Muat File .param",
       "selectAll": "Pilih Semua",
       "selectNone": "Batalkan Semua Pilihan",
-      "noParametersMatchTheCurrent": "Tidak ada parameter yang cocok dengan filter saat ini."
+      "noParametersMatchTheCurrent": "Tidak ada parameter yang cocok dengan filter saat ini.",
+      "applyN": "Terapkan {count} parameter",
+      "selectedOf": "{selected} dari {total} parameter terpilih"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Konfirmasi Penulisan Parameter",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "Kumpulan ini mencakup parameter keselamatan penerbangan. Tinjau dengan cermat sebelum menulis.",
       "flightSafety": "Keselamatan penerbangan",
       "iUnderstandThisChangeAffects": "Saya memahami perubahan ini memengaruhi keselamatan penerbangan",
-      "cancel": "Batal"
+      "cancel": "Batal",
+      "willBeWritten": "{count} parameter akan ditulis ke flight controller.",
+      "writeN": "Tulis {count} parameter",
+      "outOfRange": "Di luar rentang yang diizinkan ({min} .. {max})",
+      "outOfRangeBlocked": "Perbaiki nilai di luar rentang sebelum menulis."
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "Perubahan Parameter Belum Disimpan",
@@ -11517,7 +11682,9 @@
       "link": "Link",
       "verified": "Terverifikasi",
       "failed": "Gagal",
-      "unsigned": "Tidak ditandatangani"
+      "unsigned": "Tidak ditandatangani",
+      "primary": "utama",
+      "requireSignedBody": "Wajibkan telemetri bertanda tangan. Selama kunci dimuat, setiap frame tanpa tanda tangan atau gagal verifikasi dibuang. Kendaraan yang tidak menandatangani balasannya akan diam."
     },
     "servoMixerTable": {
       "targetCh": "Ch target",
@@ -11553,7 +11720,9 @@
       "programmingJS": "Pemrograman (JS)",
       "writeExpressionsAndCompileThem": "Tulis ekspresi dan kompilasi menjadi Logic Conditions. Pemuatan menempatkannya di slot yang masih kosong pada flight controller, tanpa mengubah kondisi yang sudah digunakan; tinjau di editor Logic Conditions dan tulis ke FC dari sana.",
       "compile": "Kompilasi",
-      "loadIntoLogicConditions": "Muat ke Logic Conditions"
+      "loadIntoLogicConditions": "Muat ke Logic Conditions",
+      "compilesToLogicConditions": "dikompilasi ke Logic Conditions",
+      "operation": "operasi"
     },
     "customOsdElementsPanel": {
       "customOSD": "OSD Kustom",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "Arah pendaratan 1 (derajat, 0 = mati)",
       "landHeading2Deg0": "Arah pendaratan 2 (derajat, 0 = mati)",
       "altitudeReference": "Referensi ketinggian",
-      "thisPanelAppliesToFixed": "Panel ini berlaku untuk platform fixed-wing dan tricopter. Flight controller yang terhubung dikonfigurasi sebagai multirotor."
+      "thisPanelAppliesToFixed": "Panel ini berlaku untuk platform fixed-wing dan tricopter. Flight controller yang terhubung dikonfigurasi sebagai multirotor.",
+      "unsaved": "belum disimpan",
+      "approachN": "Pendekatan {n}",
+      "save": "Simpan",
+      "saving": "Menyimpan…",
+      "seaLevel": "Permukaan laut",
+      "relativeToHome": "Relatif terhadap home"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "Grafik Sensor",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "Pemeriksaan Kompas Pra-terbang",
       "enabled": "Aktif",
-      "fix": "Fix"
+      "fix": "Fix",
+      "loading": "Memuat…",
+      "unavailable": "Tidak tersedia",
+      "disabledHint": "Nonaktif — aktifkan COMPASS_USE dulu",
+      "none": "Tidak ada",
+      "lenient": "Longgar",
+      "recommendLenient": "{value} — disarankan 3 untuk deteksi orientasi longgar",
+      "lowLimit": "batas rendah",
+      "increaseTo": "Naikkan ke {value}",
+      "unknownValue": "Tidak dikenal ({value})",
+      "extInternal": "Internal",
+      "extExternal": "Eksternal",
+      "extForced": "Eksternal paksa",
+      "learnOff": "Mati",
+      "learnInternal": "Internal",
+      "learnEkf": "EKF",
+      "learnInFlight": "Saat terbang",
+      "unknown": "Tidak dikenal",
+      "notChanged": "{name} tidak diubah: {reason}",
+      "noReply": "tidak ada balasan dari flight controller",
+      "setTo": "{name} diatur ke {value}"
     },
     "pidAnalysisSummary": {
       "tuneScore": "Skor Tuning",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "Penentuan Posisi Non-GPS",
       "ekf3SourceSetsAndExternal": "Set sumber EKF3 dan backend navigasi eksternal / beacon",
       "externalNavigationVISO": "Navigasi Eksternal (VISO)",
-      "beaconBCN": "Beacon (BCN)"
+      "beaconBCN": "Beacon (BCN)",
+      "sourceSet": "Set sumber {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "Helikopter",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "Grid",
       "live": "Langsung",
-      "dragElementsToRepositionClick": "Seret elemen untuk memindahkan. Klik elemen di sidebar untuk menampilkan/menyembunyikan."
+      "dragElementsToRepositionClick": "Seret elemen untuk memindahkan. Klik elemen di sidebar untuk menampilkan/menyembunyikan.",
+      "osdPreview": "PRATINJAU OSD"
     },
     "keyAgeNudge": {
       "rotateNow": "Rotasi sekarang",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "Cadangkan Parameter",
-      "restoreParameters": "Pulihkan Parameter"
+      "restoreParameters": "Pulihkan Parameter",
+      "downloading": "Mengunduh parameter…",
+      "backedUp": "{count} parameter dicadangkan",
+      "backupFailed": "Pencadangan gagal: {error}",
+      "unknownError": "Galat tidak dikenal",
+      "flashing": "Mem-flash…",
+      "flashFirmware": "Flash Firmware",
+      "restored": "Parameter dipulihkan"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "Default receiver"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "Tutup"
+    },
+    "bfFailsafe": {
+      "title": "Failsafe",
+      "subtitle": "Tindakan pesawat saat link radio hilang",
+      "stage2": "Failsafe tahap 2",
+      "procedure": "Prosedur (0 jatuh, 1 mendarat, 2 penyelamatan GPS)",
+      "delay": "Waktu jaga (0,1 dtk)",
+      "offDelay": "Jeda motor mati (0,1 dtk)",
+      "throttle": "Throttle pendaratan (µs)",
+      "throttleLowDelay": "Jeda throttle rendah (0,1 dtk)",
+      "switchMode": "Sakelar failsafe (0 tahap 1, 1 matikan, 2 tahap 2)"
+    },
+    "px4Safety": {
+      "title": "Detektor kegagalan dan kembali",
+      "subtitle": "Batas sikap yang memicu kegagalan, dan jalur kembali. Circuit breaker tetap di Parameter.",
+      "failureDetector": "Detektor kegagalan",
+      "maxPitch": "Pitch maks (°)",
+      "maxRoll": "Roll maks (°)",
+      "pitchTrigger": "Waktu pemicu pitch (dtk)",
+      "rollTrigger": "Waktu pemicu roll (dtk)",
+      "returnToLaunch": "Kembali ke titik lepas landas",
+      "rtlType": "Jenis kembali",
+      "returnAlt": "Ketinggian kembali (m)",
+      "descendAlt": "Ketinggian turun (m)",
+      "landDelay": "Melayang sebelum mendarat (dtk, -1 = tidak mendarat)",
+      "coneAngle": "Setengah sudut kerucut kembali"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "Gerakkan ke kontrol",
       "stickMode": "Mode stik",
       "none": "Tidak ada",
-      "close": "Tutup"
+      "close": "Tutup",
+      "saved": "Tersimpan",
+      "imported": "Diimpor. Simpan untuk mempertahankannya.",
+      "resetPending": "Bawaan ADOS dimuat. Simpan untuk mempertahankan atau Batal untuk kembali.",
+      "cancel": "Batal",
+      "tourReplayDone": "Tur kontroler akan diputar saat Anda membuka Penerbangan berikutnya."
     },
     "rpcTraceTable": {
       "node": "Node",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "Selesai (stik dilepas)",
-      "start": "Mulai"
+      "start": "Mulai",
+      "noControllerGranted": "Tidak ada kontroler yang diizinkan"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "Jadikan utama",
       "noPairedBluetoothDevices": "Tidak ada perangkat Bluetooth yang dipasangkan.",
       "forget": "Lupakan",
-      "calibrateAndTuneControllersConnected": "Kalibrasi dan setel kontroler yang terhubung langsung ke browser ini melalui Web Gamepad API."
+      "calibrateAndTuneControllersConnected": "Kalibrasi dan setel kontroler yang terhubung langsung ke browser ini melalui Web Gamepad API.",
+      "typeUnknown": "Tidak dikenal",
+      "kindJoystick": "Joystick",
+      "kindWheel": "Setir",
+      "kindGamepad": "Gamepad",
+      "forgetTitle": "Lupakan {name}?",
+      "forgetMessage": "Stasiun darat akan memutus pasangannya. Anda perlu memasangkannya lagi untuk memakainya.",
+      "forgotDevice": "{name} dilupakan",
+      "forgetFailed": "Tidak dapat melupakan {name}"
     },
     "community": {
       "communityNavigation": "Navigasi komunitas",

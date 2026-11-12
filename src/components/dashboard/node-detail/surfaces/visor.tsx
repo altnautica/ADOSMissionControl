@@ -56,7 +56,7 @@ export const VISOR_SURFACES: SurfaceSpec[] = [
     id: "logs",
     labelKey: "dronePanel.logs",
     render: (ctx) => (
-      <LogsTab droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} showFlights={false} />
+      <LogsTab droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} showFlights={false} directReach={ctx.agentDeviceId !== null} />
     ),
   },
   AGENT_SURFACE,

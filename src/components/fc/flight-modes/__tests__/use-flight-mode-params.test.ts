@@ -14,6 +14,8 @@ import { ArduCopterHandler, ArduRoverHandler } from "@/lib/protocol/firmware/ard
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { FirmwareHandler } from "@/lib/protocol/types/firmware";
+import { useDroneStore } from "@/stores/drone-store";
+import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
 
 function fakeProtocol() {
   const getParameter = vi.fn(async (name: string) => ({
@@ -67,5 +69,24 @@ describe("useFlightModeParams · mode-switch parameter names", () => {
     expect(read).toContain("FLTMODE_CH");
     expect(read).toContain("FLTMODE1");
     expect(read).not.toContain("MODE_CH");
+  });
+});
+
+describe("useFlightModeParams · armed guard", () => {
+  it("asks before writing to an armed vehicle and writes nothing on cancel", async () => {
+    const { result, setParameter } = await load(new ArduCopterHandler(), true);
+    useDroneStore.setState({ armState: "armed", connectionState: "connected" });
+    act(() => result.current.updateGlobal({ modeChannel: "7" }));
+    let pending!: Promise<void>;
+    act(() => {
+      pending = result.current.saveParams();
+    });
+    await vi.waitFor(() => expect(useArmedConfirmStore.getState().open).toBe(true));
+    await act(async () => {
+      useArmedConfirmStore.getState().cancel();
+      await pending;
+    });
+    expect(setParameter).not.toHaveBeenCalled();
+    useDroneStore.setState({ armState: "disarmed", connectionState: "disconnected" });
   });
 });

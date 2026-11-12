@@ -14,6 +14,7 @@
 
 import { AgentClient } from "@/lib/agent/client";
 import type { PairedDrone } from "@/stores/pairing-store";
+import { isDemoMode } from "@/lib/utils";
 
 export type AgentTheme = "dark" | "light";
 
@@ -56,6 +57,9 @@ export async function pushThemeToAllAgents(
     clientFactory?: (baseUrl: string, apiKey: string | null) => AgentClient;
   },
 ): Promise<ThemeSyncResult> {
+  // Demo nodes are simulated; a real HTTP push to them can only fail and
+  // ended onboarding on a "could not reach" warning.
+  if (isDemoMode()) return { attempted: 0, succeeded: 0, failures: new Map() };
   const factory = options?.clientFactory
     ?? ((baseUrl, apiKey) => new AgentClient(baseUrl, apiKey));
 

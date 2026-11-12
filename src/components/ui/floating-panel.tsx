@@ -39,13 +39,18 @@ interface FloatingPanelProps {
   layer?: MapOverlayLayer;
   /** Apply the default `p-2` padding (default true). */
   padded?: boolean;
+  /**
+   * Lay out in the parent's flow (`relative`) instead of absolutely, for a
+   * panel placed inside a dock that arranges several overlays.
+   */
+  docked?: boolean;
   className?: string;
   style?: CSSProperties;
 }
 
 export const FloatingPanel = forwardRef<HTMLDivElement, FloatingPanelProps>(
   function FloatingPanel(
-    { children, corner, layer = "panel", padded = true, className, style },
+    { children, corner, layer = "panel", padded = true, docked = false, className, style },
     ref,
   ) {
     return (
@@ -53,8 +58,9 @@ export const FloatingPanel = forwardRef<HTMLDivElement, FloatingPanelProps>(
         ref={ref}
         style={{ zIndex: MAP_OVERLAY_Z[layer], ...style }}
         className={cn(
-          "absolute rounded-xl border border-border-default bg-bg-primary/80 backdrop-blur-md shadow-lg",
-          corner && CORNER_CLASS[corner],
+          docked ? "relative" : "absolute",
+          "rounded-xl border border-border-default bg-bg-primary/80 backdrop-blur-md shadow-lg",
+          !docked && corner && CORNER_CLASS[corner],
           padded && "p-2",
           className,
         )}

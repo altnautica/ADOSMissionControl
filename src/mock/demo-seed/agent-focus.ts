@@ -14,6 +14,7 @@ import {
   getMockCapabilities,
   getMockGroundStationCapabilities,
   getMockVisorCapabilities,
+  getMockWorkstationCapabilities,
   type MockPerceptionOverride,
 } from "@/mock/agent/capabilities";
 import { VISION_OFF_DEMO_DRONE } from "@/mock/mock-detections";
@@ -96,6 +97,10 @@ export function seedFocusedCapabilities(): void {
   }
   if (agent.profile === "visor") {
     useAgentCapabilitiesStore.getState().setCapabilities(getMockVisorCapabilities(), devId);
+    return;
+  }
+  if (agent.profile === "workstation") {
+    useAgentCapabilitiesStore.getState().setCapabilities(getMockWorkstationCapabilities(), devId);
     return;
   }
   const perception = demoPerceptionFor(agent);

@@ -121,25 +121,6 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "MAV2_PARAMS", value: 10, type: 9 },
   { name: "MAV2_ADSB", value: 0, type: 9 },
 
-  // ── QuadPlane / VTOL (Q_*) ────────────────────────────
-  { name: "Q_ENABLE", value: 1, type: 9 },
-  { name: "Q_FRAME_CLASS", value: 1, type: 9 },
-  { name: "Q_FRAME_TYPE", value: 1, type: 9 },
-  { name: "Q_TRANSITION_MS", value: 5000, type: 9 },
-  { name: "Q_TRANS_DECEL", value: 2, type: 9 },
-  { name: "Q_ASSIST_SPEED", value: 8, type: 9 },
-  { name: "Q_ASSIST_ANGLE", value: 30, type: 9 },
-  { name: "Q_ASSIST_ALT", value: 0, type: 9 },
-  { name: "Q_TILT_MASK", value: 0, type: 9 },
-  { name: "Q_TILT_TYPE", value: 0, type: 9 },
-  { name: "Q_TILT_MAX", value: 45, type: 9 },
-  { name: "Q_TILT_RATE_UP", value: 40, type: 9 },
-  { name: "Q_TILT_RATE_DN", value: 0, type: 9 },
-  { name: "Q_TAILSIT_ENABLE", value: 0, type: 9 },
-  { name: "Q_TAILSIT_ANGLE", value: 45, type: 9 },
-  { name: "Q_TAILSIT_INPUT", value: 0, type: 9 },
-  { name: "Q_TAILSIT_MOTMX", value: 0, type: 9 },
-
   // ── TECS energy control + L1 navigation (fixed-wing) ──
   { name: "TECS_CLMB_MAX", value: 5, type: 9 },
   { name: "TECS_SINK_MIN", value: 2, type: 9 },
@@ -1019,6 +1000,16 @@ export const QUADPLANE_MOCK_PARAMS: MockParam[] = [
   { name: "Q_TRANSITION_MS", value: 5000, type: 9 },
   { name: "Q_TAILSIT_ENABLE", value: 0, type: 9 },
   { name: "Q_TILT_ENABLE", value: 0, type: 9 },
+  { name: "Q_TRANS_DECEL", value: 2, type: 9 },
+  { name: "Q_ASSIST_ALT", value: 0, type: 9 },
+  { name: "Q_TILT_MASK", value: 0, type: 9 },
+  { name: "Q_TILT_TYPE", value: 0, type: 9 },
+  { name: "Q_TILT_MAX", value: 45, type: 9 },
+  { name: "Q_TILT_RATE_UP", value: 40, type: 9 },
+  { name: "Q_TILT_RATE_DN", value: 0, type: 9 },
+  { name: "Q_TAILSIT_ANGLE", value: 45, type: 9 },
+  { name: "Q_TAILSIT_INPUT", value: 0, type: 9 },
+  { name: "Q_TAILSIT_MOTMX", value: 0, type: 9 },
   // Lift motors on outputs 5-8
   { name: "SERVO5_FUNCTION", value: 33, type: 9 },  // Motor1
   { name: "SERVO6_FUNCTION", value: 34, type: 9 },  // Motor2
@@ -1075,6 +1066,8 @@ export const ROVER_MOCK_PARAMS: MockParam[] = [
   { name: "SERVO3_MIN", value: 1000, type: 9 },
   { name: "SERVO3_MAX", value: 2000, type: 9 },
   { name: "SERVO3_TRIM", value: 1500, type: 9 },
+  { name: "SERVO1_REVERSED", value: 0, type: 9 },
+  { name: "SERVO3_REVERSED", value: 0, type: 9 },
   // Speed / navigation
   { name: "CRUISE_SPEED", value: 3, type: 9 },
   { name: "CRUISE_THROTTLE", value: 40, type: 9 },

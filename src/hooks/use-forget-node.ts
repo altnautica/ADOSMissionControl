@@ -32,6 +32,8 @@ import {
 export interface UseForgetNodeOptions {
   /** Convex doc id for the cloud row, when this node is cloud-paired. */
   convexId?: string | null;
+  /** Forget on this GCS only, without asking the node to release its pairing. */
+  localOnly?: boolean;
 }
 
 /**
@@ -39,7 +41,8 @@ export interface UseForgetNodeOptions {
  * hand over the node id (and its Convex doc id when cloud-paired) and every
  * presence source — including the cloud row — is cleared. A cloud row that
  * could not be removed leaves the node paired; this hook reports that as an
- * error toast, and the resolved result lets a caller confirm success.
+ * error toast. An unreachable node (`agentUnreachable`) is not toasted: the
+ * caller offers "forget on this GCS only" (see `useUnpairNode`).
  */
 export function useForgetNode(): (
   nodeId: string,
@@ -60,8 +63,9 @@ export function useForgetNode(): (
         unpairMutation: convexAvailable
           ? (unpairDroneMutation as UnpairDroneMutation)
           : null,
+        localOnly: options.localOnly,
       });
-      if (!result.ok) {
+      if (!result.ok && result.reason !== "agentUnreachable") {
         toast(
           result.reason === "cloudUnavailable"
             ? t("forgetCloudUnavailable")

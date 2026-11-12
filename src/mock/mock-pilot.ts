@@ -45,6 +45,9 @@ export interface DemoPilotHandle {
   frames: () => { at: number; frame: PilotOutboundFrame }[];
   /** A plugin state report, as the agent's plugin event stream delivers it. */
   skillState: (topic: string, state: "active" | "idle" | "disabled") => void;
+  /** Stop (true) or resume (false) the pilot frames while the stream stays
+   * open, so the last frame ages past the stale boundary. */
+  freeze: (on: boolean) => void;
 }
 
 declare global {
@@ -71,6 +74,8 @@ export class MockPilot {
   private driver = new DemoVehicleDriver();
   private lastInputAt = 0;
   private log: { at: number; frame: PilotOutboundFrame }[] = [];
+  /** Pilot frames held back by the demo `freeze` handle. */
+  private framesFrozen = false;
 
   start(droneId: string): void {
     this.stop();
@@ -78,6 +83,7 @@ export class MockPilot {
     this.wire = this.freshWire();
     this.pins.clear();
     this.lastInputAt = 0;
+    this.framesFrozen = false;
     const device = deviceIdFromNodeId(droneId) ?? droneId;
     const cfg = DEMO_DRONES.find((d) => d.id === device);
     this.driver.reset(cfg ? { lat: cfg.homeLat, lon: cfg.homeLon } : null);
@@ -91,6 +97,10 @@ export class MockPilot {
         pin: (f) => this.pin(f),
         // Browser checks of the stick stream rate, axes and release.
         frames: () => this.log.slice(),
+        freeze: (on) => {
+          this.framesFrozen = on;
+          if (!on) this.publish();
+        },
         // Demo scenarios: an active skill whose reports stop.
         skillState: (topic, state) => {
           if (!this.droneId) return;
@@ -269,7 +279,7 @@ export class MockPilot {
 
   private publish(): void {
     const droneId = this.droneId;
-    if (!droneId || demoTelemetryFrozen()) return;
+    if (!droneId || demoTelemetryFrozen() || this.framesFrozen) return;
     const data = this.snapshot();
     handlePilotServerFrame(droneId, { kind: "pilot", data });
     // The nav stream carries the pilot kind too; while it is blocked the

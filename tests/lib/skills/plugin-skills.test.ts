@@ -236,13 +236,13 @@ describe("plugin skill confirm floor", () => {
     const confirm = vi.fn(async (_policy: ConfirmPolicy) => true);
     await activate(skill.id, { ...buildSkillContext("drone-1"), confirm });
     expect(confirm).toHaveBeenCalledTimes(1);
-    expect(confirm.mock.calls[0][0].title).toBe("skills.plugin.confirm.title");
+    expect(confirm.mock.calls[0][0].title).toBe("skills.plugin.confirm.titleNamed");
   });
 
   it("treats an unknown arm state as possibly armed", () => {
     const skill = buildPluginSkill(contribution({ confirm: false }));
     const ctx: SkillContext = { ...buildSkillContext("drone-1"), armState: "unknown" };
-    expect(skill.confirmFor?.(undefined, ctx)?.title).toBe("skills.plugin.confirm.title");
+    expect(skill.confirmFor?.(undefined, ctx)?.title).toBe("skills.plugin.confirm.titleNamed");
   });
 
   it("opens no sheet on a disarmed vehicle when the manifest says confirm:false", async () => {

@@ -18,6 +18,8 @@ export interface PaletteCommand {
   label: string;
   category: string;
   icon?: ReactNode;
+  /** Second line under the label (for example a parameter's name and units). */
+  detail?: string;
   action: () => void;
 }
 

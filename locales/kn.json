@@ -283,6 +283,8 @@
       "unknown": "ಏಜೆಂಟ್ ನೋಡ್"
     },
     "hero": {
+      "subjectAgent": "ಏಜೆಂಟ್",
+      "subjectFc": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "ಎಚ್ಚರಿಕೆಗಳನ್ನು ಅನ್‌ಮ್ಯೂಟ್ ಮಾಡಿ",
       "resetPersonalization": "ವೈಯಕ್ತೀಕರಣ ಮರುಹೊಂದಿಸಿ",
       "personalizationReset": "ವೈಯಕ್ತೀಕರಣ ಮರುಹೊಂದಿಸಲಾಗಿದೆ",
-      "forget": "ತೆಗೆದುಹಾಕಿ",
-      "forgetTitle": "ನೋಡ್ ತೆಗೆದುಹಾಕಿ",
-      "forgetMessage": "{node} ತೆಗೆದುಹಾಕಬೇಕೆ? ಇದು ಜೋಡಣೆಯನ್ನು ತೆಗೆದು ಅದರ ವೈಯಕ್ತೀಕರಣವನ್ನು ಅಳಿಸುತ್ತದೆ."
+      "forget": "ಜೋಡಣೆ ತೆಗೆದುಹಾಕಿ",
+      "forgetTitle": "ನೋಡ್ ಜೋಡಣೆ ತೆಗೆದುಹಾಕಿ",
+      "forgetMessage": "{node} ಜೋಡಣೆ ತೆಗೆದುಹಾಕುವುದೇ? ಅದರ ಜೋಡಣೆ ಬಿಡುಗಡೆಯಾಗುತ್ತದೆ ಮತ್ತು ಮತ್ತೆ ಜೋಡಿಸುವವರೆಗೆ ಫ್ಲೀಟ್‌ನಿಂದ ಮರೆಯಾಗುತ್ತದೆ."
     },
     "dotEditor": {
       "title": "ಚುಕ್ಕಿಗಳನ್ನು ಹೊಂದಿಸಿ",
@@ -432,7 +434,8 @@
       "openSource": "GPL-3.0 Open Source",
       "getStarted": "ಪ್ರಾರಂಭಿಸಿ",
       "privacy": "ನಿಮ್ಮ ಡೇಟಾ ಈ ಸಾಧನದಲ್ಲಿಯೇ ಉಳಿಯುತ್ತದೆ.",
-      "privacyDetail": "ನಾವು ಏನನ್ನೂ ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ ಅಥವಾ ಟ್ರ್ಯಾಕ್ ಮಾಡುವುದಿಲ್ಲ."
+      "privacyDetail": "ನಾವು ಏನನ್ನೂ ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ ಅಥವಾ ಟ್ರ್ಯಾಕ್ ಮಾಡುವುದಿಲ್ಲ.",
+      "descriptionDesktop": "ಯಾವುದೇ ArduPilot, PX4 ಅಥವಾ Betaflight ಡ್ರೋನ್ ಅನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಿ, ಮಿಷನ್‌ಗಳನ್ನು ಯೋಜಿಸಿ ಮತ್ತು ಹಾರಿಸಿ. ADOS Drone Agent ಜೊತೆ ಜೋಡಿಸಿ ಎಡ್ಜ್‌ನಲ್ಲಿ ಇಂಟೆಲಿಜೆನ್ಸ್ ರನ್ ಮಾಡಿ. ಓಪನ್ ಸೋರ್ಸ್. ನಿಮ್ಮ ಕಂಪ್ಯೂಟರ್‌ನಲ್ಲಿ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ."
     },
     "disclaimer": {
       "title": "ಹಾರಾಟಕ್ಕೆ ಮುನ್ನ",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "ಥೀಮ್ {count} ನೋಡ್‌ಗಳಿಗೆ ಸಿಂಕ್ ಆಯಿತು",
+      "syncFailedCount": "{count} ನೋಡ್‌ಗಳನ್ನು ತಲುಪಲಾಗಲಿಲ್ಲ"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "ಗಾಢ ಥೀಮ್‌ಗಳು",
       "groupLightThemes": "ಬೆಳಕು ಥೀಮ್‌ಗಳು",
       "groupMidTone": "ಮಧ್ಯಮ ಟೋನ್",
-      "selectTheme": "ಥೀಮ್ ಆಯ್ಕೆಮಾಡಿ"
+      "selectTheme": "ಥೀಮ್ ಆಯ್ಕೆಮಾಡಿ",
+      "nvg": "ರಾತ್ರಿ ದೃಷ್ಟಿ"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "ಕ್ಲೌಡ್ ಸಿಂಕ್‌ಗಾಗಿ ಸೈನ್ ಇನ್ ಮಾಡಿ",
     "localOnly": "ಸ್ಥಳೀಯ ಮಾತ್ರ",
     "commandPalette": "ಕಮಾಂಡ್ ಪ್ಯಾಲೆಟ್",
+    "menu": "ಮೆನು",
     "joinDiscord": "Discord ಸೇರಿ",
     "starOnGitHub": "GitHub ನಲ್ಲಿ ಸ್ಟಾರ್ ನೀಡಿ",
     "star": "ಸ್ಟಾರ್",
@@ -836,7 +841,7 @@
     "notifications": "ಅಧಿಸೂಚನೆಗಳು",
     "theme": "ಥೀಮ್",
     "data": "ಡೇಟಾ",
-    "operator": "Operator & Aircraft",
+    "operator": "ಆಪರೇಟರ್ ಮತ್ತು ವಿಮಾನ",
     "plugins": "ವಿಸ್ತರಣೆಗಳು",
     "can": "DroneCAN",
     "aircraftSetup": "Aircraft setup",
@@ -846,9 +851,9 @@
     "title": "ಸಾಮಾನ್ಯ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "jurisdiction": "ನಿಯಂತ್ರಕ ಅಧಿಕಾರ ವ್ಯಾಪ್ತಿ (ಐಚ್ಛಿಕ)",
     "notSet": "— Not set",
-    "units": "ಘಟಕಗಳು",
-    "metric": "ಮೆಟ್ರಿಕ್ (m, km/h, °C)",
-    "imperial": "ಇಂಪೀರಿಯಲ್ (ft, mph, °F)",
+    "units": "ಯೋಜಕ ಘಟಕಗಳು",
+    "metric": "ಮೆಟ್ರಿಕ್ (m, m/s)",
+    "imperial": "ಇಂಪೀರಿಯಲ್ (ft, mph)",
     "autoConnect": "ಪ್ರಾರಂಭದಲ್ಲಿ ಸ್ವಯಂ-ಸಂಪರ್ಕ",
     "autoReconnect": "ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಾಗ ಸ್ವಯಂ-ಮರುಸಂಪರ್ಕ",
     "demoMode": "ಡೆಮೊ ಮೋಡ್",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "ಸಲಹೆಗಳು ಮತ್ತೆ ತೋರುತ್ತವೆ.",
+    "unitsScope": "ಮಿಷನ್ ಯೋಜಕ ಮತ್ತು ನಕ್ಷೆ ಚಿತ್ರಣ ಉಪಕರಣಗಳಿಗೆ ಅನ್ವಯಿಸುತ್ತದೆ. ಹಾರಾಟ ವೀಕ್ಷಣೆಗಳು ಕಾಕ್‌ಪಿಟ್‌ನ ಮೆಟ್ರಿಕ್ ಘಟಕಗಳನ್ನು ಬಳಸುತ್ತವೆ."
   },
   "notifications": {
     "title": "ಅಧಿಸೂಚನೆಗಳು",
@@ -967,11 +974,11 @@
     "testMode": "Test Mode",
     "testModeUnavailable": "Gamepad test mode not available in demo",
     "manualControlLinkBlocked": "ಸ್ಟಿಕ್ ಇನ್‌ಪುಟ್ ಈ ವಿಮಾನವನ್ನು ತಲುಪುತ್ತಿಲ್ಲ: {reason}. ಏನೂ ರವಾನೆಯಾಗುತ್ತಿಲ್ಲ.",
-    "stickMode": "Stick mode",
+    "stickMode": "ಸ್ಟಿಕ್ ಮೋಡ್",
     "stickMode2": "Mode 2 (throttle on the left stick)",
     "stickMode1": "Mode 1 (throttle on the right stick)",
-    "groundStationEmpty": "No controllers on the ground station.",
-    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
+    "groundStationEmpty": "ಗ್ರೌಂಡ್ ಸ್ಟೇಷನ್‌ನಲ್ಲಿ ಯಾವುದೇ ಕಂಟ್ರೋಲರ್ ಇಲ್ಲ.",
+    "groundStationEmptyHint": "ಗ್ರೌಂಡ್ ಸ್ಟೇಷನ್‌ಗೆ USB ಅಥವಾ Bluetooth ಗೇಮ್‌ಪ್ಯಾಡ್, ಜಾಯ್‌ಸ್ಟಿಕ್ ಅಥವಾ HOTAS ಸಂಪರ್ಕಿಸಿ. ಈ ಕಂಪ್ಯೂಟರ್‌ಗೆ ಜೋಡಿಸಿದ ಕಂಟ್ರೋಲರ್ ಬ್ರೌಸರ್ ಇನ್‌ಪುಟ್‌ನಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ."
   },
   "data": {
     "title": "Data Management",
@@ -990,10 +997,10 @@
   "communityNav": {
     "changelog": "ಚೇಂಜ್‌ಲಾಗ್",
     "contact": "Contact",
-    "unavailableTitle": "Community data (changelog, roadmap, contact) is live on the hosted version at",
-    "unavailableSetup": "Disabled by default in local builds. To run your own internal community board, set up a Convex backend and configure",
+    "unavailableTitle": "ಸಮುದಾಯ ಡೇಟಾ (ಬದಲಾವಣೆ ದಾಖಲೆ, ಸಂಪರ್ಕ) ಹೋಸ್ಟ್ ಮಾಡಿದ ಆವೃತ್ತಿಯಲ್ಲಿ ಲಭ್ಯವಿದೆ",
+    "unavailableSetup": "ಸ್ಥಳೀಯ ಬಿಲ್ಡ್‌ಗಳಲ್ಲಿ ಡೀಫಾಲ್ಟ್ ಆಗಿ ನಿಷ್ಕ್ರಿಯ. ನಿಮ್ಮ ಸ್ವಂತ ಆಂತರಿಕ ಸಮುದಾಯ ಬೋರ್ಡ್ ನಡೆಸಲು, Convex ಬ್ಯಾಕೆಂಡ್ ಹೊಂದಿಸಿ ಮತ್ತು {envVar} ಹೊಂದಿಸಿ.",
     "unavailableOptional": "Completely optional. The GCS works without it.",
-    "sectionError": "This page failed to load. Switch tabs or reload to try again."
+    "sectionError": "ಈ ಪುಟ ಲೋಡ್ ಆಗಲಿಲ್ಲ. ಟ್ಯಾಬ್ ಬದಲಿಸಿ ಅಥವಾ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ರೀಲೋಡ್ ಮಾಡಿ."
   },
   "contact": {
     "title": "Contact",
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "ಹೊಸ ಮಿಷನ್",
-      "connectDrone": "ಡ್ರೋನ್ ಸಂಪರ್ಕಿಸಿ",
+      "connectDrone": "ನೋಡ್ ಸೇರಿಸಿ",
       "rthAll": "ಎಲ್ಲಕ್ಕೂ RTH"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
-    "title": "Connect to Drone",
+    "title": "ನೋಡ್ ಸೇರಿಸಿ",
     "usbSerial": "USB Serial",
     "webSocket": "WebSocket",
     "savePreset": "Save Preset",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "ಲಭ್ಯವಿದೆ",
       "chromiumOnly": "Chrome ಅಥವಾ Edge",
-      "desktopOrBridge": "ಡೆಸ್ಕ್‌ಟಾಪ್ ಅಥವಾ ಬ್ರಿಜ್"
+      "desktopOrBridge": "ಡೆಸ್ಕ್‌ಟಾಪ್ ಅಥವಾ ಬ್ರಿಜ್",
+      "desktopUnsupported": "ಈ OS ನಲ್ಲಿ ಡೆಸ್ಕ್‌ಟಾಪ್ ಆ್ಯಪ್‌ನಲ್ಲಿ ಇಲ್ಲ"
     },
     "getDesktopApp": "ಡೆಸ್ಕ್‌ಟಾಪ್ ಆ್ಯಪ್ ಪಡೆಯಿರಿ",
     "agentUdpNote": "ಏಜೆಂಟ್‌ನೊಂದಿಗೆ ಜೋಡಿಸಲಾದ ಡ್ರೋನ್ ಯಾವುದೇ ಬಾಹ್ಯ ಗ್ರೌಂಡ್ ಸ್ಟೇಷನ್‌ಗಾಗಿ udp:[agent-ip]:14550 ಅನ್ನೂ ತೆರೆಯುತ್ತದೆ.",
@@ -1488,14 +1496,35 @@
     "flightSuite": "Suite",
     "px4EventsFeed": {
       "searchEvents": "ಘಟನೆಗಳನ್ನು ಹುಡುಕಿ",
-      "flightControllerEvents": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಘಟನೆಗಳು"
+      "flightControllerEvents": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಘಟನೆಗಳು",
+      "emptyNone": "ಇನ್ನೂ ಯಾವುದೇ ಘಟನೆಗಳಿಲ್ಲ. ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ನ ರಚನಾತ್ಮಕ ಘಟನೆಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.",
+      "emptyNoMatch": "ಹುಡುಕಾಟಕ್ಕೆ ಯಾವುದೇ ಘಟನೆ ಹೊಂದುವುದಿಲ್ಲ.",
+      "severityLevel": "ಮಟ್ಟ {level}",
+      "severity": {
+        "emergency": "ತುರ್ತು",
+        "alert": "ಎಚ್ಚರಿಕೆ",
+        "critical": "ಗಂಭೀರ",
+        "error": "ದೋಷ",
+        "warning": "ಎಚ್ಚರಿಕೆ",
+        "notice": "ಸೂಚನೆ",
+        "info": "ಮಾಹಿತಿ",
+        "debug": "ಡೀಬಗ್"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "ಕೆಲವು ಪ್ಯಾನೆಲ್‌ಗಳು (OSD, LED) PX4 ಗೆ ಲಭ್ಯವಿಲ್ಲ.",
-      "betaflightFirmwareSomePanelsDiffer": "Betaflight ಫರ್ಮ್‌ವೇರ್. ಕೆಲವು ಪ್ಯಾನೆಲ್‌ಗಳು ArduPilot ಗಿಂತ ಭಿನ್ನವಾಗಿವೆ."
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight ಫರ್ಮ್‌ವೇರ್. ಕೆಲವು ಪ್ಯಾನೆಲ್‌ಗಳು ArduPilot ಗಿಂತ ಭಿನ್ನವಾಗಿವೆ.",
+      "flightController": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್",
+      "loadingPanel": "ಪ್ಯಾನೆಲ್ ಲೋಡ್ ಆಗುತ್ತಿದೆ…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "ಸಂಪರ್ಕಗೊಂಡಾಗ ಟೆಲಿಮೆಟ್ರಿ ಡೇಟಾ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ"
+      "telemetryDataWillAppearHere": "ಸಂಪರ್ಕಗೊಂಡಾಗ ಟೆಲಿಮೆಟ್ರಿ ಡೇಟಾ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ",
+      "channel": {
+        "altitude": "ಎತ್ತರ",
+        "speed": "ವೇಗ",
+        "battery": "ಬ್ಯಾಟರಿ",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "GPS ಟ್ರ್ಯಾಕ್",
       "waitingForGPSData": "GPS ಡೇಟಾಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ..."
     },
-    "clear": "ತೆರವುಗೊಳಿಸಿ"
+    "clear": "ತೆರವುಗೊಳಿಸಿ",
+    "severityLevel": {
+      "emergency": "ತುರ್ತು",
+      "alert": "ಎಚ್ಚರಿಕೆ",
+      "critical": "ಗಂಭೀರ",
+      "error": "ದೋಷ",
+      "warning": "ಎಚ್ಚರಿಕೆ",
+      "notice": "ಸೂಚನೆ",
+      "info": "ಮಾಹಿತಿ",
+      "debug": "ಡೀಬಗ್"
+    },
+    "autoScrollOn": "ಸ್ವಯಂ ಸ್ಕ್ರಾಲ್ ಆನ್",
+    "autoScrollOff": "ಸ್ವಯಂ ಸ್ಕ್ರಾಲ್ ಆಫ್"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "ವಿಮಾನ ಸೆಟಪ್"
+    "aircraftSetup": "ವಿಮಾನ ಸೆಟಪ್",
+    "px4Safety": "ವೈಫಲ್ಯ ಮತ್ತು ಹಿಂತಿರುಗು"
   },
   "droneStatus": {
     "online": "ಆನ್‌ಲೈನ್",
@@ -1832,7 +1874,8 @@
     "battery": "Battery",
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "ಈ ವಿಸ್ತರಣೆಗೆ ಇಲ್ಲಿ ಟ್ಯಾಬ್ ತೋರಿಸಲು ಅನುಮತಿ ನೀಡಲಾಗಿಲ್ಲ."
     },
     "rebootNoFc": "No flight controller connected",
     "rebootSent": "Reboot command sent",
@@ -1842,6 +1885,9 @@
     "scrollTabsRight": "Scroll tabs right"
   },
   "vision": {
+    "coreUsageUnreachable": "ಈ ನೋಡ್‌ಗೆ ಸಂಪರ್ಕವಿಲ್ಲ",
+    "stateUnknownBody": "ಈ ನೋಡ್ ತನ್ನ ಸಾಮರ್ಥ್ಯಗಳನ್ನು ಈ GCS ಗೆ ವರದಿ ಮಾಡಿಲ್ಲ. ವಿಷನ್ ಎಂಜಿನ್ ಚಾಲನೆಯಲ್ಲಿದೆಯೇ ಎಂದು ನೋಡಲು ಅದನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+    "stateUnknownTitle": "ವಿಷನ್ ಸ್ಥಿತಿ ತಿಳಿದಿಲ್ಲ",
     "title": "Vision Engine",
     "subtitle": "Manage detection models and watch live detections from this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "ನೋಡ್ ಸೇರಿಸಿ",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "ನೋಡ್ ಸೇರಿಸಿ",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -4082,7 +4128,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "ವೇಪಾಯಿಂಟ್ {n} ಕ್ರಿಯೆಗಳು",
       "resumeFromHere": "ಇಲ್ಲಿಂದ ಮುಂದುವರಿಸಿ…",
-      "resumeFirstReason": "ಯೋಜನೆ ಇಲ್ಲಿಂದ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ; ಸಾಮಾನ್ಯವಾಗಿ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ"
+      "resumeFirstReason": "ಯೋಜನೆ ಇಲ್ಲಿಂದ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ; ಸಾಮಾನ್ಯವಾಗಿ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+      "rtlAltitude": "ವಾಹನದ RTL ಎತ್ತರದಲ್ಲಿ ಹಿಂತಿರುಗುತ್ತದೆ"
     },
     "bar": {
       "plans": "Plans",
@@ -4159,8 +4206,11 @@
         "invalidSequence": "ಮಿಷನ್ ಐಟಂಗಳು ಕ್ರಮ ತಪ್ಪಿ ಬಂದಿವೆ. ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಪ್ರಯತ್ನಿಸಿ.",
         "denied": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಈಗ ಮಿಷನ್ ಸ್ವೀಕರಿಸುತ್ತಿಲ್ಲ.",
         "cancelled": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಅಪ್‌ಲೋಡ್ ರದ್ದುಗೊಳಿಸಿದೆ.",
-        "unknown": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಿಷನ್ ನಿರಾಕರಿಸಿದೆ (ಕೋಡ್ {code})."
-      }
+        "unknown": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಿಷನ್ ನಿರಾಕರಿಸಿದೆ (ಕೋಡ್ {code}).",
+        "verifyMismatch": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಿಷನ್ ಸ್ವೀಕರಿಸಿತು, ಆದರೆ ಮರಳಿ ಓದಿದ ಪ್ರತಿ ಬೇರೆಯಾಗಿದೆ. ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+        "verifyFailed": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಿಷನ್ ಸ್ವೀಕರಿಸಿತು, ಆದರೆ ಪರಿಶೀಲನೆಗಾಗಿ ಮರಳಿ ಓದುವುದು ವಿಫಲವಾಯಿತು. ಲಿಂಕ್ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ."
+      },
+      "fenceCrossed": "ಮಿಷನ್ ಈ ಬೇಲಿಯನ್ನು ದಾಟುತ್ತದೆ. ಬೇಲಿ ಕಳುಹಿಸುವ ಮೊದಲು ಮಿಷನ್ ಸರಿಪಡಿಸಿ."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}: ಭೂಪ್ರದೇಶ ಅಂತರ ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ — ಈ ಸಾಪೇಕ್ಷ-ಫ್ರೇಮ್ ಎತ್ತರಕ್ಕೆ ಹೋಮ್ ಎತ್ತರ ಇಲ್ಲ",
       "terrainUnknown": "WP{wp}: ಭೂಪ್ರದೇಶ ಅಜ್ಞಾತ — ಈ ವೇಪಾಯಿಂಟ್‌ನಲ್ಲಿ ಭೂ ಎತ್ತರದ ಮಾದರಿ ಇಲ್ಲ, ಅಂತರ ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ",
       "terrainClearanceGround": "WP{v0}: ಭೂಪ್ರದೇಶದಿಂದ ಕೇವಲ {v1}m ಮೇಲೆ (ಕನಿಷ್ಠ: {v2}m). ನೆಲ: {ground}m MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}: ಭೂಪ್ರದೇಶದಿಂದ ಕೇವಲ {v1}m ಮೇಲೆ (ಕನಿಷ್ಠ: {v2}m). ನೆಲ ಅಜ್ಞಾತ"
+      "terrainClearanceGroundUnknown": "WP{v0}: ಭೂಪ್ರದೇಶದಿಂದ ಕೇವಲ {v1}m ಮೇಲೆ (ಕನಿಷ್ಠ: {v2}m). ನೆಲ ಅಜ್ಞಾತ",
+      "rtlAltitudeBelowTerrain": "ಹೋಮ್‌ನಿಂದ {v0}m RTL ಎತ್ತರವು ಹಿಂದಿರುಗುವ ಮಾರ್ಗದ ಅತಿ ಎತ್ತರದ ಭೂಪ್ರದೇಶಕ್ಕಿಂತ {v1}m ಕೆಳಗಿದೆ (WP{v2}, {v3}m MSL)",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}: ಹೋಮ್‌ನಿಂದ {v1}m ಎತ್ತರವು {v2}m ಕಾನೂನು ಮಿತಿಯನ್ನು ಮೀರಿದೆ"
     }
   },
   "geofence": {
@@ -4739,7 +4791,8 @@
     "viewUnavailable": "ಈ ಸಾಧನದಲ್ಲಿ 3D ವೀಕ್ಷಣೆ ಲಭ್ಯವಿಲ್ಲ",
     "switchTo2d": "2D ಗೆ ಬದಲಿಸಿ",
     "moreIssues": "+{count} ಇನ್ನಷ್ಟು",
-    "dismissWarning": "ಎಚ್ಚರಿಕೆಯನ್ನು ವಜಾಗೊಳಿಸಿ"
+    "dismissWarning": "ಎಚ್ಚರಿಕೆಯನ್ನು ವಜಾಗೊಳಿಸಿ",
+    "showPanel": "ಫಲಕ ತೋರಿಸಿ"
   },
   "history": {
     "title": "ಹಾರಾಟ ಲಾಗ್‌ಗಳು",
@@ -5082,7 +5135,28 @@
       "sealed": "ಮುದ್ರಿತ",
       "verify": "ಪರಿಶೀಲಿಸಿ",
       "unseal": "ಮುದ್ರೆ ತೆಗೆಯಿರಿ",
-      "replay": "ಮರುಪ್ರದರ್ಶನ"
+      "replay": "ಮರುಪ್ರದರ್ಶನ",
+      "tabs": {
+        "overview": "ಅವಲೋಕನ",
+        "map": "ನಕ್ಷೆ",
+        "charts": "ಚಾರ್ಟ್‌ಗಳು",
+        "events": "ಘಟನೆಗಳು",
+        "analysis": "ವಿಶ್ಲೇಷಣೆ",
+        "notes": "ಟಿಪ್ಪಣಿಗಳು",
+        "media": "ಮಾಧ್ಯಮ",
+        "export": "ರಫ್ತು"
+      },
+      "flightDetail": "ಹಾರಾಟದ ವಿವರ",
+      "showList": "ಹಾರಾಟ ಪಟ್ಟಿ ತೋರಿಸಿ",
+      "hideList": "ಹಾರಾಟ ಪಟ್ಟಿ ಮರೆಮಾಡಿ",
+      "signing": "ಸಹಿ ಮಾಡಲಾಗುತ್ತಿದೆ…",
+      "signAndLock": "ಸಹಿ ಮಾಡಿ ಮತ್ತು ಲಾಕ್ ಮಾಡಿ",
+      "signFailed": "ಸಹಿ ವಿಫಲವಾಗಿದೆ: {error}",
+      "unsealConfirm": "ಈ ದಾಖಲೆಯ ಮುದ್ರೆ ತೆಗೆಯುವುದೇ? ನಂತರದ ಬದಲಾವಣೆಗಳು ಹಿಂದಿನ ಸಹಿಯನ್ನು ಅಮಾನ್ಯಗೊಳಿಸುತ್ತವೆ. ಲೆಕ್ಕಪರಿಶೋಧನಾ ಘಟನೆ ದಾಖಲಾಗುತ್ತದೆ.",
+      "unsealedEvent": "{time} ರಂದು ದಾಖಲೆಯ ಮುದ್ರೆ ತೆಗೆಯಲಾಗಿದೆ",
+      "verifyOk": "ಸಹಿ ಸರಿಯಾಗಿದೆ: ದಾಖಲೆ ಬದಲಾಗಿಲ್ಲ.",
+      "verifyBad": "ಸಹಿ ಅಮಾನ್ಯ: ಸಹಿ ಮಾಡಿದ ನಂತರ ದಾಖಲೆ ಬದಲಾಗಿದೆ.",
+      "recordingStopped": "{time} ನಲ್ಲಿ ರೆಕಾರ್ಡಿಂಗ್ ನಿಂತಿದೆ (ಸಂಗ್ರಹ ತುಂಬಿದೆ)"
     },
     "chartsTab": {
       "charts": "ಚಾರ್ಟ್‌ಗಳು",
@@ -5122,7 +5196,11 @@
       "compliance": "ಅನುಸರಣೆ",
       "jurisdiction": "ಅಧಿಕಾರ ವ್ಯಾಪ್ತಿ",
       "noTelemetryRecordingAttachedConnect": "ಯಾವುದೇ ಟೆಲಿಮೆಟ್ರಿ ರೆಕಾರ್ಡಿಂಗ್ ಲಗತ್ತಿಸಲಾಗಿಲ್ಲ. ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಲು ಡ್ರೋನ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ ಮತ್ತು ಆರ್ಮ್ ಮಾಡಿ.",
-      "fullFlightRecordIncludingStatsPath": "ಅಂಕಿಅಂಶಗಳು, ಮಾರ್ಗ ಮತ್ತು ಮೆಟಾಡೇಟಾ ಸಹಿತ ಸಂಪೂರ್ಣ FlightRecord."
+      "fullFlightRecordIncludingStatsPath": "ಅಂಕಿಅಂಶಗಳು, ಮಾರ್ಗ ಮತ್ತು ಮೆಟಾಡೇಟಾ ಸಹಿತ ಸಂಪೂರ್ಣ FlightRecord.",
+      "errorCount": "{count, plural, other {# ದೋಷಗಳು}}",
+      "warningCount": "{count, plural, other {# ಎಚ್ಚರಿಕೆಗಳು}}",
+      "ready": "ಸಿದ್ಧ",
+      "generating": "ರಚಿಸಲಾಗುತ್ತಿದೆ…"
     },
     "analysisTab": {
       "healthSummary": "ಆರೋಗ್ಯ ಸಾರಾಂಶ",
@@ -5183,7 +5261,8 @@
       "dropLogFilesHereOr": "ಲಾಗ್ ಫೈಲ್‌ಗಳನ್ನು ಇಲ್ಲಿ ಬಿಡಿ, ಅಥವಾ ಬ್ರೌಸ್ ಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ",
       "importFlightLogs": "ಫ್ಲೈಟ್ ಲಾಗ್‌ಗಳನ್ನು ಆಮದು ಮಾಡಿ",
       "cancel": "ರದ್ದುಮಾಡಿ",
-      "close": "ಮುಚ್ಚಿ"
+      "close": "ಮುಚ್ಚಿ",
+      "unknownFormat": "ಅಪರಿಚಿತ ಸ್ವರೂಪ"
     },
     "preflightCard": {
       "noChecklistCaptured": "ಯಾವುದೇ ಚೆಕ್‌ಲಿಸ್ಟ್ ದಾಖಲಾಗಿಲ್ಲ",
@@ -5342,7 +5421,8 @@
     "connect": "ಸಂಪರ್ಕಿಸಿ",
     "writeToFcCount": "{n} ಅನ್ನು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಬರೆಯಿರಿ",
     "writingProgress": "ಬರೆಯಲಾಗುತ್ತಿದೆ {current}/{total}…",
-    "writeToFcHint": "ಬದಲಾದ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಕಳುಹಿಸಿ"
+    "writeToFcHint": "ಬದಲಾದ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಕಳುಹಿಸಿ",
+    "notPresent": "ಈ ಬೋರ್ಡ್‌ನಲ್ಲಿ ಇಲ್ಲ"
   },
   "calibration": {
     "title": "ಮಾಪನಾಂಕನ",
@@ -5832,7 +5912,7 @@
   "commandPalette": {
     "placeholder": "Type a command...",
     "noResults": "No results found",
-    "connectDrone": "Connect Drone",
+    "connectDrone": "ನೋಡ್ ಸೇರಿಸಿ",
     "disconnectDrone": "Disconnect Drone",
     "armVehicle": "Arm Drone",
     "disarmVehicle": "Disarm Vehicle",
@@ -5842,7 +5922,7 @@
     "switchTab": "Switch to {tab}",
     "toggleImmersive": "Toggle Immersive Mode",
     "goToDashboard": "Go to Dashboard",
-    "goToPlan": "Go to Mission Planner",
+    "goToPlan": "ಯೋಜನೆಗೆ ಹೋಗಿ",
     "goToHistory": "ಹಾರಾಟ ಲಾಗ್‌ಗಳಿಗೆ ಹೋಗಿ",
     "goToAnalytics": "Go to Analytics",
     "goToConfig": "Go to Config",
@@ -5867,7 +5947,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "ಅದರ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಹುಡುಕಲು ವಾಹನವನ್ನು ಆಯ್ಕೆಮಾಡಿ"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6313,7 +6394,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "ಈ ನೋಡ್ ವೈರ್ಡ್ ಪ್ಯಾನೆಲ್‌ನಲ್ಲಿ ತೋರಿಸುವ HDMI ಕಿಯೋಸ್ಕ್ ಅನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಿ: ಅದು ಲೋಡ್ ಮಾಡುವ ಪುಟ ಮತ್ತು ಟಚ್ ಕ್ಯಾಲಿಬ್ರೇಶನ್.",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -7028,15 +7109,15 @@
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
-    "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
+    "pageBlurb": "ವಿಸ್ತರಣೆಗಳು ಪ್ರತಿ ನೋಡ್‌ಗೆ, ಆ ನೋಡ್‌ನ Agent → Extensions ಟ್ಯಾಬ್‌ನಿಂದ ಸ್ಥಾಪನೆಯಾಗುತ್ತವೆ. ಈ ಪುಟವು ಫ್ಲೀಟ್‌ನಲ್ಲಿ ಸ್ಥಾಪಿತವಾದವುಗಳ ಓದಲು-ಮಾತ್ರ ಸಾರಾಂಶ ಮತ್ತು ರಿಜಿಸ್ಟ್ರಿ ಬ್ರೌಸರ್.",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
-    "emptyTitle": "No extensions installed yet.",
-    "emptyBlurb": "Drag a .adosplug file or pick one to install.",
+    "emptyTitle": "ಇನ್ನೂ ಯಾವ ನೋಡ್‌ನಲ್ಲೂ ಏನೂ ಸ್ಥಾಪಿತವಾಗಿಲ್ಲ.",
+    "emptyBlurb": "ಕೆಳಗಿನ ರಿಜಿಸ್ಟ್ರಿ ನೋಡಿ, ನಂತರ ನೋಡ್‌ನ Extensions ಟ್ಯಾಬ್‌ನಿಂದ ಸ್ಥಾಪಿಸಿ.",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -8231,7 +8312,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "PX4 ತನ್ನ CAN ಡ್ರೈವರ್ ಅನ್ನು ಪ್ಯಾರಾಮೀಟರ್‌ಗಳಲ್ಲಿ UAVCAN_* ಮೂಲಕ ಹೊಂದಿಸುತ್ತದೆ. ಇಲ್ಲಿನ ಬಸ್ ಸೆಟಪ್ ArduPilot CAN ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಸಂಪಾದಿಸುತ್ತದೆ ಮತ್ತು ಈ ಬೋರ್ಡ್‌ನಲ್ಲಿ ತೋರಿಸಲಾಗುವುದಿಲ್ಲ."
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8289,6 +8371,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "ಈ GCS ನಿಂದ ಈ ನೋಡ್ ತಲುಪಲು ಸಾಧ್ಯವಿಲ್ಲ",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8526,8 +8609,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "ಗೇಮ್‌ಪ್ಯಾಡ್: Cross ಒತ್ತಿ ಹಿಡಿಯಿರಿ. ಕೀಬೋರ್ಡ್: Enter ಒತ್ತಿ ಹಿಡಿಯಿರಿ.",
     "plugin": {
       "confirm": {
+        "titleNamed": "{drone} ನಲ್ಲಿ {skill} ಸಕ್ರಿಯಗೊಳಿಸಿ",
         "title": "Activate skill",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8657,6 +8742,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "ಸಾಮರ್ಥ್ಯಗಳನ್ನು ವರದಿ ಮಾಡಲಾಗಿಲ್ಲ",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9266,11 +9352,11 @@
       "open-cockpit": "Open cockpit",
       "configure": "Configure",
       "view-logs": "View logs",
-      "unpair": "Unpair"
+      "unpair": "ಜೋಡಣೆ ತೆಗೆದುಹಾಕಿ"
     },
     "unpair": {
-      "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "title": "ನೋಡ್ ಜೋಡಣೆ ತೆಗೆದುಹಾಕಿ",
+      "message": "{name} ಜೋಡಣೆ ತೆಗೆದುಹಾಕುವುದೇ? ಅದರ ಜೋಡಣೆ ಬಿಡುಗಡೆಯಾಗುತ್ತದೆ ಮತ್ತು ಮತ್ತೆ ಜೋಡಿಸುವವರೆಗೆ ಫ್ಲೀಟ್‌ನಿಂದ ಮರೆಯಾಗುತ್ತದೆ."
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9336,6 +9422,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "ನೋಡ್ ತಲುಪಲಾಗುತ್ತಿಲ್ಲ",
+      "message": "{name} ತನ್ನ ಜೋಡಣೆಯನ್ನು ಬಿಡುಗಡೆ ಮಾಡಲಾಗಲಿಲ್ಲ, ಆದ್ದರಿಂದ ಇನ್ನೂ ಜೋಡಣೆಯಲ್ಲಿದೆ. ಈ GCS ನಲ್ಲಿ ಮಾತ್ರ ಮರೆಯುವುದೇ? ರೀಸೆಟ್ ಆಗುವವರೆಗೆ ನೋಡ್ ಹಳೆಯ ಜೋಡಣೆಯನ್ನು ಉಳಿಸಿಕೊಳ್ಳುತ್ತದೆ.",
+      "forgetHere": "ಈ GCS ನಲ್ಲಿ ಮಾತ್ರ ಮರೆಯಿರಿ"
     }
   },
   "rcElrsLink": {
@@ -9465,7 +9556,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "ಆವೃತ್ತಿ {version}",
+    "thirdPartyNotices": "ಮೂರನೇ ವ್ಯಕ್ತಿ ಪರವಾನಗಿಗಳು"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "ಫ್ರೇಮ್",
         "rc_tx": "RC TX"
       }
-    }
+    },
+    "pageTitle": "ಆಪರೇಟರ್ ಮತ್ತು ವಿಮಾನ",
+    "pageBlurb": "ಪೈಲಟ್, ಸಂಸ್ಥೆ, ವಿಮೆ, ವಿಮಾನ, ಬ್ಯಾಟರಿ ಮತ್ತು ಉಪಕರಣ ನೋಂದಣಿಗಳು. ಅನುಸರಣೆ ರಫ್ತು ಮತ್ತು ಪ್ರತಿ ಹಾರಾಟದ ಪೈಲಟ್, ವಿಮಾನ ಮತ್ತು ಲೋಡ್‌ಔಟ್ ಸ್ನ್ಯಾಪ್‌ಶಾಟ್‌ಗೆ ಬಳಸಲಾಗುತ್ತದೆ."
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "ನಕಲಿಸದೆ ಮುಚ್ಚಿ",
       "copyAgain": "ಮತ್ತೆ ನಕಲಿಸಿ",
       "tryAgain": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
-      "iClearedIt": "ನಾನು ತೆರವುಗೊಳಿಸಿದೆ"
+      "iClearedIt": "ನಾನು ತೆರವುಗೊಳಿಸಿದೆ",
+      "typeToContinue": "ಮುಂದುವರಿಸಲು <word>EXPORT</word> ಟೈಪ್ ಮಾಡಿ."
     },
     "framePanel": {
       "frameConfiguration": "ಫ್ರೇಮ್ ಕಾನ್ಫಿಗರೇಶನ್",
@@ -10591,7 +10687,15 @@
       "type": "ಪ್ರಕಾರ:",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "ಈ ಫ್ರೇಮ್ ವರ್ಗ ಬಳಸುವುದಿಲ್ಲ",
+      "unknown": "ಅಜ್ಞಾತ",
+      "typeUnrecognised": "ಗುರುತಿಸಲಾಗಿಲ್ಲ (ಈ ವಾಹನದಲ್ಲಿ)",
+      "typeUnknownNote": "ಈ ವಾಹನ {param} = {value} ಎಂದು ವರದಿ ಮಾಡುತ್ತದೆ; ಈ ಬಿಲ್ಡ್‌ನಲ್ಲಿ ಅದಕ್ಕೆ ಮೋಟಾರ್ ವಿನ್ಯಾಸವಿಲ್ಲ. ಮೌಲ್ಯವನ್ನು ಇದ್ದಂತೆ ತೋರಿಸಲಾಗಿದೆ ಮತ್ತು ಬದಲಾಯಿಸುತ್ತಿಲ್ಲ; ಫ್ರೇಮ್ ಮರುಸಂರಚಿಸಲು ಬಯಸಿದರೆ ಮಾತ್ರ ಪಟ್ಟಿಯ ಪ್ರಕಾರ ಆಯ್ಕೆಮಾಡಿ.",
+      "selectClassForLayout": "ಮೋಟಾರ್ ವಿನ್ಯಾಸ ನೋಡಲು ಫ್ರೇಮ್ ವರ್ಗ ಆಯ್ಕೆಮಾಡಿ.",
+      "noLayoutForType": "{cls} ಫ್ರೇಮ್ ಪ್ರಕಾರ {type} ಗೆ ಮೋಟಾರ್ ವಿನ್ಯಾಸವಿಲ್ಲ.",
+      "noLayoutForClass": "{cls} ಗೆ ಮೋಟಾರ್ ವಿನ್ಯಾಸ ಚಿತ್ರವಿಲ್ಲ.",
+      "classStillSent": "{description}. {param} ಆದರೂ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ."
     },
     "sensorsPanel": {
       "sensors": "ಸೆನ್ಸರ್‌ಗಳು",
@@ -10652,7 +10756,11 @@
       "patternPreview": "ಪ್ಯಾಟರ್ನ್ ಮುನ್ನೋಟ",
       "visualRepresentationOfLEDStrip": "LED ಸ್ಟ್ರಿಪ್‌ನ ದೃಶ್ಯ ನಿರೂಪಣೆ",
       "betaflightLEDStripUsesPacked": "Betaflight LED ಸ್ಟ್ರಿಪ್ ಪ್ಯಾಕ್ ಮಾಡಿದ ಸ್ಥಾನ/ಕಾರ್ಯ/ಬಣ್ಣ ಬಿಟ್‌ಮಾಸ್ಕ್‌ಗಳನ್ನು ಬಳಸುತ್ತದೆ, ಇವುಗಳನ್ನು CLI ಮೂಲಕ ಕಾನ್ಫಿಗರ್ ಮಾಡುವುದು ಉತ್ತಮ.",
-      "useThe": "ಬಳಸಿ"
+      "useThe": "ಬಳಸಿ",
+      "useLedCommand": "LED ಸ್ಟ್ರಿಪ್ ನಿಯೋಜನೆಗಳನ್ನು ಹೊಂದಿಸಲು FC ಕನ್ಸೋಲ್ ಪ್ಯಾನೆಲ್‌ನಲ್ಲಿ <cmd>led</cmd> ಆದೇಶ ಬಳಸಿ.",
+      "ledCmdShow": "ಪ್ರಸ್ತುತ LED ಸ್ಟ್ರಿಪ್ ಸಂರಚನೆ ತೋರಿಸಿ",
+      "ledCmdExample": "ಉದಾಹರಣೆ: LED 0 ಹೊಂದಿಸಿ",
+      "colorCmd": "LED ಬಣ್ಣಗಳನ್ನು ತೋರಿಸಿ/ಹೊಂದಿಸಿ"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "ಮಿಕ್ಸರ್ ಪ್ರೊಫೈಲ್‌ಗಳು",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "ESC ಕ್ಯಾಲಿಬ್ರೇಶನ್ ಉಳಿಸಲಾಗಿದೆ",
       "compassmotMotorInterference": "CompassMot (ಮೋಟಾರ್ ಹಸ್ತಕ್ಷೇಪ)",
       "measuresMagneticInterferenceFromMotors": "ವಿವಿಧ ಥ್ರಾಟಲ್ ಮಟ್ಟಗಳಲ್ಲಿ ಮೋಟಾರ್‌ಗಳು/ESC ಗಳಿಂದ ಕಾಂತೀಯ ಹಸ್ತಕ್ಷೇಪವನ್ನು ಅಳೆಯುತ್ತದೆ. ಕಂಪಾಸ್ ರೀಡಿಂಗ್‌ಗಳನ್ನು ಸರಿದೂಗಿಸುತ್ತದೆ.",
-      "compassmotCalibrationSaved": "CompassMot ಕ್ಯಾಲಿಬ್ರೇಶನ್ ಉಳಿಸಲಾಗಿದೆ"
+      "compassmotCalibrationSaved": "CompassMot ಕ್ಯಾಲಿಬ್ರೇಶನ್ ಉಳಿಸಲಾಗಿದೆ",
+      "escAck": "ಎಲ್ಲಾ ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆದಿದ್ದೇನೆ",
+      "compassmotAck": "ವಾಹನ ಭದ್ರವಾಗಿದೆ ಮತ್ತು ಸುತ್ತಮುತ್ತ ಖಾಲಿಯಾಗಿದೆ",
+      "escTip1": "ಮುಖ್ಯ: ಆರಂಭಿಸುವ ಮೊದಲು ಎಲ್ಲಾ ಪ್ರೊಪೆಲ್ಲರ್ ತೆಗೆಯಿರಿ",
+      "escTip2": "ಕ್ರಮ ಆರಂಭಿಸುವ ಮೊದಲು ಬ್ಯಾಟರಿ ತೆಗೆಯಿರಿ",
+      "escTip3": "ಕೆಲವು ESC ಗಳಿಗೆ ಮೊದಲ ಬಳಕೆಯಲ್ಲಿ ಇದು ಬೇಕು",
+      "escTip4": "BLHeli/SimonK ESC: ಅವುಗಳ ಸ್ವಂತ ಸಾಧನ ಬಳಸಿ",
+      "escTip5": "ಇದು ರೀಬೂಟ್‌ನಲ್ಲಿ ಥ್ರಾಟಲ್ ಪಾಸ್‌ಥ್ರೂ ಆಗಿ ಚಲಿಸುತ್ತದೆ ಮತ್ತು MAVLink ಮೂಲಕ ಪೂರ್ಣತೆ ತಿಳಿಸುವುದಿಲ್ಲ. ESC ಬೀಪ್ ಅನುಸರಿಸಿ; ಸಮಯ ಮೀರಿ ಮುಗಿಯುವುದು ನಿರೀಕ್ಷಿತ.",
+      "compassmotTip1": "ಆರಂಭಿಸುವ ಮೊದಲು GPS 3D ಫಿಕ್ಸ್ ಖಚಿತಪಡಿಸಿ",
+      "compassmotTip2": "ವಾಹನ ಲೋಹದಿಂದ ದೂರ ತೆರೆದ ಜಾಗದಲ್ಲಿರಬೇಕು",
+      "compassmotTip3": "ಪ್ರಾಪ್ ಇದೆ: ಈ ಪರೀಕ್ಷೆಯಲ್ಲಿ ಮೋಟಾರ್ ತಿರುಗುತ್ತವೆ",
+      "compassmotTip4": "30% ಕ್ಕಿಂತ ಕಡಿಮೆ ಸ್ವೀಕಾರಾರ್ಹ, 15% ಕ್ಕಿಂತ ಕಡಿಮೆ ಉತ್ತಮ"
     },
     "telRadioPanel": {
       "telemetryRadio": "ಟೆಲಿಮೆಟ್ರಿ ರೇಡಿಯೋ",
@@ -10705,7 +10824,13 @@
       "protocol": "ಪ್ರೋಟೋಕಾಲ್",
       "baudRate": "ಬಾಡ್ ದರ",
       "systemIdentification": "ಸಿಸ್ಟಮ್ ಗುರುತಿಸುವಿಕೆ",
-      "mavlinkSystemAndGCSIDs": "ಬಹು-ವಾಹನ ಸೆಟಪ್‌ಗಳಿಗಾಗಿ MAVLink ಸಿಸ್ಟಮ್ ಮತ್ತು GCS ID ಗಳು"
+      "mavlinkSystemAndGCSIDs": "ಬಹು-ವಾಹನ ಸೆಟಪ್‌ಗಳಿಗಾಗಿ MAVLink ಸಿಸ್ಟಮ್ ಮತ್ತು GCS ID ಗಳು",
+      "notPresent": "ಇಲ್ಲ",
+      "noRadioTelemetry": "ಲೈವ್ ರೇಡಿಯೋ ಟೆಲಿಮೆಟ್ರಿ ಇಲ್ಲ: ಇತ್ತೀಚೆಗೆ RADIO_STATUS ಬಂದಿಲ್ಲ",
+      "px4BaudUnderPorts": "PX4 ಟೆಲಿಮೆಟ್ರಿ ಪೋರ್ಟ್ ಬಾಡ್ ದರಗಳನ್ನು ಪೋರ್ಟ್‌ಗಳಲ್ಲಿ ಹೊಂದಿಸುತ್ತದೆ (SER_TEL1_BAUD, SER_TEL2_BAUD). ಈ ಪುಟ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಏನನ್ನೂ ಬರೆಯುವುದಿಲ್ಲ.",
+      "vehicleSystemId": "ವಾಹನ ಸಿಸ್ಟಮ್ ID",
+      "gcsSystemId": "GCS ಸಿಸ್ಟಮ್ ID",
+      "uniqueSysidHint": "ಒಂದೇ ಲಿಂಕ್‌ನ ಪ್ರತಿ ವಾಹನಕ್ಕೂ ಅನನ್ಯ SYSID_THISMAV ಬೇಕು. ಡೀಫಾಲ್ಟ್ GCS ID 255."
     },
     "signingEnabledSection": {
       "signingEnabled": "ಸೈನಿಂಗ್ ಸಕ್ರಿಯಗೊಂಡಿದೆ",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "ಮಾಸ್ಟರ್ ಥ್ರಾಟಲ್",
       "motorsWillSpinWhenTested": "ಪರೀಕ್ಷಿಸುವಾಗ ಮೋಟಾರ್‌ಗಳು ತಿರುಗುತ್ತವೆ. ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆಯದಿದ್ದರೆ ಗಾಯ ಅಥವಾ ಹಾನಿ ಉಂಟಾಗಬಹುದು.",
       "enableMotorTest": "ಮೋಟಾರ್ ಪರೀಕ್ಷೆ ಸಕ್ರಿಯಗೊಳಿಸಿ",
-      "stopAllMotors": "ಎಲ್ಲಾ ಮೋಟಾರ್‌ಗಳನ್ನು ನಿಲ್ಲಿಸಿ"
+      "stopAllMotors": "ಎಲ್ಲಾ ಮೋಟಾರ್‌ಗಳನ್ನು ನಿಲ್ಲಿಸಿ",
+      "removePropellers": "ಪರೀಕ್ಷೆಗೆ ಮೊದಲು ಎಲ್ಲ ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆಯಿರಿ",
+      "motorN": "ಮೋಟಾರ್ {n}",
+      "motorThrottleN": "ಮೋಟಾರ್ {n} ಥ್ರಾಟಲ್",
+      "setPct": "ಹೊಂದಿಸಿದ {pct}%",
+      "mixed": "ಮಿಶ್ರ"
     },
     "iNavMissionPanel": {
       "inavMission": "iNav ಮಿಷನ್",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "ಪ್ರಸ್ತುತ ಯೋಜನೆಯನ್ನು ಬದಲಾಯಿಸಬೇಕೆ?",
       "replacePlan": "ಯೋಜನೆ ಬದಲಾಯಿಸಿ",
       "noMissionLoadedOpenThe": "ಯಾವುದೇ ಮಿಷನ್ ಲೋಡ್ ಆಗಿಲ್ಲ. ಒಂದನ್ನು ರಚಿಸಲು Plan ಟ್ಯಾಬ್ ತೆರೆಯಿರಿ.",
-      "openMissionPlanner": "ಮಿಷನ್ ಪ್ಲಾನರ್ ತೆರೆಯಿರಿ"
+      "openMissionPlanner": "ಮಿಷನ್ ಪ್ಲಾನರ್ ತೆರೆಯಿರಿ",
+      "waypointActionsTitle": "iNav ವೇಪಾಯಿಂಟ್ ಕ್ರಿಯೆಗಳು",
+      "waypointActionsBody": "iNav ಎಂಟು ವೇಪಾಯಿಂಟ್ ಕ್ರಿಯೆ ಪ್ರಕಾರಗಳನ್ನು ಬೆಂಬಲಿಸುತ್ತದೆ. Plan ಟ್ಯಾಬ್‌ನಲ್ಲಿ Waypoint, Poshold (ಅನಿಯಮಿತ ಅಥವಾ ಸಮಯಬದ್ಧ), RTH ಅಥವಾ Land ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ವೇಪಾಯಿಂಟ್ ಕ್ರಿಯಾ ಪಟ್ಟಿಯಿಂದ Set POI, Jump ಅಥವಾ Set heading ಸೇರಿಸಿ."
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "ಎಲ್ಲಾ ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "ಏರ್‌ಫ್ರೇಮ್ ಬದಲಾಯಿಸಲು ರೀಬೂಟ್ ಅಗತ್ಯವಿದೆ. ಎಲ್ಲಾ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳು ಏರ್‌ಫ್ರೇಮ್ ಡೀಫಾಲ್ಟ್‌ಗಳಿಗೆ ಮರುಹೊಂದುತ್ತವೆ.",
       "searchAirframes": "ಏರ್‌ಫ್ರೇಮ್‌ಗಳನ್ನು ಹುಡುಕಿ...",
       "noAirframesMatchYourSearch": "ನಿಮ್ಮ ಹುಡುಕಾಟಕ್ಕೆ ಯಾವುದೇ ಏರ್‌ಫ್ರೇಮ್ ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ.",
-      "customAirframeID": "ಕಸ್ಟಮ್ ಏರ್‌ಫ್ರೇಮ್ ID"
+      "customAirframeID": "ಕಸ್ಟಮ್ ಏರ್‌ಫ್ರೇಮ್ ID",
+      "custom": "ಕಸ್ಟಮ್ ({id})",
+      "allCategories": "ಎಲ್ಲಾ ವರ್ಗಗಳು",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "ಮರುಪ್ರಯತ್ನಿಸಿ",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "ಎಲ್ಲಾ ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ",
       "disarmToTestActuators": "ಆಕ್ಚುಯೇಟರ್‌ಗಳನ್ನು ಪರೀಕ್ಷಿಸಲು ಡಿಸ್‌ಆರ್ಮ್ ಮಾಡಿ.",
       "output": "ಔಟ್‌ಪುಟ್",
-      "stop": "ನಿಲ್ಲಿಸಿ"
+      "stop": "ನಿಲ್ಲಿಸಿ",
+      "removePropellers": "ಪರೀಕ್ಷೆಗೆ ಮೊದಲು ಎಲ್ಲ ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆಯಿರಿ",
+      "testExplain": "ಆಯ್ದ ಮೋಟಾರ್ {seconds}s ಕಾಲ ಆಯ್ದ ಮೌಲ್ಯದಲ್ಲಿ ತಿರುಗುತ್ತದೆ (ಅಥವಾ ಸರ್ವೋ ಚಲಿಸುತ್ತದೆ), ನಂತರ FC ಅದನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಆರ್ಮ್ ಆಗಿರುವಾಗ FC ಪರೀಕ್ಷೆಯನ್ನು ತಿರಸ್ಕರಿಸುತ್ತದೆ.",
+      "throttle": "ಥ್ರಾಟಲ್",
+      "position": "ಸ್ಥಾನ",
+      "runSeconds": "{seconds}s ಚಲಾಯಿಸಿ"
     },
     "px4PowerSections": {
       "batterySettings": "ಬ್ಯಾಟರಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
@@ -11134,19 +11274,31 @@
       "pidTuning": "PID ಟ್ಯೂನಿಂಗ್",
       "presetProfiles": "ಪೂರ್ವನಿಗದಿತ ಪ್ರೊಫೈಲ್‌ಗಳು",
       "filterSettings": "ಫಿಲ್ಟರ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
-      "insGyroAccelLowPass": "INS ಗೈರೋ/ಆಕ್ಸೆಲ್ ಲೋ-ಪಾಸ್ ಫಿಲ್ಟರ್‌ಗಳು ಮತ್ತು ಹಾರ್ಮೋನಿಕ್ ನಾಚ್ ಫಿಲ್ಟರ್"
+      "insGyroAccelLowPass": "INS ಗೈರೋ/ಆಕ್ಸೆಲ್ ಲೋ-ಪಾಸ್ ಫಿಲ್ಟರ್‌ಗಳು ಮತ್ತು ಹಾರ್ಮೋನಿಕ್ ನಾಚ್ ಫಿಲ್ಟರ್",
+      "subtitleCopter": "ArduCopter ರೇಟ್ PID — ರೋಲ್, ಪಿಚ್, ಯಾ",
+      "subtitleCopterPx4": "PX4 ಮಲ್ಟಿಕಾಪ್ಟರ್ ರೇಟ್ PID (MC_*) — ರೋಲ್, ಪಿಚ್, ಯಾ. VTOL ನ ಫಿಕ್ಸ್ಡ್-ವಿಂಗ್ ದರಗಳು ಫಿಕ್ಸ್ಡ್-ವಿಂಗ್ ಟ್ಯೂನಿಂಗ್‌ನಲ್ಲಿವೆ.",
+      "subtitleRover": "ArduRover ಸ್ಟೀರಿಂಗ್-ರೇಟ್ ಮತ್ತು ವೇಗ/ಥ್ರಾಟಲ್ PID",
+      "subtitleRoverPx4": "PX4 ರೋವರ್ ಸ್ಟೀರಿಂಗ್-ರೇಟ್ ಮತ್ತು ವೇಗ PID",
+      "subtitlePlane": "ArduPlane ರೋಲ್, ಪಿಚ್, ಯಾ ಸರ್ವೋ PID ಗೇನ್",
+      "subtitlePlanePx4": "PX4 ಫಿಕ್ಸ್ಡ್-ವಿಂಗ್ ರೇಟ್ PID (FW_*) — ರೋಲ್, ಪಿಚ್, ಯಾ. ಆಟಿಟ್ಯೂಡ್ ಮತ್ತು ವೇಗ ಟ್ಯೂನಿಂಗ್ ಫಿಕ್ಸ್ಡ್-ವಿಂಗ್ ಟ್ಯೂನಿಂಗ್‌ನಲ್ಲಿದೆ."
     },
     "outputsPanel": {
       "servoMotorOutputs": "ಸರ್ವೋ / ಮೋಟಾರ್ ಔಟ್‌ಪುಟ್‌ಗಳು",
       "connectToADroneTo": "ಔಟ್‌ಪುಟ್‌ಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲು ಡ್ರೋನ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.",
       "outputFunctionAssignmentPWMLimits": "ಔಟ್‌ಪುಟ್ ಕಾರ್ಯ ನಿಯೋಜನೆ, PWM ಮಿತಿಗಳು ಮತ್ತು ಮೋಟಾರ್ ಪರೀಕ್ಷೆ",
-      "save": "ಉಳಿಸಿ"
+      "save": "ಉಳಿಸಿ",
+      "unsaved": "ಉಳಿಸಿಲ್ಲ"
     },
     "motorTestSection": {
       "motorTest": "ಮೋಟಾರ್ ಪರೀಕ್ಷೆ",
       "enableMotorTestSafetyMaster": "ಮೋಟಾರ್ ಪರೀಕ್ಷೆ ಸಕ್ರಿಯಗೊಳಿಸಿ (ಸುರಕ್ಷತಾ ಮಾಸ್ಟರ್)",
       "motor": "ಮೋಟಾರ್",
-      "removePropellersBeforeTestingMotors": "ಮೋಟಾರ್ ಪರೀಕ್ಷಿಸುವ ಮೊದಲು ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆಯಿರಿ. ಡ್ರೋನ್ ಸುರಕ್ಷಿತವಾಗಿ ಭದ್ರಪಡಿಸಲಾಗಿದೆ ಎಂದು ಖಚಿತಪಡಿಸಿ."
+      "removePropellersBeforeTestingMotors": "ಮೋಟಾರ್ ಪರೀಕ್ಷಿಸುವ ಮೊದಲು ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆಯಿರಿ. ಡ್ರೋನ್ ಸುರಕ್ಷಿತವಾಗಿ ಭದ್ರಪಡಿಸಲಾಗಿದೆ ಎಂದು ಖಚಿತಪಡಿಸಿ.",
+      "throttleLabel": "ಥ್ರಾಟಲ್: {value}% (ಗರಿಷ್ಠ {max}%)",
+      "durationLabel": "ಅವಧಿ: {value} ಸೆ",
+      "testMotorN": "ಮೋಟಾರ್ {n} ಪರೀಕ್ಷಿಸಿ",
+      "motorN": "ಮೋಟಾರ್ {n}",
+      "stop": "ನಿಲ್ಲಿಸಿ"
     },
     "navConfigPanel": {
       "navigationConfig": "ನ್ಯಾವಿಗೇಶನ್ ಕಾನ್ಫಿಗ್",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "ಟೆಲಿಮೆಟ್ರಿ ಸ್ಟ್ರೀಮ್ ದರಗಳು",
       "perPortMAVLinkMessageGroup": "ಪ್ರತಿ-ಪೋರ್ಟ್ MAVLink ಸಂದೇಶ ಗುಂಪು ದರಗಳು (Hz)",
       "mavlinkChannel": "MAVLink ಚಾನೆಲ್",
-      "gcsManagesTelemetryRatesOn": "GCS ಟೆಲಿಮೆಟ್ರಿ ದರಗಳನ್ನು ನಿರ್ವಹಿಸುತ್ತದೆ. ಸಂಪರ್ಕ, ಲಿಂಕ್ ಮರುಸ್ಥಾಪನೆ ಮತ್ತು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರೀಬೂಟ್ ಸಮಯದಲ್ಲಿ ಈ GCS ತಾನು ಸಂಪರ್ಕಗೊಂಡಿರುವ ಚಾನಲ್‌ನಲ್ಲಿ ತನ್ನದೇ ದರಗಳನ್ನು ವಿನಂತಿಸುತ್ತದೆ. ಇಲ್ಲಿ ಅಥವಾ ಏಜೆಂಟ್'ನ ರೌಟರ್ ಹೊಂದಿಸಿದ ದರಗಳನ್ನು ಬದಲಾಯಿಸದೆ ಇರಿಸಲು ಆಫ್ ಮಾಡಿ."
+      "gcsManagesTelemetryRatesOn": "GCS ಟೆಲಿಮೆಟ್ರಿ ದರಗಳನ್ನು ನಿರ್ವಹಿಸುತ್ತದೆ. ಸಂಪರ್ಕ, ಲಿಂಕ್ ಮರುಸ್ಥಾಪನೆ ಮತ್ತು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರೀಬೂಟ್ ಸಮಯದಲ್ಲಿ ಈ GCS ತಾನು ಸಂಪರ್ಕಗೊಂಡಿರುವ ಚಾನಲ್‌ನಲ್ಲಿ ತನ್ನದೇ ದರಗಳನ್ನು ವಿನಂತಿಸುತ್ತದೆ. ಇಲ್ಲಿ ಅಥವಾ ಏಜೆಂಟ್'ನ ರೌಟರ್ ಹೊಂದಿಸಿದ ದರಗಳನ್ನು ಬದಲಾಯಿಸದೆ ಇರಿಸಲು ಆಫ್ ಮಾಡಿ.",
+      "notPresent": "ಇಲ್ಲ"
     },
     "signingHistorySection": {
       "history": "ಇತಿಹಾಸ",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "OSD ಮುನ್ನೋಟ",
-      "liveReconstructionOfTheOSD": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರಚಿಸುವ OSD ಯ ಲೈವ್ ಪುನರ್ನಿರ್ಮಾಣ (MSP DisplayPort). FC ಈ ಸಂಪರ್ಕದಲ್ಲಿ MSP DisplayPort ಮೂಲಕ OSD ಔಟ್‌ಪುಟ್ ಮಾಡಲು ಕಾನ್ಫಿಗರ್ ಆಗಿದ್ದಾಗ ಮಾತ್ರ ಫ್ರೇಮ್‌ಗಳು ಬರುತ್ತವೆ (HD-ಗಾಗಲ್ / DJI ಸೆಟಪ್). ಕಸ್ಟಮ್ ಫಾಂಟ್ ಗ್ಲಿಫ್‌ಗಳನ್ನು ಚುಕ್ಕೆಯಾಗಿ ತೋರಿಸಲಾಗುತ್ತದೆ; ಪಠ್ಯ ಮತ್ತು ಸಂಖ್ಯಾ ಕ್ಷೇತ್ರಗಳು ಕಳುಹಿಸಿದಂತೆಯೇ ಕಾಣುತ್ತವೆ."
+      "liveReconstructionOfTheOSD": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರಚಿಸುವ OSD ಯ ಲೈವ್ ಪುನರ್ನಿರ್ಮಾಣ (MSP DisplayPort). FC ಈ ಸಂಪರ್ಕದಲ್ಲಿ MSP DisplayPort ಮೂಲಕ OSD ಔಟ್‌ಪುಟ್ ಮಾಡಲು ಕಾನ್ಫಿಗರ್ ಆಗಿದ್ದಾಗ ಮಾತ್ರ ಫ್ರೇಮ್‌ಗಳು ಬರುತ್ತವೆ (HD-ಗಾಗಲ್ / DJI ಸೆಟಪ್). ಕಸ್ಟಮ್ ಫಾಂಟ್ ಗ್ಲಿಫ್‌ಗಳನ್ನು ಚುಕ್ಕೆಯಾಗಿ ತೋರಿಸಲಾಗುತ್ತದೆ; ಪಠ್ಯ ಮತ್ತು ಸಂಖ್ಯಾ ಕ್ಷೇತ್ರಗಳು ಕಳುಹಿಸಿದಂತೆಯೇ ಕಾಣುತ್ತವೆ.",
+      "noFramesYet": "ಇನ್ನೂ OSD ಫ್ರೇಮ್‌ಗಳಿಲ್ಲ"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "ತಾಪಮಾನ ಸಂವೇದಕಗಳು",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "ಹಾರಾಟ ಮೋಡ್‌ಗಳು",
-      "read": "ಓದಿ"
+      "read": "ಓದಿ",
+      "unsavedCount": "{count} ಉಳಿಸಿಲ್ಲ",
+      "save": "ಉಳಿಸಿ",
+      "saveCount": "ಉಳಿಸಿ ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "ಫ್ಲ್ಯಾಶ್ ಟೂಲ್"
+      "flashTool": "ಫ್ಲ್ಯಾಶ್ ಟೂಲ್",
+      "subtitle": "USB DFU ಅಥವಾ ಸೀರಿಯಲ್ ಬೂಟ್‌ಲೋಡರ್ ಮೂಲಕ ಫರ್ಮ್‌ವೇರ್ ಫ್ಲ್ಯಾಶ್ ಮಾಡಿ"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "ರೀಬೂಟ್ ಅಗತ್ಯವಿದೆ"
+      "rebootRequired": "ರೀಬೂಟ್ ಅಗತ್ಯವಿದೆ",
+      "applyHint": "{label}. ಅನ್ವಯಿಸಲು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರೀಬೂಟ್ ಮಾಡಿ."
     },
     "pwmRangeSlider": {
       "rangeStart": "ವ್ಯಾಪ್ತಿಯ ಆರಂಭ",
@@ -11471,7 +11630,9 @@
       "loadParamFile": ".param ಫೈಲ್ ಲೋಡ್ ಮಾಡಿ",
       "selectAll": "ಎಲ್ಲವನ್ನೂ ಆಯ್ಕೆಮಾಡಿ",
       "selectNone": "ಯಾವುದನ್ನೂ ಆಯ್ಕೆಮಾಡಬೇಡಿ",
-      "noParametersMatchTheCurrent": "ಪ್ರಸ್ತುತ ಫಿಲ್ಟರ್‌ಗೆ ಯಾವುದೇ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ."
+      "noParametersMatchTheCurrent": "ಪ್ರಸ್ತುತ ಫಿಲ್ಟರ್‌ಗೆ ಯಾವುದೇ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ.",
+      "applyN": "{count} ಪ್ಯಾರಾಮೀಟರ್ ಅನ್ವಯಿಸಿ",
+      "selectedOf": "{total} ರಲ್ಲಿ {selected} ಆಯ್ಕೆ"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "ಪ್ಯಾರಾಮೀಟರ್ ಬರೆಯುವುದನ್ನು ದೃಢೀಕರಿಸಿ",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "ಈ ಬ್ಯಾಚ್‌ನಲ್ಲಿ ಫ್ಲೈಟ್-ಸುರಕ್ಷತಾ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳಿವೆ. ಬರೆಯುವ ಮೊದಲು ಎಚ್ಚರಿಕೆಯಿಂದ ಪರಿಶೀಲಿಸಿ.",
       "flightSafety": "ಫ್ಲೈಟ್ ಸುರಕ್ಷತೆ",
       "iUnderstandThisChangeAffects": "ಈ ಬದಲಾವಣೆ ಫ್ಲೈಟ್ ಸುರಕ್ಷತೆಯ ಮೇಲೆ ಪರಿಣಾಮ ಬೀರುತ್ತದೆ ಎಂದು ನಾನು ಅರ್ಥಮಾಡಿಕೊಂಡಿದ್ದೇನೆ",
-      "cancel": "ರದ್ದುಮಾಡಿ"
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "willBeWritten": "{count} ಪ್ಯಾರಾಮೀಟರ್ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಬರೆಯಲಾಗುತ್ತದೆ.",
+      "writeN": "{count} ಪ್ಯಾರಾಮೀಟರ್ ಬರೆಯಿರಿ",
+      "outOfRange": "ಅನುಮತಿಸಿದ ವ್ಯಾಪ್ತಿಯ ಹೊರಗೆ ({min} .. {max})",
+      "outOfRangeBlocked": "ಬರೆಯುವ ಮೊದಲು ವ್ಯಾಪ್ತಿ ಹೊರಗಿನ ಮೌಲ್ಯಗಳನ್ನು ಸರಿಪಡಿಸಿ."
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "ಉಳಿಸದ ಪ್ಯಾರಾಮೀಟರ್ ಬದಲಾವಣೆಗಳು",
@@ -11517,7 +11682,9 @@
       "link": "ಲಿಂಕ್",
       "verified": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
       "failed": "ವಿಫಲವಾಗಿದೆ",
-      "unsigned": "ಸಹಿ ಮಾಡದ"
+      "unsigned": "ಸಹಿ ಮಾಡದ",
+      "primary": "ಪ್ರಾಥಮಿಕ",
+      "requireSignedBody": "ಸಹಿ ಮಾಡಿದ ಟೆಲಿಮೆಟ್ರಿ ಕಡ್ಡಾಯ. ಕೀ ಲೋಡ್ ಆಗಿರುವವರೆಗೆ ಸಹಿ ಇಲ್ಲದ ಅಥವಾ ಪರಿಶೀಲನೆ ವಿಫಲವಾದ ಪ್ರತಿ ಫ್ರೇಮ್ ಕೈಬಿಡಲಾಗುತ್ತದೆ. ಉತ್ತರಗಳಿಗೆ ಸಹಿ ಮಾಡದ ವಾಹನ ಮೌನವಾಗುತ್ತದೆ."
     },
     "servoMixerTable": {
       "targetCh": "ಗುರಿ ಚಾನೆಲ್",
@@ -11553,7 +11720,9 @@
       "programmingJS": "ಪ್ರೋಗ್ರಾಮಿಂಗ್ (JS)",
       "writeExpressionsAndCompileThem": "ಎಕ್ಸ್‌ಪ್ರೆಶನ್‌ಗಳನ್ನು ಬರೆದು ಅವುಗಳನ್ನು Logic Conditions ಆಗಿ ಕಂಪೈಲ್ ಮಾಡಿ. ಲೋಡ್ ಮಾಡಿದಾಗ ಅವು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ನಲ್ಲಿ ಖಾಲಿ ಇರುವ ಸ್ಲಾಟ್‌ಗಳಲ್ಲಿ ಇರಿಸಲ್ಪಡುತ್ತವೆ, ಈಗಾಗಲೇ ಬಳಕೆಯಲ್ಲಿರುವ ಪ್ರತಿ ಕಂಡೀಷನ್ ಹಾಗೆಯೇ ಉಳಿಯುತ್ತದೆ; Logic Conditions ಸಂಪಾದಕದಲ್ಲಿ ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಅಲ್ಲಿಂದ FC ಗೆ ಬರೆಯಿರಿ.",
       "compile": "ಕಂಪೈಲ್",
-      "loadIntoLogicConditions": "Logic Conditions ಗೆ ಲೋಡ್ ಮಾಡಿ"
+      "loadIntoLogicConditions": "Logic Conditions ಗೆ ಲೋಡ್ ಮಾಡಿ",
+      "compilesToLogicConditions": "Logic Conditions ಗೆ ಕಂಪೈಲ್ ಆಗುತ್ತದೆ",
+      "operation": "ಕಾರ್ಯಾಚರಣೆ"
     },
     "customOsdElementsPanel": {
       "customOSD": "ಕಸ್ಟಮ್ OSD",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "ಲ್ಯಾಂಡ್ ಹೆಡಿಂಗ್ 1 (ಡಿಗ್ರಿ, 0 = ಆಫ್)",
       "landHeading2Deg0": "ಲ್ಯಾಂಡ್ ಹೆಡಿಂಗ್ 2 (ಡಿಗ್ರಿ, 0 = ಆಫ್)",
       "altitudeReference": "ಎತ್ತರದ ಉಲ್ಲೇಖ",
-      "thisPanelAppliesToFixed": "ಈ ಪ್ಯಾನೆಲ್ ಫಿಕ್ಸ್ಡ್-ವಿಂಗ್ ಮತ್ತು ಟ್ರೈಕಾಪ್ಟರ್ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್‌ಗಳಿಗೆ ಅನ್ವಯಿಸುತ್ತದೆ. ಸಂಪರ್ಕಿತ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಲ್ಟಿರೋಟರ್ ಆಗಿ ಕಾನ್ಫಿಗರ್ ಆಗಿದೆ."
+      "thisPanelAppliesToFixed": "ಈ ಪ್ಯಾನೆಲ್ ಫಿಕ್ಸ್ಡ್-ವಿಂಗ್ ಮತ್ತು ಟ್ರೈಕಾಪ್ಟರ್ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್‌ಗಳಿಗೆ ಅನ್ವಯಿಸುತ್ತದೆ. ಸಂಪರ್ಕಿತ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಲ್ಟಿರೋಟರ್ ಆಗಿ ಕಾನ್ಫಿಗರ್ ಆಗಿದೆ.",
+      "unsaved": "ಉಳಿಸಿಲ್ಲ",
+      "approachN": "ಅಪ್ರೋಚ್ {n}",
+      "save": "ಉಳಿಸಿ",
+      "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ…",
+      "seaLevel": "ಸಮುದ್ರ ಮಟ್ಟ",
+      "relativeToHome": "ಹೋಮ್‌ಗೆ ಸಾಪೇಕ್ಷ"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "ಸೆನ್ಸರ್ ಗ್ರಾಫ್‌ಗಳು",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "ಕಂಪಾಸ್ ಹಾರಾಟ-ಪೂರ್ವ ಪರಿಶೀಲನೆಗಳು",
       "enabled": "ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ",
-      "fix": "ಫಿಕ್ಸ್"
+      "fix": "ಫಿಕ್ಸ್",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "unavailable": "ಲಭ್ಯವಿಲ್ಲ",
+      "disabledHint": "ನಿಷ್ಕ್ರಿಯ — ಮೊದಲು COMPASS_USE ಸಕ್ರಿಯಗೊಳಿಸಿ",
+      "none": "ಯಾವುದೂ ಇಲ್ಲ",
+      "lenient": "ಸಡಿಲ",
+      "recommendLenient": "{value} — ಸಡಿಲ ದಿಕ್ಕು ಪತ್ತೆಗೆ 3 ಶಿಫಾರಸು",
+      "lowLimit": "ಕಡಿಮೆ ಮಿತಿ",
+      "increaseTo": "{value} ಗೆ ಹೆಚ್ಚಿಸಿ",
+      "unknownValue": "ಅಜ್ಞಾತ ({value})",
+      "extInternal": "ಆಂತರಿಕ",
+      "extExternal": "ಬಾಹ್ಯ",
+      "extForced": "ಬಲವಂತ ಬಾಹ್ಯ",
+      "learnOff": "ಆಫ್",
+      "learnInternal": "ಆಂತರಿಕ",
+      "learnEkf": "EKF",
+      "learnInFlight": "ಹಾರಾಟದಲ್ಲಿ",
+      "unknown": "ಅಜ್ಞಾತ",
+      "notChanged": "{name} ಬದಲಾಗಲಿಲ್ಲ: {reason}",
+      "noReply": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ನಿಂದ ಉತ್ತರವಿಲ್ಲ",
+      "setTo": "{name} ಅನ್ನು {value}ಗೆ ಹೊಂದಿಸಲಾಗಿದೆ"
     },
     "pidAnalysisSummary": {
       "tuneScore": "ಟ್ಯೂನ್ ಸ್ಕೋರ್",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "GPS ರಹಿತ ಸ್ಥಾನನಿರ್ಣಯ",
       "ekf3SourceSetsAndExternal": "EKF3 ಮೂಲ ಸೆಟ್‌ಗಳು ಮತ್ತು ಬಾಹ್ಯ ನ್ಯಾವ್ / ಬೀಕನ್ ಬ್ಯಾಕೆಂಡ್‌ಗಳು",
       "externalNavigationVISO": "ಬಾಹ್ಯ ನ್ಯಾವಿಗೇಷನ್ (VISO)",
-      "beaconBCN": "ಬೀಕನ್ (BCN)"
+      "beaconBCN": "ಬೀಕನ್ (BCN)",
+      "sourceSet": "ಮೂಲ ಸೆಟ್ {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "ಹೆಲಿಕಾಪ್ಟರ್",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "ಗ್ರಿಡ್",
       "live": "ಲೈವ್",
-      "dragElementsToRepositionClick": "ಸ್ಥಾನ ಬದಲಿಸಲು ಅಂಶಗಳನ್ನು ಎಳೆಯಿರಿ. ಗೋಚರತೆ ಟಾಗಲ್ ಮಾಡಲು ಸೈಡ್‌ಬಾರ್‌ನಲ್ಲಿ ಅಂಶಗಳನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ."
+      "dragElementsToRepositionClick": "ಸ್ಥಾನ ಬದಲಿಸಲು ಅಂಶಗಳನ್ನು ಎಳೆಯಿರಿ. ಗೋಚರತೆ ಟಾಗಲ್ ಮಾಡಲು ಸೈಡ್‌ಬಾರ್‌ನಲ್ಲಿ ಅಂಶಗಳನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ.",
+      "osdPreview": "OSD ಮುನ್ನೋಟ"
     },
     "keyAgeNudge": {
       "rotateNow": "ಈಗ ತಿರುಗಿಸಿ",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳ ಬ್ಯಾಕಪ್",
-      "restoreParameters": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ"
+      "restoreParameters": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ",
+      "downloading": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ…",
+      "backedUp": "{count} ಪ್ಯಾರಾಮೀಟರ್‌ಗಳ ಬ್ಯಾಕಪ್ ಆಯಿತು",
+      "backupFailed": "ಬ್ಯಾಕಪ್ ವಿಫಲವಾಗಿದೆ: {error}",
+      "unknownError": "ಅಜ್ಞಾತ ದೋಷ",
+      "flashing": "ಫ್ಲ್ಯಾಶ್ ಆಗುತ್ತಿದೆ…",
+      "flashFirmware": "ಫರ್ಮ್‌ವೇರ್ ಫ್ಲ್ಯಾಶ್ ಮಾಡಿ",
+      "restored": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಲಾಗಿದೆ"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "ರಿಸೀವರ್ ಡೀಫಾಲ್ಟ್"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "ವಜಾಗೊಳಿಸಿ"
+    },
+    "bfFailsafe": {
+      "title": "ಫೇಲ್‌ಸೇಫ್",
+      "subtitle": "ರೇಡಿಯೋ ಲಿಂಕ್ ಕಳೆದಾಗ ಡ್ರೋನ್ ಏನು ಮಾಡಬೇಕು",
+      "stage2": "ಹಂತ 2 ಫೇಲ್‌ಸೇಫ್",
+      "procedure": "ಕ್ರಮ (0 ಬೀಳಿಸು, 1 ಇಳಿಸು, 2 GPS ರಕ್ಷಣೆ)",
+      "delay": "ರಕ್ಷಣಾ ಸಮಯ (0.1 ಸೆ)",
+      "offDelay": "ಮೋಟಾರ್ ಆಫ್ ವಿಳಂಬ (0.1 ಸೆ)",
+      "throttle": "ಇಳಿಯುವ ಥ್ರಾಟಲ್ (µs)",
+      "throttleLowDelay": "ಕಡಿಮೆ ಥ್ರಾಟಲ್ ವಿಳಂಬ (0.1 ಸೆ)",
+      "switchMode": "ಫೇಲ್‌ಸೇಫ್ ಸ್ವಿಚ್ (0 ಹಂತ 1, 1 ಆಫ್, 2 ಹಂತ 2)"
+    },
+    "px4Safety": {
+      "title": "ವೈಫಲ್ಯ ಪತ್ತೆ ಮತ್ತು ಹಿಂತಿರುಗು",
+      "subtitle": "ವೈಫಲ್ಯ ಪ್ರಚೋದಿಸುವ ಭಂಗಿ ಮಿತಿಗಳು ಮತ್ತು ಹಿಂತಿರುಗುವ ಮಾರ್ಗ. ಸರ್ಕ್ಯೂಟ್ ಬ್ರೇಕರ್‌ಗಳು Parameters ನಲ್ಲಿ.",
+      "failureDetector": "ವೈಫಲ್ಯ ಪತ್ತೆ",
+      "maxPitch": "ಗರಿಷ್ಠ ಪಿಚ್ (°)",
+      "maxRoll": "ಗರಿಷ್ಠ ರೋಲ್ (°)",
+      "pitchTrigger": "ಪಿಚ್ ಪ್ರಚೋದಕ ಸಮಯ (ಸೆ)",
+      "rollTrigger": "ರೋಲ್ ಪ್ರಚೋದಕ ಸಮಯ (ಸೆ)",
+      "returnToLaunch": "ಉಡಾವಣೆಗೆ ಹಿಂತಿರುಗು",
+      "rtlType": "ಹಿಂತಿರುಗುವ ಪ್ರಕಾರ",
+      "returnAlt": "ಹಿಂತಿರುಗುವ ಎತ್ತರ (ಮೀ)",
+      "descendAlt": "ಇಳಿಯುವ ಎತ್ತರ (ಮೀ)",
+      "landDelay": "ಇಳಿಯುವ ಮೊದಲು ಹೋವರ್ (ಸೆ, -1 = ಎಂದೂ ಇಲ್ಲ)",
+      "coneAngle": "ಹಿಂತಿರುಗುವ ಶಂಕು ಅರ್ಧ-ಕೋನ"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "ನಿಯಂತ್ರಣವನ್ನು ಸರಿಸಿ",
       "stickMode": "ಸ್ಟಿಕ್ ಮೋಡ್",
       "none": "ಯಾವುದೂ ಇಲ್ಲ",
-      "close": "ಮುಚ್ಚಿ"
+      "close": "ಮುಚ್ಚಿ",
+      "saved": "ಉಳಿಸಲಾಗಿದೆ",
+      "imported": "ಆಮದು ಆಯಿತು. ಉಳಿಸಲು ಉಳಿಸಿ ಒತ್ತಿ.",
+      "resetPending": "ADOS ಡೀಫಾಲ್ಟ್ ಲೋಡ್ ಆಯಿತು. ಉಳಿಸಿ ಅಥವಾ ಹಿಂದಿರುಗಲು ರದ್ದು ಮಾಡಿ.",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "tourReplayDone": "ಮುಂದಿನ ಬಾರಿ ಫ್ಲೈಟ್ ತೆರೆದಾಗ ಕಂಟ್ರೋಲರ್ ಪ್ರವಾಸ ಬರುತ್ತದೆ."
     },
     "rpcTraceTable": {
       "node": "ನೋಡ್",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "ಮುಗಿದಿದೆ (ಸ್ಟಿಕ್‌ಗಳು ಬಿಡುಗಡೆಯಾಗಿವೆ)",
-      "start": "ಪ್ರಾರಂಭಿಸಿ"
+      "start": "ಪ್ರಾರಂಭಿಸಿ",
+      "noControllerGranted": "ಯಾವ ಕಂಟ್ರೋಲರ್‌ಗೂ ಅನುಮತಿ ಇಲ್ಲ"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "ಪ್ರಾಥಮಿಕವಾಗಿ ಹೊಂದಿಸಿ",
       "noPairedBluetoothDevices": "ಜೋಡಿಸಲಾದ Bluetooth ಸಾಧನಗಳಿಲ್ಲ.",
       "forget": "ಮರೆತುಬಿಡಿ",
-      "calibrateAndTuneControllersConnected": "Web Gamepad API ಮೂಲಕ ಈ ಬ್ರೌಸರ್‌ಗೆ ನೇರವಾಗಿ ಸಂಪರ್ಕಿಸಲಾದ ಕಂಟ್ರೋಲರ್‌ಗಳನ್ನು ಕ್ಯಾಲಿಬ್ರೇಟ್ ಮತ್ತು ಟ್ಯೂನ್ ಮಾಡಿ."
+      "calibrateAndTuneControllersConnected": "Web Gamepad API ಮೂಲಕ ಈ ಬ್ರೌಸರ್‌ಗೆ ನೇರವಾಗಿ ಸಂಪರ್ಕಿಸಲಾದ ಕಂಟ್ರೋಲರ್‌ಗಳನ್ನು ಕ್ಯಾಲಿಬ್ರೇಟ್ ಮತ್ತು ಟ್ಯೂನ್ ಮಾಡಿ.",
+      "typeUnknown": "ಅಜ್ಞಾತ",
+      "kindJoystick": "ಜಾಯ್‌ಸ್ಟಿಕ್",
+      "kindWheel": "ವೀಲ್",
+      "kindGamepad": "ಗೇಮ್‌ಪ್ಯಾಡ್",
+      "forgetTitle": "{name} ಮರೆಯಬೇಕೇ?",
+      "forgetMessage": "ಗ್ರೌಂಡ್ ಸ್ಟೇಷನ್ ಇದನ್ನು ಅನ್‌ಪೇರ್ ಮಾಡುತ್ತದೆ. ಬಳಸಲು ಮತ್ತೆ ಜೋಡಿಸಬೇಕು.",
+      "forgotDevice": "{name} ಮರೆಯಲಾಗಿದೆ",
+      "forgetFailed": "{name} ಮರೆಯಲು ಆಗಲಿಲ್ಲ"
     },
     "community": {
       "communityNavigation": "ಸಮುದಾಯ ನ್ಯಾವಿಗೇಶನ್",

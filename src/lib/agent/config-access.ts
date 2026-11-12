@@ -43,6 +43,8 @@
  */
 
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { isDemoMode } from "@/lib/utils";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import {
@@ -210,6 +212,13 @@ export function configAccessFrom(
   relayReach: RelayReach | null,
 ): ConfigAccess {
   if (client) return { mode: "direct", client };
+  // Demo nodes have no real host: the proxy and relay lanes would dial the
+  // simulated address server-side and answer 502. The demo's one mock agent
+  // serves every simulated node's config, as the node settings page does.
+  if (isDemoMode()) {
+    const demoClient = useAgentConnectionStore.getState().client;
+    return demoClient ? { mode: "direct", client: demoClient } : { mode: "none", reason: "no-path" };
+  }
   if (target) return { mode: "proxy", target };
   if (relayReach) return { mode: "relay", reach: relayReach };
   return { mode: "none", reason: "no-path" };

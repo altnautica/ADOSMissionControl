@@ -189,7 +189,13 @@ export function SwarmView({
           onClear={() => setSelected(new Set())}
         />
 
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+        {/* The slot table needs ~1120 px for its state columns; beside the
+            420 px map that only fits from 1500 px, so narrower windows stack
+            the map under the table instead of hiding columns. */}
+        <div
+          data-testid="swarm-board-layout"
+          className="flex flex-col gap-3 min-[1500px]:flex-row min-[1500px]:items-start"
+        >
           <div className="min-w-0 flex-1">
             <SwarmBoardTable
               rows={rows}

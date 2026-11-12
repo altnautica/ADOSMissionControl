@@ -59,11 +59,16 @@ function cloudState(pluginId: string, deviceId: string): PluginStateResponse | n
   return slice !== undefined && isPluginStateResponse(slice) ? slice : null;
 }
 
+/** The LAN poll answers at the feed's own cadence, so it wins whenever it
+ * answers; the slower cloud heartbeat slice is only the fallback for a node
+ * with no LAN reach or a failed poll (mixing the two flips 2 s staleness rules). */
 async function readState(pluginId: string, deviceId: string): Promise<PluginStateResponse | null> {
-  const cloud = cloudState(pluginId, deviceId);
-  if (cloud) return cloud;
   const reach = resolveNodeAgentReach(deviceId);
-  return reach ? pluginClientForReach(reach).getState(pluginId) : null;
+  if (reach) {
+    const lan = await pluginClientForReach(reach).getState(pluginId).catch(() => null);
+    if (lan) return lan;
+  }
+  return cloudState(pluginId, deviceId);
 }
 
 async function tick(key: string, feed: Feed, pluginId: string, deviceId: string): Promise<void> {

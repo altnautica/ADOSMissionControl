@@ -209,6 +209,19 @@ describe("PlannerBar plans button", () => {
   });
 });
 
+describe("PlannerBar outline button", () => {
+  it("opens a closed outline and closes it again", () => {
+    usePlannerStore.setState({ outlineOpen: false });
+    renderBar();
+    const button = screen.getByRole("button", { name: messages.planner.shortcuts.outline });
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(button);
+    expect(usePlannerStore.getState().outlineOpen).toBe(true);
+    fireEvent.click(button);
+    expect(usePlannerStore.getState().outlineOpen).toBe(false);
+  });
+});
+
 describe("PlannerBar overflow menu", () => {
   const en = messages.planner;
   const ITEMS: [label: string, handler: string, from: "p" | "shareIo"][] = [
@@ -381,5 +394,35 @@ describe("vehicle options battery label", () => {
 
     const unknown = renderHook(() => useVehicleOptions([], "gone-1"), { wrapper: IntlWrapper });
     expect(unknown.result.current.at(-1)).toEqual({ value: "gone-1", label: "gone-1" });
+  });
+});
+
+describe("PlannerBar on a phone-width window", () => {
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: /max-width:\s*599px/.test(query),
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("moves Save into the overflow menu and keeps Upload as an icon", () => {
+    const props = renderBar();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    const upload = screen.getByRole("button", { name: "Upload to drone" });
+    expect(upload).not.toHaveTextContent("Upload to drone");
+    fireEvent.click(screen.getByRole("button", { name: "More plan actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Save" }));
+    expect(props.p.handleSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers an inspector toggle", () => {
+    renderBar();
+    const toggle = screen.getByRole("button", { name: messages.planner.shortcuts.inspector });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(toggle);
+    expect(usePlannerStore.getState().inspectorOpen).toBe(true);
   });
 });

@@ -76,7 +76,7 @@ function matchesCategory(msg: LogMessage, category: CategoryFilter): boolean {
 
 // ── Hook ─────────────────────────────────────────────────────
 
-export function useDroneLogFilter(messages: LogMessage[]) {
+export function useDroneLogFilter(messages: readonly LogMessage[]) {
   const [minSeverity, setMinSeverity] = useState(7);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");

@@ -10,6 +10,9 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import { useLanNodePluginLists } from "@/hooks/use-node-plugin-list";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
+import { isDemoMode } from "@/lib/utils";
+import { DEMO_DRONES } from "@/mock/drones";
+import { getDemoDronePluginInstalls } from "@/mock/mock-plugins";
 import { InstalledItem, type InstalledRow } from "./installed-item";
 
 /** All installs on one node (or the GCS-only bucket), for the fleet-wide
@@ -44,6 +47,7 @@ export default function PluginsIndexPage() {
   // not a bare wire id.
   const nodeNameByDeviceId = useMemo(() => {
     const m = new Map<string, string>();
+    if (isDemoMode()) for (const d of DEMO_DRONES) m.set(d.id, d.name);
     for (const n of fleetNodes) m.set(n.deviceId, n.name ?? n.deviceId);
     return m;
   }, [fleetNodes]);
@@ -81,6 +85,23 @@ export default function PluginsIndexPage() {
           status: r.status,
           deviceId,
         });
+      }
+    }
+    // Demo nodes are not LAN-paired, so their install lists come from the
+    // same fixtures the per-node Extensions tab shows.
+    if (isDemoMode()) {
+      for (const d of DEMO_DRONES) {
+        for (const p of getDemoDronePluginInstalls(d.id)) {
+          const key = keyOf(d.id, p.pluginId);
+          byKey.set(key, {
+            key,
+            pluginId: p.pluginId,
+            name: p.name,
+            version: p.version,
+            status: p.status,
+            deviceId: d.id,
+          });
+        }
       }
     }
     for (const c of cloudInstalls ?? []) {

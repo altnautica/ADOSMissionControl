@@ -201,7 +201,7 @@ describe('mission-store', () => {
         uploaded = items;
         return { success: true };
       },
-      downloadMission: async () => [],
+      downloadMission: async () => uploaded,
       getVehicleInfo: () => ({ firmwareType: 'px4' }),
     };
 
@@ -277,7 +277,7 @@ describe('mission-store', () => {
         uploaded = items;
         return { success: true };
       },
-      downloadMission: async () => [],
+      downloadMission: async () => uploaded,
       getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
     };
     useMissionStore.setState({ waypoints: arduPilotPlan() });
@@ -335,12 +335,38 @@ describe('mission-store', () => {
   function stubArduPilot(
     upload: () => Promise<{ success: boolean; message?: string }> = async () => ({ success: true }),
   ) {
+    // The vehicle echoes what it accepted, as the read-back check expects.
+    let onVehicle: MissionItem[] = [];
     mockProtocol = {
-      uploadMission: upload,
-      downloadMission: async () => [],
+      uploadMission: async (items) => {
+        const result = await upload();
+        if (result.success) onVehicle = items;
+        return result;
+      },
+      downloadMission: async () => onVehicle,
       getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
     };
   }
+
+  it('fails an acknowledged upload whose read-back differs, with no receipt', async () => {
+    let sent: MissionItem[] = [];
+    stubArduPilot();
+    mockProtocol!.uploadMission = async (items) => {
+      sent = items;
+      return { success: true };
+    };
+    // The vehicle kept a different altitude for the last item.
+    mockProtocol!.downloadMission = async () => sent.map((it, i) => (i === sent.length - 1 ? { ...it, z: it.z + 5 } : it));
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    expect(await useMissionStore.getState().uploadMission()).toBe(false);
+    expect(useMissionStore.getState().uploadErrorCode).toBe(-4);
+    expect(receiptFor('mission', 'd1')).toBeUndefined();
+
+    // A read-back that fails is not a verified upload either.
+    mockProtocol!.downloadMission = async () => { throw new Error('timeout'); };
+    expect(await useMissionStore.getState().uploadMission()).toBe(false);
+    expect(useMissionStore.getState().uploadErrorCode).toBe(-5);
+  });
 
   function missionStatus() {
     const state = useMissionStore.getState();
@@ -487,6 +513,7 @@ describe('mission-store', () => {
       uploaded = items;
       return { success: true };
     };
+    mockProtocol!.downloadMission = async () => uploaded;
     const resume = [
       makeWaypoint({ id: 'rt', command: 'TAKEOFF', alt: 30 }),
       makeWaypoint({ id: 'rb', command: 'WAYPOINT', lat: 12.99 }),
@@ -509,6 +536,7 @@ describe('mission-store', () => {
       uploaded = items;
       return { success: true };
     };
+    mockProtocol!.downloadMission = async () => uploaded;
     useMissionStore.setState({ waypoints: arduPilotPlan(), transitAltM: 120 });
     expect(await useMissionStore.getState().uploadMission()).toBe(true);
     // home, TAKEOFF, transit out, A, B, DO_JUMP, transit back, RTL

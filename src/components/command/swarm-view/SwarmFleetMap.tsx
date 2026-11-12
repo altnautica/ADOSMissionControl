@@ -58,7 +58,10 @@ export function SwarmFleetMap({
   );
 
   return (
-    <aside className="shrink-0 rounded-lg border border-border-default bg-bg-secondary xl:w-[420px]">
+    <aside
+      data-testid="swarm-fleet-map"
+      className="min-w-0 shrink-0 rounded-lg border border-border-default bg-bg-secondary min-[1500px]:w-[420px]"
+    >
       <div className="flex items-center justify-between gap-2 border-b border-border-default px-3 py-2">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary">
           <MapPin size={13} className="text-text-tertiary" />

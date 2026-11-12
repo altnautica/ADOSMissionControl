@@ -156,3 +156,14 @@ describe("CommandPalette flight commands", () => {
     expect(returnFleetToLaunch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("CommandPalette parameter search", () => {
+  afterEach(cleanup);
+
+  it("says to select a vehicle when no flight controller is selected", () => {
+    useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
+    openPalette();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "RTL_ALT" } });
+    expect(screen.getByText(messages.commandPalette.selectVehicleForParams)).toBeInTheDocument();
+  });
+});

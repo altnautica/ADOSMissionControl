@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle, ArrowDownUp, Copy, Download, FileDown, FileOutput, FileSpreadsheet, FileText,
-  FileUp, Globe, Library, Link2, MoreHorizontal, Move, Plane, Play, Save, Trash2, Upload,
+  FileUp, Globe, Library, Link2, MoreHorizontal, Move, PanelLeft, PanelRight, Plane, Play, Save, Trash2, Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -29,6 +29,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useVehicleOptions } from "./use-vehicle-options";
 import { flyThisMission } from "@/components/planner/fly-this-mission";
 import { useDescribeUploadFailure } from "@/components/planner/use-describe-upload-failure";
+import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
 import { PlannerViewToggle } from "./PlannerViewToggle";
 import type { PlannerShareImport } from "./use-planner-share-import";
 import type { Planner } from "./use-planner";
@@ -78,6 +79,13 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
   const librarySheetOpen = usePlannerStore((s) => s.librarySheetOpen);
   const setLibrarySheetOpen = usePlannerStore((s) => s.setLibrarySheetOpen);
   const setDock = usePlannerStore((s) => s.setDock);
+  const outlineOpen = usePlannerStore((s) => s.outlineOpen);
+  const toggleOutline = usePlannerStore((s) => s.toggleOutline);
+  const inspectorOpen = usePlannerStore((s) => s.inspectorOpen);
+  const toggleInspector = usePlannerStore((s) => s.toggleInspector);
+  // On a phone-width window the bar keeps only icons, the vehicle picker and
+  // Upload; Save moves into the overflow menu.
+  const narrow = useNarrowViewport();
   const vehicleOptions = useVehicleOptions(p.drones, p.selectedDroneId);
   // Picking a connected vehicle for the plan also makes it the upload target
   // when no drone is selected yet; a drone already selected elsewhere stays
@@ -140,6 +148,9 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
         : null;
 
   const overflowItems = [
+    ...(narrow
+      ? [{ id: "save", label: t("bar.save"), icon: <Save size={12} />, disabled: !p.isDirty }, { id: "div-save", label: "", divider: true }]
+      : []),
     // The plan is on the drone: the next step is flying it.
     ...(status === "on-aircraft" && targetDroneId
       ? [{ id: "fly-mission", label: t("send.flyMission"), icon: <Plane size={12} /> }, { id: "div0", label: "", divider: true }]
@@ -165,7 +176,8 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
   ];
 
   const handleOverflow = (id: string) => {
-    if (id === "fly-mission") { if (targetDroneId) flyThisMission(targetDroneId, (href) => router.push(href)); }
+    if (id === "save") p.handleSave();
+    else if (id === "fly-mission") { if (targetDroneId) flyThisMission(targetDroneId, (href) => router.push(href)); }
     else if (id === "download-drone") p.handleDownloadFromDrone();
     else if (id === "import-boundary") shareIo.handleImportBoundary();
     else if (id === "export-native") p.handleExportNative();
@@ -193,12 +205,39 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
         size="sm"
         icon={<Library size={14} />}
         aria-pressed={librarySheetOpen}
+        aria-label={narrow ? t("bar.plans") : undefined}
         title={t("bar.plansTitle")}
         className={cn(librarySheetOpen && "text-accent-primary")}
         onClick={() => setLibrarySheetOpen(!librarySheetOpen)}
       >
-        {t("bar.plans")}
+        {narrow ? undefined : t("bar.plans")}
       </Button>
+      {/* The outline starts closed below 1280 px; this keeps it one click
+          (or "[") away at every width. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<PanelLeft size={14} />}
+        aria-pressed={outlineOpen}
+        aria-label={t("shortcuts.outline")}
+        title={`${t("shortcuts.outline")} ([)`}
+        className={cn(outlineOpen && "text-accent-primary")}
+        onClick={toggleOutline}
+      />
+      {/* The inspector opens as a sheet over the map on a phone-width window,
+          so it gets a button there to close and reopen it. */}
+      {narrow && (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<PanelRight size={14} />}
+          aria-pressed={inspectorOpen}
+          aria-label={t("shortcuts.inspector")}
+          title={`${t("shortcuts.inspector")} (])`}
+          className={cn(inspectorOpen && "text-accent-primary")}
+          onClick={toggleInspector}
+        />
+      )}
       <PlanNameField name={p.missionName} onCommit={p.setMissionName} />
       {p.isDirty && (
         <span
@@ -209,9 +248,9 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
         />
       )}
 
-      <div className="flex-1" />
+      {!narrow && <div className="flex-1" />}
 
-      <div className="w-48 shrink-0" title={t("bar.vehicle")}>
+      <div className={cn("shrink-0", narrow ? "w-24" : "w-48")} title={t("bar.vehicle")}>
         <Select options={vehicleOptions} value={p.selectedDroneId} onChange={handleVehicleChange} ariaLabel={t("bar.vehicle")} className="h-7 text-xs" />
       </div>
       {errorCount > 0 && (
@@ -226,24 +265,27 @@ export function PlannerBar({ p, hasDrone, showGeofence, showRally, shareIo, onOp
           <span className="font-mono">{errorCount}</span>
         </button>
       )}
-      {statusChip && (
+      {statusChip && !narrow && (
         <span className={cn("text-[11px] truncate max-w-40", statusChip.className)} title={statusChip.title}>
           {statusChip.label}
         </span>
       )}
-      <Button variant="secondary" size="sm" icon={<Save size={14} />} disabled={!p.isDirty} onClick={p.handleSave}>
-        {t("bar.save")}
-      </Button>
+      {!narrow && (
+        <Button variant="secondary" size="sm" icon={<Save size={14} />} disabled={!p.isDirty} onClick={p.handleSave}>
+          {t("bar.save")}
+        </Button>
+      )}
       <Button
         variant="primary"
         size="sm"
         icon={<Upload size={14} />}
         disabled={!hasDrone || !canSendSomething}
         loading={sending}
-        title={sendTitle}
+        title={sendTitle ?? (narrow ? sendLabel : undefined)}
+        aria-label={narrow ? sendLabel : undefined}
         onClick={handleSendClick}
       >
-        {sendLabel}
+        {narrow ? undefined : sendLabel}
       </Button>
       <PlannerViewToggle />
       <DropdownMenu

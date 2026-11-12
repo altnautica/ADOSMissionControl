@@ -53,6 +53,8 @@ import { useVideoStore, type VideoTransport } from "@/stores/video-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { whepKeyFor } from "@/lib/video/webrtc/whep-auth";
 import { acquireHeroProfile } from "@/lib/video/hero-profile-hold";
+import { streamQualityFor, useStreamQualityStore } from "@/lib/cockpit/stream-quality";
+import { useDroneManager } from "@/stores/drone-manager";
 
 type TransportMode = "auto" | "lan-whep" | "p2p-mqtt" | "off";
 
@@ -107,7 +109,11 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   // Held for as long as the surface wants the LAN feed, not only while a
   // connection is up: the profile switch respawns the encoder, and a hold tied
   // to "connected" would let that reconnect demote the drone again.
+  // The operator's Stream quality for the focused drone: Auto takes no hold.
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const quality = useStreamQualityStore((s) => streamQualityFor(s.byDrone, selectedDroneId));
   const heroEligible =
+    quality === "high" &&
     enabled &&
     videoEl !== null &&
     whepApiKey !== null &&

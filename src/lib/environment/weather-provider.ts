@@ -4,7 +4,9 @@
  * Top-level flow:
  *   1. Find the nearest METAR-reporting airport within 300 km.
  *   2. Check the 30-min IDB cache keyed `altcmd:weather:{ICAO}:{bucket}`.
- *   3. On miss, fetch from aviationweather.gov (free, no API key, global).
+ *   3. On miss, fetch from aviationweather.gov (free, no API key, global)
+ *      through the same-origin `/api/metar` route: the API sends no CORS
+ *      header, so the browser cannot read it directly.
  *   4. Parse via {@link parseAwcMetar} and cache the result.
  *   5. Return the snapshot, or `undefined` if nothing was found or the
  *      network is down.
@@ -24,7 +26,15 @@ import type { WeatherSnapshot } from "@/lib/types";
 const CACHE_BUCKET_MS = 30 * 60 * 1000;
 const CACHE_PREFIX = "altcmd:weather:";
 
-const AWC_METAR_URL = "https://aviationweather.gov/api/data/metar";
+const METAR_ROUTE = "/api/metar";
+
+/** One console line per session when the weather lookup fails, not one per arm. */
+let failureLogged = false;
+function logFailureOnce(reason: string): void {
+  if (failureLogged) return;
+  failureLogged = true;
+  console.warn(`[weather] METAR lookup unavailable: ${reason}`);
+}
 
 function cacheKey(icao: string, whenMs: number): string {
   const bucket = Math.floor(whenMs / CACHE_BUCKET_MS);
@@ -49,26 +59,35 @@ async function writeCache(icao: string, whenMs: number, snapshot: WeatherSnapsho
 }
 
 /**
- * Fetch the most recent METAR row for `icao` from aviationweather.gov.
+ * Fetch the most recent METAR row for `icao`.
  * Returns null on any failure (network, non-200, empty body, parse error).
  */
 async function fetchMetar(icao: string): Promise<AwcMetarRow | null> {
   try {
-    const url = `${AWC_METAR_URL}?ids=${encodeURIComponent(icao)}&format=json&hours=2`;
+    const url = `${METAR_ROUTE}?ids=${encodeURIComponent(icao)}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logFailureOnce(`HTTP ${res.status}`);
+      return null;
+    }
     const body = (await res.json()) as unknown;
     if (!Array.isArray(body) || body.length === 0) return null;
     // Prefer the most-recent row (API usually returns newest first, but be defensive).
     const rows = body as AwcMetarRow[];
     const sorted = [...rows].sort((a, b) => (b.obsTime ?? 0) - (a.obsTime ?? 0));
     return sorted[0] ?? null;
-  } catch {
+  } catch (err) {
+    logFailureOnce(err instanceof Error ? err.message : String(err));
     return null;
   }
+}
+
+/** Test hook: forget that a failure was already logged. */
+export function resetWeatherFailureLogForTest(): void {
+  failureLogged = false;
 }
 
 /**

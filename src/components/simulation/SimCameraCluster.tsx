@@ -94,7 +94,7 @@ export function SimCameraCluster({ viewer }: SimCameraClusterProps) {
   ];
 
   return (
-    <FloatingPanel corner="bottom-right" padded={false} className="flex flex-col gap-1 p-1.5">
+    <FloatingPanel docked padded={false} className="flex flex-col gap-1 p-1.5">
       {/* Camera modes */}
       <div className="flex gap-1">
         {CAMERA_MODES.map((m) => {

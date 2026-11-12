@@ -14,7 +14,7 @@
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
-import { gotoAdvertised, flyHereOffered, type FlyHereOffer } from "@/lib/hud/fly-here-offer";
+import { gotoAdvertised, flyHereOffered, type FlyHereOffer, type FlyHereReason } from "@/lib/hud/fly-here-offer";
 import { vehicleLanded } from "@/lib/skills/flight-facts";
 import { CHIP_STALE_AFTER_MS } from "@/lib/hud/flight-state";
 import { haversineDistance } from "@/lib/geo/distance";
@@ -58,22 +58,26 @@ export function screenToLocal(view: LocalPickView, sx: number, sy: number): { no
 }
 
 /** Whether a picked point offers Launch here: a fresh pilot state that
- *  advertises `goto`, with the drone on the ground (landed or disarmed). */
+ *  advertises `goto`, with the drone known to be on the ground (landed or
+ *  disarmed). An unknown arm or landed state may be airborne: no Launch. */
 export function launchHereOffered(p: PilotState | null, pilotAgeMs: number): boolean {
-  return p !== null && pilotAgeMs < CHIP_STALE_AFTER_MS && gotoAdvertised(p) && (p.landed || !p.armed);
+  return p !== null && pilotAgeMs < CHIP_STALE_AFTER_MS && gotoAdvertised(p) && (p.landed === true || p.armed === false);
 }
 
 export interface MapPointOffer {
   flyHere: boolean;
   launchHere: boolean;
+  /** Why Fly here is refused, when neither is offered and the rule knows;
+   *  worded by `refusal.<reason>`. */
+  refusal: FlyHereReason | null;
 }
 
 /** The route a Fly here for `droneId` takes now (the shared rule): the ADOS
  *  pilot when its fresh state offers a goto, else the FC when it flies
  *  GUIDED, armed and airborne, else none. The FC state describes only the
  *  selected drone, so the FC route applies to it alone. */
-export function flyHereRoute(droneId: string | null, now: number = Date.now()): FlyHereOffer["route"] {
-  if (!droneId) return null;
+export function flyHereOffer(droneId: string | null, now: number = Date.now()): FlyHereOffer {
+  if (!droneId) return { route: null };
   const stamped = useNavStreamStore.getState().byDrone[droneId]?.pilot;
   const pilot = stamped?.data ?? null;
   const age = stamped ? now - stamped.receivedAt : Infinity;
@@ -88,15 +92,21 @@ export function flyHereRoute(droneId: string | null, now: number = Date.now()): 
           landed: vehicleLanded(droneId, now) === true,
         }
       : null;
-  return flyHereOffered(pilot, age, fcFacts).route;
+  return flyHereOffered(pilot, age, fcFacts);
+}
+
+export function flyHereRoute(droneId: string | null, now: number = Date.now()): FlyHereOffer["route"] {
+  return flyHereOffer(droneId, now).route;
 }
 
 /** What a point picked for `droneId` offers now. */
 export function mapPointOffer(droneId: string | null, now: number = Date.now()): MapPointOffer {
-  if (!droneId) return { flyHere: false, launchHere: false };
+  if (!droneId) return { flyHere: false, launchHere: false, refusal: null };
   const stamped = useNavStreamStore.getState().byDrone[droneId]?.pilot;
   const launchHere = launchHereOffered(stamped?.data ?? null, stamped ? now - stamped.receivedAt : Infinity);
-  return { flyHere: !launchHere && flyHereRoute(droneId, now) !== null, launchHere };
+  if (launchHere) return { flyHere: false, launchHere, refusal: null };
+  const fly = flyHereOffer(droneId, now);
+  return { flyHere: fly.route !== null, launchHere, refusal: fly.route === null ? (fly.reason ?? null) : null };
 }
 
 /**

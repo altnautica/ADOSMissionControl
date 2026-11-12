@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useCallback, useState, useMemo, useRef } from "react";
+import { useEffect, useEffectEvent, useCallback, useState, useMemo, useRef } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -41,7 +41,8 @@ import {
 } from "./context-menu/actions/markers";
 import { useRallyStore } from "@/stores/rally-store";
 import { haversineDistance } from "@/lib/geo/distance";
-import { attachLongPress, isTouchContextMenu } from "./map-point";
+import { attachLongPress, isTouchContextMenu, mapPointOffer } from "./map-point";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 export function MapContextMenu() {
   const map = useMap();
@@ -96,11 +97,20 @@ export function MapContextMenu() {
     if (confirmPending) closeMenu();
   }, [confirmPending, closeMenu]);
 
+  // A picked point where Fly here is refused says why; the menu keeps its
+  // other items and no Fly here dialog opens.
+  const { toast: toastRefusal } = useToast();
+  const sayRefusal = useEffectEvent(() => {
+    const refusal = mapPointOffer(useDroneManager.getState().selectedDroneId).refusal;
+    if (refusal !== null) toastRefusal(specString(`refusal.${refusal}`), "warning");
+  });
+
   // ── Right-click and long-press handlers ────────────────
 
   useEffect(() => {
     const open = (x: number, y: number, lat: number, lon: number) => {
       setMenuPos({ x, y, lat, lon });
+      sayRefusal();
       setHighlightIdx(-1);
       setOrbitOpen(false);
       setPoiInput(false);

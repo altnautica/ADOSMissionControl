@@ -132,8 +132,8 @@ export function FwApproachPanel() {
               <div key={slot.number} className="border border-border-default rounded p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] font-semibold text-text-primary">
-                    Approach {slot.number}
-                    {dirtySlots.has(idx) && <span className="ml-2 text-[10px] font-mono text-status-warning">unsaved</span>}
+                    {tm("approachN", { n: slot.number })}
+                    {dirtySlots.has(idx) && <span className="ml-2 text-[10px] font-mono text-status-warning">{tm("unsaved")}</span>}
                   </span>
                   <button
                     onClick={() => handleSave(idx)}
@@ -141,7 +141,7 @@ export function FwApproachPanel() {
                     title={isArmed ? lockMessage : undefined}
                     className="text-[11px] px-3 py-1 border border-accent-primary text-accent-primary rounded hover:bg-accent-primary/10 disabled:opacity-50"
                   >
-                    {savingIdx === idx ? "Saving..." : "Save"}
+                    {savingIdx === idx ? tm("saving") : tm("save")}
                   </button>
                 </div>
 
@@ -169,7 +169,7 @@ export function FwApproachPanel() {
                           : "border-border-default text-text-secondary"
                       }`}
                     >
-                      {slot.isSeaLevelRef ? "Sea level" : "Relative to home"}
+                      {slot.isSeaLevelRef ? tm("seaLevel") : tm("relativeToHome")}
                     </button>
                   </div>
                 </div>

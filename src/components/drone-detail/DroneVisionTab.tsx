@@ -22,7 +22,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Sparkles } from "lucide-react";
+import { Eye, HelpCircle, Sparkles } from "lucide-react";
 import { VisionSummaryCard } from "@/components/vision/VisionSummaryCard";
 import { VisionModelCountTile } from "@/components/vision/VisionModelCountTile";
 import { PerceptionUsageCard } from "@/components/vision/PerceptionUsageCard";
@@ -54,13 +54,14 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
   const direct = useNodeDirectAgent(nodeDeviceId);
   const agentUrl = direct?.agentUrl ?? null;
   const apiKey = direct?.apiKey ?? null;
-  // Whether a vision engine is active on this companion. The tab is shown for
-  // every SBC-backed drone; when no engine is running yet, an onboarding
-  // banner explains vision runs on the companion and points at the model
-  // registry below — the operator sets vision up from here.
-  const visionActive = useAgentCapabilitiesStore(
-    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.visionAvailable === true,
-  );
+  // Whether a vision engine is active on this companion: unknown while this
+  // browser has no capability report for the node (unreachable), which is not
+  // "off". Only a known-off engine gets the set-up banner.
+  const visionState = useAgentCapabilitiesStore((s) => {
+    const caps = selectDeviceCapabilities(s, nodeDeviceId);
+    if (!caps) return "unknown" as const;
+    return caps.visionAvailable === true ? ("on" as const) : ("off" as const);
+  });
 
   // Live detection feed for the engine and session cards. Connect while this
   // tab is mounted and tear the socket down on unmount or when the agent
@@ -99,7 +100,20 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
       </div>
       <p className="mb-4 text-xs text-text-tertiary">{t("subtitle")}</p>
 
-      {!visionActive && (
+      {visionState === "unknown" && (
+        <div
+          className="mb-4 flex items-start gap-2.5 rounded border border-border-default bg-bg-secondary p-3"
+          data-testid="vision-unknown"
+        >
+          <HelpCircle size={15} className="mt-0.5 flex-none text-text-tertiary" aria-hidden="true" />
+          <div>
+            <p className="text-xs font-semibold text-text-primary">{t("stateUnknownTitle")}</p>
+            <p className="mt-1 text-[11px] leading-snug text-text-secondary">{t("stateUnknownBody")}</p>
+          </div>
+        </div>
+      )}
+
+      {visionState === "off" && (
         <div
           className="mb-4 flex items-start gap-2.5 rounded border border-accent-primary/40 bg-accent-primary/5 p-3"
           data-testid="vision-onboarding"
@@ -124,7 +138,7 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
         <div className="flex flex-col gap-5">
           <Section title={t("sectionEngine")}>
             <VisionSummaryCard droneId={droneId} />
-            <VisionModelCountTile droneId={droneId} />
+            <VisionModelCountTile droneId={droneId} agent={direct} />
           </Section>
 
           <Section title={t("sectionExecution")}>
@@ -133,7 +147,7 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
 
           <Section title={t("sectionHealth")}>
             <PerceptionSessionCard droneId={droneId} />
-            <PerceptionUsageCard />
+            <PerceptionUsageCard agent={direct} />
           </Section>
 
           <Section title={t("sectionInputs")}>

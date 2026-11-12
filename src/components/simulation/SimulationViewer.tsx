@@ -43,6 +43,7 @@ import { SimulationHUD } from "./SimulationHUD";
 import { MapControlsPanel } from "./MapControlsPanel";
 import { MissionWarningBanner } from "./MissionWarningBanner";
 import { SimCameraCluster } from "./SimCameraCluster";
+import { SimBottomDock } from "./SimBottomDock";
 import { ConvexCesiumToken } from "./ConvexCesiumToken";
 import { useResolvedMissionPath } from "./use-resolved-mission-path";
 import { ViewerFailedCard } from "./ViewerFailedCard";
@@ -141,7 +142,7 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   }, []);
 
   return (
-    <div className="flex-1 relative min-w-0 h-full">
+    <div className="@container flex-1 relative min-w-0 h-full">
       {convexAvailable && <ConvexCesiumToken onToken={handleCesiumToken} />}
       <CesiumScene
         key={sceneAttempt}
@@ -199,8 +200,10 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
       <MissionWarningBanner waypoints={waypoints} />
       <MapControlsPanel hasIonToken={!!effectiveCesiumToken} />
       <SimulationHUD />
-      <PlaybackControls waypoints={waypoints} totalDuration={flightPlan.totalDuration} />
-      {viewer && <SimCameraCluster viewer={viewer} />}
+      <SimBottomDock
+        bar={<PlaybackControls waypoints={waypoints} totalDuration={flightPlan.totalDuration} />}
+        cluster={viewer ? <SimCameraCluster viewer={viewer} /> : undefined}
+      />
 
       {/* Loading state */}
       {!viewer && !viewerError && (

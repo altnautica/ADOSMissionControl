@@ -29,6 +29,7 @@ import { PlanTree } from "./PlanTree";
 import { PlanLibraryFooter } from "./PlanLibraryFooter";
 import { PlanLibraryEmpty } from "./PlanLibraryEmpty";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+import { importedPlanHasContent } from "./import-content";
 
 interface FlightPlanLibraryProps {
   /** "plan" enables editing behavior, "simulate" enables play behavior */
@@ -169,10 +170,10 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
       try {
         const result = await importMissionFile(file);
         const name = result.metadata?.name || file.name.replace(/\.[^.]+$/, "");
-        // A file that parses to zero waypoints (e.g. a polygon-only KML, an
-        // unsupported complex-item plan, or an empty CSV) must not create a
-        // silent empty plan with a success toast.
-        if (result.waypoints.length === 0) {
+        // A file with nothing to plan with (no waypoints, fence, rally points
+        // or points of interest) must not create a silent empty plan with a
+        // success toast. A fence- or rally-only file is a real plan.
+        if (!importedPlanHasContent(result)) {
           toast(t("importNoWaypoints", { name }), "warning");
           e.target.value = "";
           return;

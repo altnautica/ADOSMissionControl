@@ -71,6 +71,11 @@ export interface ValidationOptions {
   };
   /** Hard ceiling in metres above home, same datum as the fence ceiling. */
   maxAltitude?: number;
+  /**
+   * Regulatory altitude ceiling in metres above home (the operator
+   * jurisdiction's limit). Exceeding it is advisory, fence or no fence.
+   */
+  advisoryCeiling?: number;
   maxDistanceBetweenWps?: number;
   /** Minimum AGL clearance in meters. Defaults to 5m. */
   minTerrainClearance?: number;

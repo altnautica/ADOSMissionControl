@@ -28,6 +28,7 @@ import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state
 import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { ModeSheet } from "./ModeSheet";
 import { useLaunchAbort } from "./LaunchSteps";
 import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
@@ -79,8 +80,12 @@ export function FlightStateChip({
   const setupLink =
     chip.button === "setup" &&
     (pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false);
+  // While the nav stream has fallen back to the radio, the chip says so in
+  // words after its secondary facts.
+  const polled = useNavStreamStore((s) => s.byDrone[droneId]?.transport === "poll");
+  const reducedRate = polled ? specString("nav.reduced_rate") : null;
   const secondary = compact ? [] : chip.secondary;
-  const fullText = [chip.text, ...chip.secondary.map((s) => s.text)].join(" · ");
+  const fullText = [chip.text, ...chip.secondary.map((s) => s.text), ...(reducedRate ? [reducedRate] : [])].join(" · ");
   const maxWidth = barWidth !== undefined && barWidth > 0 ? Math.floor(barWidth * CHIP_MAX_FRAC) : undefined;
 
   return (
@@ -123,6 +128,11 @@ export function FlightStateChip({
             // line, dimmed, and truncate before the state does.
             <span className="fs-chip-sub" data-testid="flight-state-chip-sub" aria-hidden="true">
               {` · ${secondary.map((s) => s.text).join(" · ")}`}
+            </span>
+          )}
+          {reducedRate && !compact && (
+            <span className="fs-chip-sub" style={{ color: "var(--fs-warn)" }} data-testid="flight-state-chip-reduced-rate" aria-hidden="true">
+              {` · ${reducedRate}`}
             </span>
           )}
         </button>

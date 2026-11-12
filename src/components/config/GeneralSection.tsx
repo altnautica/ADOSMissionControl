@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useToast } from "@/components/ui/toast";
 import { RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -29,6 +30,7 @@ export function GeneralSection() {
   const setLocationEnabled = useSettingsStore((s) => s.setLocationEnabled);
   const setOnboarded = useSettingsStore((s) => s.setOnboarded);
   const resetTips = useCockpitTipsStore((s) => s.reset);
+  const { toast } = useToast();
 
   const permission = useGcsLocationStore((s) => s.permission);
   const position = useGcsLocationStore((s) => s.position);
@@ -75,6 +77,7 @@ export function GeneralSection() {
               { value: "imperial", label: t("imperial") },
             ]}
           />
+          <p className="-mt-2 text-[10px] text-text-tertiary">{t("unitsScope")}</p>
 
           <Toggle
             label={t("autoConnect")}
@@ -208,7 +211,10 @@ export function GeneralSection() {
             size="sm"
             className="min-h-12"
             icon={<RotateCcw size={12} />}
-            onClick={() => resetTips()}
+            onClick={() => {
+              resetTips();
+              toast(t("tipsResetDone"), "success");
+            }}
             data-testid="reset-tips"
           >
             {specString("tips.reset")}

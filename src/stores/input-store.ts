@@ -5,6 +5,18 @@ import { safeLocalRead } from "@/lib/storage/safe-parse";
 
 const CAL_STORAGE_KEY = "ados-gamepad-cal";
 const TX_MODE_STORAGE_KEY = "ados-gamepad-tx-mode";
+const DEADZONE_STORAGE_KEY = "ados-gamepad-deadzone";
+
+/** Radial deadzone bounds the Controls slider offers. */
+export const DEADZONE_MIN = 0.04;
+export const DEADZONE_MAX = 0.2;
+const DEADZONE_DEFAULT = 0.08;
+
+/** Read the persisted deadzone, falling back to the default when absent or out of range. */
+const loadDeadzone = (): number => {
+  const v = safeLocalRead<unknown>(DEADZONE_STORAGE_KEY, DEADZONE_DEFAULT);
+  return typeof v === "number" && v >= DEADZONE_MIN && v <= DEADZONE_MAX ? v : DEADZONE_DEFAULT;
+};
 
 /** Which physical stick carries which axis. Mode 2 (throttle left) is the default. */
 export type TxMode = 1 | 2;
@@ -181,7 +193,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
   triggers: [0, 0],
   txMode: loadTxMode(),
   // Radial deadzone 0.08 on every surface (adjustable 0.04–0.20 in Controls).
-  deadzone: 0.08,
+  deadzone: loadDeadzone(),
   expo: 0.3,
   calibrations: loadCalibrations(),
   manualControlEnabled: false,
@@ -209,7 +221,11 @@ export const useInputStore = create<InputStoreState>((set) => ({
     localStorage.setItem(TX_MODE_STORAGE_KEY, JSON.stringify(txMode));
     set({ txMode });
   },
-  setDeadzone: (deadzone) => set({ deadzone }),
+  setDeadzone: (deadzone) => {
+    const clamped = Math.min(DEADZONE_MAX, Math.max(DEADZONE_MIN, deadzone));
+    localStorage.setItem(DEADZONE_STORAGE_KEY, JSON.stringify(clamped));
+    set({ deadzone: clamped });
+  },
   setExpo: (expo) => set({ expo }),
   setCalibration: (gamepadId, cal) =>
     set((s) => {

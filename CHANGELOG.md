@@ -6,6 +6,113 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Flight tab.** The drone's cockpit is its Flight tab, beside the other
+  tabs, with a Full screen button in the top bar. Escape leaves full screen.
+  Cockpit keys act only while the cockpit has focus, so typing in the fleet
+  search sends nothing. The vehicle readouts, status messages and RC card
+  moved to Overview.
+- **Fly this mission.** After an upload, the planner offers "Fly this
+  mission", which opens the drone's Flight tab with Launch set to start it.
+- **Relayed commands** say when they are still waiting for the drone, can be
+  cancelled, and give up after 30 s.
+- **Extensions on the LAN.** When the drone is reachable on the LAN,
+  extensions on it are enabled, disabled and removed directly. Disabling one
+  asks first and warns when the drone is armed. Extension tabs say when they
+  are loading and offer Retry when their page cannot load.
+- **Desktop.** Bluetooth connections ask which device to use. A window that
+  fails to load offers Retry and Quit, and a failed start names its log file.
+- **Demo.** The Follow-Me and Vision Nav tabs show their live read-back,
+  charts and tour; every first-party extension matches its newest release.
+  The Betaflight drone answers receiver reads, the PX4 VTOL carries its
+  transition parameters, and rover outputs report their direction.
+
+### Changed
+
+- **Sharper, quieter chrome.** Panels use a smaller radius, light blur, thin
+  borders and no shadows. Every top-bar control has one height. The
+  flight-state chip and status pill are outlines with a status dot.
+- **Fleet sidebar.** Rows are compact: an outlined node tile with a liveness
+  dot, a one-line summary with labelled icons and a live drone's battery, and
+  an icon-only Fly button. Badges across the app are outlined and in sentence
+  case.
+- **Demo fleet** trimmed to eleven drones; swarm conditions follow drone ids.
+- **Planner.** Uploads count the items the drone has taken. A refused upload
+  says why in words instead of a result number. Tool-group openers and outline
+  buttons are easier to hit, and the planner calls the aircraft a "drone".
+- **Words.** Configure, Command, Hardware, History, Logs and Settings render
+  through translations, including FC option lists and mission issues.
+  Parameter panels share one save bar. Flight-screen labels come from the
+  shared cockpit spec.
+- **Flight logs.** A flight row opens that flight's log, statuses read as
+  words, deletes confirm in the app, empty and filtered lists say so, and the
+  "Logs" page is called "Flight logs".
+- The split ratio and view persist per drone. The accent colour follows the
+  theme actually applied, so night vision always drops it.
+
+### Fixed
+
+- **Emergency stop.** Kill goes out in any arm state, including after a link
+  loss left the arm state unknown. A completed pad stop hold sends kill with no
+  second hold, the PS button reaches its binding, and releasing a chord
+  modifier cancels the chord.
+- **Recovery buttons** show why they are unavailable during a failsafe. RTH
+  distance comes from the paired agent when it reports one.
+- **Fly Here dialog** opens under the top bar and holds with Enter or the
+  gamepad.
+- **Overview and Cameras** say when the companion is unreachable instead of
+  showing an empty band or "no cameras". Betaflight and iNav drones no longer
+  list panels their firmware does not have.
+- **Simulate** reads altitude from the path's own terrain, so a mountain
+  mission no longer starts at tens of kilometres.
+- Pairing links show the code being claimed and open the manual form when the
+  link has no code. Agent setting errors read as sentences. The disclaimer
+  scrolls on short windows.
+- **Demo.** Copters and plain planes no longer report the quadplane group.
+- The model registry no longer lists models whose download does not exist.
+- **Cockpit safety.** An unknown arm state counts as possibly airborne: no
+  tips, pre-flight items hidden, Land instead of Take off. Fly Here is not
+  offered through the flight controller during a pilot failsafe, and a refused
+  Fly Here on a map says why. One labelled Fly Here dialog per flight screen.
+  A pad chord held while the tab is hidden no longer fires on release.
+- **Cockpit words and controls.** Refusals, skill groups, the command palette
+  and confirm sheets use readable names; the chip says "Reduced update rate
+  (radio)" while the nav stream is polled; the nav-source popover shows pose
+  age and reads "sent" until the vehicle confirms. Camera settings gain Stream
+  quality and recording. The Menu returns focus on Escape.
+- **Configure safety.** Flight-mode save, compass fixes, Reboot FC, motor
+  test (props-off check, 20 % cap, Stop), ESC calibration, CompassMot, PX4
+  airframe and allocation, parameter writes and Compare all guard an armed or
+  possibly armed vehicle. Out-of-range values are refused, and Write to Flash
+  refuses a second click.
+- **Configure by firmware.** Betaflight and iNav hide ArduPilot outputs and
+  gain a Failsafe panel; PX4 gains Failure & return, hides the ArduPilot CAN
+  setup and points Radio Config to Ports. A failing panel no longer takes the
+  Setup tab down. Absent PX4 parameters read "not present on this board".
+  More panels read in the operator's language.
+- **Settings.** Night vision theme, a remembered deadzone, alert volume after
+  reload, Bluetooth Forget with confirmation, Controls Reset as a draft, the
+  About block in the web build, "Planner units", demo extension installs, and
+  a tab strip on phones.
+- **Planner, Simulate and logs.** Uploads are read back and compared; fences
+  the mission crosses are held back; plan files with only a fence, rally or
+  points of interest import; altitude-ceiling advisories need no fence. The
+  Dark basemap loads real tiles, weather snapshots load through the app's own
+  server, onboard log downloads resume, and flight detail reads in words in
+  every language. Plan and Simulate fit phone and narrow windows.
+- **Shell and desktop.** The top bar folds into a menu on phones; Ctrl K
+  reads correctly per platform and never opens behind a dialog; pairing links
+  fill the Add tab. Desktop asks Leave or Stay on unsaved changes, opens
+  external links once, can keep the screen awake, and drops developer tools in
+  release builds. Unpair waits for the node and can forget a node that is
+  unreachable. Node pages, Recorder, Perception, plugin tabs and the fleet grid
+  say when data is unknown or unreachable instead of showing blanks.
+
+### Notes
+
+- Relayed command cancel needs the matching cloud function deployed.
+
 ## [0.63.0] - 2026-11-10
 
 This release covers everything since 0.62.0: fifty-four commits, all on

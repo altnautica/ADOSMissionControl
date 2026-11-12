@@ -65,4 +65,11 @@ describe("TelRadioPanel parameters", () => {
     expect(screen.queryByText("Serial Port Configuration")).toBeNull();
     expect(screen.queryByText("System Identification")).toBeNull();
   });
+
+  it("on PX4 points to Ports for baud rates and offers no dead Save", () => {
+    firmwareType = "px4";
+    renderWithIntl(<TelRadioPanel />);
+    expect(screen.getByText(/SER_TEL1_BAUD/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Save to Flight Controller/i })).toBeNull();
+  });
 });

@@ -17,7 +17,12 @@ import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 const { contributionsRef, slotRef } = vi.hoisted(() => ({
   contributionsRef: { value: [] as DronePluginContribution[] },
   slotRef: {
-    value: [] as Array<{ pluginId: string; panelId: string; pluginInstallId?: string }>,
+    value: [] as Array<{
+      pluginId: string;
+      panelId: string;
+      pluginInstallId?: string;
+      grantedCapabilities?: Set<string>;
+    }>,
   },
 }));
 
@@ -64,6 +69,10 @@ vi.mock("@/components/plugins/parameters/PluginParametersPanel", () => ({
 }));
 
 import { DroneDetailTabBody, pluginTabId, pluginTabIds } from "../DroneDetailTabHost";
+import { slotToCapability } from "@/lib/plugins/types";
+
+/** A tab contribution holding the slot permission. */
+const GRANTED = new Set<string>([slotToCapability("node.detail.tab")]);
 
 function contribution(
   over: Partial<DronePluginContribution> = {},
@@ -149,8 +158,8 @@ describe("DroneDetailTabBody", () => {
     const thermal = contribution({ installId: "install-thermal", pluginId: "com.example.thermal", panelId: "view" });
     contributionsRef.value = [pod, thermal];
     slotRef.value = [
-      { pluginId: "com.example.pod", panelId: "console", pluginInstallId: "install-pod" },
-      { pluginId: "com.example.thermal", panelId: "view", pluginInstallId: "install-thermal" },
+      { pluginId: "com.example.pod", panelId: "console", pluginInstallId: "install-pod", grantedCapabilities: GRANTED },
+      { pluginId: "com.example.thermal", panelId: "view", pluginInstallId: "install-thermal", grantedCapabilities: GRANTED },
     ];
     render(
       <DroneDetailTabBody agentId="drone-1" activeTabId={pluginTabId(thermal)} />,
@@ -165,8 +174,8 @@ describe("DroneDetailTabBody", () => {
     const calibration = contribution({ panelId: "calibration", title: "Calibration" });
     contributionsRef.value = [status, calibration];
     slotRef.value = [
-      { pluginId: "com.example.plugin", panelId: "status", pluginInstallId: "install-1" },
-      { pluginId: "com.example.plugin", panelId: "calibration", pluginInstallId: "install-1" },
+      { pluginId: "com.example.plugin", panelId: "status", pluginInstallId: "install-1", grantedCapabilities: GRANTED },
+      { pluginId: "com.example.plugin", panelId: "calibration", pluginInstallId: "install-1", grantedCapabilities: GRANTED },
     ];
     expect(new Set(pluginTabIds([status, calibration])).size).toBe(2);
     render(

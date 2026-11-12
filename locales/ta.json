@@ -283,6 +283,8 @@
       "unknown": "ஏஜென்ட் கணு"
     },
     "hero": {
+      "subjectAgent": "முகவர்",
+      "subjectFc": "விமானக் கட்டுப்பாட்டி",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "எச்சரிக்கைகளை இயக்கு",
       "resetPersonalization": "தனிப்பயனாக்கத்தை மீட்டமை",
       "personalizationReset": "தனிப்பயனாக்கம் மீட்டமைக்கப்பட்டது",
-      "forget": "நீக்கு",
-      "forgetTitle": "நோட்டை நீக்கு",
-      "forgetMessage": "{node} நீக்கவா? இது இணைப்பை நீக்கி அதன் தனிப்பயனாக்கத்தை அழிக்கும்."
+      "forget": "இணைப்பை நீக்கு",
+      "forgetTitle": "நோடின் இணைப்பை நீக்கு",
+      "forgetMessage": "{node} இணைப்பை நீக்கவா? அதன் இணைப்பு விடுவிக்கப்பட்டு மீண்டும் இணைக்கும் வரை படையிலிருந்து மறையும்."
     },
     "dotEditor": {
       "title": "புள்ளிகளை அமை",
@@ -432,7 +434,8 @@
       "openSource": "GPL-3.0 Open Source",
       "getStarted": "தொடங்கவும்",
       "privacy": "உங்கள் தரவு இந்தச் சாதனத்திலேயே இருக்கும்.",
-      "privacyDetail": "நாங்கள் எதையும் சேகரிக்கவோ கண்காணிக்கவோ மாட்டோம்."
+      "privacyDetail": "நாங்கள் எதையும் சேகரிக்கவோ கண்காணிக்கவோ மாட்டோம்.",
+      "descriptionDesktop": "எந்த ArduPilot, PX4 அல்லது Betaflight ட்ரோனையும் கட்டமைக்கவும், பணிகளைத் திட்டமிடவும், பறக்கவும். ADOS Drone Agent உடன் இணைத்து எட்ஜில் நுண்ணறிவை இயக்கவும். திறந்த மூலம். உங்கள் கணினியில் இயங்கும்."
     },
     "disclaimer": {
       "title": "பறக்கும் முன்",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "தீம் {count} நோடுகளுடன் ஒத்திசைக்கப்பட்டது",
+      "syncFailedCount": "{count} நோடுகளை அணுக முடியவில்லை"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "இருண்ட தீம்கள்",
       "groupLightThemes": "ஒளிரும் தீம்கள்",
       "groupMidTone": "நடுத்தரத் தோன்",
-      "selectTheme": "தீமைத் தேர்ந்தெடுக்கவும்"
+      "selectTheme": "தீமைத் தேர்ந்தெடுக்கவும்",
+      "nvg": "இரவுப் பார்வை"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "கிளவுட் ஒத்திசைவுக்கு உள்நுழையவும்",
     "localOnly": "உள்ளூர் மட்டும்",
     "commandPalette": "கட்டளைப் பட்டை",
+    "menu": "மெனு",
     "joinDiscord": "Discord-ல் இணையவும்",
     "starOnGitHub": "GitHub-ல் ஸ்டார் கொடுக்கவும்",
     "star": "ஸ்டார்",
@@ -836,7 +841,7 @@
     "notifications": "அறிவிப்புகள்",
     "theme": "தீம்",
     "data": "தரவு",
-    "operator": "Operator & Aircraft",
+    "operator": "இயக்குநர் & விமானம்",
     "plugins": "நீட்டிப்புகள்",
     "can": "DroneCAN",
     "aircraftSetup": "Aircraft setup",
@@ -846,9 +851,9 @@
     "title": "பொது அமைப்புகள்",
     "jurisdiction": "ஒழுங்குமுறை அதிகார எல்லை (விருப்பத்திற்குரியது)",
     "notSet": "— அமைக்கப்படவில்லை",
-    "units": "அலகுகள்",
-    "metric": "மெட்ரிக் (m, km/h, °C)",
-    "imperial": "இம்பீரியல் (ft, mph, °F)",
+    "units": "திட்டமிடுபவர் அலகுகள்",
+    "metric": "மெட்ரிக் (m, m/s)",
+    "imperial": "இம்பீரியல் (ft, mph)",
     "autoConnect": "தொடக்கத்தில் தானாக இணை",
     "autoReconnect": "துண்டிக்கப்பட்டால் தானாக மீண்டும் இணை",
     "demoMode": "டெமோ பயன்முறை",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "குறிப்புகள் மீண்டும் காட்டப்படும்.",
+    "unitsScope": "மிஷன் திட்டமிடுபவர் மற்றும் வரைபட வரைதல் கருவிகளுக்குப் பொருந்தும். பறப்புக் காட்சிகள் காக்பிட்டின் மெட்ரிக் அலகுகளைப் பயன்படுத்துகின்றன."
   },
   "notifications": {
     "title": "அறிவிப்புகள்",
@@ -967,11 +974,11 @@
     "testMode": "சோதனைப் பயன்முறை",
     "testModeUnavailable": "டெமோவில் கேம்பேடு சோதனைப் பயன்முறை கிடைக்கவில்லை",
     "manualControlLinkBlocked": "ஸ்டிக் உள்ளீடுகள் இந்த விமானத்தை அடையவில்லை: {reason}. எதுவும் அனுப்பப்படவில்லை.",
-    "stickMode": "Stick mode",
+    "stickMode": "ஸ்டிக் பயன்முறை",
     "stickMode2": "Mode 2 (throttle on the left stick)",
     "stickMode1": "Mode 1 (throttle on the right stick)",
-    "groundStationEmpty": "No controllers on the ground station.",
-    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
+    "groundStationEmpty": "தரை நிலையத்தில் கட்டுப்படுத்திகள் இல்லை.",
+    "groundStationEmptyHint": "தரை நிலையத்துடன் USB அல்லது Bluetooth கேம்பேட், ஜாய்ஸ்டிக் அல்லது HOTAS ஐ இணைக்கவும். இந்தக் கணினியில் இணைத்த கட்டுப்படுத்தி உலாவி உள்ளீட்டில் தோன்றும்."
   },
   "data": {
     "title": "தரவு மேலாண்மை",
@@ -990,10 +997,10 @@
   "communityNav": {
     "changelog": "மாற்றப் பதிவு",
     "contact": "தொடர்பு",
-    "unavailableTitle": "சமூகத் தரவு (மாற்றப் பதிவு, ரோட்மேப், தொடர்பு) ஹோஸ்ட் செய்யப்பட்ட பதிப்பில் நேரடியாக உள்ளது",
-    "unavailableSetup": "உள்ளூர் பில்டுகளில் இயல்பாக முடக்கப்பட்டுள்ளது. உங்கள் சொந்த உள் சமூகப் பலகையை இயக்க Convex பின்னணியை அமைத்து கட்டமைக்கவும்",
+    "unavailableTitle": "சமூகத் தரவு (மாற்றப் பதிவு, தொடர்பு) ஹோஸ்ட் செய்யப்பட்ட பதிப்பில் நேரடியாக உள்ளது",
+    "unavailableSetup": "உள்ளூர் பில்டுகளில் இயல்பாக முடக்கப்பட்டுள்ளது. உங்கள் சொந்த உள் சமூகப் பலகையை இயக்க Convex பின்னணியை அமைத்து {envVar} ஐ அமைக்கவும்.",
     "unavailableOptional": "முற்றிலும் விருப்பத்திற்குரியது. GCS இது இல்லாமலும் செயல்படும்.",
-    "sectionError": "This page failed to load. Switch tabs or reload to try again."
+    "sectionError": "இந்தப் பக்கம் ஏற்றப்படவில்லை. தாவலை மாற்றவும் அல்லது மீண்டும் முயல ரீலோட் செய்யவும்."
   },
   "contact": {
     "title": "தொடர்பு",
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "புதிய மிஷன்",
-      "connectDrone": "ட்ரோனை இணை",
+      "connectDrone": "நோடைச் சேர்",
       "rthAll": "அனைத்தும் RTH"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
-    "title": "ட்ரோனுடன் இணை",
+    "title": "நோடைச் சேர்",
     "usbSerial": "USB சீரியல்",
     "webSocket": "WebSocket",
     "savePreset": "ப்ரீசெட் சேமி",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "கிடைக்கிறது",
       "chromiumOnly": "Chrome அல்லது Edge",
-      "desktopOrBridge": "டெஸ்க்டாப் அல்லது பிரிட்ஜ்"
+      "desktopOrBridge": "டெஸ்க்டாப் அல்லது பிரிட்ஜ்",
+      "desktopUnsupported": "இந்த OS இல் டெஸ்க்டாப் செயலியில் இல்லை"
     },
     "getDesktopApp": "டெஸ்க்டாப் ஆப்பைப் பெறுங்கள்",
     "agentUdpNote": "ஏஜெண்டுடன் இணைக்கப்பட்ட ட்ரோன் எந்த வெளிப்புற கிரவுண்ட் ஸ்டேஷனுக்கும் udp:[agent-ip]:14550 ஐயும் வெளிப்படுத்துகிறது.",
@@ -1488,14 +1496,35 @@
     "flightSuite": "Suite",
     "px4EventsFeed": {
       "searchEvents": "நிகழ்வுகளைத் தேடு",
-      "flightControllerEvents": "ஃப்ளைட் கன்ட்ரோலர் நிகழ்வுகள்"
+      "flightControllerEvents": "ஃப்ளைட் கன்ட்ரோலர் நிகழ்வுகள்",
+      "emptyNone": "இன்னும் நிகழ்வுகள் இல்லை. ஃப்ளைட் கன்ட்ரோலரின் கட்டமைக்கப்பட்ட நிகழ்வுகள் இங்கே தோன்றும்.",
+      "emptyNoMatch": "தேடலுக்குப் பொருந்தும் நிகழ்வுகள் இல்லை.",
+      "severityLevel": "நிலை {level}",
+      "severity": {
+        "emergency": "அவசரநிலை",
+        "alert": "எச்சரிக்கை",
+        "critical": "முக்கியமான",
+        "error": "பிழை",
+        "warning": "எச்சரிக்கை",
+        "notice": "அறிவிப்பு",
+        "info": "தகவல்",
+        "debug": "பிழைத்திருத்தம்"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "சில பேனல்கள் (OSD, LED) PX4-க்குக் கிடைக்கவில்லை.",
-      "betaflightFirmwareSomePanelsDiffer": "Betaflight ஃபர்ம்வேர். சில பேனல்கள் ArduPilot-இலிருந்து வேறுபடும்."
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight ஃபர்ம்வேர். சில பேனல்கள் ArduPilot-இலிருந்து வேறுபடும்.",
+      "flightController": "விமானக் கட்டுப்படுத்தி",
+      "loadingPanel": "பலகம் ஏற்றப்படுகிறது…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "இணைக்கப்பட்டதும் டெலிமெட்ரி தரவு இங்கே தோன்றும்"
+      "telemetryDataWillAppearHere": "இணைக்கப்பட்டதும் டெலிமெட்ரி தரவு இங்கே தோன்றும்",
+      "channel": {
+        "altitude": "உயரம்",
+        "speed": "வேகம்",
+        "battery": "பேட்டரி",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "GPS தடம்",
       "waitingForGPSData": "GPS தரவுக்காகக் காத்திருக்கிறது..."
     },
-    "clear": "அழி"
+    "clear": "அழி",
+    "severityLevel": {
+      "emergency": "அவசரம்",
+      "alert": "எச்சரிக்கை",
+      "critical": "மிகக் கடுமை",
+      "error": "பிழை",
+      "warning": "எச்சரிக்கை",
+      "notice": "அறிவிப்பு",
+      "info": "தகவல்",
+      "debug": "பிழைத்திருத்தம்"
+    },
+    "autoScrollOn": "தானியங்கு உருட்டல் இயக்கத்தில்",
+    "autoScrollOff": "தானியங்கு உருட்டல் அணைப்பில்"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "விமான அமைப்பு"
+    "aircraftSetup": "விமான அமைப்பு",
+    "px4Safety": "தோல்வி & திரும்புதல்"
   },
   "droneStatus": {
     "online": "ஆன்லைன்",
@@ -1832,7 +1874,8 @@
     "battery": "Battery",
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "இந்த நீட்டிப்புக்கு இங்கே தாவலைக் காட்ட அனுமதி வழங்கப்படவில்லை."
     },
     "rebootNoFc": "No flight controller connected",
     "rebootSent": "Reboot command sent",
@@ -1842,6 +1885,9 @@
     "scrollTabsRight": "Scroll tabs right"
   },
   "vision": {
+    "coreUsageUnreachable": "இந்த நோடுடன் இணைப்பு இல்லை",
+    "stateUnknownBody": "இந்த நோட் தன் திறன்களை இந்த GCS க்குத் தெரிவிக்கவில்லை. விஷன் எஞ்சின் இயங்குகிறதா எனப் பார்க்க அதனுடன் இணைக்கவும்.",
+    "stateUnknownTitle": "விஷன் நிலை தெரியவில்லை",
     "title": "Vision Engine",
     "subtitle": "Manage detection models and watch live detections from this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "நோடைச் சேர்",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "நோடைச் சேர்",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -4082,7 +4128,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "வழிப்புள்ளி {n} செயல்கள்",
       "resumeFromHere": "இங்கிருந்து தொடர்…",
-      "resumeFirstReason": "திட்டம் இங்கிருந்தே தொடங்குகிறது; வழக்கம்போல் பதிவேற்றவும்"
+      "resumeFirstReason": "திட்டம் இங்கிருந்தே தொடங்குகிறது; வழக்கம்போல் பதிவேற்றவும்",
+      "rtlAltitude": "வாகனத்தின் RTL உயரத்தில் திரும்பும்"
     },
     "bar": {
       "plans": "Plans",
@@ -4159,8 +4206,11 @@
         "invalidSequence": "மிஷன் உருப்படிகள் வரிசை மாறி வந்தன. மீண்டும் பதிவேற்ற முயலவும்.",
         "denied": "ஃப்ளைட் கன்ட்ரோலர் தற்போது மிஷனை ஏற்கவில்லை.",
         "cancelled": "ஃப்ளைட் கன்ட்ரோலர் பதிவேற்றத்தை ரத்துசெய்தது.",
-        "unknown": "ஃப்ளைட் கன்ட்ரோலர் மிஷனை நிராகரித்தது (குறியீடு {code})."
-      }
+        "unknown": "ஃப்ளைட் கன்ட்ரோலர் மிஷனை நிராகரித்தது (குறியீடு {code}).",
+        "verifyMismatch": "ஃப்ளைட் கன்ட்ரோலர் பணியை ஏற்றது, ஆனால் திரும்பப் படித்த நகல் வேறுபடுகிறது. மீண்டும் பதிவேற்றவும்.",
+        "verifyFailed": "ஃப்ளைட் கன்ட்ரோலர் பணியை ஏற்றது, ஆனால் சரிபார்க்கத் திரும்பப் படிப்பது தோல்வியடைந்தது. இணைப்பைச் சரிபார்த்து மீண்டும் பதிவேற்றவும்."
+      },
+      "fenceCrossed": "பணி இந்த வேலியைக் கடக்கிறது. வேலியை அனுப்பும் முன் பணியைச் சரிசெய்யவும்."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}: நிலப்பரப்பு இடைவெளி சரிபார்க்கப்படவில்லை — இந்த சார்பு-ஃபிரேம் உயரத்திற்கு ஹோம் உயரம் இல்லை",
       "terrainUnknown": "WP{wp}: நிலப்பரப்பு தெரியவில்லை — இந்த வேபாயிண்டில் தரை உயர மாதிரி இல்லை, இடைவெளி சரிபார்க்கப்படவில்லை",
       "terrainClearanceGround": "WP{v0}: நிலப்பரப்பிலிருந்து {v1}மீ மட்டுமே உயரம் (குறைந்தபட்சம்: {v2}மீ). தரை: {ground}மீ MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}: நிலப்பரப்பிலிருந்து {v1}மீ மட்டுமே உயரம் (குறைந்தபட்சம்: {v2}மீ). தரை தெரியவில்லை"
+      "terrainClearanceGroundUnknown": "WP{v0}: நிலப்பரப்பிலிருந்து {v1}மீ மட்டுமே உயரம் (குறைந்தபட்சம்: {v2}மீ). தரை தெரியவில்லை",
+      "rtlAltitudeBelowTerrain": "ஹோமிலிருந்து {v0}m RTL உயரம் திரும்பும் பாதையின் மிக உயர்ந்த நிலப்பரப்பை விட {v1}m கீழே உள்ளது (WP{v2}, {v3}m MSL)",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}: ஹோமிலிருந்து {v1}m உயரம் {v2}m சட்ட உச்சவரம்பை மீறுகிறது"
     }
   },
   "geofence": {
@@ -4739,7 +4791,8 @@
     "viewUnavailable": "இந்தச் சாதனத்தில் 3D காட்சி கிடைக்கவில்லை",
     "switchTo2d": "2D-க்கு மாறு",
     "moreIssues": "+{count} மேலும்",
-    "dismissWarning": "எச்சரிக்கையை மூடு"
+    "dismissWarning": "எச்சரிக்கையை மூடு",
+    "showPanel": "பேனலைக் காட்டு"
   },
   "history": {
     "title": "பறப்பு பதிவுகள்",
@@ -5082,7 +5135,28 @@
       "sealed": "முத்திரையிடப்பட்டது",
       "verify": "சரிபார்",
       "unseal": "முத்திரையை நீக்கு",
-      "replay": "மீண்டும் இயக்கு"
+      "replay": "மீண்டும் இயக்கு",
+      "tabs": {
+        "overview": "மேலோட்டம்",
+        "map": "வரைபடம்",
+        "charts": "வரைபடங்கள்",
+        "events": "நிகழ்வுகள்",
+        "analysis": "பகுப்பாய்வு",
+        "notes": "குறிப்புகள்",
+        "media": "ஊடகம்",
+        "export": "ஏற்றுமதி"
+      },
+      "flightDetail": "பறப்பு விவரம்",
+      "showList": "பறப்பு பட்டியலைக் காட்டு",
+      "hideList": "பறப்பு பட்டியலை மறை",
+      "signing": "கையொப்பமிடுகிறது…",
+      "signAndLock": "கையொப்பமிட்டு பூட்டு",
+      "signFailed": "கையொப்பம் தோல்வி: {error}",
+      "unsealConfirm": "இந்தப் பதிவின் முத்திரையை நீக்கவா? பின்னர் செய்யும் திருத்தங்கள் முந்தைய கையொப்பத்தைச் செல்லாததாக்கும். ஒரு தணிக்கை நிகழ்வு பதிவாகும்.",
+      "unsealedEvent": "{time} அன்று பதிவின் முத்திரை நீக்கப்பட்டது",
+      "verifyOk": "கையொப்பம் சரி: பதிவு மாறவில்லை.",
+      "verifyBad": "கையொப்பம் செல்லாது: கையொப்பத்திற்குப் பின் பதிவு மாறியுள்ளது.",
+      "recordingStopped": "{time} இல் பதிவு நின்றது (சேமிப்பு நிரம்பியது)"
     },
     "chartsTab": {
       "charts": "வரைபடங்கள்",
@@ -5122,7 +5196,11 @@
       "compliance": "இணக்கம்",
       "jurisdiction": "அதிகார வரம்பு",
       "noTelemetryRecordingAttachedConnect": "டெலிமெட்ரி பதிவு எதுவும் இணைக்கப்படவில்லை. பதிவைத் தொடங்க ட்ரோனை இணைத்து ஆர்ம் செய்யவும்.",
-      "fullFlightRecordIncludingStatsPath": "புள்ளிவிவரங்கள், பாதை மற்றும் மெட்டாடேட்டா உட்பட முழு FlightRecord."
+      "fullFlightRecordIncludingStatsPath": "புள்ளிவிவரங்கள், பாதை மற்றும் மெட்டாடேட்டா உட்பட முழு FlightRecord.",
+      "errorCount": "{count, plural, other {# பிழைகள்}}",
+      "warningCount": "{count, plural, other {# எச்சரிக்கைகள்}}",
+      "ready": "தயார்",
+      "generating": "உருவாக்குகிறது…"
     },
     "analysisTab": {
       "healthSummary": "நலச் சுருக்கம்",
@@ -5183,7 +5261,8 @@
       "dropLogFilesHereOr": "பதிவுக் கோப்புகளை இங்கே இழுத்து விடவும், அல்லது உலாவ கிளிக் செய்யவும்",
       "importFlightLogs": "பறப்புப் பதிவுகளை இறக்குமதி செய்",
       "cancel": "ரத்துசெய்",
-      "close": "மூடு"
+      "close": "மூடு",
+      "unknownFormat": "அறியப்படாத வடிவம்"
     },
     "preflightCard": {
       "noChecklistCaptured": "சரிபார்ப்புப் பட்டியல் பதிவு செய்யப்படவில்லை",
@@ -5342,7 +5421,8 @@
     "connect": "இணை",
     "writeToFcCount": "{n} ஐ ஃப்ளைட் கன்ட்ரோலரில் எழுது",
     "writingProgress": "எழுதுகிறது {current}/{total}…",
-    "writeToFcHint": "மாற்றிய அளவுருக்களை ஃப்ளைட் கன்ட்ரோலருக்கு அனுப்பு"
+    "writeToFcHint": "மாற்றிய அளவுருக்களை ஃப்ளைட் கன்ட்ரோலருக்கு அனுப்பு",
+    "notPresent": "இந்தப் பலகையில் இல்லை"
   },
   "calibration": {
     "title": "கேலிப்ரேஷன்",
@@ -5832,7 +5912,7 @@
   "commandPalette": {
     "placeholder": "கட்டளை டைப் செய்யுங்கள்...",
     "noResults": "முடிவுகள் இல்லை",
-    "connectDrone": "ட்ரோனை இணை",
+    "connectDrone": "நோடைச் சேர்",
     "disconnectDrone": "ட்ரோனை டிஸ்கனெக்ட் செய்",
     "armVehicle": "ட்ரோனை Arm செய்",
     "disarmVehicle": "வாகனத்தை Disarm செய்",
@@ -5842,7 +5922,7 @@
     "switchTab": "{tab}-க்கு மாறு",
     "toggleImmersive": "Immersive Mode மாற்று",
     "goToDashboard": "Dashboard-க்குச் செல்",
-    "goToPlan": "Mission Planner-க்குச் செல்",
+    "goToPlan": "திட்டத்துக்குச் செல்",
     "goToHistory": "பறப்பு பதிவுகளுக்குச் செல்",
     "goToAnalytics": "Analytics-க்குச் செல்",
     "goToConfig": "Config-க்குச் செல்",
@@ -5867,7 +5947,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "அதன் அளவுருக்களைத் தேட ஒரு வாகனத்தைத் தேர்ந்தெடுக்கவும்"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6313,7 +6394,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "இந்த நோடு கம்பி இணைப்பு பேனலில் காட்டும் HDMI கியோஸ்கை அமைக்கவும்: ஏற்றும் பக்கம் மற்றும் தொடு அளவுத்திருத்தம்.",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -7028,15 +7109,15 @@
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
-    "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
+    "pageBlurb": "நீட்டிப்புகள் ஒவ்வொரு கணுவிலும், அந்தக் கணுவின் Agent → Extensions தாவலில் இருந்து நிறுவப்படும். இந்தப் பக்கம் கடற்படையில் நிறுவப்பட்டவற்றின் படிக்க-மட்டும் மேலோட்டம் மற்றும் பதிவேட்டு உலாவி.",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
-    "emptyTitle": "No extensions installed yet.",
-    "emptyBlurb": "Drag a .adosplug file or pick one to install.",
+    "emptyTitle": "இன்னும் எந்தக் கணுவிலும் எதுவும் நிறுவப்படவில்லை.",
+    "emptyBlurb": "கீழே பதிவேட்டை உலாவி, பின் கணுவின் Extensions தாவலில் இருந்து நிறுவவும்.",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -8231,7 +8312,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "PX4 தனது CAN இயக்கியை அளவுருக்களில் UAVCAN_* மூலம் அமைக்கிறது. இங்குள்ள பஸ் அமைப்பு ArduPilot CAN அளவுருக்களைத் திருத்துவதால் இந்த போர்டில் காட்டப்படாது."
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8289,6 +8371,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "இந்த GCS இலிருந்து இந்த நோடை அணுக முடியவில்லை",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8526,8 +8609,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "கேம்பேட்: Cross ஐ அழுத்திப் பிடிக்கவும். விசைப்பலகை: Enter ஐ அழுத்திப் பிடிக்கவும்.",
     "plugin": {
       "confirm": {
+        "titleNamed": "{drone} இல் {skill} ஐ இயக்கு",
         "title": "Activate skill",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8657,6 +8742,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "திறன்கள் தெரிவிக்கப்படவில்லை",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9266,11 +9352,11 @@
       "open-cockpit": "Open cockpit",
       "configure": "Configure",
       "view-logs": "View logs",
-      "unpair": "Unpair"
+      "unpair": "இணைப்பை நீக்கு"
     },
     "unpair": {
-      "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "title": "நோடின் இணைப்பை நீக்கு",
+      "message": "{name} இணைப்பை நீக்கவா? அதன் இணைப்பு விடுவிக்கப்பட்டு மீண்டும் இணைக்கும் வரை படையிலிருந்து மறையும்."
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9336,6 +9422,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "நோடை அணுக முடியவில்லை",
+      "message": "{name} தன் இணைப்பை விடுவிக்க முடியவில்லை, எனவே இன்னும் இணைக்கப்பட்டுள்ளது. இந்த GCS இல் மட்டும் மறக்கவா? மீட்டமைக்கும் வரை நோட் பழைய இணைப்பை வைத்திருக்கும்.",
+      "forgetHere": "இந்த GCS இல் மட்டும் மறக்கவும்"
     }
   },
   "rcElrsLink": {
@@ -9465,7 +9556,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "பதிப்பு {version}",
+    "thirdPartyNotices": "மூன்றாம் தரப்பு உரிமங்கள்"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "ஃபிரேம்",
         "rc_tx": "RC TX"
       }
-    }
+    },
+    "pageTitle": "இயக்குநர் & விமானம்",
+    "pageBlurb": "விமானி, நிறுவனம், காப்பீடு, விமானம், பேட்டரி மற்றும் உபகரணப் பதிவேடுகள். இணக்க ஏற்றுமதிகளுக்கும் ஒவ்வொரு பறப்பின் விமானி, விமானம், சுமை நிலைப் படத்துக்கும் பயன்படும்."
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "நகலெடுக்காமல் மூடு",
       "copyAgain": "மீண்டும் நகலெடு",
       "tryAgain": "மீண்டும் முயற்சி செய்",
-      "iClearedIt": "நான் அழித்துவிட்டேன்"
+      "iClearedIt": "நான் அழித்துவிட்டேன்",
+      "typeToContinue": "தொடர <word>EXPORT</word> என தட்டச்சு செய்யவும்."
     },
     "framePanel": {
       "frameConfiguration": "ஃப்ரேம் உள்ளமைவு",
@@ -10591,7 +10687,15 @@
       "type": "வகை:",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "இந்த ஃபிரேம் வகுப்பு பயன்படுத்துவதில்லை",
+      "unknown": "அறியப்படாதது",
+      "typeUnrecognised": "அடையாளம் காணப்படவில்லை (இந்த வாகனத்தில்)",
+      "typeUnknownNote": "இந்த வாகனம் {param} = {value} எனத் தெரிவிக்கிறது; இந்தப் பதிப்பில் அதற்கு மோட்டார் அமைப்பு இல்லை. மதிப்பு உள்ளபடியே காட்டப்படுகிறது, மாற்றப்படவில்லை; சட்டகத்தை மீண்டும் அமைக்க விரும்பினால் மட்டுமே பட்டியலிலுள்ள வகையைத் தேர்ந்தெடுக்கவும்.",
+      "selectClassForLayout": "மோட்டார் அமைப்பைப் பார்க்க ஃபிரேம் வகுப்பைத் தேர்ந்தெடுக்கவும்.",
+      "noLayoutForType": "{cls} ஃபிரேம் வகை {type} க்கு மோட்டார் அமைப்பு இல்லை.",
+      "noLayoutForClass": "{cls} க்கு மோட்டார் அமைப்பு வரைபடம் இல்லை.",
+      "classStillSent": "{description}. {param} இருப்பினும் ஃப்ளைட் கன்ட்ரோலருக்கு அனுப்பப்படும்."
     },
     "sensorsPanel": {
       "sensors": "சென்சார்கள்",
@@ -10652,7 +10756,11 @@
       "patternPreview": "வடிவ முன்னோட்டம்",
       "visualRepresentationOfLEDStrip": "LED பட்டையின் காட்சி வடிவம்",
       "betaflightLEDStripUsesPacked": "Betaflight LED ஸ்ட்ரிப் தொகுக்கப்பட்ட நிலை/செயல்பாடு/நிற பிட்மாஸ்க்குகளைப் பயன்படுத்துகிறது; இவற்றை CLI மூலம் உள்ளமைப்பதே சிறந்தது.",
-      "useThe": "பயன்படுத்தவும்:"
+      "useThe": "பயன்படுத்தவும்:",
+      "useLedCommand": "LED பட்டை ஒதுக்கீடுகளை அமைக்க FC கன்சோல் பலகத்தில் <cmd>led</cmd> கட்டளையைப் பயன்படுத்தவும்.",
+      "ledCmdShow": "தற்போதைய LED பட்டை அமைப்பைக் காட்டு",
+      "ledCmdExample": "எடுத்துக்காட்டு: LED 0 ஐ அமை",
+      "colorCmd": "LED நிறங்களைக் காட்டு/அமை"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "மிக்சர் சுயவிவரங்கள்",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "ESC அளவுத்திருத்தம் சேமிக்கப்பட்டது",
       "compassmotMotorInterference": "CompassMot (மோட்டார் குறுக்கீடு)",
       "measuresMagneticInterferenceFromMotors": "பல்வேறு த்ராட்டில் நிலைகளில் மோட்டார்கள்/ESC-களிலிருந்து வரும் காந்தக் குறுக்கீட்டை அளவிடுகிறது. திசைகாட்டி அளவீடுகளை ஈடுசெய்கிறது.",
-      "compassmotCalibrationSaved": "CompassMot அளவுத்திருத்தம் சேமிக்கப்பட்டது"
+      "compassmotCalibrationSaved": "CompassMot அளவுத்திருத்தம் சேமிக்கப்பட்டது",
+      "escAck": "அனைத்து ப்ரொப்பெல்லர்களும் அகற்றப்பட்டன",
+      "compassmotAck": "வாகனம் பாதுகாப்பாகக் கட்டப்பட்டு சுற்றுப்பகுதி காலியாக உள்ளது",
+      "escTip1": "முக்கியம்: தொடங்கும் முன் அனைத்து ப்ரொப்பெல்லர்களையும் அகற்றவும்",
+      "escTip2": "வரிசையைத் தொடங்கும் முன் பேட்டரியைத் துண்டிக்கவும்",
+      "escTip3": "சில ESC களுக்கு முதல் பயன்பாட்டில் இது தேவை",
+      "escTip4": "BLHeli/SimonK ESC: அவற்றின் சொந்த கருவிகளைப் பயன்படுத்தவும்",
+      "escTip5": "இது மறுதொடக்கத்தில் த்ராட்டில் பாஸ்த்ரூவாக இயங்கும்; MAVLink மூலம் முடிவைத் தெரிவிக்காது. ESC ஒலிகளைப் பின்பற்றவும்; நேர முடிவில் முடிவது எதிர்பார்க்கப்பட்டதே.",
+      "compassmotTip1": "தொடங்கும் முன் GPS 3D நிலையை உறுதிசெய்யவும்",
+      "compassmotTip2": "வாகனம் உலோகத்திலிருந்து விலகி திறந்த இடத்தில் இருக்க வேண்டும்",
+      "compassmotTip3": "ப்ராப் பொருத்தப்பட்டுள்ளது: இந்தச் சோதனையில் மோட்டார்கள் சுழலும்",
+      "compassmotTip4": "30% க்குக் கீழ் ஏற்கத்தக்கது, 15% க்குக் கீழ் நல்லது"
     },
     "telRadioPanel": {
       "telemetryRadio": "டெலிமெட்ரி ரேடியோ",
@@ -10705,7 +10824,13 @@
       "protocol": "நெறிமுறை",
       "baudRate": "பாட் விகிதம்",
       "systemIdentification": "சிஸ்டம் அடையாளம்",
-      "mavlinkSystemAndGCSIDs": "பல-வாகன அமைப்புகளுக்கான MAVLink சிஸ்டம் மற்றும் GCS ID-கள்"
+      "mavlinkSystemAndGCSIDs": "பல-வாகன அமைப்புகளுக்கான MAVLink சிஸ்டம் மற்றும் GCS ID-கள்",
+      "notPresent": "இல்லை",
+      "noRadioTelemetry": "நேரடி ரேடியோ டெலிமெட்ரி இல்லை: சமீபத்தில் RADIO_STATUS பெறப்படவில்லை",
+      "px4BaudUnderPorts": "PX4 டெலிமெட்ரி போர்ட் பாட் வீதங்களை போர்ட்கள் பகுதியில் அமைக்கிறது (SER_TEL1_BAUD, SER_TEL2_BAUD). இந்தப் பக்கம் ஃப்ளைட் கன்ட்ரோலரில் எதையும் எழுதாது.",
+      "vehicleSystemId": "வாகன அமைப்பு ID",
+      "gcsSystemId": "GCS அமைப்பு ID",
+      "uniqueSysidHint": "ஒரே இணைப்பில் உள்ள ஒவ்வொரு வாகனத்துக்கும் தனித்த SYSID_THISMAV தேவை. இயல்புநிலை GCS ID 255."
     },
     "signingEnabledSection": {
       "signingEnabled": "கையொப்பமிடல் இயக்கப்பட்டது",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "முதன்மை த்ராட்டில்",
       "motorsWillSpinWhenTested": "சோதிக்கும்போது மோட்டார்கள் சுழலும். ப்ரொப்பெல்லர்களை அகற்றாவிட்டால் காயம் அல்லது சேதம் ஏற்படலாம்.",
       "enableMotorTest": "மோட்டார் சோதனையை இயக்கு",
-      "stopAllMotors": "அனைத்து மோட்டார்களையும் நிறுத்து"
+      "stopAllMotors": "அனைத்து மோட்டார்களையும் நிறுத்து",
+      "removePropellers": "சோதனைக்கு முன் அனைத்து புரொப்பெல்லர்களையும் அகற்றவும்",
+      "motorN": "மோட்டார் {n}",
+      "motorThrottleN": "மோட்டார் {n} த்ராட்டில்",
+      "setPct": "அமைப்பு {pct}%",
+      "mixed": "கலப்பு"
     },
     "iNavMissionPanel": {
       "inavMission": "iNav மிஷன்",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "தற்போதைய திட்டத்தை மாற்றவா?",
       "replacePlan": "திட்டத்தை மாற்று",
       "noMissionLoadedOpenThe": "மிஷன் எதுவும் ஏற்றப்படவில்லை. ஒன்றை உருவாக்க திட்டம் தாவலைத் திறக்கவும்.",
-      "openMissionPlanner": "மிஷன் திட்டமிடலைத் திற"
+      "openMissionPlanner": "மிஷன் திட்டமிடலைத் திற",
+      "waypointActionsTitle": "iNav வழிப்புள்ளி செயல்கள்",
+      "waypointActionsBody": "iNav எட்டு வழிப்புள்ளி செயல் வகைகளை ஆதரிக்கிறது. Plan தாவலில் Waypoint, Poshold (வரம்பற்ற அல்லது நேர வரம்புள்ள), RTH அல்லது Land ஐத் தேர்ந்து, வழிப்புள்ளியின் செயல் பட்டியலிலிருந்து Set POI, Jump அல்லது Set heading ஐ இணைக்கவும்."
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "அனைத்து ப்ரொப்பல்லர்களும் அகற்றப்பட்டதை உறுதிசெய்கிறேன்",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "ஏர்ஃப்ரேமை மாற்ற மறுதொடக்கம் தேவை. அனைத்து அளவுருக்களும் ஏர்ஃப்ரேம் இயல்புநிலைக்கு மீட்டமைக்கப்படும்.",
       "searchAirframes": "ஏர்ஃப்ரேம்களைத் தேடு...",
       "noAirframesMatchYourSearch": "உங்கள் தேடலுக்குப் பொருந்தும் ஏர்ஃப்ரேம்கள் இல்லை.",
-      "customAirframeID": "தனிப்பயன் ஏர்ஃப்ரேம் ID"
+      "customAirframeID": "தனிப்பயன் ஏர்ஃப்ரேம் ID",
+      "custom": "தனிப்பயன் ({id})",
+      "allCategories": "அனைத்து வகைகள்",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "மீண்டும் முயல்க",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "அனைத்து ப்ரொப்பெல்லர்களும் அகற்றப்பட்டதை உறுதிசெய்கிறேன்",
       "disarmToTestActuators": "ஆக்சுவேட்டர்களைச் சோதிக்க disarm செய்யவும்.",
       "output": "வெளியீடு",
-      "stop": "நிறுத்து"
+      "stop": "நிறுத்து",
+      "removePropellers": "சோதனைக்கு முன் அனைத்து புரொப்பெல்லர்களையும் அகற்றவும்",
+      "testExplain": "தேர்ந்த மோட்டார் {seconds}வி தேர்ந்த மதிப்பில் சுழலும் (அல்லது சர்வோ நகரும்), பின் FC அதை மீட்டமைக்கும். ஆயுதமேற்றியிருக்கும் போது FC சோதனையை மறுக்கும்.",
+      "throttle": "த்ராட்டில்",
+      "position": "நிலை",
+      "runSeconds": "{seconds}வி இயக்கு"
     },
     "px4PowerSections": {
       "batterySettings": "பேட்டரி அமைப்புகள்",
@@ -11134,19 +11274,31 @@
       "pidTuning": "PID டியூனிங்",
       "presetProfiles": "முன்னமைவு சுயவிவரங்கள்",
       "filterSettings": "ஃபில்டர் அமைப்புகள்",
-      "insGyroAccelLowPass": "INS கைரோ/ஆக்சல் லோ-பாஸ் ஃபில்டர்கள் மற்றும் ஹார்மோனிக் நாட்ச் ஃபில்டர்"
+      "insGyroAccelLowPass": "INS கைரோ/ஆக்சல் லோ-பாஸ் ஃபில்டர்கள் மற்றும் ஹார்மோனிக் நாட்ச் ஃபில்டர்",
+      "subtitleCopter": "ArduCopter வீத PID — ரோல், பிட்ச், யா",
+      "subtitleCopterPx4": "PX4 மல்டிகாப்டர் வீத PID (MC_*) — ரோல், பிட்ச், யா. VTOL இன் நிலையான-இறக்கை வீதங்கள் நிலையான-இறக்கை டியூனிங்கில் உள்ளன.",
+      "subtitleRover": "ArduRover திசைமாற்ற வீத மற்றும் வேக/த்ராட்டில் PID",
+      "subtitleRoverPx4": "PX4 ரோவர் திசைமாற்ற வீத மற்றும் வேக PID",
+      "subtitlePlane": "ArduPlane ரோல், பிட்ச், யா சர்வோ PID ஆதாயங்கள்",
+      "subtitlePlanePx4": "PX4 நிலையான-இறக்கை வீத PID (FW_*) — ரோல், பிட்ச், யா. நிலை மற்றும் வேக டியூனிங் நிலையான-இறக்கை டியூனிங்கில் உள்ளது."
     },
     "outputsPanel": {
       "servoMotorOutputs": "சர்வோ / மோட்டார் வெளியீடுகள்",
       "connectToADroneTo": "வெளியீடுகளை உள்ளமைக்க ஒரு ட்ரோனுடன் இணைக்கவும்.",
       "outputFunctionAssignmentPWMLimits": "வெளியீட்டுச் செயல்பாடு ஒதுக்கீடு, PWM வரம்புகள் மற்றும் மோட்டார் சோதனை",
-      "save": "சேமி"
+      "save": "சேமி",
+      "unsaved": "சேமிக்கப்படவில்லை"
     },
     "motorTestSection": {
       "motorTest": "மோட்டார் சோதனை",
       "enableMotorTestSafetyMaster": "மோட்டார் சோதனையை இயக்கு (பாதுகாப்பு மாஸ்டர்)",
       "motor": "மோட்டார்",
-      "removePropellersBeforeTestingMotors": "மோட்டார்களைச் சோதிக்கும் முன் ப்ரொப்பெல்லர்களை அகற்றவும். ட்ரோன் பாதுகாப்பாகப் பொருத்தப்பட்டுள்ளதை உறுதிசெய்யவும்."
+      "removePropellersBeforeTestingMotors": "மோட்டார்களைச் சோதிக்கும் முன் ப்ரொப்பெல்லர்களை அகற்றவும். ட்ரோன் பாதுகாப்பாகப் பொருத்தப்பட்டுள்ளதை உறுதிசெய்யவும்.",
+      "throttleLabel": "த்ராட்டில்: {value}% (அதிகபட்சம் {max}%)",
+      "durationLabel": "கால அளவு: {value} வி",
+      "testMotorN": "மோட்டார் {n} சோதி",
+      "motorN": "மோட்டார் {n}",
+      "stop": "நிறுத்து"
     },
     "navConfigPanel": {
       "navigationConfig": "வழிசெலுத்தல் உள்ளமைவு",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "டெலிமெட்ரி ஸ்ட்ரீம் விகிதங்கள்",
       "perPortMAVLinkMessageGroup": "ஒவ்வொரு போர்ட்டுக்கான MAVLink செய்திக் குழு விகிதங்கள் (Hz)",
       "mavlinkChannel": "MAVLink சேனல்",
-      "gcsManagesTelemetryRatesOn": "GCS டெலிமெட்ரி விகிதங்களை நிர்வகிக்கிறது. இணைப்பு, இணைப்பு மீட்பு மற்றும் ஃப்ளைட் கன்ட்ரோலர் மறுதொடக்கத்தின்போது இந்த GCS தான் இணைந்துள்ள சேனலில் தனது விகிதங்களைக் கோருகிறது. இங்கு அல்லது ஏஜென்ட்'ன் ரூட்டரால் அமைக்கப்பட்ட விகிதங்களை மாற்றாமல் வைக்க இதை அணைக்கவும்."
+      "gcsManagesTelemetryRatesOn": "GCS டெலிமெட்ரி விகிதங்களை நிர்வகிக்கிறது. இணைப்பு, இணைப்பு மீட்பு மற்றும் ஃப்ளைட் கன்ட்ரோலர் மறுதொடக்கத்தின்போது இந்த GCS தான் இணைந்துள்ள சேனலில் தனது விகிதங்களைக் கோருகிறது. இங்கு அல்லது ஏஜென்ட்'ன் ரூட்டரால் அமைக்கப்பட்ட விகிதங்களை மாற்றாமல் வைக்க இதை அணைக்கவும்.",
+      "notPresent": "இல்லை"
     },
     "signingHistorySection": {
       "history": "வரலாறு",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "OSD முன்னோட்டம்",
-      "liveReconstructionOfTheOSD": "ஃப்ளைட் கன்ட்ரோலர் வரையும் OSD-யின் நேரடி மறுஉருவாக்கம் (MSP DisplayPort). இந்த இணைப்பில் MSP DisplayPort மூலம் OSD-ஐ வெளியிட FC அமைக்கப்பட்டிருந்தால் மட்டுமே (HD-கண்ணாடி / DJI அமைப்பு) ஃப்ரேம்கள் வரும். தனிப்பயன் எழுத்துரு கிளிஃப்கள் புள்ளியாகக் காட்டப்படும்; உரை மற்றும் எண் புலங்கள் அனுப்பியபடியே காட்டப்படும்."
+      "liveReconstructionOfTheOSD": "ஃப்ளைட் கன்ட்ரோலர் வரையும் OSD-யின் நேரடி மறுஉருவாக்கம் (MSP DisplayPort). இந்த இணைப்பில் MSP DisplayPort மூலம் OSD-ஐ வெளியிட FC அமைக்கப்பட்டிருந்தால் மட்டுமே (HD-கண்ணாடி / DJI அமைப்பு) ஃப்ரேம்கள் வரும். தனிப்பயன் எழுத்துரு கிளிஃப்கள் புள்ளியாகக் காட்டப்படும்; உரை மற்றும் எண் புலங்கள் அனுப்பியபடியே காட்டப்படும்.",
+      "noFramesYet": "இன்னும் OSD சட்டங்கள் இல்லை"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "வெப்பநிலை சென்சார்கள்",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "பறப்பு பயன்முறைகள்",
-      "read": "படி"
+      "read": "படி",
+      "unsavedCount": "{count} சேமிக்கப்படவில்லை",
+      "save": "சேமி",
+      "saveCount": "சேமி ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "ஃபிளாஷ் கருவி"
+      "flashTool": "ஃபிளாஷ் கருவி",
+      "subtitle": "USB DFU அல்லது சீரியல் பூட்லோடர் வழியாக ஃபர்ம்வேரை ஃபிளாஷ் செய்க"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "மறுதொடக்கம் தேவை"
+      "rebootRequired": "மறுதொடக்கம் தேவை",
+      "applyHint": "{label}. பயன்படுத்த விமானக் கட்டுப்படுத்தியை மறுதொடக்கம் செய்யவும்."
     },
     "pwmRangeSlider": {
       "rangeStart": "வரம்பு தொடக்கம்",
@@ -11471,7 +11630,9 @@
       "loadParamFile": ".param கோப்பை ஏற்று",
       "selectAll": "அனைத்தையும் தேர்ந்தெடு",
       "selectNone": "எதையும் தேர்ந்தெடுக்காதே",
-      "noParametersMatchTheCurrent": "தற்போதைய வடிகட்டியுடன் எந்த அளவுருவும் பொருந்தவில்லை."
+      "noParametersMatchTheCurrent": "தற்போதைய வடிகட்டியுடன் எந்த அளவுருவும் பொருந்தவில்லை.",
+      "applyN": "{count} அளவுருக்களைப் பயன்படுத்து",
+      "selectedOf": "{total} இல் {selected} தேர்ந்தெடுக்கப்பட்டது"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "அளவுரு எழுதுதலை உறுதிப்படுத்து",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "இந்தத் தொகுப்பில் பறப்புப் பாதுகாப்பு அளவுருக்கள் உள்ளன. எழுதும் முன் கவனமாகச் சரிபார்க்கவும்.",
       "flightSafety": "பறப்புப் பாதுகாப்பு",
       "iUnderstandThisChangeAffects": "இந்த மாற்றம் பறப்புப் பாதுகாப்பைப் பாதிக்கும் என்பதைப் புரிந்துகொள்கிறேன்",
-      "cancel": "ரத்துசெய்"
+      "cancel": "ரத்துசெய்",
+      "willBeWritten": "{count} அளவுருக்கள் விமானக் கட்டுப்படுத்தியில் எழுதப்படும்.",
+      "writeN": "{count} அளவுருக்களை எழுது",
+      "outOfRange": "அனுமதிக்கப்பட்ட வரம்புக்கு வெளியே ({min} .. {max})",
+      "outOfRangeBlocked": "எழுதும் முன் வரம்புக்கு வெளியே உள்ள மதிப்புகளைச் சரிசெய்யவும்."
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "சேமிக்கப்படாத அளவுரு மாற்றங்கள்",
@@ -11517,7 +11682,9 @@
       "link": "இணைப்பு",
       "verified": "சரிபார்க்கப்பட்டது",
       "failed": "தோல்வியடைந்தது",
-      "unsigned": "கையொப்பமிடப்படாதது"
+      "unsigned": "கையொப்பமிடப்படாதது",
+      "primary": "முதன்மை",
+      "requireSignedBody": "கையொப்பமிட்ட டெலிமெட்ரி தேவை. சாவி ஏற்றப்பட்டிருக்கும் வரை, கையொப்பமில்லாத அல்லது சரிபார்ப்பில் தோல்வியுறும் ஒவ்வொரு சட்டமும் கைவிடப்படும். பதில்களுக்குக் கையொப்பமிடாத வாகனம் அமைதியாகும்."
     },
     "servoMixerTable": {
       "targetCh": "இலக்கு சேனல்",
@@ -11553,7 +11720,9 @@
       "programmingJS": "நிரலாக்கம் (JS)",
       "writeExpressionsAndCompileThem": "கோவைகளை எழுதி அவற்றை Logic Conditions ஆக தொகுக்கவும். ஏற்றும்போது அவை ஃப்ளைட் கன்ட்ரோலரில் காலியாக உள்ள இடங்களில் வைக்கப்படும், ஏற்கனவே பயன்பாட்டில் உள்ள நிபந்தனைகள் அப்படியே இருக்கும்; Logic Conditions எடிட்டரில் அவற்றைச் சரிபார்த்து அங்கிருந்து FC-க்கு எழுதவும்.",
       "compile": "தொகு",
-      "loadIntoLogicConditions": "Logic Conditions-இல் ஏற்று"
+      "loadIntoLogicConditions": "Logic Conditions-இல் ஏற்று",
+      "compilesToLogicConditions": "Logic Conditions ஆகத் தொகுக்கப்படும்",
+      "operation": "செயல்பாடு"
     },
     "customOsdElementsPanel": {
       "customOSD": "தனிப்பயன் OSD",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "தரையிறங்கும் திசை 1 (டிகிரி, 0 = அணை)",
       "landHeading2Deg0": "தரையிறங்கும் திசை 2 (டிகிரி, 0 = அணை)",
       "altitudeReference": "உயரக் குறிப்பு",
-      "thisPanelAppliesToFixed": "இந்தப் பேனல் ஃபிக்ஸ்டு-விங் மற்றும் ட்ரைகாப்டர் தளங்களுக்குப் பொருந்தும். இணைக்கப்பட்ட ஃப்ளைட் கன்ட்ரோலர் மல்டிரோட்டராக அமைக்கப்பட்டுள்ளது."
+      "thisPanelAppliesToFixed": "இந்தப் பேனல் ஃபிக்ஸ்டு-விங் மற்றும் ட்ரைகாப்டர் தளங்களுக்குப் பொருந்தும். இணைக்கப்பட்ட ஃப்ளைட் கன்ட்ரோலர் மல்டிரோட்டராக அமைக்கப்பட்டுள்ளது.",
+      "unsaved": "சேமிக்கப்படவில்லை",
+      "approachN": "அணுகல் {n}",
+      "save": "சேமி",
+      "saving": "சேமிக்கிறது…",
+      "seaLevel": "கடல் மட்டம்",
+      "relativeToHome": "ஹோமைப் பொறுத்து"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "சென்சார் வரைபடங்கள்",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "காம்பஸ் பறப்பிற்கு முந்தைய சோதனைகள்",
       "enabled": "இயக்கப்பட்டது",
-      "fix": "சரிசெய்"
+      "fix": "சரிசெய்",
+      "loading": "ஏற்றுகிறது…",
+      "unavailable": "கிடைக்கவில்லை",
+      "disabledHint": "முடக்கப்பட்டது — முதலில் COMPASS_USE ஐ இயக்கவும்",
+      "none": "எதுவும் இல்லை",
+      "lenient": "தளர்வு",
+      "recommendLenient": "{value} — தளர்வான திசை கண்டறிதலுக்கு 3 பரிந்துரை",
+      "lowLimit": "குறைந்த வரம்பு",
+      "increaseTo": "{value} ஆக உயர்த்து",
+      "unknownValue": "தெரியாதது ({value})",
+      "extInternal": "உள்",
+      "extExternal": "வெளி",
+      "extForced": "கட்டாய வெளி",
+      "learnOff": "அணை",
+      "learnInternal": "உள்",
+      "learnEkf": "EKF",
+      "learnInFlight": "பறக்கும்போது",
+      "unknown": "தெரியாதது",
+      "notChanged": "{name} மாற்றப்படவில்லை: {reason}",
+      "noReply": "விமானக் கட்டுப்படுத்தியிடமிருந்து பதில் இல்லை",
+      "setTo": "{name} {value} ஆக அமைக்கப்பட்டது"
     },
     "pidAnalysisSummary": {
       "tuneScore": "டியூன் மதிப்பெண்",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "GPS அல்லாத நிலைப்படுத்தல்",
       "ekf3SourceSetsAndExternal": "EKF3 மூலத் தொகுப்புகள் மற்றும் வெளிப்புற நேவ் / பீக்கன் பின்தளங்கள்",
       "externalNavigationVISO": "வெளிப்புற வழிசெலுத்தல் (VISO)",
-      "beaconBCN": "பீக்கன் (BCN)"
+      "beaconBCN": "பீக்கன் (BCN)",
+      "sourceSet": "மூலத் தொகுப்பு {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "ஹெலிகாப்டர்",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "கட்டம்",
       "live": "நேரலை",
-      "dragElementsToRepositionClick": "இடமாற்ற உறுப்புகளை இழுக்கவும். தெரிவுநிலையை மாற்ற பக்கப்பட்டியில் உள்ள உறுப்புகளைக் கிளிக் செய்யவும்."
+      "dragElementsToRepositionClick": "இடமாற்ற உறுப்புகளை இழுக்கவும். தெரிவுநிலையை மாற்ற பக்கப்பட்டியில் உள்ள உறுப்புகளைக் கிளிக் செய்யவும்.",
+      "osdPreview": "OSD முன்னோட்டம்"
     },
     "keyAgeNudge": {
       "rotateNow": "இப்போது மாற்று",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "அளவுருக்களை காப்புப்பிரதி எடு",
-      "restoreParameters": "அளவுருக்களை மீட்டமை"
+      "restoreParameters": "அளவுருக்களை மீட்டமை",
+      "downloading": "அளவுருக்கள் பதிவிறக்கப்படுகின்றன…",
+      "backedUp": "{count} அளவுருக்கள் காப்புப் பிரதி எடுக்கப்பட்டன",
+      "backupFailed": "காப்புப் பிரதி தோல்வி: {error}",
+      "unknownError": "அறியப்படாத பிழை",
+      "flashing": "ஃபிளாஷ் ஆகிறது…",
+      "flashFirmware": "ஃபர்ம்வேரை ஃபிளாஷ் செய்",
+      "restored": "அளவுருக்கள் மீட்டமைக்கப்பட்டன"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "ரிசீவர் இயல்புநிலை"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "மூடு"
+    },
+    "bfFailsafe": {
+      "title": "ஃபெயில்சேஃப்",
+      "subtitle": "ரேடியோ இணைப்பு இழந்தால் வானூர்தி என்ன செய்யும்",
+      "stage2": "நிலை 2 ஃபெயில்சேஃப்",
+      "procedure": "நடைமுறை (0 விடு, 1 தரையிறங்கு, 2 GPS மீட்பு)",
+      "delay": "காப்பு நேரம் (0.1 வி)",
+      "offDelay": "மோட்டார் நிறுத்த தாமதம் (0.1 வி)",
+      "throttle": "தரையிறக்க த்ராட்டில் (µs)",
+      "throttleLowDelay": "குறைந்த த்ராட்டில் தாமதம் (0.1 வி)",
+      "switchMode": "ஃபெயில்சேஃப் சுவிட்ச் (0 நிலை 1, 1 நிறுத்து, 2 நிலை 2)"
+    },
+    "px4Safety": {
+      "title": "தோல்வி கண்டறிதல் & திரும்புதல்",
+      "subtitle": "தோல்வியைத் தூண்டும் நிலை வரம்புகள் மற்றும் திரும்பும் பாதை. சர்க்யூட் பிரேக்கர்கள் Parameters இல்.",
+      "failureDetector": "தோல்வி கண்டறிதல்",
+      "maxPitch": "அதிகபட்ச பிட்ச் (°)",
+      "maxRoll": "அதிகபட்ச ரோல் (°)",
+      "pitchTrigger": "பிட்ச் தூண்டு நேரம் (வி)",
+      "rollTrigger": "ரோல் தூண்டு நேரம் (வி)",
+      "returnToLaunch": "ஏவுதளத்துக்குத் திரும்பு",
+      "rtlType": "திரும்பும் வகை",
+      "returnAlt": "திரும்பும் உயரம் (மீ)",
+      "descendAlt": "இறங்கும் உயரம் (மீ)",
+      "landDelay": "தரையிறங்கும் முன் மிதத்தல் (வி, -1 = இறங்காது)",
+      "coneAngle": "திரும்பும் கூம்பு அரைக்கோணம்"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "கட்டுப்பாட்டை நகர்த்தவும்",
       "stickMode": "ஸ்டிக் பயன்முறை",
       "none": "எதுவுமில்லை",
-      "close": "மூடு"
+      "close": "மூடு",
+      "saved": "சேமிக்கப்பட்டது",
+      "imported": "இறக்குமதி ஆனது. வைத்திருக்க சேமிக்கவும்.",
+      "resetPending": "ADOS இயல்புநிலை ஏற்றப்பட்டது. வைத்திருக்க சேமிக்கவும் அல்லது திரும்ப ரத்துசெய்யவும்.",
+      "cancel": "ரத்துசெய்",
+      "tourReplayDone": "அடுத்த முறை விமானத்தைத் திறக்கும்போது கட்டுப்படுத்தி சுற்றுலா இயங்கும்."
     },
     "rpcTraceTable": {
       "node": "நோட்",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "முடிந்தது (ஸ்டிக்குகள் விடுவிக்கப்பட்டன)",
-      "start": "தொடங்கு"
+      "start": "தொடங்கு",
+      "noControllerGranted": "எந்தக் கட்டுப்படுத்திக்கும் அனுமதி இல்லை"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "முதன்மையாக அமை",
       "noPairedBluetoothDevices": "இணைக்கப்பட்ட Bluetooth சாதனங்கள் இல்லை.",
       "forget": "மற",
-      "calibrateAndTuneControllersConnected": "Web Gamepad API மூலம் இந்த உலாவியுடன் நேரடியாக இணைக்கப்பட்ட கட்டுப்படுத்திகளை அளவீடு செய்து சரிசெய்யவும்."
+      "calibrateAndTuneControllersConnected": "Web Gamepad API மூலம் இந்த உலாவியுடன் நேரடியாக இணைக்கப்பட்ட கட்டுப்படுத்திகளை அளவீடு செய்து சரிசெய்யவும்.",
+      "typeUnknown": "தெரியாதது",
+      "kindJoystick": "ஜாய்ஸ்டிக்",
+      "kindWheel": "சக்கரம்",
+      "kindGamepad": "கேம்பேட்",
+      "forgetTitle": "{name} ஐ மறக்கவா?",
+      "forgetMessage": "தரை நிலையம் இணைப்பை நீக்கும். பயன்படுத்த மீண்டும் இணைக்க வேண்டும்.",
+      "forgotDevice": "{name} மறக்கப்பட்டது",
+      "forgetFailed": "{name} ஐ மறக்க முடியவில்லை"
     },
     "community": {
       "communityNavigation": "சமூக வழிசெலுத்தல்",

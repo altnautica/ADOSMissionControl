@@ -117,6 +117,17 @@ const realW = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidt
 const realH = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
 let style: HTMLStyleElement;
 
+// Load the minimap's lazy modules once before any case, so no case's waits
+// also pay for the first import (which made the first size flaky under load).
+beforeAll(async () => {
+  await Promise.all([
+    import("@/components/flight/OverviewMap"),
+    import("@/components/map/local/FollowTargetGeoLayer"),
+    import("leaflet"),
+    import("react-leaflet"),
+  ]);
+}, 60_000);
+
 beforeAll(() => {
   style = document.createElement("style");
   style.textContent = cockpitCss() + UTILITIES;
@@ -191,7 +202,6 @@ describe("bottom-left card map face", () => {
     // The map face takes the card's whole box.
     expect(layoutBox(mapEl)).toEqual({ w: card.w, h: card.h });
 
-    // The first case also pays for loading the lazy map modules.
     const leaflet = await waitFor(
       () => {
         const el = container.querySelector(".leaflet-container");
@@ -219,7 +229,6 @@ describe("bottom-left card map face", () => {
     const mapPane = leafletPos(container.querySelector(".leaflet-map-pane")!);
     expect(Math.abs(at.x + mapPane.x - card.w / 2)).toBeLessThanOrEqual(1);
     expect(Math.abs(at.y + mapPane.y - card.h / 2)).toBeLessThanOrEqual(1);
-    // The first case loads the lazy map modules, which can outlast the default
-    // 5 s budget on a loaded host; the waits above carry their own limits.
+    // The waits above carry their own limits.
   }, 20_000);
 });

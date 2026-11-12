@@ -98,11 +98,8 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
       <div className="flex items-start gap-2 p-3 bg-status-error/10 border border-status-error/20 rounded">
         <AlertTriangle size={16} className="text-status-error shrink-0 mt-0.5" />
         <div>
-          <p className="text-xs font-medium text-status-error">REMOVE ALL PROPELLERS BEFORE TESTING</p>
-          <p className="text-[10px] text-status-error/80 mt-0.5">
-            The selected motor spins (or servo moves) at the chosen value for {TEST_TIMEOUT_S}s, then
-            the FC restores it. The FC rejects the test while armed.
-          </p>
+          <p className="text-xs font-medium text-status-error">{tr("removePropellers")}</p>
+          <p className="text-[10px] text-status-error/80 mt-0.5">{tr("testExplain", { seconds: TEST_TIMEOUT_S })}</p>
         </div>
       </div>
 
@@ -123,7 +120,7 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
         </div>
         <div className="flex-1 min-w-[12rem]">
           <div className="flex justify-between text-[10px] text-text-secondary mb-1">
-            <span>{motor ? "Throttle" : "Position"}</span>
+            <span>{motor ? tr("throttle") : tr("position")}</span>
             <span className="font-mono tabular-nums">{pct}%</span>
           </div>
           <input
@@ -137,7 +134,7 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
           />
         </div>
         <Button variant="secondary" size="sm" icon={<Play size={12} />} disabled={disabled} onClick={run}>
-          Run {TEST_TIMEOUT_S}s
+          {tr("runSeconds", { seconds: TEST_TIMEOUT_S })}
         </Button>
         <Button
           variant="secondary"

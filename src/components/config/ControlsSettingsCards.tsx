@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useHasMounted } from "@/hooks/use-has-mounted";
 import ds4Spec from "@/lib/cockpit-spec/ds4.json";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { canRumble, lightbarColour, lightbarSupported, requestLightbarDevice, rumble, setLightbar } from "@/lib/input/ds4-feedback";
@@ -23,6 +24,7 @@ import { clashedUnboundSkills } from "@/stores/settings/keybindings-slice";
 import { useSkillRegistry } from "@/lib/skills";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { useTranslations } from "next-intl";
+import { useToast } from "@/components/ui/toast";
 
 const LIGHTBAR_STATES = Object.keys(ds4Spec.lightbar.states) as (keyof typeof ds4Spec.lightbar.states)[];
 
@@ -70,11 +72,17 @@ export function CalibrationCard() {
 }
 
 export function TestRow() {
+  const tk = useTranslations("configUi.controlsSettingsCards");
   const [lightbar, setLightbarMsg] = useState<string | null>(null);
-  const supported = lightbarSupported();
+  // Platform support is read after mount: the server render has no
+  // navigator, and reading it during render left the button disabled after
+  // hydration on a platform that supports it.
+  const mounted = useHasMounted();
+  const supported = mounted && lightbarSupported();
+  const rumbleOk = mounted && canRumble();
   const cycle = async () => {
     if (!(await requestLightbarDevice())) {
-      setLightbarMsg("No controller granted");
+      setLightbarMsg(tk("noControllerGranted"));
       return;
     }
     for (const s of LIGHTBAR_STATES) {
@@ -92,7 +100,7 @@ export function TestRow() {
           setTimeout(() => rumble("warning"), 500);
           setTimeout(() => rumble("critical"), 1200);
         }}
-        disabled={!canRumble()}
+        disabled={!rumbleOk}
         className="min-h-12 rounded border px-3 text-xs disabled:opacity-40"
       >
         {specString("controls.test.rumble")}
@@ -133,10 +141,15 @@ export function PrefsRow() {
  *  tour card again on the next ground visit. */
 export function ReplayTourRow() {
   const replay = useControlsStore((s) => s.replayTour);
+  const tq = useTranslations("configUi.controlsSettings");
+  const { toast } = useToast();
   return (
     <section className="flex items-center justify-between gap-2 text-xs" data-testid="controls-tour-replay-row">
       <span>{specString("controls.tour.title")}</span>
-      <button type="button" onClick={() => replay()} data-testid="controls-tour-replay" className="min-h-12 rounded border px-3 text-xs">
+      <button type="button" onClick={() => {
+        replay();
+        toast(tq("tourReplayDone"), "success");
+      }} data-testid="controls-tour-replay" className="min-h-12 rounded border px-3 text-xs">
         {specString("controls.tour.replay")}
       </button>
     </section>

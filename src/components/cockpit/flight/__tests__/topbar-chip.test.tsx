@@ -55,6 +55,15 @@ describe("flight-state chip in the top bar", () => {
     expect(button.getAttribute("aria-label")).toBe(specString("chip.aria", { text: title }));
   });
 
+  it("says the reduced update rate in words while the nav stream is polled over the radio", () => {
+    pin();
+    useNavStreamStore.getState().setTransport(DRONE, "poll");
+    renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
+    const words = specString("nav.reduced_rate");
+    expect(screen.getByTestId("flight-state-chip-reduced-rate").textContent).toContain(words);
+    expect(screen.getByTestId("flight-state-chip").querySelector("button")!.getAttribute("title")).toContain(words);
+  });
+
   it("shows the compact face only at the compact classes, keeping the full text in its title", () => {
     pin();
     renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={560} compact />);
@@ -84,6 +93,16 @@ describe("flight-state chip in the top bar", () => {
     expect(rule("\\.fs-chip")).toContain("flex-direction: row");
     expect(rule("\\.fs-chip-sub")).not.toContain("text-transform");
     expect(rule("\\.fs-chip-sub")).toContain("var(--fs-text-dim)");
+  });
+
+  it("keeps the chip's hit-area border and a wrap at least the chip's height", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const rules = (sel: string) =>
+      [...css.matchAll(new RegExp(`\\.ados-cockpit ${sel} \\{([^}]*)\\}`, "g"))].map((m) => m[1]);
+    // A later shorthand `border: 0` would drop the transparent block border
+    // that offsets the negative margin, and clip the text.
+    for (const body of rules("\\.fs-chip")) expect(body).not.toMatch(/(^|[;\s])border:\s*0/);
+    expect(rules("\\.fs-chip-wrap").join(";")).toContain("min-height: var(--fs-control)");
   });
 
   it("draws the state colour as a dot and an outline, the words in the chrome text colour", () => {

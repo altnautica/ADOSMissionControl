@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { communityApi } from "@/lib/community-api";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useConvexSkipQuery, useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useNodePluginList } from "@/hooks/use-node-plugin-list";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
@@ -39,7 +39,9 @@ export default function PluginDetailPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const data = useConvexSkipQuery(
+  // A skipped query (demo, signed out, no cloud) or a failed one never
+  // resolves; it reads as "not found" rather than an endless "Loading…".
+  const { data, state: dataState } = useConvexSkipQueryState(
     communityApi.plugins.getInstallWithPermissions,
     {
       args: installId ? { installId } : undefined,
@@ -96,10 +98,10 @@ export default function PluginDetailPage() {
     }
   };
 
-  if (data === undefined) {
+  if (data === undefined && dataState === "loading") {
     return <p className="p-4 text-sm text-text-tertiary">{t("detail.loading")}</p>;
   }
-  if (data === null) {
+  if (!data) {
     return (
       <div className="p-4 text-sm text-text-tertiary">
         <p>{t("detail.notFound")}</p>

@@ -33,4 +33,16 @@ describe("MAVLink-only setup panels on MSP firmwares", () => {
     expect(excluded("aux-modes", "betaflight")).toBe(false);
     expect(excluded("aux-modes", "inav")).toBe(false);
   });
+
+  it("ArduPilot Outputs is hidden on MSP firmwares, which have Motors & ESC / Output Mapping", () => {
+    expect(excluded("outputs", "betaflight")).toBe(true);
+    expect(excluded("outputs", "inav")).toBe(true);
+    expect(excluded("outputs", "px4")).toBe(false);
+  });
+
+  it("Betaflight has its own failsafe panel", () => {
+    const item = FC_NAV_ITEMS.find((i) => i.id === "bf-failsafe");
+    expect(item?.requiredCapability).toBe("supportsBetaflightConfig");
+    expect(item?.section).toBe("Safety");
+  });
 });

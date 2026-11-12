@@ -18,6 +18,7 @@ import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
 import { useFleetPluginContributions } from "@/hooks/use-fleet-plugin-contributions";
 import { FC_NAV_ITEMS, type FcNavItem } from "./fc-nav-items";
 import { FcPanelRouter } from "./FcPanelRouter";
+import { FcPanelErrorBoundary } from "./FcPanelErrorBoundary";
 import { FcSourcePicker } from "@/components/command/shared/FcSourcePicker";
 
 /** Prefix for a plugin-contributed FC tab's active-panel id, so the panel
@@ -55,6 +56,10 @@ export function DroneConfigureTab({
   const lastActivePanel = useSettingsStore((s) => s.lastActivePanel);
   const setLastActivePanelSetting = useSettingsStore((s) => s.setLastActivePanel);
   const [activePanel, setActivePanel] = useState(lastActivePanel || "outputs");
+  const tPanel = useTranslations("dronePanel");
+  // A panel that threw is not remembered, so a reload opens Setup on the
+  // default panel instead of the crash.
+  const [crashedPanel, setCrashedPanel] = useState<string | null>(null);
   const { supports, firmwareType } = useFirmwareCapabilities();
   const vehicleInfo = useDroneManager(selectSelectedDrone)?.vehicleInfo;
   const vehicleClass = vehicleInfo?.vehicleClass;
@@ -79,8 +84,8 @@ export function DroneConfigureTab({
   // on every link blip, with no indication.
   useEffect(() => {
     if (!isConnected) return;
-    setLastActivePanelSetting(activePanel);
-  }, [activePanel, isConnected, setLastActivePanelSetting]);
+    setLastActivePanelSetting(crashedPanel === activePanel ? "" : activePanel);
+  }, [activePanel, crashedPanel, isConnected, setLastActivePanelSetting]);
 
   const saveToRam = useFcPanelActionsStore((s) => s.saveToRam);
   const refresh = useFcPanelActionsStore((s) => s.refresh);
@@ -170,7 +175,7 @@ export function DroneConfigureTab({
       <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
         <div className="px-3 py-3 border-b border-border-default">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            FLIGHT CONTROLLER
+            {tk("flightController")}
           </h2>
           {firmwareLabel && (
             <span className="mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-primary/15 text-accent-primary">
@@ -320,7 +325,17 @@ export function DroneConfigureTab({
           <>
             <FlashCommitBanner />
             <RebootRequiredBanner rebootParams={rebootParamsList} />
-            <FcPanelRouter activePanel={activePanel} firmwareType={firmwareType} droneId={droneId} droneName={droneName} />
+            <FcPanelErrorBoundary
+              key={activePanel}
+              message={tPanel("surfaceError")}
+              retryLabel={tPanel("surfaceErrorRetry")}
+              onError={() => {
+                setCrashedPanel(activePanel);
+                setLastActivePanelSetting("");
+              }}
+            >
+              <FcPanelRouter activePanel={activePanel} firmwareType={firmwareType} droneId={droneId} droneName={droneName} />
+            </FcPanelErrorBoundary>
           </>
         )}
       </div>

@@ -55,7 +55,7 @@ describe("FollowRangePanel", () => {
   it("shows rows 1–3 at medium", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
     renderPanel("medium");
-    expect(rows()).toEqual(["range", "interval", "height"]);
+    expect(rows()).toEqual(["range", "interval"]);
     expect(screen.getByText("FOLLOWING")).toBeTruthy();
     expect(screen.getByText("9.6 – 10.8 m")).toBeTruthy();
   });
@@ -65,7 +65,7 @@ describe("FollowRangePanel", () => {
       .getState()
       .setFollow(DRONE, followState({ pipelineLatencyMs: 300, aglSource: "baro", phase: "coasting" }));
     renderPanel("expanded");
-    expect(rows()).toEqual(["range", "interval", "height", "geometry", "cues"]);
+    expect(rows()).toEqual(["range", "interval", "geometry", "cues"]);
     const geometry = document.querySelector("[data-row='geometry']")?.textContent ?? "";
     expect(geometry).toContain("DEP 22°");
     expect(geometry).toContain("BRG 064");
@@ -81,7 +81,9 @@ describe("FollowRangePanel", () => {
     ]);
     const lat = screen.getByText("LAT 300 ms");
     expect(lat.getAttribute("style")).toContain("--hud-warn");
-    expect(screen.getByText("BARO").getAttribute("style")).toContain("--hud-warn");
+    // The bottom row owns the height above the ground; the panel never repeats it.
+    expect(screen.queryByText("BARO")).toBeNull();
+    expect(document.body.textContent).not.toContain("AGL");
     expect(screen.getByText("SMART")).toBeTruthy();
     expect(screen.getByText("COASTING").getAttribute("style")).toContain("--hud-coast");
   });
@@ -118,13 +120,13 @@ describe("FollowRangePanel", () => {
   it("opens the sheet's detail variant as rows even on a compact cockpit", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
     renderPanel("compact", "detail");
-    expect(rows()).toEqual(["range", "interval", "height"]);
+    expect(rows()).toEqual(["range", "interval"]);
     expect(screen.getByText("9.6 – 10.8 m")).toBeTruthy();
   });
 
   it("shows every row in the detail variant at expanded", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
     renderPanel("expanded", "detail");
-    expect(rows()).toEqual(["range", "interval", "height", "geometry", "cues"]);
+    expect(rows()).toEqual(["range", "interval", "geometry", "cues"]);
   });
 });

@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 
 export function CalibrationRebootBanner({
   label,
@@ -14,6 +16,9 @@ export function CalibrationRebootBanner({
 }) {
   const tr = useTranslations("fcPanels.calibrationRebootBanner");
   const tDrone = useTranslations("droneDetail");
+  const tPanel = useTranslations("dronePanel");
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const [confirming, setConfirming] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
   const [rebootDetected, setRebootDetected] = useState(false);
@@ -53,12 +58,30 @@ export function CalibrationRebootBanner({
       <div>
         <p className="text-sm font-medium text-status-warning">{tr("rebootRequired")}</p>
         <p className="text-xs text-text-secondary mt-0.5">
-          {label}. Reboot the flight controller to apply.
+          {tr("applyHint", { label })}
         </p>
       </div>
-      <Button variant="primary" size="sm" onClick={onReboot}>
+      <Button
+        variant="primary"
+        size="sm"
+        disabled={isHardBlocked}
+        title={isHardBlocked ? hardBlockMessage : undefined}
+        onClick={() => setConfirming(true)}
+      >
         {tDrone("rebootFc")}
       </Button>
+      <ConfirmDialog
+        open={confirming}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          onReboot();
+        }}
+        title={tDrone("rebootFc")}
+        message={tPanel("rebootConfirm")}
+        confirmLabel={tPanel("reboot")}
+        variant="danger"
+      />
     </div>
   );
 }

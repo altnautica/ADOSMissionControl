@@ -34,6 +34,11 @@ export interface RallyPoint {
 export interface RallyTransferResult {
   success: boolean;
   message: string;
+  /**
+   * On a failed transfer: the vehicle's MAV_MISSION_RESULT or a negative
+   * GCS-side outcome (see `protocol/mission-result`), for the UI to word.
+   */
+  resultCode?: number;
 }
 
 /** Hash of the rally content an upload sends (ids are local handles). */
@@ -155,7 +160,9 @@ export const useRallyStore = create<RallyStoreState>()(
     let result: RallyTransferResult;
     try {
       const r = await protocol.uploadRallyPoints(rallyUploadItems(points));
-      result = { success: r.success, message: r.message };
+      result = r.success
+        ? { success: true, message: r.message }
+        : { success: false, message: r.message, resultCode: r.resultCode };
     } catch (err) {
       result = { success: false, message: err instanceof Error ? err.message : String(err) };
     }

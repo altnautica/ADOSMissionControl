@@ -16,7 +16,7 @@ import { AlertTriangle, ChevronRight, CircleStop, Cpu, FileClock, Play, RotateCc
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import { currentStep } from "@/lib/fc-setup/parse";
-import { formatValue, setupLabel, setupText } from "@/lib/fc-setup/strings";
+import { formatValue, setupLabel, setupRefusalText, setupText } from "@/lib/fc-setup/strings";
 import { HOLD_CONFIRM_MS, type SetupReport, type SetupSnapshot, type SetupStatus, type SetupStep, type Wizard } from "@/lib/fc-setup/types";
 import type { FcSetupController } from "@/lib/fc-setup/use-fc-setup";
 import { cn } from "@/lib/utils";
@@ -150,7 +150,7 @@ function WizardPanel({ wizard, status, setup }: { wizard: Wizard; status: SetupS
           {wizard.blockers.map((b) => (
             <li key={b} className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              {setupText(b)}
+              {setupRefusalText(b)}
             </li>
           ))}
         </ul>

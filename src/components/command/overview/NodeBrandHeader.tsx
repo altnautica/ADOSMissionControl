@@ -62,7 +62,10 @@ export function NodeBrandHeader({
         </div>
         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-text-secondary">
           <StatusDot status={b.statusLevel} size="xs" />
-          <span className="truncate">{b.statusLine}</span>
+          <span className="truncate">
+            <span className="text-text-tertiary">{b.statusSubject}: </span>
+            {b.statusLine}
+          </span>
         </div>
       </div>
     </div>

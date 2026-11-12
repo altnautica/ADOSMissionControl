@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { revealInStrip } from "./reveal-in-strip";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -102,12 +103,10 @@ export function NodeTabStrip({
     };
   }, [measure, surfaces, pluginIds]);
 
-  // Keep the selected tab visible (a tab picked by deep link or keyboard may
-  // sit past the edge).
+  // Keep the selected tab visible (a tab picked by deep link, keyboard or a
+  // restored last tab may sit past the edge). Only the strip scrolls.
   useEffect(() => {
-    document
-      .getElementById(`drone-tab-${visibleTab}`)
-      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    revealInStrip(stripRef.current, document.getElementById(`drone-tab-${visibleTab}`));
   }, [visibleTab]);
 
   return (

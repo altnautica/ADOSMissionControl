@@ -34,7 +34,7 @@ import {
   type SetupTransport,
 } from "./client";
 import { applyFrame, withStep, withWizard } from "./parse";
-import { setupText } from "./strings";
+import { setupRefusalText } from "./strings";
 import type { SetupStatus, SetupStep, SetupValue, Wizard } from "./types";
 
 export interface FcSetupController {
@@ -59,7 +59,7 @@ export interface FcSetupController {
 
 function requestMessage(err: unknown): string {
   const key = setupErrorKey(err);
-  if (key) return setupText(key);
+  if (key) return setupRefusalText(key);
   return err instanceof Error ? err.message : String(err);
 }
 

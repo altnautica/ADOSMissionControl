@@ -164,12 +164,8 @@ export function INavMissionPanel() {
         />
 
         <div className="border border-border-default rounded p-4 space-y-2">
-          <span className="text-[10px] text-text-tertiary font-mono">iNav waypoint actions</span>
-          <p className="text-[11px] text-text-secondary">
-            iNav supports eight waypoint action types. In the Plan tab, pick Waypoint, Poshold
-            (unlimited or timed), RTH or Land as the waypoint action, and attach Set POI, Jump or
-            Set heading from the waypoint&apos;s action list.
-          </p>
+          <span className="text-[10px] text-text-tertiary font-mono">{tr("waypointActionsTitle")}</span>
+          <p className="text-[11px] text-text-secondary">{tr("waypointActionsBody")}</p>
         </div>
       </div>
     </div>

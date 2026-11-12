@@ -180,8 +180,11 @@ export function useDs4Dispatcher(droneId: string): void {
     const when = (cond: string): boolean => {
       const pilot = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data ?? null;
       const rth = !!pilot?.fcModeName && /RTL|QRTL/i.test(pilot.fcModeName);
-      // An unknown landed state falls back to the heartbeat, as no pilot does.
-      const onGround = pilot?.landed ?? useDroneStore.getState().armState !== "armed";
+      // With no pilot, the heartbeat decides; a pilot's unknown arm or landed
+      // state may be in the air.
+      const onGround = pilot
+        ? pilot.landed === true || pilot.armed === false
+        : useDroneStore.getState().armState !== "armed";
       switch (cond) {
         case "picker_open":
           return usePickerStore.getState().open;
@@ -274,9 +277,26 @@ export function useDs4Dispatcher(droneId: string): void {
       if (s.buttons !== prev.buttons) step();
     });
     const tick = setInterval(step, TICK_MS);
+    // A hidden tab stops the pad poll and a lost pad stops reporting, so the
+    // store would keep the last buttons down: drop every press unfired and
+    // clear the buttons, so nothing the surface cannot see completes a hold.
+    const forget = () => {
+      engine.reset();
+      tourDown.clear();
+      tourOwned.clear();
+      gimbal?.stop();
+      useInputStore.setState({ buttons: [] });
+    };
+    const onVisibility = () => {
+      if (document.hidden) forget();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("gamepaddisconnected", forget);
     return () => {
       unsub();
       clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("gamepaddisconnected", forget);
       gimbal?.stop();
     };
   }, [droneId, bindings]);

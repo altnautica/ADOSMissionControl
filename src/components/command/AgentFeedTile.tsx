@@ -19,7 +19,6 @@ import {
   HeartPulse,
   Loader2,
   MapPin,
-  Network,
   Pause,
   Power,
   Radio,
@@ -239,7 +238,10 @@ function ConsoleAgentFeedTile({
           </span>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {/* Columns follow the tile's own width, not the viewport: a narrow
+            tile in a wide grid keeps two readable columns. */}
+        <div className="@container mt-3">
+        <div className="grid grid-cols-2 gap-2 @[420px]:grid-cols-4" data-testid="agent-feed-stats">
           {effProfile === "drone" && (
             <>
               <StatTile icon={<Battery size={12} />} label={t("battery")} value={pct(agent.telemetry.batteryRemaining)} level={batteryLevel} />
@@ -267,8 +269,7 @@ function ConsoleAgentFeedTile({
               <StatTile
                 icon={<HeartPulse size={12} />}
                 label={t("heartbeat")}
-                value="--"
-                level="idle"
+                value={formatCommandAge(agent.lastSeen)}
               />
             </>
           )}
@@ -279,18 +280,8 @@ function ConsoleAgentFeedTile({
               <StatTile icon={<Activity size={12} />} label={t("snr")} value={radio?.snrDb == null ? "--" : `${Math.round(radio.snrDb)} dB`} />
               <StatTile icon={<TrendingDown size={12} />} label={t("loss")} value={radio?.lossPercent == null ? "--" : `${radio.lossPercent.toFixed(1)}%`} />
               <StatTile icon={<Wifi size={12} />} label={t("link")} value={radio?.bitrateKbps == null ? "--" : `${(radio.bitrateKbps / 1000).toFixed(1)} Mbps`} />
-              <StatTile
-                icon={<Network size={12} />}
-                label={t("uplink")}
-                value="--"
-                level="idle"
-              />
-              <StatTile
-                icon={<Network size={12} />}
-                label={t("mesh")}
-                value="--"
-                level="idle"
-              />
+              {/* Uplink and mesh have no source on this tile yet, so they are
+                  not drawn rather than shown as a permanent "--". */}
               <StatTile icon={<Cpu size={12} />} label={t("cpu")} value={pct(agent.system.cpuPercent)} />
               <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={formatOr(agent.system.temperature, 0, "C")} />
             </>
@@ -304,6 +295,7 @@ function ConsoleAgentFeedTile({
               <StatTile icon={<Thermometer size={12} />} label={t("temp")} value={formatOr(agent.system.temperature, 0, "C")} />
             </>
           )}
+        </div>
         </div>
       </button>
     </article>

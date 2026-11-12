@@ -153,6 +153,9 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
       }}
       onContextMenu={(e) => {
         e.preventDefault();
+        // A right-click does not move focus; focus the row first so the menu,
+        // which records the focused element as its opener, returns here on close.
+        (e.currentTarget as HTMLElement).focus();
         onContext(node._id, e.clientX, e.clientY);
       }}
       className={cn(

@@ -23,6 +23,7 @@ import {
 import { useDrawingStore } from "./drawing-store";
 import { usePatternStore } from "./pattern-store";
 import { DEFAULT_ZOOM_UNLOCATED } from "@/lib/map-constants";
+import { isNarrowViewport } from "@/hooks/use-narrow-viewport";
 
 /** Dock tabs, in display order. */
 export const DOCK_TABS = ["altitude", "terrain", "issues", "energy", "site", "checklist"] as const;
@@ -206,7 +207,9 @@ export const usePlannerStore = create<PlannerStoreState>()(
   const state: PlannerStoreState = {
   mode: DEFAULT_PLANNER_MODE,
   activeTool: "select",
-  inspectorOpen: true,
+  // On a phone-width window the inspector is a sheet over the map, so it
+  // starts closed there.
+  inspectorOpen: !isNarrowViewport(),
   outlineOpen: typeof window !== "undefined" && window.innerWidth >= 1280,
   dockOpen: false,
   dockTab: "altitude",

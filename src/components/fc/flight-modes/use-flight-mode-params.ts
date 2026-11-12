@@ -6,6 +6,7 @@ import type { DroneProtocol, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FirmwareHandler } from "@/lib/protocol/types/firmware";
 import { px4ModeToSlot, px4SlotToMode } from "@/lib/protocol/firmware/px4-flight-mode-slots";
 import { bitmaskToSet, setToBitmask } from "@/lib/rc-options";
+import { confirmArmedParamWrite } from "@/lib/protocol/param-write";
 import {
   MODE_SLOT_COUNT,
   defaultSlot,
@@ -82,6 +83,7 @@ export function useFlightModeParams({
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [flashing, setFlashing] = useState(false);
   const [showCommitButton, setShowCommitButton] = useState(false);
 
   const fetchParams = useCallback(async () => {
@@ -210,6 +212,9 @@ export function useFlightModeParams({
 
       // Each write reports the vehicle's own answer; the edit counts as saved
       // only when every one of them landed, otherwise it stays dirty to retry.
+      if (writes.length > 0 && !(await confirmArmedParamWrite("flight-modes", writes.map((w) => w.name)))) {
+        return;
+      }
       const failures: string[] = [];
       for (const { name, value } of writes) {
         const result = await protocol.setParameter(name, value).catch(() => null);
@@ -235,6 +240,7 @@ export function useFlightModeParams({
 
   const commitToFlash = useCallback(async () => {
     if (!protocol) return;
+    setFlashing(true);
     try {
       const result = await protocol.commitParamsToFlash();
       if (result.success) {
@@ -245,6 +251,8 @@ export function useFlightModeParams({
       }
     } catch {
       toast(t("flashFailed"), "error");
+    } finally {
+      setFlashing(false);
     }
   }, [protocol, toast, t]);
 
@@ -282,6 +290,7 @@ export function useFlightModeParams({
     globalDirty,
     loading,
     saving,
+    flashing,
     showCommitButton,
     totalDirtyCount,
     isDirty,

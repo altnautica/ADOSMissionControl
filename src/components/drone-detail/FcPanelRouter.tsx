@@ -9,14 +9,18 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 
-const panelLoading = {
-  loading: () => (
+function PanelLoading() {
+  const tk = useTranslations("droneDetail.droneConfigureTab");
+  return (
     <div className="flex items-center justify-center h-32">
-      <span className="text-xs text-text-tertiary">Loading panel...</span>
+      <span className="text-xs text-text-tertiary">{tk("loadingPanel")}</span>
     </div>
-  ),
-};
+  );
+}
+
+const panelLoading = { loading: () => <PanelLoading /> };
 
 const OutputsPanel = dynamic(() => import("@/components/fc/motors/OutputsPanel").then(m => ({ default: m.OutputsPanel })), { ssr: false, ...panelLoading });
 const ReceiverPanel = dynamic(() => import("@/components/fc/receiver/ReceiverPanel").then(m => ({ default: m.ReceiverPanel })), { ssr: false, ...panelLoading });
@@ -51,6 +55,8 @@ const BfSettingsPanel = dynamic(() => import("@/components/fc/betaflight/BfSetti
 const BfPortsPanel = dynamic(() => import("@/components/fc/betaflight/BfPortsPanel").then(m => ({ default: m.BfPortsPanel })), { ssr: false, ...panelLoading });
 const BfLedStripPanel = dynamic(() => import("@/components/fc/betaflight/BfLedStripPanel").then(m => ({ default: m.BfLedStripPanel })), { ssr: false, ...panelLoading });
 const BfReceiverPanel = dynamic(() => import("@/components/fc/betaflight/BfReceiverPanel").then(m => ({ default: m.BfReceiverPanel })), { ssr: false, ...panelLoading });
+const Px4SafetyPanel = dynamic(() => import("@/components/fc/px4/Px4SafetyPanel").then(m => ({ default: m.Px4SafetyPanel })), { ssr: false, ...panelLoading });
+const BfFailsafePanel = dynamic(() => import("@/components/fc/betaflight/BfFailsafePanel").then(m => ({ default: m.BfFailsafePanel })), { ssr: false, ...panelLoading });
 const BfMotorsPanel = dynamic(() => import("@/components/fc/motors/BfMotorsPanel").then(m => ({ default: m.BfMotorsPanel })), { ssr: false, ...panelLoading });
 const VtxPanel = dynamic(() => import("@/components/fc/misc/VtxPanel").then(m => ({ default: m.VtxPanel })), { ssr: false, ...panelLoading });
 const GpsPanel = dynamic(() => import("@/components/fc/sensors/GpsPanel").then(m => ({ default: m.GpsPanel })), { ssr: false, ...panelLoading });
@@ -161,6 +167,8 @@ export function FcPanelRouter({ activePanel, firmwareType, droneId, droneName }:
     case "aux-modes": return <AuxModesPanel />;
     case "bf-motors": return <BfMotorsPanel />;
     case "failsafe": return <FailsafePanel />;
+    case "bf-failsafe": return <BfFailsafePanel />;
+    case "px4-safety": return <Px4SafetyPanel />;
     case "geofence": return <GeofencePanel />;
     case "safehome": return <SafehomePanel />;
     case "geozone": return <GeozonePanel />;

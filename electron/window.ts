@@ -21,15 +21,38 @@ function isLocalAppUrl(url: string, port: number): boolean {
   }
 }
 
+/** A URL handed to the OS browser within this window is not handed over again. */
+const EXTERNAL_DEDUPE_MS = 1000;
+let lastExternal: { url: string; at: number } | null = null;
+
 function openExternalUrl(url: string): void {
   try {
     const parsed = new URL(url);
     if (!EXTERNAL_PROTOCOLS.has(parsed.protocol)) return;
-    void shell.openExternal(parsed.toString());
+    const target = parsed.toString();
+    // A same-window link fires `will-navigate` and then `will-redirect` for
+    // the same target; without this the OS browser opened it twice.
+    const now = Date.now();
+    if (lastExternal && lastExternal.url === target && now - lastExternal.at < EXTERNAL_DEDUPE_MS) {
+      return;
+    }
+    lastExternal = { url: target, at: now };
+    void shell.openExternal(target);
   } catch {
     // Ignore malformed navigation targets.
   }
 }
+
+/** Options for the native prompt shown when a page asks to block unload. */
+export const UNLOAD_PROMPT: Electron.MessageBoxSyncOptions = {
+  type: "question",
+  title: "Leave this page?",
+  message: "You have unsaved changes. Leave and discard them?",
+  buttons: ["Leave", "Stay"],
+  defaultId: 1,
+  cancelId: 1,
+  noLink: true,
+};
 
 /** Create and configure the main application window. */
 export function createMainWindow(port: number): BrowserWindow {
@@ -184,5 +207,17 @@ export function applyNavigationPolicy(
   // preload; refuse the attach outright rather than rely on the default.
   contents.on("will-attach-webview", (event) => {
     event.preventDefault();
+  });
+
+  // Electron never shows the browser's "Leave site?" prompt: a page that calls
+  // `preventDefault()` in `beforeunload` (unsaved plan, parameter edits, a
+  // flash in progress) silently blocked closing or reloading the window.
+  // Ask natively; Leave lets the unload proceed.
+  contents.on("will-prevent-unload", (event) => {
+    const owner = BrowserWindow.fromWebContents(contents);
+    const choice = owner
+      ? dialog.showMessageBoxSync(owner, UNLOAD_PROMPT)
+      : dialog.showMessageBoxSync(UNLOAD_PROMPT);
+    if (choice === 0) event.preventDefault();
   });
 }

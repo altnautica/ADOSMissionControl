@@ -5,7 +5,7 @@
  * rebooted, even though heartbeats keep arriving after the reboot.
  */
 
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
@@ -61,5 +61,21 @@ describe("CalibrationRebootBanner", () => {
     render(<CalibrationRebootBanner label="Compass calibration saved" onReboot={() => undefined} />, { wrapper: IntlWrapper });
     expect(screen.getByRole("button", { name: messages.droneDetail.rebootFc })).toBeTruthy();
     expect(screen.queryByText("Reboot FC")).toBeNull();
+  });
+
+  it("asks before rebooting and is disabled while the vehicle is armed", () => {
+    const onReboot = vi.fn();
+    useDroneStore.setState({ armState: "disarmed", connectionState: "connected" });
+    const { unmount } = render(<CalibrationRebootBanner label="Saved" onReboot={onReboot} />, { wrapper: IntlWrapper });
+    fireEvent.click(screen.getByRole("button", { name: "Reboot flight controller" }));
+    expect(onReboot).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Reboot" }));
+    expect(onReboot).toHaveBeenCalledTimes(1);
+    unmount();
+
+    useDroneStore.setState({ armState: "armed", connectionState: "connected" });
+    render(<CalibrationRebootBanner label="Saved" onReboot={onReboot} />, { wrapper: IntlWrapper });
+    expect((screen.getByRole("button", { name: "Reboot flight controller" }) as HTMLButtonElement).disabled).toBe(true);
+    useDroneStore.setState({ armState: "disarmed", connectionState: "disconnected" });
   });
 });

@@ -23,6 +23,7 @@ import type {
 } from "../types";
 import { buildIpv4Fallback } from "./ipv4-fallback";
 import { isCurrent, nextGeneration } from "./generation";
+import { agentMavlinkWsUrl } from "./mavlink-url";
 
 type Slice = AgentConnectionSliceCreator<ClientManagerSlice>;
 export type SliceSet = Parameters<Slice>[0];
@@ -151,11 +152,8 @@ export async function connectAgent(
         // would point AgentMavlinkBridge at the ground station's own FC lane
         // while RelayedMavlinkBridge already owns the drone's session. Leave
         // `mavlinkUrl` untouched — the relay bridge manages its own.
-        try {
-          const agentUrlObj = new URL(attemptUrl);
-          const mavWsUrl = `ws://${agentUrlObj.hostname}:8765/`;
-          set({ mavlinkUrl: mavWsUrl });
-        } catch { /* ignore invalid URL */ }
+        const mavWsUrl = agentMavlinkWsUrl(attemptUrl);
+        if (mavWsUrl) set({ mavlinkUrl: mavWsUrl });
       }
       const nodeDeviceId = connectId ?? get().nodeDeviceId;
       set({ nodeDeviceId });

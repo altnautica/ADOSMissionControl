@@ -42,6 +42,7 @@ import { inertShellAround } from "./inert-shell";
 import { toastAnchor } from "./flight-sheet";
 import { SplitContext } from "./SplitDivider";
 import { useUiStore } from "@/stores/ui-store";
+import { GuidedConfirmDialog } from "@/components/flight/GuidedConfirmDialog";
 
 export function FlightFrame({
   droneId,
@@ -154,7 +155,7 @@ export function FlightFrame({
       <SplitContext.Provider value={split}>
         <div
           ref={containerRef}
-          tabIndex={0}
+          tabIndex={-1}
           data-density={density}
           data-width-class={size.widthClass}
           data-grid={grid.cls}
@@ -167,6 +168,9 @@ export function FlightFrame({
           }`}
         >
           {children}
+          {/* The one Fly Here dialog on the flight screen, whichever map
+              pane (card, split, Map view) picked the point. */}
+          <GuidedConfirmDialog flightScreenHost />
         </div>
       </SplitContext.Provider>
     </FlightGridContext.Provider>

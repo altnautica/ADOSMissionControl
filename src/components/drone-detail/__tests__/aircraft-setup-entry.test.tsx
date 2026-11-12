@@ -25,6 +25,11 @@ vi.mock("@/stores/node-registry/use-fleet-drones", () => ({
       { id: "d-bare", name: "Bare FC", cloudDeviceId: null, reachedVia: null },
     ]),
 }));
+const nav = { drone: null as string | null, replace: vi.fn() };
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: nav.replace }),
+  useSearchParams: () => new URLSearchParams(nav.drone ? { drone: nav.drone } : {}),
+}));
 vi.mock("@/lib/nodes/relay-reach", () => ({ resolveRelayReach: () => null }));
 vi.mock("@/lib/fc-setup/use-fc-setup", () => ({
   useDroneSetupTransport: () => null,
@@ -47,6 +52,19 @@ describe("Aircraft setup names its drone", () => {
   beforeEach(() => {
     dm.selectedDroneId = null;
     dm.selectDrone.mockReset();
+    nav.drone = null;
+    nav.replace.mockReset();
+  });
+
+  it("selects the drone named in the URL and writes the pick back to it", () => {
+    nav.drone = "d-agent";
+    renderPage();
+    expect(dm.selectDrone).toHaveBeenCalledWith("d-agent");
+    nav.drone = null;
+    dm.selectDrone.mockReset();
+    renderPage();
+    fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: "d-agent" } });
+    expect(nav.replace).toHaveBeenCalledWith("/config/aircraft-setup?drone=d-agent");
   });
 
   it("offers only fleet drones with an agent and selects the one picked", () => {

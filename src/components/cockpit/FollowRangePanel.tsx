@@ -5,8 +5,8 @@
  * @description The read-only range panel of following mode. It sits in the
  * follow strip under the top bar as one line (`variant="line"`): the range
  * to the target, only when the skill measures it, and the phase. The line
- * carries no height above the ground: the bottom row owns that readout. The
- * full panel (range + interval bar + height, then geometry and the
+ * carries no height above the ground: the bottom row owns that readout, so
+ * neither does the full panel (range + interval bar, then geometry and the
  * cue/latency row at `expanded`/`tv`) opens as a sheet from the strip. A
  * `follow.state` older than 2 s blanks every value, dims the plate and reads
  * STALE.
@@ -14,7 +14,6 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
 
 import { specString } from "@/lib/cockpit/spec-strings";
 import type { FollowState } from "@/lib/hud/nav-types";
@@ -44,7 +43,6 @@ export function FollowRangePanel({
   /** `line` forces the one-line form; `detail` the full panel at any width. */
   variant?: "line" | "detail";
 }) {
-  const t = useTranslations("hud.range");
   const cockpitClass = useCockpitWidthClass();
   const widthClass = variant === "detail" && cockpitClass === "compact" ? "medium" : cockpitClass;
   const { follow, stale, following } = useFollowingMode(droneId);
@@ -59,10 +57,6 @@ export function FollowRangePanel({
   const range = live?.rangeM ?? null;
   const sigma = live?.rangeSigmaM ?? null;
   const rangeText = range === null ? NO_DATA_GLYPH : formatRange(range);
-  const aglSource = live?.aglSource ?? null;
-  const sourceWord = aglSource === "baro" ? specString("agl.source.baro") : aglSource === "rng" ? t("rng") : null;
-  const sourceStyle = aglSource === "baro" ? { color: "var(--hud-warn)" } : undefined;
-  const agl = fixed1(live?.aglM ?? null);
   const dep = live?.depressionDeg ?? null;
   const brg = live?.bearingDeg ?? null;
 
@@ -105,15 +99,6 @@ export function FollowRangePanel({
         <span className="frp-sub">
           {range !== null && sigma !== null ? rangeInterval(range, sigma) : NO_DATA_GLYPH}
         </span>
-      </div>
-      <div className="frp-row" data-row="height">
-        <span>{specString("cockpit.readout.agl")} {agl === NO_DATA_GLYPH ? agl : `${agl} m`}</span>
-        {sourceWord && (
-          <>
-            <span className="frp-sep">·</span>
-            <span style={sourceStyle}>{sourceWord}</span>
-          </>
-        )}
       </div>
       {full && (
         <div className="frp-row" data-row="geometry">

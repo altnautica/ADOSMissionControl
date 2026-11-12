@@ -32,21 +32,35 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
  * rare (a detector swap / a plugin registering), so a slow poll is plenty. */
 export const ENGINE_MODELS_POLL_MS = 5000;
 
+/** A node's agent connection; null when the node has none. */
+export interface VisionEngineConnection {
+  agentUrl: string | null;
+  apiKey: string | null;
+}
+
 /**
- * The engine's status for the active agent (registered models + NPU
- * utilization + model count), refreshed on a slow poll while mounted. Returns
- * the unknown status until the first read lands, on any failure (unreachable
- * engine / older agent / HTTPS-blocked), and when no LAN client is resolvable.
- * The value is stable between reads.
+ * The engine's status (registered models + NPU utilization + model count),
+ * refreshed on a slow poll while mounted. Returns the unknown status until the
+ * first read lands, on any failure (unreachable engine / older agent /
+ * HTTPS-blocked), and when no LAN client is resolvable. The value is stable
+ * between reads.
+ *
+ * @param conn The rendered node's own connection (null: it has none, so the
+ *   status is unknown). Omitted: the attached agent connection.
  */
-export function useVisionEngineStatus(): EngineStatus {
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+export function useVisionEngineStatus(conn?: VisionEngineConnection | null): EngineStatus {
+  const ambientUrl = useAgentConnectionStore((s) => s.agentUrl);
+  const ambientKey = useAgentConnectionStore((s) => s.apiKey);
+  const agentUrl = conn === undefined ? ambientUrl : (conn?.agentUrl ?? null);
+  const apiKey = conn === undefined ? ambientKey : (conn?.apiKey ?? null);
   const [status, setStatus] = useState<EngineStatus>(UNKNOWN_ENGINE_STATUS);
 
+  // A node with no connection of its own reads nothing, not the demo's
+  // canned engine or another node's.
+  const noConnection = conn === null;
   const client = useMemo(
-    () => resolveVisionClient(agentUrl, apiKey),
-    [agentUrl, apiKey],
+    () => (noConnection ? null : resolveVisionClient(agentUrl, apiKey)),
+    [noConnection, agentUrl, apiKey],
   );
 
   const canRead = !!client?.getEngineStatus;

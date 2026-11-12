@@ -28,26 +28,11 @@ import { ExportTab } from "./tabs/ExportTab";
 import { MediaTab } from "./tabs/MediaTab";
 import { MANUAL_EVENT_TYPE } from "./tabs/use-reanalysis";
 import { cn } from "@/lib/utils";
-
-const statusVariant: Record<string, "success" | "warning" | "error" | "neutral"> = {
-  completed: "success",
-  aborted: "warning",
-  emergency: "error",
-  in_progress: "neutral",
-};
+import { FlightStatusBadge } from "../FlightStatus";
 
 type TabId = "overview" | "map" | "charts" | "events" | "analysis" | "notes" | "media" | "export";
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "map", label: "Map" },
-  { id: "charts", label: "Charts" },
-  { id: "events", label: "Events" },
-  { id: "analysis", label: "Analysis" },
-  { id: "notes", label: "Notes" },
-  { id: "media", label: "Media" },
-  { id: "export", label: "Export" },
-];
+const TABS: readonly TabId[] = ["overview", "map", "charts", "events", "analysis", "notes", "media", "export"];
 
 interface HistoryDetailPanelProps {
   record: FlightRecord;
@@ -79,7 +64,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       void store.persistToIDB();
     } catch (err) {
       console.error("[HistoryDetailPanel] sign failed", err);
-      if (typeof window !== "undefined") window.alert(`Sign failed: ${(err as Error).message}`);
+      if (typeof window !== "undefined") window.alert(tq("signFailed", { error: (err as Error).message }));
     } finally {
       setSigning(false);
     }
@@ -87,9 +72,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
 
   const handleUnseal = async () => {
     if (typeof window !== "undefined") {
-      const ok = window.confirm(
-        "Unseal this record? Subsequent edits will invalidate the previous signature. An audit event will be logged.",
-      );
+      const ok = window.confirm(tq("unsealConfirm"));
       if (!ok) return;
     }
     const store = useHistoryStore.getState();
@@ -97,7 +80,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       t: 0,
       type: MANUAL_EVENT_TYPE,
       severity: "warning",
-      label: `Record unsealed at ${new Date().toLocaleString()}`,
+      label: tq("unsealedEvent", { time: new Date().toLocaleString() }),
     };
     const newEvents = [...(record.events ?? []), auditEvent];
     store.updateRecord(record.id, {
@@ -111,7 +94,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
   const handleVerify = async () => {
     const ok = await verifyRecord(record, operatorProfile.signatureImageBase64);
     if (typeof window !== "undefined") {
-      window.alert(ok ? "Signature OK — record is unmodified." : "Signature INVALID — record has been altered since signing.");
+      window.alert(ok ? tq("verifyOk") : tq("verifyBad"));
     }
   };
 
@@ -126,18 +109,16 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
             <button
               onClick={onToggleListCollapsed}
               className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer p-1"
-              aria-label={listCollapsed ? "Show flight list" : "Hide flight list"}
-              title={listCollapsed ? "Show flight list" : "Hide flight list"}
+              aria-label={listCollapsed ? tq("showList") : tq("hideList")}
+              title={listCollapsed ? tq("showList") : tq("hideList")}
             >
               {listCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
             </button>
           )}
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider truncate">
-            {record.customName || "Flight Detail"}
+            {record.customName || tq("flightDetail")}
           </h3>
-          <Badge variant={statusVariant[record.status] ?? "neutral"} size="sm">
-            {record.status}
-          </Badge>
+          <FlightStatusBadge status={record.status} size="sm" />
         </div>
         <div className="flex items-center gap-1">
           {sealed ? (
@@ -173,7 +154,7 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
               disabled={signing}
               title={tq("signAndLockThisRecord")}
             >
-              {signing ? "Signing…" : "Sign & lock"}
+              {signing ? tq("signing") : tq("signAndLock")}
             </Button>
           )}
           {matchedRecording && matchedRecording.channels.includes("position") && onReplay && (
@@ -199,27 +180,27 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
 
       {record.truncatedAtMs !== undefined && (
         <div className="px-3 py-1.5 text-[10px] text-status-warning border-b border-border-default shrink-0" role="note">
-          Recording stopped at {formatMinutesSeconds(record.truncatedAtMs)} (storage full)
+          {tq("recordingStopped", { time: formatMinutesSeconds(record.truncatedAtMs) })}
         </div>
       )}
 
       {/* Tab strip */}
       <div className="flex border-b border-border-default shrink-0 overflow-x-auto scrollbar-hide" role="tablist" aria-label={tq("flightDetailTabs")}>
-        {TABS.map((tab) => (
+        {TABS.map((id) => (
           <button
-            key={tab.id}
+            key={id}
             role="tab"
-            aria-selected={active === tab.id}
-            aria-controls={`tabpanel-${tab.id}`}
-            onClick={() => setActive(tab.id)}
+            aria-selected={active === id}
+            aria-controls={`tabpanel-${id}`}
+            onClick={() => setActive(id)}
             className={cn(
               "px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors whitespace-nowrap",
-              active === tab.id
+              active === id
                 ? "text-accent-primary border-b border-accent-primary"
                 : "text-text-tertiary hover:text-text-primary",
             )}
           >
-            {tab.label}
+            {tq(`tabs.${id}`)}
           </button>
         ))}
       </div>

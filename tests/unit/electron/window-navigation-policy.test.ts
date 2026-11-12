@@ -11,15 +11,29 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-const { openExternal } = vi.hoisted(() => ({
+const { openExternal, showMessageBoxSync } = vi.hoisted(() => ({
   openExternal: vi.fn(() => Promise.resolve()),
+  showMessageBoxSync: vi.fn(() => 1),
 }));
 
 vi.mock("electron", () => ({
   app: { isPackaged: true },
-  BrowserWindow: class {},
+  BrowserWindow: class {
+    static fromWebContents() {
+      return null;
+    }
+  },
+  dialog: { showMessageBoxSync },
   shell: { openExternal },
 }));
+
+// The OS-browser handoff dedupes a repeat URL inside one second; each test
+// starts well clear of the previous one.
+let clock = 0;
+vi.spyOn(Date, "now").mockImplementation(() => clock);
+beforeEach(() => {
+  clock += 10_000;
+});
 
 import { applyNavigationPolicy } from "../../../electron/window";
 
@@ -27,7 +41,7 @@ const PORT = 4123;
 const APP = `http://127.0.0.1:${PORT}`;
 
 type OpenHandler = (details: { url: string }) => { action: "allow" | "deny" };
-type NavListener = (event: { preventDefault: () => void }, url: string) => void;
+type NavListener = (event: { preventDefault: () => void }, url?: string) => void;
 
 /** A WebContents stand-in that records what the policy registers. */
 function fakeContents() {
@@ -49,7 +63,7 @@ function fakeContents() {
       return openHandler({ url }).action;
     },
     /** Fire a navigation event; resolves whether the policy blocked it. */
-    navigate(event: "will-navigate" | "will-redirect", url: string): boolean {
+    navigate(event: "will-navigate" | "will-redirect" | "will-prevent-unload", url?: string): boolean {
       const listener = listeners.get(event);
       if (!listener) throw new Error(`${event} was never registered`);
       let prevented = false;
@@ -110,5 +124,39 @@ describe("navigation policy", () => {
   it("blocks a file: navigation without opening it", () => {
     expect(fakeContents().navigate("will-navigate", "file:///tmp/x.html")).toBe(true);
     expect(openExternal).not.toHaveBeenCalled();
+  });
+});
+
+describe("external handoff dedupe", () => {
+  beforeEach(() => openExternal.mockClear());
+
+  it("opens a same-window link once when navigate and redirect both fire", () => {
+    const c = fakeContents();
+    c.navigate("will-navigate", "https://example.com/a");
+    c.navigate("will-redirect", "https://example.com/a");
+    expect(openExternal).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the same link again after the dedupe window", () => {
+    const c = fakeContents();
+    c.navigate("will-navigate", "https://example.com/b");
+    clock += 1500;
+    c.navigate("will-navigate", "https://example.com/b");
+    expect(openExternal).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("unload prompt", () => {
+  beforeEach(() => showMessageBoxSync.mockReset());
+
+  it("lets the page close when the operator picks Leave", () => {
+    showMessageBoxSync.mockReturnValue(0);
+    expect(fakeContents().navigate("will-prevent-unload")).toBe(true);
+    expect(showMessageBoxSync).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the page when the operator picks Stay", () => {
+    showMessageBoxSync.mockReturnValue(1);
+    expect(fakeContents().navigate("will-prevent-unload")).toBe(false);
   });
 });

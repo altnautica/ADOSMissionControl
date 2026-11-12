@@ -101,21 +101,34 @@ describe("agent-extended telemetry on a node-bound mount", () => {
     dispose();
   });
 
-  it("uses the node's fresh heartbeat slice when signed in, without polling the node", async () => {
+  it("prefers the node's answering LAN poll over a fresh heartbeat slice when signed in", async () => {
     useAuthStore.setState({ isAuthenticated: true });
     usePluginCloudStateStore.getState().setForDevice(
       WS,
       { [PLUGIN_ID]: { "telemetry.status": { payload: { jobs: 5 }, ts_ms: 9 } } },
       Date.now(),
     );
+    fetchMock.mockImplementation(async () => stateBody(11, { jobs: 7 }));
     const { postEvent, dispose } = subscribeStatus();
     await vi.waitFor(() =>
-      expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", {
-        jobs: 5,
-        ts_ms: 9,
-      }),
+      expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 7, ts_ms: 11 }),
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(postEvent).not.toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 5, ts_ms: 9 });
+    dispose();
+  });
+
+  it("falls back to the fresh heartbeat slice when the LAN poll fails", async () => {
+    useAuthStore.setState({ isAuthenticated: true });
+    usePluginCloudStateStore.getState().setForDevice(
+      WS,
+      { [PLUGIN_ID]: { "telemetry.status": { payload: { jobs: 5 }, ts_ms: 9 } } },
+      Date.now(),
+    );
+    fetchMock.mockImplementation(async () => { throw new Error("unreachable"); });
+    const { postEvent, dispose } = subscribeStatus();
+    await vi.waitFor(() =>
+      expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 5, ts_ms: 9 }),
+    );
     dispose();
   });
 

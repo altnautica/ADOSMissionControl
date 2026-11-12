@@ -2,7 +2,7 @@
  * Tile URL round-trip: the offline downloader's write key must equal the
  * on-screen cached layer's read key byte-for-byte, including the `@2x` retina
  * variant and the subdomain scheme. Regression guard for the HiDPI cache-miss
- * on the default CARTO "dark" basemap.
+ * on a sharded retina basemap.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import {
@@ -30,23 +30,44 @@ function readerUrl(provider: TileProvider, x: number, y: number, z: number, reti
   return resolveTileUrl(provider.url, subdomainsForUrl(provider.url), x, y, z, retina);
 }
 
-describe("tile URL round-trip (write key == read key)", () => {
-  const dark = TILE_PROVIDERS.dark;
+describe("dark basemap", () => {
+  it("is a keyless source", () => {
+    const dark = TILE_PROVIDERS.dark;
+    expect(dark.url).toBe(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    );
+    expect(dark.url).not.toContain("cartocdn");
+    expect(dark.maxZoom).toBe(16);
+    expect(resolveTileUrl(dark.url, dark.subdomains, 4, 6, 10, true)).toContain("/MapServer/tile/10/6/4");
+  });
+});
 
-  it("dark + retina: downloader URL matches the layer's request URL byte-for-byte", () => {
+describe("tile URL round-trip (write key == read key)", () => {
+  // A sharded retina template, the shape the HiDPI cache-miss came from.
+  const sharded: TileProvider = {
+    kind: "raster",
+    url: "https://{s}.tiles.example.com/{z}/{x}/{y}{r}.png",
+    subdomains: ["a", "b", "c"],
+    maxZoom: 20,
+    avgTileKB: 20,
+    attribution: "",
+    name: "Sharded",
+    label: "SHARD",
+  };
+
+  it("sharded + retina: downloader URL matches the layer's request URL byte-for-byte", () => {
     const x = 5, y = 9, z = 14;
-    const writer = resolveTileUrl(dark.url, dark.subdomains, x, y, z, true);
-    const reader = readerUrl(dark, x, y, z, true);
+    const writer = resolveTileUrl(sharded.url, sharded.subdomains, x, y, z, true);
+    const reader = readerUrl(sharded, x, y, z, true);
     expect(writer).toBe(reader);
     expect(writer).toContain("@2x");
-    // Subdomain is Math.abs(x+y) % 4 over the [a,b,c,d] scheme.
-    expect(writer.startsWith(`https://${dark.subdomains[Math.abs(x + y) % 4]}.basemaps`)).toBe(true);
+    expect(writer.startsWith(`https://${sharded.subdomains[Math.abs(x + y) % 3]}.tiles`)).toBe(true);
   });
 
-  it("dark + non-retina: no @2x variant, still round-trips", () => {
-    const url = resolveTileUrl(dark.url, dark.subdomains, 5, 9, 14, false);
+  it("sharded + non-retina: no @2x variant, still round-trips", () => {
+    const url = resolveTileUrl(sharded.url, sharded.subdomains, 5, 9, 14, false);
     expect(url).not.toContain("@2x");
-    expect(url).toBe(readerUrl(dark, 5, 9, 14, false));
+    expect(url).toBe(readerUrl(sharded, 5, 9, 14, false));
   });
 
   it("osm round-trips and never gains an @2x slot (no {r} in template)", () => {
@@ -67,15 +88,15 @@ describe("tile URL round-trip (write key == read key)", () => {
   });
 
   it("subdomainsForUrl maps known templates and defaults to abc for unknown", () => {
-    expect(subdomainsForUrl(dark.url)).toEqual(dark.subdomains);
+    expect(subdomainsForUrl(TILE_PROVIDERS.dark.url)).toEqual([]);
     expect(subdomainsForUrl(TILE_PROVIDERS.osm.url)).toEqual(TILE_PROVIDERS.osm.subdomains);
     expect(subdomainsForUrl("https://example.com/{z}/{x}/{y}.png")).toEqual(["a", "b", "c"]);
   });
 
-  it("generateTileUrls yields exactly the URLs the layer requests (dark + retina)", () => {
+  it("generateTileUrls yields exactly the URLs the layer requests (sharded + retina)", () => {
     const bounds: LatLngBounds = { north: 12.98, south: 12.96, east: 77.62, west: 77.60 };
     const z = 14;
-    const urls = [...generateTileUrls(bounds, z, z, dark, true)];
+    const urls = [...generateTileUrls(bounds, z, z, sharded, true)];
     expect(urls.length).toBeGreaterThan(0);
 
     const xMin = lonToTileX(bounds.west, z), xMax = lonToTileX(bounds.east, z);
@@ -83,7 +104,7 @@ describe("tile URL round-trip (write key == read key)", () => {
     const expected = new Set<string>();
     for (let x = xMin; x <= xMax; x++) {
       for (let y = yMin; y <= yMax; y++) {
-        expected.add(readerUrl(dark, x, y, z, true));
+        expected.add(readerUrl(sharded, x, y, z, true));
       }
     }
     for (const u of urls) {

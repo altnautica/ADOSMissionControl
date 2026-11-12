@@ -10,7 +10,8 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useTranslations } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DISCLAIMER_VERSION, PRIMARY_CTA_CLASS } from "./constants";
@@ -24,12 +25,15 @@ export function DisclaimerGate() {
   const setDisclaimerAccepted = useSettingsStore((s) => s.setDisclaimerAccepted);
   const t = useTranslations("welcome");
   const [checked, setChecked] = useState(false);
+  const gateRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(gateRef);
 
   const acceptedCurrent = disclaimerAccepted && disclaimerVersion >= DISCLAIMER_VERSION;
   if (!hasHydrated || !onboarded || acceptedCurrent) return null;
 
   return (
     <div
+      ref={gateRef}
       className="fixed inset-0 z-[200] bg-bg-primary overflow-y-auto flex flex-col [align-items:safe_center] [justify-content:safe_center] p-4 sm:p-8"
       role="dialog"
       aria-modal="true"

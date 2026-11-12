@@ -20,7 +20,6 @@ import { useTranslations } from "next-intl";
 import { Layers, Maximize2 } from "lucide-react";
 import { MinimapBasemapSelector } from "@/components/map/MinimapBasemapSelector";
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
-import { FlightSheetPortal } from "@/components/cockpit/flight/flight-sheet";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
 import type { MinimapPin } from "@/lib/hud/minimap-mode";
@@ -37,12 +36,6 @@ const OverviewMap = dynamic(
 );
 const FollowTargetGeoLayer = dynamic(
   () => import("@/components/map/local/FollowTargetGeoLayer").then((m) => m.FollowTargetGeoLayer),
-  { ssr: false },
-);
-// The Fly Here hold-confirm for a point picked on this map (right-click or
-// long-press); the compact map does not mount its own.
-const GuidedConfirmDialog = dynamic(
-  () => import("@/components/flight/GuidedConfirmDialog").then((m) => ({ default: m.GuidedConfirmDialog })),
   { ssr: false },
 );
 
@@ -118,10 +111,6 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
           </div>
         </>
       )}
-      {/* At the flight screen's root: the card is too small to hold it. */}
-      <FlightSheetPortal>
-        <GuidedConfirmDialog />
-      </FlightSheetPortal>
     </div>
   );
 });

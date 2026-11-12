@@ -13,7 +13,6 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { DataValue } from "@/components/ui/data-value";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useHistoryStore } from "@/stores/history-store";
 import { useClockStore } from "@/stores/clock-store";
@@ -56,10 +55,14 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
         <div className="flex items-center gap-3">
-          <Link href="/flight-logs">
-            <Button variant="ghost" size="sm" icon={<ArrowLeft size={14} />}>
-              {t("title")}
-            </Button>
+          {/* One link styled as a ghost button: a button inside a link is a
+              nested interactive control with two tab stops. */}
+          <Link
+            href="/flight-logs"
+            className="inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-xs font-medium transition-colors focus-ring text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+          >
+            <ArrowLeft size={14} aria-hidden="true" />
+            {t("title")}
           </Link>
           <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
             {t("reportsTitle")}

@@ -283,6 +283,8 @@
       "unknown": "Agent node"
     },
     "hero": {
+      "subjectAgent": "Agent",
+      "subjectFc": "Flight controller",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "Unmute alerts",
       "resetPersonalization": "Reset personalization",
       "personalizationReset": "Personalization reset",
-      "forget": "Forget",
-      "forgetTitle": "Forget node",
-      "forgetMessage": "Forget {node}? This removes the pairing and clears its personalization."
+      "forget": "Unpair",
+      "forgetTitle": "Unpair node",
+      "forgetMessage": "Unpair {node}? Its pairing is released and it disappears from the fleet until it is paired again."
     },
     "dotEditor": {
       "title": "Configure dots",
@@ -432,7 +434,8 @@
       "openSource": "GPL-3.0 Open Source",
       "getStarted": "Get Started",
       "privacy": "Your data stays on this device.",
-      "privacyDetail": "We don't collect or track anything."
+      "privacyDetail": "We don't collect or track anything.",
+      "descriptionDesktop": "Configure, plan missions, and fly any ArduPilot, PX4, or Betaflight drone. Pair with ADOS Drone Agent to run intelligence at the edge. Open source. Runs on your computer."
     },
     "disclaimer": {
       "title": "Before You Fly",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "Theme synced to {count, plural, one {# node} other {# nodes}}",
+      "syncFailedCount": "Could not reach {count, plural, one {# node} other {# nodes}}"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "Dark Themes",
       "groupLightThemes": "Light Themes",
       "groupMidTone": "Mid-tone",
-      "selectTheme": "Select Theme"
+      "selectTheme": "Select Theme",
+      "nvg": "Night vision"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "Sign in for cloud sync",
     "localOnly": "Local only",
     "commandPalette": "Command palette",
+    "menu": "Menu",
     "joinDiscord": "Join Discord",
     "starOnGitHub": "Star on GitHub",
     "star": "Star",
@@ -846,9 +851,9 @@
     "title": "General Settings",
     "jurisdiction": "Regulatory Jurisdiction (optional)",
     "notSet": "— Not set",
-    "units": "Units",
-    "metric": "Metric (m, km/h, °C)",
-    "imperial": "Imperial (ft, mph, °F)",
+    "units": "Planner units",
+    "metric": "Metric (m, m/s)",
+    "imperial": "Imperial (ft, mph)",
     "autoConnect": "Auto-connect on startup",
     "autoReconnect": "Auto-reconnect on disconnect",
     "demoMode": "Demo Mode",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "Tips will show again.",
+    "unitsScope": "Applies to the mission planner and map drawing tools. Flight views use the cockpit's metric units."
   },
   "notifications": {
     "title": "Notifications",
@@ -990,8 +997,8 @@
   "communityNav": {
     "changelog": "Changelog",
     "contact": "Contact",
-    "unavailableTitle": "Community data (changelog, roadmap, contact) is live on the hosted version at",
-    "unavailableSetup": "Disabled by default in local builds. To run your own internal community board, set up a Convex backend and configure",
+    "unavailableTitle": "Community data (changelog, contact) is live on the hosted version at",
+    "unavailableSetup": "Disabled by default in local builds. To run your own internal community board, set up a Convex backend and set {envVar}.",
     "unavailableOptional": "Completely optional. The GCS works without it.",
     "sectionError": "This page failed to load. Switch tabs or reload to try again."
   },
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "New Mission",
-      "connectDrone": "Connect Drone",
+      "connectDrone": "Add a node",
       "rthAll": "RTH All"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "commandPaletteHint": "to open command palette"
   },
   "connect": {
-    "title": "Connect to Drone",
+    "title": "Add a node",
     "usbSerial": "USB Serial",
     "webSocket": "WebSocket",
     "savePreset": "Save Preset",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "Available",
       "chromiumOnly": "Chrome or Edge",
-      "desktopOrBridge": "Desktop or bridge"
+      "desktopOrBridge": "Desktop or bridge",
+      "desktopUnsupported": "Not in the desktop app on this OS"
     },
     "getDesktopApp": "Get the desktop app",
     "agentUdpNote": "An agent-paired drone also exposes udp:[agent-ip]:14550 for any external ground station.",
@@ -1488,14 +1496,35 @@
     "flightSuite": "Suite",
     "px4EventsFeed": {
       "searchEvents": "Search events",
-      "flightControllerEvents": "Flight Controller Events"
+      "flightControllerEvents": "Flight Controller Events",
+      "emptyNone": "No events yet. Structured flight-controller events appear here.",
+      "emptyNoMatch": "No events match the search.",
+      "severityLevel": "Level {level}",
+      "severity": {
+        "emergency": "Emergency",
+        "alert": "Alert",
+        "critical": "Critical",
+        "error": "Error",
+        "warning": "Warning",
+        "notice": "Notice",
+        "info": "Info",
+        "debug": "Debug"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "Some panels (OSD, LED) are not available for PX4.",
-      "betaflightFirmwareSomePanelsDiffer": "Betaflight firmware. Some panels differ from ArduPilot."
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight firmware. Some panels differ from ArduPilot.",
+      "flightController": "Flight controller",
+      "loadingPanel": "Loading panel…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "Telemetry data will appear here when connected"
+      "telemetryDataWillAppearHere": "Telemetry data will appear here when connected",
+      "channel": {
+        "altitude": "Alt",
+        "speed": "Spd",
+        "battery": "Bat",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "GPS Track",
       "waitingForGPSData": "Waiting for GPS data..."
     },
-    "clear": "Clear"
+    "clear": "Clear",
+    "severityLevel": {
+      "emergency": "EMERGENCY",
+      "alert": "ALERT",
+      "critical": "CRITICAL",
+      "error": "ERROR",
+      "warning": "WARNING",
+      "notice": "NOTICE",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "autoScrollOn": "Auto-scroll on",
+    "autoScrollOff": "Auto-scroll off"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "Aircraft setup"
+    "aircraftSetup": "Aircraft setup",
+    "px4Safety": "Failure & return"
   },
   "droneStatus": {
     "online": "Online",
@@ -1771,7 +1813,8 @@
     },
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "This extension was not granted permission to show a tab here."
     },
     "agentShowcase": {
       "title": "Add a companion computer",
@@ -1842,6 +1885,9 @@
     "rebootFailed": "Reboot command failed"
   },
   "vision": {
+    "coreUsageUnreachable": "No connection to this node",
+    "stateUnknownBody": "This node has not reported its capabilities to this GCS. Reach it to see whether a vision engine is running.",
+    "stateUnknownTitle": "Vision state unknown",
     "title": "Perception",
     "subtitle": "Detection models, execution tier, feed health, and live detections for this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "Add a node",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "Add a node",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -3502,7 +3548,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "Waypoint {n} actions",
       "resumeFromHere": "Resume from here…",
-      "resumeFirstReason": "The plan starts here; upload it normally"
+      "resumeFirstReason": "The plan starts here; upload it normally",
+      "rtlAltitude": "Returns at the vehicle's RTL altitude"
     },
     "bar": {
       "plans": "Plans",
@@ -3579,8 +3626,11 @@
         "invalidSequence": "The mission items arrived out of order. Try uploading again.",
         "denied": "The flight controller is not accepting a mission right now.",
         "cancelled": "The flight controller cancelled the upload.",
-        "unknown": "The flight controller refused the mission (code {code})."
-      }
+        "unknown": "The flight controller refused the mission (code {code}).",
+        "verifyMismatch": "The flight controller acknowledged the mission, but the copy read back differs from what was sent. Upload again.",
+        "verifyFailed": "The flight controller acknowledged the mission, but reading it back to check it failed. Check the link and upload again."
+      },
+      "fenceCrossed": "The mission crosses this fence. Fix the mission before sending the fence."
     },
     "shortcuts": {
       "select": "Select tool",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}: terrain clearance not checked — no home elevation for this relative-frame altitude",
       "terrainUnknown": "WP{wp}: terrain unknown — no ground elevation sample at this waypoint, clearance not checked",
       "terrainClearanceGround": "WP{v0}: Only {v1}m above terrain (min: {v2}m). Ground: {ground}m MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}: Only {v1}m above terrain (min: {v2}m). Ground unknown"
+      "terrainClearanceGroundUnknown": "WP{v0}: Only {v1}m above terrain (min: {v2}m). Ground unknown",
+      "rtlAltitudeBelowTerrain": "RTL altitude {v0}m above home is {v1}m below the highest terrain on the return path (WP{v2}, {v3}m MSL)",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}: Altitude {v1}m above home is over the {v2}m legal ceiling"
     }
   },
   "basemap": {
@@ -4744,7 +4796,8 @@
     "viewUnavailable": "3D view is unavailable on this device",
     "switchTo2d": "Switch to 2D",
     "moreIssues": "+{count} more",
-    "dismissWarning": "Dismiss warning"
+    "dismissWarning": "Dismiss warning",
+    "showPanel": "Show panel"
   },
   "history": {
     "title": "Flight logs",
@@ -5087,7 +5140,28 @@
       "sealed": "Sealed",
       "verify": "Verify",
       "unseal": "Unseal",
-      "replay": "Replay"
+      "replay": "Replay",
+      "tabs": {
+        "overview": "Overview",
+        "map": "Map",
+        "charts": "Charts",
+        "events": "Events",
+        "analysis": "Analysis",
+        "notes": "Notes",
+        "media": "Media",
+        "export": "Export"
+      },
+      "flightDetail": "Flight detail",
+      "showList": "Show flight list",
+      "hideList": "Hide flight list",
+      "signing": "Signing…",
+      "signAndLock": "Sign & lock",
+      "signFailed": "Sign failed: {error}",
+      "unsealConfirm": "Unseal this record? Later edits will invalidate the previous signature. An audit event will be logged.",
+      "unsealedEvent": "Record unsealed at {time}",
+      "verifyOk": "Signature OK: the record is unchanged.",
+      "verifyBad": "Signature invalid: the record changed after it was signed.",
+      "recordingStopped": "Recording stopped at {time} (storage full)"
     },
     "chartsTab": {
       "charts": "Charts",
@@ -5127,7 +5201,11 @@
       "compliance": "Compliance",
       "jurisdiction": "Jurisdiction",
       "noTelemetryRecordingAttachedConnect": "No telemetry recording attached. Connect and arm a drone to start recording.",
-      "fullFlightRecordIncludingStatsPath": "Full FlightRecord including stats, path, and metadata."
+      "fullFlightRecordIncludingStatsPath": "Full FlightRecord including stats, path, and metadata.",
+      "errorCount": "{count, plural, one {# error} other {# errors}}",
+      "warningCount": "{count, plural, one {# warning} other {# warnings}}",
+      "ready": "Ready",
+      "generating": "Generating…"
     },
     "analysisTab": {
       "healthSummary": "Health Summary",
@@ -5188,7 +5266,8 @@
       "dropLogFilesHereOr": "Drop log files here, or click to browse",
       "importFlightLogs": "Import Flight Logs",
       "cancel": "Cancel",
-      "close": "Close"
+      "close": "Close",
+      "unknownFormat": "Unknown format"
     },
     "preflightCard": {
       "noChecklistCaptured": "No checklist captured",
@@ -5347,7 +5426,8 @@
     "connect": "Connect",
     "writeToFcCount": "Write {n} to flight controller",
     "writingProgress": "Writing {current}/{total}…",
-    "writeToFcHint": "Send changed parameters to the flight controller"
+    "writeToFcHint": "Send changed parameters to the flight controller",
+    "notPresent": "not present on this board"
   },
   "calibration": {
     "title": "Calibration",
@@ -5837,7 +5917,7 @@
   "commandPalette": {
     "placeholder": "Search commands…",
     "noResults": "No matching command",
-    "connectDrone": "Connect Drone",
+    "connectDrone": "Add a node",
     "disconnectDrone": "Disconnect Drone",
     "armVehicle": "Arm Drone",
     "disarmVehicle": "Disarm Vehicle",
@@ -5847,7 +5927,7 @@
     "switchTab": "Switch to {tab}",
     "toggleImmersive": "Toggle Immersive Mode",
     "goToDashboard": "Go to Dashboard",
-    "goToPlan": "Go to Mission Planner",
+    "goToPlan": "Go to Plan",
     "goToHistory": "Go to Flight logs",
     "goToAnalytics": "Go to Analytics",
     "goToConfig": "Go to Config",
@@ -5872,7 +5952,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "Select a vehicle to search its parameters"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6318,7 +6399,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "Configure the HDMI kiosk this node shows on a wired panel: the page it loads and touch calibration.",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -8236,7 +8317,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "PX4 configures its CAN driver with UAVCAN_* under Parameters. Bus setup here edits ArduPilot's CAN parameters and is not shown on this board."
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8294,6 +8376,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "This node cannot be reached from this GCS",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8531,8 +8614,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "Gamepad: hold Cross. Keyboard: hold Enter.",
     "plugin": {
       "confirm": {
+        "titleNamed": "Activate {skill} on {drone}",
         "title": "Activate skill on {drone}",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8662,6 +8747,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "Capabilities not reported",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9275,7 +9361,7 @@
     },
     "unpair": {
       "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "message": "Unpair {name}? Its pairing is released and it disappears from the fleet until it is paired again."
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9341,6 +9427,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "Node not reachable",
+      "message": "{name} could not release its pairing, so it is still paired. Forget it on this GCS only? The node keeps the old pairing until it is reset.",
+      "forgetHere": "Forget on this GCS only"
     }
   },
   "groundStationLanes": {
@@ -9728,7 +9819,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "Version {version}",
+    "thirdPartyNotices": "Third-party licences"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "Frame",
         "rc_tx": "RC TX"
       }
-    }
+    },
+    "pageTitle": "Operator & Aircraft",
+    "pageBlurb": "Pilot, organisation, insurance, aircraft, battery and equipment registries. Used for compliance exports and the per-flight pilot, aircraft and loadout snapshot."
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "Close without copying",
       "copyAgain": "Copy again",
       "tryAgain": "Try again",
-      "iClearedIt": "I cleared it"
+      "iClearedIt": "I cleared it",
+      "typeToContinue": "Type <word>EXPORT</word> to continue."
     },
     "framePanel": {
       "frameConfiguration": "Frame Configuration",
@@ -10591,7 +10687,15 @@
       "type": "Type:",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "Not used by this frame class",
+      "unknown": "Unknown",
+      "typeUnrecognised": "Unrecognised (on this vehicle)",
+      "typeUnknownNote": "This vehicle reports {param} = {value}, which this build has no motor layout for. The value is shown as-is and is NOT being changed; pick a listed type only if you intend to reconfigure the airframe.",
+      "selectClassForLayout": "Select a frame class to see the motor layout.",
+      "noLayoutForType": "No motor layout for {cls} frame type {type}.",
+      "noLayoutForClass": "No motor layout diagram for {cls}.",
+      "classStillSent": "{description}. {param} will still be sent to the flight controller."
     },
     "sensorsPanel": {
       "sensors": "Sensors",
@@ -10652,7 +10756,11 @@
       "patternPreview": "Pattern Preview",
       "visualRepresentationOfLEDStrip": "Visual representation of LED strip",
       "betaflightLEDStripUsesPacked": "Betaflight LED strip uses packed position/function/color bitmasks that are best configured through the CLI.",
-      "useThe": "Use the"
+      "useThe": "Use the",
+      "useLedCommand": "Use the <cmd>led</cmd> command in the FC Console panel to configure LED strip assignments.",
+      "ledCmdShow": "Show current LED strip configuration",
+      "ledCmdExample": "Example: set LED 0",
+      "colorCmd": "Show/set LED colors"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "Mixer Profiles",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "ESC calibration saved",
       "compassmotMotorInterference": "CompassMot (Motor Interference)",
       "measuresMagneticInterferenceFromMotors": "Measures magnetic interference from motors/ESCs at various throttle levels. Compensates compass readings.",
-      "compassmotCalibrationSaved": "CompassMot calibration saved"
+      "compassmotCalibrationSaved": "CompassMot calibration saved",
+      "escAck": "All propellers are removed",
+      "compassmotAck": "The vehicle is secured and the area around it is clear",
+      "escTip1": "CRITICAL: Remove ALL propellers before starting",
+      "escTip2": "Disconnect the battery before beginning the sequence",
+      "escTip3": "Some ESCs require this calibration on first use",
+      "escTip4": "BLHeli/SimonK ESCs: use their own calibration tools instead",
+      "escTip5": "This runs as a throttle passthrough on reboot and reports no completion over MAVLink. Follow the ESC beeps; the wizard ending on a timeout is expected.",
+      "compassmotTip1": "Ensure GPS has a 3D fix before starting",
+      "compassmotTip2": "The vehicle must be in an open area away from metal objects",
+      "compassmotTip3": "Props ON: the motors WILL spin during this test",
+      "compassmotTip4": "Interference below 30% is acceptable, below 15% is good"
     },
     "telRadioPanel": {
       "telemetryRadio": "Telemetry Radio",
@@ -10705,7 +10824,13 @@
       "protocol": "Protocol",
       "baudRate": "Baud Rate",
       "systemIdentification": "System Identification",
-      "mavlinkSystemAndGCSIDs": "MAVLink system and GCS IDs for multi-vehicle setups"
+      "mavlinkSystemAndGCSIDs": "MAVLink system and GCS IDs for multi-vehicle setups",
+      "notPresent": "not present",
+      "noRadioTelemetry": "No live radio telemetry: RADIO_STATUS not received recently",
+      "px4BaudUnderPorts": "PX4 sets telemetry port baud rates under Ports (SER_TEL1_BAUD, SER_TEL2_BAUD). Nothing on this page is written to the flight controller.",
+      "vehicleSystemId": "Vehicle System ID",
+      "gcsSystemId": "GCS System ID",
+      "uniqueSysidHint": "Each vehicle on the same link needs a unique SYSID_THISMAV. Default GCS ID is 255."
     },
     "signingEnabledSection": {
       "signingEnabled": "Signing enabled",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "Master throttle",
       "motorsWillSpinWhenTested": "Motors will spin when tested. Failure to remove propellers can result in injury or damage.",
       "enableMotorTest": "Enable Motor Test",
-      "stopAllMotors": "Stop All Motors"
+      "stopAllMotors": "Stop All Motors",
+      "removePropellers": "REMOVE ALL PROPELLERS BEFORE TESTING",
+      "motorN": "Motor {n}",
+      "motorThrottleN": "Motor {n} throttle",
+      "setPct": "set {pct}%",
+      "mixed": "mixed"
     },
     "iNavMissionPanel": {
       "inavMission": "iNav Mission",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "Replace the current plan?",
       "replacePlan": "Replace plan",
       "noMissionLoadedOpenThe": "No mission loaded. Open the Plan tab to build one.",
-      "openMissionPlanner": "Open Mission Planner"
+      "openMissionPlanner": "Open Mission Planner",
+      "waypointActionsTitle": "iNav waypoint actions",
+      "waypointActionsBody": "iNav supports eight waypoint action types. In the Plan tab, pick Waypoint, Poshold (unlimited or timed), RTH or Land as the waypoint action, and attach Set POI, Jump or Set heading from the waypoint's action list."
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "I confirm all propellers have been removed",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "Changing airframe requires a reboot. All parameters will reset to airframe defaults.",
       "searchAirframes": "Search airframes...",
       "noAirframesMatchYourSearch": "No airframes match your search.",
-      "customAirframeID": "Custom Airframe ID"
+      "customAirframeID": "Custom Airframe ID",
+      "custom": "Custom ({id})",
+      "allCategories": "All categories",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "Retry",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "I confirm all propellers have been removed",
       "disarmToTestActuators": "Disarm to test actuators.",
       "output": "Output",
-      "stop": "Stop"
+      "stop": "Stop",
+      "removePropellers": "REMOVE ALL PROPELLERS BEFORE TESTING",
+      "testExplain": "The selected motor spins (or servo moves) at the chosen value for {seconds}s, then the FC restores it. The FC rejects the test while armed.",
+      "throttle": "Throttle",
+      "position": "Position",
+      "runSeconds": "Run {seconds}s"
     },
     "px4PowerSections": {
       "batterySettings": "Battery Settings",
@@ -11134,19 +11274,31 @@
       "pidTuning": "PID Tuning",
       "presetProfiles": "Preset Profiles",
       "filterSettings": "Filter Settings",
-      "insGyroAccelLowPass": "INS gyro/accel low-pass filters and harmonic notch filter"
+      "insGyroAccelLowPass": "INS gyro/accel low-pass filters and harmonic notch filter",
+      "subtitleCopter": "ArduCopter rate PIDs — roll, pitch, yaw",
+      "subtitleCopterPx4": "PX4 multicopter rate PIDs (MC_*) — roll, pitch, yaw. Fixed-wing rates of a VTOL are under Fixed-Wing Tuning.",
+      "subtitleRover": "ArduRover steering-rate and speed/throttle PIDs",
+      "subtitleRoverPx4": "PX4 rover steering-rate and speed PIDs",
+      "subtitlePlane": "ArduPlane roll, pitch, yaw servo PID gains",
+      "subtitlePlanePx4": "PX4 fixed-wing rate PIDs (FW_*) — roll, pitch, yaw. Attitude and speed tuning are under Fixed-Wing Tuning."
     },
     "outputsPanel": {
       "servoMotorOutputs": "Servo / Motor Outputs",
       "connectToADroneTo": "Connect to a drone to configure outputs.",
       "outputFunctionAssignmentPWMLimits": "Output function assignment, PWM limits, and motor test",
-      "save": "Save"
+      "save": "Save",
+      "unsaved": "UNSAVED"
     },
     "motorTestSection": {
       "motorTest": "Motor Test",
       "enableMotorTestSafetyMaster": "Enable motor test (safety master)",
       "motor": "Motor",
-      "removePropellersBeforeTestingMotors": "Remove propellers before testing motors. Ensure drone is secured."
+      "removePropellersBeforeTestingMotors": "Remove propellers before testing motors. Ensure drone is secured.",
+      "throttleLabel": "Throttle: {value}% (max {max}%)",
+      "durationLabel": "Duration: {value} s",
+      "testMotorN": "Test motor {n}",
+      "motorN": "Motor {n}",
+      "stop": "Stop"
     },
     "navConfigPanel": {
       "navigationConfig": "Navigation Config",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "Telemetry Stream Rates",
       "perPortMAVLinkMessageGroup": "Per-port MAVLink message group rates (Hz)",
       "mavlinkChannel": "MAVLink channel",
-      "gcsManagesTelemetryRatesOn": "GCS manages telemetry rates. On connect, link restore and flight-controller reboot this GCS requests its own rates on the channel it is connected through. Turn off to keep the rates set here, or by the agent's router, untouched."
+      "gcsManagesTelemetryRatesOn": "GCS manages telemetry rates. On connect, link restore and flight-controller reboot this GCS requests its own rates on the channel it is connected through. Turn off to keep the rates set here, or by the agent's router, untouched.",
+      "notPresent": "not present"
     },
     "signingHistorySection": {
       "history": "History",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "OSD Preview",
-      "liveReconstructionOfTheOSD": "Live reconstruction of the OSD the flight controller paints (MSP DisplayPort). Frames arrive only when the FC is configured to output its OSD over MSP DisplayPort on this connection (an HD-goggle / DJI setup). Custom font glyphs are shown as a dot; text and numeric fields render as sent."
+      "liveReconstructionOfTheOSD": "Live reconstruction of the OSD the flight controller paints (MSP DisplayPort). Frames arrive only when the FC is configured to output its OSD over MSP DisplayPort on this connection (an HD-goggle / DJI setup). Custom font glyphs are shown as a dot; text and numeric fields render as sent.",
+      "noFramesYet": "no OSD frames yet"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "Temperature Sensors",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "Flight Modes",
-      "read": "Read"
+      "read": "Read",
+      "unsavedCount": "{count} unsaved",
+      "save": "Save",
+      "saveCount": "Save ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "Flash Tool"
+      "flashTool": "Flash Tool",
+      "subtitle": "Flash firmware via USB DFU or serial bootloader"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "Reboot Required"
+      "rebootRequired": "Reboot Required",
+      "applyHint": "{label}. Reboot the flight controller to apply."
     },
     "pwmRangeSlider": {
       "rangeStart": "Range start",
@@ -11471,7 +11630,9 @@
       "loadParamFile": "Load .param File",
       "selectAll": "Select All",
       "selectNone": "Select None",
-      "noParametersMatchTheCurrent": "No parameters match the current filter."
+      "noParametersMatchTheCurrent": "No parameters match the current filter.",
+      "applyN": "{count, plural, one {Apply # parameter} other {Apply # parameters}}",
+      "selectedOf": "{selected} of {total} selectable params selected"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirm Parameter Write",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "This batch includes flight-safety parameters. Review carefully before writing.",
       "flightSafety": "Flight safety",
       "iUnderstandThisChangeAffects": "I understand this change affects flight safety",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "willBeWritten": "{count, plural, one {# parameter} other {# parameters}} will be written to the flight controller.",
+      "writeN": "{count, plural, one {Write # parameter} other {Write # parameters}}",
+      "outOfRange": "Outside the allowed range ({min} .. {max})",
+      "outOfRangeBlocked": "Fix the values outside their range before writing."
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "Uncommitted Parameter Changes",
@@ -11517,7 +11682,9 @@
       "link": "Link",
       "verified": "Verified",
       "failed": "Failed",
-      "unsigned": "Unsigned"
+      "unsigned": "Unsigned",
+      "primary": "primary",
+      "requireSignedBody": "Require signed telemetry. While a key is loaded, every frame that is unsigned or fails verification is dropped. A vehicle that does not sign its replies goes silent."
     },
     "servoMixerTable": {
       "targetCh": "Target ch",
@@ -11553,7 +11720,9 @@
       "programmingJS": "Programming (JS)",
       "writeExpressionsAndCompileThem": "Write expressions and compile them into Logic Conditions. Loading places them in the slots the flight controller has free, leaving every condition already in use as it is; review them in the Logic Conditions editor and write them to the FC from there.",
       "compile": "Compile",
-      "loadIntoLogicConditions": "Load into Logic Conditions"
+      "loadIntoLogicConditions": "Load into Logic Conditions",
+      "compilesToLogicConditions": "compiles to Logic Conditions",
+      "operation": "operation"
     },
     "customOsdElementsPanel": {
       "customOSD": "Custom OSD",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "Land heading 1 (deg, 0 = off)",
       "landHeading2Deg0": "Land heading 2 (deg, 0 = off)",
       "altitudeReference": "Altitude reference",
-      "thisPanelAppliesToFixed": "This panel applies to fixed-wing and tricopter platforms. The connected flight controller is configured as a multirotor."
+      "thisPanelAppliesToFixed": "This panel applies to fixed-wing and tricopter platforms. The connected flight controller is configured as a multirotor.",
+      "unsaved": "unsaved",
+      "approachN": "Approach {n}",
+      "save": "Save",
+      "saving": "Saving…",
+      "seaLevel": "Sea level",
+      "relativeToHome": "Relative to home"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "Sensor Graphs",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "Compass Pre-flight Checks",
       "enabled": "Enabled",
-      "fix": "Fix"
+      "fix": "Fix",
+      "loading": "Loading…",
+      "unavailable": "Unavailable",
+      "disabledHint": "Disabled — enable COMPASS_USE first",
+      "none": "None",
+      "lenient": "Lenient",
+      "recommendLenient": "{value} — recommend 3 for lenient orientation detection",
+      "lowLimit": "low limit",
+      "increaseTo": "Increase to {value}",
+      "unknownValue": "Unknown ({value})",
+      "extInternal": "Internal",
+      "extExternal": "External",
+      "extForced": "Forced external",
+      "learnOff": "Off",
+      "learnInternal": "Internal",
+      "learnEkf": "EKF",
+      "learnInFlight": "In flight",
+      "unknown": "Unknown",
+      "notChanged": "{name} was not changed: {reason}",
+      "noReply": "no reply from the flight controller",
+      "setTo": "{name} set to {value}"
     },
     "pidAnalysisSummary": {
       "tuneScore": "Tune Score",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "Non-GPS Positioning",
       "ekf3SourceSetsAndExternal": "EKF3 source sets and external nav / beacon backends",
       "externalNavigationVISO": "External Navigation (VISO)",
-      "beaconBCN": "Beacon (BCN)"
+      "beaconBCN": "Beacon (BCN)",
+      "sourceSet": "Source set {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "Helicopter",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "Grid",
       "live": "Live",
-      "dragElementsToRepositionClick": "Drag elements to reposition. Click elements in sidebar to toggle visibility."
+      "dragElementsToRepositionClick": "Drag elements to reposition. Click elements in sidebar to toggle visibility.",
+      "osdPreview": "OSD PREVIEW"
     },
     "keyAgeNudge": {
       "rotateNow": "Rotate now",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "Backup Parameters",
-      "restoreParameters": "Restore Parameters"
+      "restoreParameters": "Restore Parameters",
+      "downloading": "Downloading parameters…",
+      "backedUp": "Backed up {count} parameters",
+      "backupFailed": "Backup failed: {error}",
+      "unknownError": "Unknown error",
+      "flashing": "Flashing…",
+      "flashFirmware": "Flash Firmware",
+      "restored": "Parameters restored"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "Receiver default"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "Dismiss"
+    },
+    "bfFailsafe": {
+      "title": "Failsafe",
+      "subtitle": "What the craft does when the radio link is lost",
+      "stage2": "Stage 2 failsafe",
+      "procedure": "Procedure (0 drop, 1 land, 2 GPS rescue)",
+      "delay": "Guard time (0.1 s)",
+      "offDelay": "Motor off delay (0.1 s)",
+      "throttle": "Landing throttle (µs)",
+      "throttleLowDelay": "Throttle low delay (0.1 s)",
+      "switchMode": "Failsafe switch (0 stage 1, 1 kill, 2 stage 2)"
+    },
+    "px4Safety": {
+      "title": "Failure detector and return",
+      "subtitle": "Attitude limits that trigger a failure, and the return-to-launch path. Circuit breakers stay in Parameters.",
+      "failureDetector": "Failure detector",
+      "maxPitch": "Max pitch (deg)",
+      "maxRoll": "Max roll (deg)",
+      "pitchTrigger": "Pitch trigger time (s)",
+      "rollTrigger": "Roll trigger time (s)",
+      "returnToLaunch": "Return to launch",
+      "rtlType": "Return type",
+      "returnAlt": "Return altitude (m)",
+      "descendAlt": "Descend-to altitude (m)",
+      "landDelay": "Hover before landing (s, -1 = never land)",
+      "coneAngle": "Return cone half-angle"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "Move to control",
       "stickMode": "Stick mode",
       "none": "None",
-      "close": "Close"
+      "close": "Close",
+      "saved": "Saved",
+      "imported": "Imported. Save to keep it.",
+      "resetPending": "ADOS default loaded. Save to keep it or Cancel to go back.",
+      "cancel": "Cancel",
+      "tourReplayDone": "The controller tour will play the next time you open Flight."
     },
     "rpcTraceTable": {
       "node": "Node",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "Done (sticks released)",
-      "start": "Start"
+      "start": "Start",
+      "noControllerGranted": "No controller granted"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "Set as primary",
       "noPairedBluetoothDevices": "No paired Bluetooth devices.",
       "forget": "Forget",
-      "calibrateAndTuneControllersConnected": "Calibrate and tune controllers connected directly to this browser via the Web Gamepad API."
+      "calibrateAndTuneControllersConnected": "Calibrate and tune controllers connected directly to this browser via the Web Gamepad API.",
+      "typeUnknown": "Unknown",
+      "kindJoystick": "Joystick",
+      "kindWheel": "Wheel",
+      "kindGamepad": "Gamepad",
+      "forgetTitle": "Forget {name}?",
+      "forgetMessage": "The ground station unpairs it. You will need to pair it again to use it.",
+      "forgotDevice": "Forgot {name}",
+      "forgetFailed": "Could not forget {name}"
     },
     "community": {
       "communityNavigation": "Community navigation",

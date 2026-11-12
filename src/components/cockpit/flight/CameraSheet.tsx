@@ -5,7 +5,9 @@
  * @description Camera settings: the stream switcher (multi-stream nodes), the
  * camera roster and the live video figures (resolution, frame rate, frame age
  * with the estimator that produced it, and the network round trip labelled
- * `net` so it is never read as end-to-end delay). As a sheet it follows the
+ * `net` so it is never read as end-to-end delay), the Stream quality choice
+ * (Auto, or High through the shared hero lease) and Start/Stop recording.
+ * As a sheet it follows the
  * flight screen's sheet rules: rendered at the screen's root beside the right
  * column and below the top bar, closed by Escape, a press outside or its ✕.
  *
@@ -25,6 +27,48 @@ import { CockpitStreamTabs } from "../CockpitStreamTabs";
 import { useDemoFeedActive } from "../CockpitDemoStream";
 import { useFlightGrid } from "./flight-context";
 import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "./flight-sheet";
+import { STREAM_QUALITIES, streamQualityFor, useStreamQualityStore } from "@/lib/cockpit/stream-quality";
+import { useFlightRecording } from "@/hooks/use-flight-recording";
+import { firePluginSkill } from "@/hooks/use-ds4-dispatcher";
+import { EXTENSION_RECORD_IDS } from "@/lib/cockpit/camera-actions";
+
+function StreamQuality({ droneId }: { droneId: string }) {
+  const quality = useStreamQualityStore((s) => streamQualityFor(s.byDrone, droneId));
+  const set = useStreamQualityStore((s) => s.set);
+  const label = specString("camera.quality");
+  return (
+    <div className="fs-camera-row" role="radiogroup" aria-label={label} data-testid="fs-stream-quality">
+      <span className="fs-sub">{label}</span>
+      {STREAM_QUALITIES.map((q) => (
+        <button
+          key={q}
+          type="button"
+          role="radio"
+          aria-checked={quality === q}
+          className="fs-btn fs-hit"
+          data-quality={q}
+          onClick={() => set(droneId, q)}
+        >
+          {specString(`camera.quality.${q}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RecordRow({ droneId }: { droneId: string }) {
+  const { isRecording, toggle } = useFlightRecording(droneId);
+  return (
+    <button type="button" className="fs-btn fs-hit" data-testid="fs-camera-record" aria-pressed={isRecording}
+      // An extension's own record skill first, as the right column's shutter.
+      onClick={() => {
+        if (!firePluginSkill(droneId, EXTENSION_RECORD_IDS)) toggle();
+      }}
+    >
+      {specString(isRecording ? "cockpit.camera.stop_recording" : "cockpit.camera.record_video")}
+    </button>
+  );
+}
 
 /** The camera settings trigger, which is not "outside" the sheet. */
 export const CAMERA_SHEET_TRIGGER = "[data-sheet-trigger='camera']";
@@ -62,6 +106,8 @@ export function CameraPanel({ droneId }: { droneId: string }) {
       <CockpitStreamTabs droneId={droneId} />
       <CockpitCameraRoster />
       <VideoFigures droneId={droneId} />
+      <StreamQuality droneId={droneId} />
+      <RecordRow droneId={droneId} />
     </div>
   );
 }

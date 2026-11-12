@@ -233,10 +233,10 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
           <div className="flex items-center gap-2">
             <Badge variant={errors.length > 0 ? "error" : warnings.length > 0 ? "warning" : "success"} size="sm">
               {errors.length > 0
-                ? `${errors.length} error${errors.length === 1 ? "" : "s"}`
+                ? tq("errorCount", { count: errors.length })
                 : warnings.length > 0
-                  ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}`
-                  : "Ready"}
+                  ? tq("warningCount", { count: warnings.length })
+                  : tq("ready")}
             </Badge>
           </div>
           {issues.length > 0 && (
@@ -260,7 +260,7 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
               disabled={busy !== null}
               onClick={() => runCompliance("pdf")}
             >
-              {busy === "compliance-pdf" ? "Generating…" : "PDF"}
+              {busy === "compliance-pdf" ? tq("generating") : "PDF"}
             </Button>
             <Button
               variant="secondary"

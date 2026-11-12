@@ -77,7 +77,8 @@ describe("StreamRatesPanel parameter family", () => {
     expect(names).toContain("SR0_RAW_SENS");
     expect(names.some((n) => n?.startsWith("MAV"))).toBe(false);
     // Groups the vehicle did not report are absent, not 0 Hz.
-    expect(screen.getAllByText("not present").length).toBe(8);
+    // next-intl is mocked to echo keys; the cell is the `notPresent` key.
+    expect(screen.getAllByText("notPresent").length).toBe(8);
   });
 
   it("edits MAV1_* on a vehicle that reports the newer family", () => {

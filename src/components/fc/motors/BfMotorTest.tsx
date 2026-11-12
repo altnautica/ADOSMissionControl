@@ -40,7 +40,7 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
       <div className="flex items-start gap-2 p-3 bg-status-error/10 border border-status-error/20 rounded">
         <AlertTriangle size={16} className="text-status-error shrink-0 mt-0.5" />
         <div>
-          <p className="text-xs font-medium text-status-error">REMOVE ALL PROPELLERS BEFORE TESTING</p>
+          <p className="text-xs font-medium text-status-error">{tr("removePropellers")}</p>
           <p className="text-[10px] text-status-error/80 mt-0.5">
             {tr("motorsWillSpinWhenTested")}
           </p>
@@ -94,13 +94,13 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
                   const fc = test.reported[i];
                   return (
                     <div key={i} className="text-center space-y-2">
-                      <span className="text-xs font-mono text-text-secondary">Motor {i + 1}</span>
+                      <span className="text-xs font-mono text-text-secondary">{tr("motorN", { n: i + 1 })}</span>
                       <div className="relative mx-auto w-8">
                         <input
                           type="range" min="0" max="100" value={test.commanded[i]}
                           onChange={(e) => test.setMotor(i, Number(e.target.value))}
                           disabled={!test.active}
-                          aria-label={`Motor ${i + 1} throttle`}
+                          aria-label={tr("motorThrottleN", { n: i + 1 })}
                           className="w-24 -rotate-90 translate-y-10 origin-center accent-accent-primary disabled:opacity-30"
                           style={{ height: "2rem", marginTop: "2rem", marginBottom: "2rem" }}
                         />
@@ -108,7 +108,7 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
                       <span className={`block text-sm font-mono tabular-nums ${fc !== null && fc > 0 ? "text-status-warning" : "text-text-tertiary"}`}>
                         {fc === null ? "--" : `${fc}%`}
                       </span>
-                      <span className="block text-[9px] font-mono text-text-tertiary">set {test.commanded[i]}%</span>
+                      <span className="block text-[9px] font-mono text-text-tertiary">{tr("setPct", { pct: test.commanded[i] })}</span>
                     </div>
                   );
                 })}
@@ -118,7 +118,7 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-text-secondary">
                   <span>{tr("masterThrottle")}</span>
-                  <span className="font-mono tabular-nums">{master === null ? "mixed" : `${master}%`}</span>
+                  <span className="font-mono tabular-nums">{master === null ? tr("mixed") : `${master}%`}</span>
                 </div>
                 <input
                   type="range" min="0" max="100" value={master ?? 0}

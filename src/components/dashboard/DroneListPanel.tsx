@@ -8,7 +8,7 @@ import { Plus, Search, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { useFleetNodes, type FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useClockTick } from "@/lib/agent/freshness";
-import { useForgetNode } from "@/hooks/use-forget-node";
+import { useUnpairNode } from "@/hooks/use-unpair-node";
 import { NodeRow } from "@/components/command/nodes/NodeRow";
 import { NodeRail } from "@/components/command/nodes/NodeRail";
 import { NodeContextMenu } from "@/components/command/nodes/NodeContextMenu";
@@ -44,7 +44,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectDrone = useDroneManager((s) => s.selectDrone);
   const openDialog = useConnectDialogStore((s) => s.openDialog);
-  const forget = useForgetNode();
+  const { unpair, fallbackDialog } = useUnpairNode();
   // 1 Hz tick so freshness (live / stale / offline) transitions without needing
   // an unrelated store update to trigger a re-render.
   useClockTick();
@@ -84,23 +84,27 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
   const activeContextNode = contextMenu
     ? nodes.find((n) => n._id === contextMenu.nodeId) ?? null
     : null;
-  const contextEl =
-    contextMenu && activeContextNode ? (
-      <NodeContextMenu
-        node={activeContextNode}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        onClose={() => setContextMenu(null)}
-        onOpen={(n) => {
-          setContextMenu(null);
-          selectDrone(n._id);
-        }}
-        onForget={(n) => {
-          setContextMenu(null);
-          void forget(n._id, { convexId: n.convexId ?? null });
-        }}
-      />
-    ) : null;
+  const contextEl = (
+    <>
+      {contextMenu && activeContextNode && (
+        <NodeContextMenu
+          node={activeContextNode}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onOpen={(n) => {
+            setContextMenu(null);
+            selectDrone(n._id);
+          }}
+          onForget={(n) => {
+            setContextMenu(null);
+            void unpair(n._id, { convexId: n.convexId ?? null, name: n.name });
+          }}
+        />
+      )}
+      {fallbackDialog}
+    </>
+  );
 
   function renderRow(node: FleetNodeEntry) {
     return (

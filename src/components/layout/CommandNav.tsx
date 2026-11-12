@@ -3,19 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, Route, Play, History, Bot } from "lucide-react";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { cn } from "@/lib/utils";
-
-// Agent management is unified into the Dashboard drone view; there is no
-// separate Command tab. /command redirects to the Dashboard for old links.
-const tabs = [
-  { icon: LayoutDashboard, labelKey: "dashboard", href: "/" },
-  { icon: Route, labelKey: "plan", href: "/plan" },
-  { icon: Play, labelKey: "simulate", href: "/simulate" },
-  { icon: History, labelKey: "history", href: "/flight-logs" },
-  { icon: Bot, labelKey: "mcp", href: "/mcp" },
-];
+import { SHELL_NAV_TABS } from "./shell-nav-tabs";
 
 export function CommandNav() {
   const pathname = usePathname();
@@ -31,7 +21,7 @@ export function CommandNav() {
 
   return (
     <nav className="flex items-stretch gap-1 h-full">
-      {tabs.map(({ icon: Icon, labelKey, href }) => {
+      {SHELL_NAV_TABS.map(({ icon: Icon, labelKey, href }) => {
         const active = isActive(href);
         const showDirty = href === "/plan" && planDirty;
         return (

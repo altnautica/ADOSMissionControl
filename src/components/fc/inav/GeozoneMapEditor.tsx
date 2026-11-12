@@ -16,6 +16,7 @@ import { GEOZONE_VERTEX_MAX } from "@/stores/geozone-store";
 import { Button } from "@/components/ui/button";
 import { MapPin, Trash2, Check, X, RotateCcw } from "lucide-react";
 import L from "leaflet";
+import { TILE_PROVIDERS } from "@/lib/tile-math";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -28,11 +29,6 @@ export interface GeozoneMapEditorProps {
   onCommit: (vertices: INavGeozoneVertex[]) => void;
   onCancel: () => void;
 }
-
-// ── Dark tile URL (matches CARTO dark from TileLayerSwitcher) ─
-
-const TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 // ── Shape constants matching geozone-store ────────────────────
 
@@ -127,7 +123,11 @@ function PolygonGeozoneMapEditor({
       zoomControl: true,
     });
 
-    L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 20 }).addTo(map);
+    L.tileLayer(TILE_PROVIDERS.dark.url, {
+      attribution: TILE_PROVIDERS.dark.attribution,
+      maxNativeZoom: TILE_PROVIDERS.dark.maxZoom,
+      maxZoom: 20,
+    }).addTo(map);
 
     const manager = new DrawingManager(map, {
       onPolygonComplete: (verts) => {

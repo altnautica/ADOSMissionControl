@@ -39,6 +39,7 @@ import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
+import { useNarrowViewport } from "@/hooks/use-narrow-viewport";
 import { registerCommandProvider } from "@/lib/command-palette-registry";
 import { setClipboard, getClipboard } from "@/lib/waypoint-clipboard";
 import { MAP_OVERLAY_Z } from "@/lib/map-overlay-z";
@@ -78,6 +79,8 @@ export default function MissionPlannerPage() {
 
   const outlineOpen = usePlannerStore((s) => s.outlineOpen);
   const inspectorOpen = usePlannerStore((s) => s.inspectorOpen);
+  // Phone-width window: outline and inspector float over the map as sheets.
+  const narrow = useNarrowViewport();
   const dockOpen = usePlannerStore((s) => s.dockOpen);
   const librarySheetOpen = usePlannerStore((s) => s.librarySheetOpen);
   const inspectorIsMission = usePlannerStore((s) => s.inspectorTarget.kind === "mission");
@@ -301,9 +304,9 @@ export default function MissionPlannerPage() {
           <PlannerBar p={p} hasDrone={hasDrone} showGeofence={showGeofence} showRally={showRally}
             shareIo={shareIo} onOpenSend={openSend} />
         )}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="relative flex-1 flex overflow-hidden">
           {hasActivePlan ? (
-            <SidePanel side="left" open={outlineOpen} width={264} animate={panelAnimate} ariaLabel={t("outline.label")}>
+            <SidePanel side="left" open={outlineOpen} width={264} animate={panelAnimate} overlay={narrow} ariaLabel={t("outline.label")}>
               <PlanOutline p={p} showGeofence={showGeofence} showRally={showRally} />
             </SidePanel>
           ) : (
@@ -350,7 +353,7 @@ export default function MissionPlannerPage() {
           </div>
 
           {hasActivePlan && (
-            <SidePanel side="right" open={inspectorOpen} width={300} animate={panelAnimate} ariaLabel={t("inspector.label")}>
+            <SidePanel side="right" open={inspectorOpen} width={300} animate={panelAnimate} overlay={narrow} ariaLabel={t("inspector.label")}>
               <PlannerInspector p={p} showGeofence={showGeofence} showRally={showRally} />
             </SidePanel>
           )}

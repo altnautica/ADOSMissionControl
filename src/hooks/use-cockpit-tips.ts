@@ -63,7 +63,7 @@ interface OpenState {
 /** The pure step: the context the engine reads, from what the screen shows. */
 export function tipsContext(
   ui: CockpitTipsUi,
-  facts: { armed: boolean; airborne: boolean; tourVisible: boolean; gotoOffered: boolean },
+  facts: { armed: boolean | null; airborne: boolean | null; tourVisible: boolean; gotoOffered: boolean },
   open: OpenState,
 ): TipsContext {
   return {
@@ -83,6 +83,31 @@ export function tipsContext(
     shownAtMs: open.shown?.at ?? null,
     hiddenThisOpen: open.hidden,
   };
+}
+
+/** The arm and airborne facts the tips read: a fresh pilot state's own, else
+ *  the FC's. Null while unknown (possibly airborne), so no tip shows and
+ *  none is marked seen. */
+export function tipsArmFacts(
+  live: { armed: boolean | null; landed: boolean | null } | null,
+  fcArmState: string,
+  landedFact: boolean | null,
+): { armed: boolean | null; airborne: boolean | null } {
+  const armed =
+    fcArmState === "armed" || live?.armed === true
+      ? true
+      : live
+        ? live.armed
+        : fcArmState === "disarmed"
+          ? false
+          : null;
+  if (landedFact === false) return { armed, airborne: true };
+  if (live) {
+    if (live.armed === false || live.landed === true) return { armed, airborne: false };
+    if (live.armed === true && live.landed === false) return { armed, airborne: true };
+    return { armed, airborne: null };
+  }
+  return { armed, airborne: fcArmState === "disarmed" ? false : fcArmState === "armed" ? true : null };
 }
 
 /**
@@ -115,10 +140,7 @@ export function useCockpitTips(droneId: string, readUi: () => CockpitTipsUi): Co
       // A pilot state past the shared staleness limit says nothing about now.
       const live = receivedAt !== null && pilotFresh(receivedAt, now) ? pilot : null;
       const facts = {
-        armed: armState === "armed" || live?.armed === true,
-        // An unknown arm state (no fresh pilot, no FC disarm) may be a
-        // vehicle in the air: no tip until disarmed is known.
-        airborne: (live ? live.armed && !live.landed : armState !== "disarmed") || vehicleLanded(droneId) === false,
+        ...tipsArmFacts(live, armState, vehicleLanded(droneId)),
         tourVisible,
         gotoOffered: gotoAdvertised(live),
       };

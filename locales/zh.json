@@ -283,6 +283,8 @@
       "unknown": "代理节点"
     },
     "hero": {
+      "subjectAgent": "代理",
+      "subjectFc": "飞控",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "取消静音告警",
       "resetPersonalization": "重置个性化设置",
       "personalizationReset": "个性化设置已重置",
-      "forget": "移除",
-      "forgetTitle": "移除节点",
-      "forgetMessage": "移除 {node}？这将解除配对并清除其个性化设置。"
+      "forget": "取消配对",
+      "forgetTitle": "取消节点配对",
+      "forgetMessage": "取消 {node} 的配对？配对将被释放，在重新配对前它会从机队中消失。"
     },
     "dotEditor": {
       "title": "配置圆点",
@@ -432,7 +434,8 @@
       "openSource": "GPL-3.0 开源",
       "getStarted": "开始使用",
       "privacy": "您的数据保留在本地设备上。",
-      "privacyDetail": "我们不收集或跟踪任何数据。"
+      "privacyDetail": "我们不收集或跟踪任何数据。",
+      "descriptionDesktop": "配置、规划任务并飞行任何 ArduPilot、PX4 或 Betaflight 无人机。搭配 ADOS Drone Agent 在边缘端运行智能。开源，在你的电脑上运行。"
     },
     "disclaimer": {
       "title": "飞行前须知",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "主题已同步到 {count} 个节点",
+      "syncFailedCount": "无法连接 {count} 个节点"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "深色主题",
       "groupLightThemes": "浅色主题",
       "groupMidTone": "中间色调",
-      "selectTheme": "选择主题"
+      "selectTheme": "选择主题",
+      "nvg": "夜视"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "登录以启用云同步",
     "localOnly": "仅本地",
     "commandPalette": "命令面板",
+    "menu": "菜单",
     "joinDiscord": "加入 Discord",
     "starOnGitHub": "在 GitHub 上点星",
     "star": "Star",
@@ -836,7 +841,7 @@
     "notifications": "通知",
     "theme": "主题",
     "data": "数据",
-    "operator": "Operator & Aircraft",
+    "operator": "运营人与航空器",
     "plugins": "扩展程序",
     "can": "DroneCAN",
     "aircraftSetup": "Aircraft setup",
@@ -846,9 +851,9 @@
     "title": "常规设置",
     "jurisdiction": "监管辖区（可选）",
     "notSet": "— 未设置",
-    "units": "单位",
-    "metric": "公制（m、km/h、°C）",
-    "imperial": "英制（ft、mph、°F）",
+    "units": "规划器单位",
+    "metric": "公制 (m, m/s)",
+    "imperial": "英制 (ft, mph)",
     "autoConnect": "启动时自动连接",
     "autoReconnect": "断开时自动重连",
     "demoMode": "演示模式",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "提示将再次显示。",
+    "unitsScope": "适用于任务规划器和地图绘制工具。飞行视图使用驾驶舱的公制单位。"
   },
   "notifications": {
     "title": "通知",
@@ -967,11 +974,11 @@
     "testMode": "测试模式",
     "testModeUnavailable": "手柄测试模式在演示中不可用",
     "manualControlLinkBlocked": "摇杆指令无法送达该飞行器：{reason}。当前没有任何发送。",
-    "stickMode": "Stick mode",
+    "stickMode": "摇杆模式",
     "stickMode2": "Mode 2 (throttle on the left stick)",
     "stickMode1": "Mode 1 (throttle on the right stick)",
-    "groundStationEmpty": "No controllers on the ground station.",
-    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
+    "groundStationEmpty": "地面站上没有控制器。",
+    "groundStationEmptyHint": "将 USB 或蓝牙手柄、摇杆或 HOTAS 连接到地面站。插在本机上的控制器显示在“浏览器输入”下。"
   },
   "data": {
     "title": "数据管理",
@@ -990,10 +997,10 @@
   "communityNav": {
     "changelog": "更新日志",
     "contact": "联系我们",
-    "unavailableTitle": "社区数据（更新日志、路线图、联系方式）可在托管版本上访问：",
-    "unavailableSetup": "本地构建默认禁用。要运行自己的内部社区面板，请设置 Convex 后端并配置",
+    "unavailableTitle": "社区数据（更新日志、联系方式）可在托管版本上访问：",
+    "unavailableSetup": "本地构建默认禁用。要运行自己的内部社区面板，请设置 Convex 后端并配置 {envVar}。",
     "unavailableOptional": "完全可选。GCS 可以在没有它的情况下正常工作。",
-    "sectionError": "This page failed to load. Switch tabs or reload to try again."
+    "sectionError": "此页面加载失败。请切换标签页或重新加载后重试。"
   },
   "contact": {
     "title": "联系我们",
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "新建任务",
-      "connectDrone": "连接无人机",
+      "connectDrone": "添加节点",
       "rthAll": "全部 RTH"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
-    "title": "连接到无人机",
+    "title": "添加节点",
     "usbSerial": "USB 串口",
     "webSocket": "WebSocket",
     "savePreset": "保存预设",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "可用",
       "chromiumOnly": "Chrome 或 Edge",
-      "desktopOrBridge": "桌面或桥接"
+      "desktopOrBridge": "桌面或桥接",
+      "desktopUnsupported": "此系统的桌面应用不支持"
     },
     "getDesktopApp": "获取桌面应用",
     "agentUdpNote": "与 agent 配对的无人机还会开放 udp:[agent-ip]:14550 供任何外部地面站使用。",
@@ -1488,14 +1496,35 @@
     "flightSuite": "Suite",
     "px4EventsFeed": {
       "searchEvents": "搜索事件",
-      "flightControllerEvents": "飞控事件"
+      "flightControllerEvents": "飞控事件",
+      "emptyNone": "暂无事件。飞控的结构化事件将显示在此处。",
+      "emptyNoMatch": "没有与搜索匹配的事件。",
+      "severityLevel": "级别 {level}",
+      "severity": {
+        "emergency": "紧急",
+        "alert": "警报",
+        "critical": "严重",
+        "error": "错误",
+        "warning": "警告",
+        "notice": "注意",
+        "info": "信息",
+        "debug": "调试"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "部分面板（OSD、LED）不适用于 PX4。",
-      "betaflightFirmwareSomePanelsDiffer": "Betaflight 固件。部分面板与 ArduPilot 不同。"
+      "betaflightFirmwareSomePanelsDiffer": "Betaflight 固件。部分面板与 ArduPilot 不同。",
+      "flightController": "飞控",
+      "loadingPanel": "正在加载面板…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "连接后遥测数据将显示在此处"
+      "telemetryDataWillAppearHere": "连接后遥测数据将显示在此处",
+      "channel": {
+        "altitude": "高度",
+        "speed": "速度",
+        "battery": "电池",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "GPS 轨迹",
       "waitingForGPSData": "正在等待 GPS 数据..."
     },
-    "clear": "清除"
+    "clear": "清除",
+    "severityLevel": {
+      "emergency": "紧急",
+      "alert": "警报",
+      "critical": "严重",
+      "error": "错误",
+      "warning": "警告",
+      "notice": "通知",
+      "info": "信息",
+      "debug": "调试"
+    },
+    "autoScrollOn": "自动滚动开启",
+    "autoScrollOff": "自动滚动关闭"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "飞行器设置"
+    "aircraftSetup": "飞行器设置",
+    "px4Safety": "故障与返航"
   },
   "droneStatus": {
     "online": "在线",
@@ -1832,7 +1874,8 @@
     "battery": "Battery",
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "此扩展未获准在此处显示标签页。"
     },
     "rebootNoFc": "No flight controller connected",
     "rebootSent": "Reboot command sent",
@@ -1842,6 +1885,9 @@
     "scrollTabsRight": "Scroll tabs right"
   },
   "vision": {
+    "coreUsageUnreachable": "未连接到此节点",
+    "stateUnknownBody": "该节点尚未向此地面站报告其能力。连接后可查看视觉引擎是否在运行。",
+    "stateUnknownTitle": "视觉状态未知",
     "title": "Vision Engine",
     "subtitle": "Manage detection models and watch live detections from this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "添加节点",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "添加节点",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -4082,7 +4128,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "航点 {n} 操作",
       "resumeFromHere": "从此处继续…",
-      "resumeFirstReason": "计划从此处开始，请正常上传"
+      "resumeFirstReason": "计划从此处开始，请正常上传",
+      "rtlAltitude": "以飞行器的 RTL 高度返航"
     },
     "bar": {
       "plans": "Plans",
@@ -4159,8 +4206,11 @@
         "invalidSequence": "任务项到达顺序错乱。请重新上传。",
         "denied": "飞控当前不接受任务。",
         "cancelled": "飞控已取消上传。",
-        "unknown": "飞控拒绝了任务（代码 {code}）。"
-      }
+        "unknown": "飞控拒绝了任务（代码 {code}）。",
+        "verifyMismatch": "飞控已确认任务，但读回的内容与发送的不同。请重新上传。",
+        "verifyFailed": "飞控已确认任务，但读回校验失败。请检查链路后重新上传。"
+      },
+      "fenceCrossed": "任务穿越了此围栏。请先修正任务，再发送围栏。"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}：未检查地形间隙 — 此相对坐标系高度缺少起始点高程",
       "terrainUnknown": "WP{wp}：地形未知 — 此航点无地面高程采样，未检查间隙",
       "terrainClearanceGround": "WP{v0}：距地形仅 {v1}m（最小：{v2}m）。地面：{ground}m MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}：距地形仅 {v1}m（最小：{v2}m）。地面未知"
+      "terrainClearanceGroundUnknown": "WP{v0}：距地形仅 {v1}m（最小：{v2}m）。地面未知",
+      "rtlAltitudeBelowTerrain": "RTL 高度（高于起飞点 {v0}m）比返航路径上的最高地形低 {v1}m（WP{v2}，{v3}m MSL）",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}：高于起飞点 {v1}m，超过 {v2}m 的法定上限"
     }
   },
   "geofence": {
@@ -4739,7 +4791,8 @@
     "viewUnavailable": "此设备不支持 3D 视图",
     "switchTo2d": "切换到 2D",
     "moreIssues": "还有 {count} 项",
-    "dismissWarning": "关闭警告"
+    "dismissWarning": "关闭警告",
+    "showPanel": "显示面板"
   },
   "history": {
     "title": "飞行日志",
@@ -5082,7 +5135,28 @@
       "sealed": "已封存",
       "verify": "验证",
       "unseal": "解除封存",
-      "replay": "回放"
+      "replay": "回放",
+      "tabs": {
+        "overview": "概览",
+        "map": "地图",
+        "charts": "图表",
+        "events": "事件",
+        "analysis": "分析",
+        "notes": "备注",
+        "media": "媒体",
+        "export": "导出"
+      },
+      "flightDetail": "飞行详情",
+      "showList": "显示飞行列表",
+      "hideList": "隐藏飞行列表",
+      "signing": "正在签名…",
+      "signAndLock": "签名并锁定",
+      "signFailed": "签名失败：{error}",
+      "unsealConfirm": "解除此记录的封存？之后的编辑将使先前的签名失效，并会记录一条审计事件。",
+      "unsealedEvent": "记录已于 {time} 解除封存",
+      "verifyOk": "签名有效：记录未被更改。",
+      "verifyBad": "签名无效：记录在签名后已被更改。",
+      "recordingStopped": "记录在 {time} 停止（存储已满）"
     },
     "chartsTab": {
       "charts": "图表",
@@ -5122,7 +5196,11 @@
       "compliance": "合规",
       "jurisdiction": "管辖区域",
       "noTelemetryRecordingAttachedConnect": "未附加遥测记录。连接并解锁无人机以开始记录。",
-      "fullFlightRecordIncludingStatsPath": "完整 FlightRecord，包括统计、航迹和元数据。"
+      "fullFlightRecordIncludingStatsPath": "完整 FlightRecord，包括统计、航迹和元数据。",
+      "errorCount": "{count, plural, other {# 个错误}}",
+      "warningCount": "{count, plural, other {# 个警告}}",
+      "ready": "就绪",
+      "generating": "正在生成…"
     },
     "analysisTab": {
       "healthSummary": "健康摘要",
@@ -5183,7 +5261,8 @@
       "dropLogFilesHereOr": "将日志文件拖放到此处，或点击浏览",
       "importFlightLogs": "导入飞行日志",
       "cancel": "取消",
-      "close": "关闭"
+      "close": "关闭",
+      "unknownFormat": "未知格式"
     },
     "preflightCard": {
       "noChecklistCaptured": "未记录检查清单",
@@ -5342,7 +5421,8 @@
     "connect": "连接",
     "writeToFcCount": "将 {n} 项写入飞控",
     "writingProgress": "正在写入 {current}/{total}…",
-    "writeToFcHint": "将已更改的参数发送到飞控"
+    "writeToFcHint": "将已更改的参数发送到飞控",
+    "notPresent": "此飞控板上不存在"
   },
   "calibration": {
     "title": "校准",
@@ -5832,7 +5912,7 @@
   "commandPalette": {
     "placeholder": "输入命令...",
     "noResults": "无结果",
-    "connectDrone": "连接无人机",
+    "connectDrone": "添加节点",
     "disconnectDrone": "断开无人机",
     "armVehicle": "解锁飞行器",
     "disarmVehicle": "加锁飞行器",
@@ -5842,7 +5922,7 @@
     "switchTab": "切换到 {tab}",
     "toggleImmersive": "切换沉浸模式",
     "goToDashboard": "前往仪表盘",
-    "goToPlan": "前往任务规划",
+    "goToPlan": "前往规划",
     "goToHistory": "前往飞行日志",
     "goToAnalytics": "前往分析",
     "goToConfig": "前往配置",
@@ -5867,7 +5947,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "选择一架飞行器以搜索其参数"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6313,7 +6394,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "配置此节点在有线面板上显示的 HDMI 信息亭：加载的页面和触摸校准。",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -7028,15 +7109,15 @@
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
-    "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
+    "pageBlurb": "扩展按节点安装，在该节点的 Agent → 扩展 标签页中进行。此页面是整个机队已安装内容的只读概览，以及注册表浏览器。",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
-    "emptyTitle": "No extensions installed yet.",
-    "emptyBlurb": "Drag a .adosplug file or pick one to install.",
+    "emptyTitle": "目前没有任何节点安装了扩展。",
+    "emptyBlurb": "浏览下方注册表，然后在节点的扩展标签页中安装。",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -8231,7 +8312,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "PX4 在“参数”中通过 UAVCAN_* 配置 CAN 驱动。此处的总线设置编辑 ArduPilot 的 CAN 参数，因此在此飞控上不显示。"
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8289,6 +8371,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "无法从此地面站访问该节点",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8526,8 +8609,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "手柄：按住叉键。键盘：按住 Enter。",
     "plugin": {
       "confirm": {
+        "titleNamed": "在 {drone} 上启用 {skill}",
         "title": "Activate skill",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8657,6 +8742,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "未报告能力",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9266,11 +9352,11 @@
       "open-cockpit": "Open cockpit",
       "configure": "Configure",
       "view-logs": "View logs",
-      "unpair": "Unpair"
+      "unpair": "取消配对"
     },
     "unpair": {
-      "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "title": "取消节点配对",
+      "message": "取消 {name} 的配对？配对将被释放，在重新配对前它会从机队中消失。"
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9336,6 +9422,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "无法连接节点",
+      "message": "{name} 无法释放配对，仍处于配对状态。仅在此地面站上忘记它？节点会保留旧配对直到被重置。",
+      "forgetHere": "仅在此地面站忘记"
     }
   },
   "rcElrsLink": {
@@ -9465,7 +9556,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "版本 {version}",
+    "thirdPartyNotices": "第三方许可"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "机架",
         "rc_tx": "遥控器"
       }
-    }
+    },
+    "pageTitle": "运营人与航空器",
+    "pageBlurb": "飞手、组织、保险、航空器、电池和设备登记。用于合规导出以及每次飞行的飞手、航空器和载荷快照。"
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "关闭且不复制",
       "copyAgain": "再次复制",
       "tryAgain": "重试",
-      "iClearedIt": "我已清除"
+      "iClearedIt": "我已清除",
+      "typeToContinue": "输入 <word>EXPORT</word> 以继续。"
     },
     "framePanel": {
       "frameConfiguration": "机架配置",
@@ -10591,7 +10687,15 @@
       "type": "类型：",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "此机架类别不使用",
+      "unknown": "未知",
+      "typeUnrecognised": "无法识别（本机的值）",
+      "typeUnknownNote": "该飞行器报告 {param} = {value}，本版本没有对应的电机布局。数值按原样显示且不会被更改；仅在需要重新配置机架时才选择列表中的类型。",
+      "selectClassForLayout": "选择机架类别以查看电机布局。",
+      "noLayoutForType": "{cls} 机架类型 {type} 无电机布局。",
+      "noLayoutForClass": "{cls} 无电机布局图。",
+      "classStillSent": "{description}。{param} 仍会发送到飞控。"
     },
     "sensorsPanel": {
       "sensors": "传感器",
@@ -10652,7 +10756,11 @@
       "patternPreview": "模式预览",
       "visualRepresentationOfLEDStrip": "LED 灯带可视化",
       "betaflightLEDStripUsesPacked": "Betaflight LED 灯带使用打包的位置/功能/颜色位掩码，最好通过 CLI 进行配置。",
-      "useThe": "使用"
+      "useThe": "使用",
+      "useLedCommand": "在 FC 控制台面板中使用 <cmd>led</cmd> 命令配置 LED 灯带分配。",
+      "ledCmdShow": "显示当前 LED 灯带配置",
+      "ledCmdExample": "示例：设置 LED 0",
+      "colorCmd": "显示/设置 LED 颜色"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "混控配置文件",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "电调校准已保存",
       "compassmotMotorInterference": "CompassMot（电机干扰）",
       "measuresMagneticInterferenceFromMotors": "测量电机/电调在不同油门下产生的磁干扰，并补偿罗盘读数。",
-      "compassmotCalibrationSaved": "CompassMot 校准已保存"
+      "compassmotCalibrationSaved": "CompassMot 校准已保存",
+      "escAck": "已拆下所有螺旋桨",
+      "compassmotAck": "飞行器已固定，周围区域无人无物",
+      "escTip1": "重要：开始前拆下所有螺旋桨",
+      "escTip2": "开始前断开电池",
+      "escTip3": "部分电调首次使用需要此校准",
+      "escTip4": "BLHeli/SimonK 电调请使用其自带工具",
+      "escTip5": "此过程在重启时以油门直通方式运行，不会通过 MAVLink 报告完成。请按电调提示音操作；向导因超时结束属正常。",
+      "compassmotTip1": "开始前确认 GPS 已 3D 定位",
+      "compassmotTip2": "飞行器须处于远离金属的开阔区域",
+      "compassmotTip3": "已装桨：测试中电机会转动",
+      "compassmotTip4": "干扰低于 30% 可接受，低于 15% 为良好"
     },
     "telRadioPanel": {
       "telemetryRadio": "数传电台",
@@ -10705,7 +10824,13 @@
       "protocol": "协议",
       "baudRate": "波特率",
       "systemIdentification": "系统标识",
-      "mavlinkSystemAndGCSIDs": "用于多机配置的 MAVLink 系统 ID 和地面站 ID"
+      "mavlinkSystemAndGCSIDs": "用于多机配置的 MAVLink 系统 ID 和地面站 ID",
+      "notPresent": "不存在",
+      "noRadioTelemetry": "无实时电台遥测：最近未收到 RADIO_STATUS",
+      "px4BaudUnderPorts": "PX4 在“端口”中设置数传端口波特率（SER_TEL1_BAUD、SER_TEL2_BAUD）。此页面不会向飞控写入任何内容。",
+      "vehicleSystemId": "飞行器系统 ID",
+      "gcsSystemId": "地面站系统 ID",
+      "uniqueSysidHint": "同一链路上的每架飞行器需要唯一的 SYSID_THISMAV。默认地面站 ID 为 255。"
     },
     "signingEnabledSection": {
       "signingEnabled": "已启用签名",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "主油门",
       "motorsWillSpinWhenTested": "测试时电机将会转动。未拆除螺旋桨可能导致人身伤害或设备损坏。",
       "enableMotorTest": "启用电机测试",
-      "stopAllMotors": "停止所有电机"
+      "stopAllMotors": "停止所有电机",
+      "removePropellers": "测试前请拆下所有螺旋桨",
+      "motorN": "电机 {n}",
+      "motorThrottleN": "电机 {n} 油门",
+      "setPct": "设定 {pct}%",
+      "mixed": "混合"
     },
     "iNavMissionPanel": {
       "inavMission": "iNav 任务",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "替换当前规划？",
       "replacePlan": "替换规划",
       "noMissionLoadedOpenThe": "未加载任务。请打开“规划”标签页创建任务。",
-      "openMissionPlanner": "打开任务规划器"
+      "openMissionPlanner": "打开任务规划器",
+      "waypointActionsTitle": "iNav 航点动作",
+      "waypointActionsBody": "iNav 支持八种航点动作。在 Plan 标签中选择 Waypoint、Poshold（无限或定时）、RTH 或 Land 作为航点动作，并从航点的动作列表中添加 Set POI、Jump 或 Set heading。"
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "我确认已拆下所有螺旋桨",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "更改机架需要重启。所有参数将重置为机架默认值。",
       "searchAirframes": "搜索机架...",
       "noAirframesMatchYourSearch": "没有符合搜索条件的机架。",
-      "customAirframeID": "自定义机架 ID"
+      "customAirframeID": "自定义机架 ID",
+      "custom": "自定义 ({id})",
+      "allCategories": "所有类别",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "重试",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "我确认已拆除所有螺旋桨",
       "disarmToTestActuators": "请先上锁再测试执行器。",
       "output": "输出",
-      "stop": "停止"
+      "stop": "停止",
+      "removePropellers": "测试前请拆下所有螺旋桨",
+      "testExplain": "所选电机以设定值旋转（或舵机移动）{seconds} 秒，然后飞控将其恢复。解锁状态下飞控会拒绝测试。",
+      "throttle": "油门",
+      "position": "位置",
+      "runSeconds": "运行 {seconds} 秒"
     },
     "px4PowerSections": {
       "batterySettings": "电池设置",
@@ -11134,19 +11274,31 @@
       "pidTuning": "PID 调参",
       "presetProfiles": "预设配置",
       "filterSettings": "滤波器设置",
-      "insGyroAccelLowPass": "INS 陀螺仪/加速度计低通滤波器及谐波陷波滤波器"
+      "insGyroAccelLowPass": "INS 陀螺仪/加速度计低通滤波器及谐波陷波滤波器",
+      "subtitleCopter": "ArduCopter 角速率 PID — 横滚、俯仰、偏航",
+      "subtitleCopterPx4": "PX4 多旋翼角速率 PID (MC_*) — 横滚、俯仰、偏航。VTOL 的固定翼速率在固定翼调参中。",
+      "subtitleRover": "ArduRover 转向速率与速度/油门 PID",
+      "subtitleRoverPx4": "PX4 车辆转向速率与速度 PID",
+      "subtitlePlane": "ArduPlane 横滚、俯仰、偏航舵机 PID 增益",
+      "subtitlePlanePx4": "PX4 固定翼角速率 PID (FW_*) — 横滚、俯仰、偏航。姿态和速度调参在固定翼调参中。"
     },
     "outputsPanel": {
       "servoMotorOutputs": "舵机 / 电机输出",
       "connectToADroneTo": "请连接无人机以配置输出。",
       "outputFunctionAssignmentPWMLimits": "输出功能分配、PWM 限值和电机测试",
-      "save": "保存"
+      "save": "保存",
+      "unsaved": "未保存"
     },
     "motorTestSection": {
       "motorTest": "电机测试",
       "enableMotorTestSafetyMaster": "启用电机测试（安全总开关）",
       "motor": "电机",
-      "removePropellersBeforeTestingMotors": "测试电机前请拆下螺旋桨，并确保无人机已固定。"
+      "removePropellersBeforeTestingMotors": "测试电机前请拆下螺旋桨，并确保无人机已固定。",
+      "throttleLabel": "油门：{value}%（最大 {max}%）",
+      "durationLabel": "时长：{value} 秒",
+      "testMotorN": "测试电机 {n}",
+      "motorN": "电机 {n}",
+      "stop": "停止"
     },
     "navConfigPanel": {
       "navigationConfig": "导航配置",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "遥测数据流速率",
       "perPortMAVLinkMessageGroup": "各端口 MAVLink 消息组速率（Hz）",
       "mavlinkChannel": "MAVLink 通道",
-      "gcsManagesTelemetryRatesOn": "由 GCS 管理遥测速率。在连接、链路恢复和飞控重启时，此 GCS 会在其连接所用的通道上请求自己的速率。关闭此项可保持此处或代理路由器设置的速率不变。"
+      "gcsManagesTelemetryRatesOn": "由 GCS 管理遥测速率。在连接、链路恢复和飞控重启时，此 GCS 会在其连接所用的通道上请求自己的速率。关闭此项可保持此处或代理路由器设置的速率不变。",
+      "notPresent": "不存在"
     },
     "signingHistorySection": {
       "history": "历史记录",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "OSD 预览",
-      "liveReconstructionOfTheOSD": "实时重建飞控绘制的 OSD（MSP DisplayPort）。仅当 FC 配置为在此连接上通过 MSP DisplayPort 输出 OSD 时（HD 眼镜 / DJI 设置）才会收到画面。自定义字体字形显示为圆点；文本和数值字段按原样显示。"
+      "liveReconstructionOfTheOSD": "实时重建飞控绘制的 OSD（MSP DisplayPort）。仅当 FC 配置为在此连接上通过 MSP DisplayPort 输出 OSD 时（HD 眼镜 / DJI 设置）才会收到画面。自定义字体字形显示为圆点；文本和数值字段按原样显示。",
+      "noFramesYet": "尚无 OSD 帧"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "温度传感器",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "飞行模式",
-      "read": "读取"
+      "read": "读取",
+      "unsavedCount": "{count} 项未保存",
+      "save": "保存",
+      "saveCount": "保存 ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "刷写工具"
+      "flashTool": "刷写工具",
+      "subtitle": "通过 USB DFU 或串口引导程序刷写固件"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "需要重启"
+      "rebootRequired": "需要重启",
+      "applyHint": "{label}。重启飞控以生效。"
     },
     "pwmRangeSlider": {
       "rangeStart": "范围起点",
@@ -11471,7 +11630,9 @@
       "loadParamFile": "加载 .param 文件",
       "selectAll": "全选",
       "selectNone": "全不选",
-      "noParametersMatchTheCurrent": "没有符合当前筛选条件的参数。"
+      "noParametersMatchTheCurrent": "没有符合当前筛选条件的参数。",
+      "applyN": "应用 {count} 个参数",
+      "selectedOf": "已选 {selected} / {total} 个可选参数"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "确认写入参数",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "此批次包含飞行安全参数。写入前请仔细检查。",
       "flightSafety": "飞行安全",
       "iUnderstandThisChangeAffects": "我了解此更改会影响飞行安全",
-      "cancel": "取消"
+      "cancel": "取消",
+      "willBeWritten": "将向飞控写入 {count} 个参数。",
+      "writeN": "写入 {count} 个参数",
+      "outOfRange": "超出允许范围 ({min} .. {max})",
+      "outOfRangeBlocked": "写入前请修正超出范围的值。"
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "未提交的参数更改",
@@ -11517,7 +11682,9 @@
       "link": "链路",
       "verified": "已验证",
       "failed": "失败",
-      "unsigned": "未签名"
+      "unsigned": "未签名",
+      "primary": "主",
+      "requireSignedBody": "要求签名遥测。加载密钥期间，所有未签名或验证失败的帧都会被丢弃。不对回复签名的飞行器将无响应。"
     },
     "servoMixerTable": {
       "targetCh": "目标通道",
@@ -11553,7 +11720,9 @@
       "programmingJS": "编程 (JS)",
       "writeExpressionsAndCompileThem": "编写表达式并将其编译为逻辑条件。加载时会将其放入飞控的空闲槽位，已在使用的条件保持不变；请在逻辑条件编辑器中检查，并从那里写入 FC。",
       "compile": "编译",
-      "loadIntoLogicConditions": "加载到逻辑条件"
+      "loadIntoLogicConditions": "加载到逻辑条件",
+      "compilesToLogicConditions": "编译为 Logic Conditions",
+      "operation": "操作"
     },
     "customOsdElementsPanel": {
       "customOSD": "自定义 OSD",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "着陆航向 1（度，0 = 关闭）",
       "landHeading2Deg0": "着陆航向 2（度，0 = 关闭）",
       "altitudeReference": "高度基准",
-      "thisPanelAppliesToFixed": "此面板适用于固定翼和三旋翼平台。当前连接的飞控配置为多旋翼。"
+      "thisPanelAppliesToFixed": "此面板适用于固定翼和三旋翼平台。当前连接的飞控配置为多旋翼。",
+      "unsaved": "未保存",
+      "approachN": "进近 {n}",
+      "save": "保存",
+      "saving": "正在保存…",
+      "seaLevel": "海平面",
+      "relativeToHome": "相对起飞点"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "传感器图表",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "罗盘飞行前检查",
       "enabled": "已启用",
-      "fix": "修复"
+      "fix": "修复",
+      "loading": "加载中…",
+      "unavailable": "不可用",
+      "disabledHint": "已禁用 — 请先启用 COMPASS_USE",
+      "none": "无",
+      "lenient": "宽松",
+      "recommendLenient": "{value} — 建议设为 3 以宽松检测方向",
+      "lowLimit": "上限偏低",
+      "increaseTo": "提高到 {value}",
+      "unknownValue": "未知 ({value})",
+      "extInternal": "内置",
+      "extExternal": "外置",
+      "extForced": "强制外置",
+      "learnOff": "关",
+      "learnInternal": "内部",
+      "learnEkf": "EKF",
+      "learnInFlight": "飞行中",
+      "unknown": "未知",
+      "notChanged": "{name} 未更改：{reason}",
+      "noReply": "飞控无应答",
+      "setTo": "{name} 已设为 {value}"
     },
     "pidAnalysisSummary": {
       "tuneScore": "调参评分",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "非 GPS 定位",
       "ekf3SourceSetsAndExternal": "EKF3 源集及外部导航/信标后端",
       "externalNavigationVISO": "外部导航 (VISO)",
-      "beaconBCN": "信标 (BCN)"
+      "beaconBCN": "信标 (BCN)",
+      "sourceSet": "源组 {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "直升机",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "网格",
       "live": "实时",
-      "dragElementsToRepositionClick": "拖动元素以调整位置。点击侧栏中的元素以切换显示。"
+      "dragElementsToRepositionClick": "拖动元素以调整位置。点击侧栏中的元素以切换显示。",
+      "osdPreview": "OSD 预览"
     },
     "keyAgeNudge": {
       "rotateNow": "立即轮换",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "备份参数",
-      "restoreParameters": "恢复参数"
+      "restoreParameters": "恢复参数",
+      "downloading": "正在下载参数…",
+      "backedUp": "已备份 {count} 个参数",
+      "backupFailed": "备份失败：{error}",
+      "unknownError": "未知错误",
+      "flashing": "正在刷写…",
+      "flashFirmware": "刷写固件",
+      "restored": "参数已恢复"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "接收机默认"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "关闭"
+    },
+    "bfFailsafe": {
+      "title": "失控保护",
+      "subtitle": "遥控链路丢失时飞行器的动作",
+      "stage2": "第 2 阶段失控保护",
+      "procedure": "处理方式（0 断电，1 降落，2 GPS 救援）",
+      "delay": "保护时间（0.1 秒）",
+      "offDelay": "电机关闭延迟（0.1 秒）",
+      "throttle": "降落油门（µs）",
+      "throttleLowDelay": "低油门延迟（0.1 秒）",
+      "switchMode": "失控开关（0 第1阶段，1 断电，2 第2阶段）"
+    },
+    "px4Safety": {
+      "title": "故障检测与返航",
+      "subtitle": "触发故障的姿态限制和返航路径。断路器参数仍在参数页中设置。",
+      "failureDetector": "故障检测",
+      "maxPitch": "最大俯仰 (°)",
+      "maxRoll": "最大横滚 (°)",
+      "pitchTrigger": "俯仰触发时间 (秒)",
+      "rollTrigger": "横滚触发时间 (秒)",
+      "returnToLaunch": "返航",
+      "rtlType": "返航方式",
+      "returnAlt": "返航高度 (m)",
+      "descendAlt": "下降至高度 (m)",
+      "landDelay": "降落前悬停 (秒，-1 = 不降落)",
+      "coneAngle": "返航锥半角"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "移动摇杆以设置",
       "stickMode": "摇杆模式",
       "none": "无",
-      "close": "关闭"
+      "close": "关闭",
+      "saved": "已保存",
+      "imported": "已导入。保存后生效。",
+      "resetPending": "已载入 ADOS 默认设置。保存以保留，取消以恢复。",
+      "cancel": "取消",
+      "tourReplayDone": "下次打开飞行页面时将播放手柄导览。"
     },
     "rpcTraceTable": {
       "node": "节点",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "完成（已松开摇杆）",
-      "start": "开始"
+      "start": "开始",
+      "noControllerGranted": "未授权任何手柄"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "设为主控制器",
       "noPairedBluetoothDevices": "没有已配对的蓝牙设备。",
       "forget": "忘记",
-      "calibrateAndTuneControllersConnected": "通过 Web Gamepad API 校准和调整直接连接到此浏览器的控制器。"
+      "calibrateAndTuneControllersConnected": "通过 Web Gamepad API 校准和调整直接连接到此浏览器的控制器。",
+      "typeUnknown": "未知",
+      "kindJoystick": "摇杆",
+      "kindWheel": "方向盘",
+      "kindGamepad": "手柄",
+      "forgetTitle": "忘记 {name}？",
+      "forgetMessage": "地面站将解除配对。再次使用需重新配对。",
+      "forgotDevice": "已忘记 {name}",
+      "forgetFailed": "无法忘记 {name}"
     },
     "community": {
       "communityNavigation": "社区导航",

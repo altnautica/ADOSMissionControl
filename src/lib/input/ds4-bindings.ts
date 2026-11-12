@@ -175,6 +175,22 @@ export class GestureEngine {
     this.muted.clear();
   }
 
+  /**
+   * Forget every press without firing anything: the surface can no longer
+   * see the pad (tab hidden, pad lost), so a release it never observed must
+   * not complete a hold or count as a tap. A control still down later reads
+   * as a fresh press.
+   */
+  reset(): void {
+    for (const p of this.presses.values()) {
+      for (const b of p.candidates) if (b.gesture === "hold") this.cb.holdProgress?.(b, null);
+    }
+    this.presses.clear();
+    this.pendingTap.clear();
+    this.muted.clear();
+    this.down = new Set();
+  }
+
   private candidatesFor(control: string, held: Set<string>): Ds4Binding[] {
     const rows = this.bindings.filter((b) => b.control === control && b.with.every((w) => held.has(w)));
     if (rows.length === 0) return rows;

@@ -98,10 +98,9 @@ export function useSkillInput(): void {
       }
       args = { ...args, altitudeM };
     }
+    // The context's notifier is the shared toast bridge, which turns a
+    // refusal key into the spec's words.
     const ctx: SkillContext = buildSkillContext(droneId);
-    // Inject the live toast as the user-facing notifier.
-    ctx.notify = (message: string, status?: "success" | "warning" | "error" | "info") =>
-      toastRef.current(message, status);
     // An `arm` binding disarms an armed vehicle, and a `pause` binding resumes
     // a paused mission; disarm keeps its own hold confirm.
     void activateBound(skillId, ctx, args);

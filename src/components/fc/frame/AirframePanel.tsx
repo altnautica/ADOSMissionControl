@@ -8,6 +8,7 @@ import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager"
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,9 @@ export function AirframePanel() {
   const { showFlashResult } = useFlashCommitToast();
   const t = useTranslations("fcToasts.frame");
   const [saving, setSaving] = useState(false);
+  // SYS_AUTOSTART resets every parameter on reboot: never editable while the
+  // vehicle may be armed.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -59,6 +63,7 @@ export function AirframePanel() {
   const currentEntry = PX4_AIRFRAMES.find(a => a.id === currentAirframe);
 
   function selectAirframe(id: number) {
+    if (isHardBlocked) return;
     setLocalValue("SYS_AUTOSTART", id);
     setLocalValue("SYS_AUTOCONFIG", 1);
   }
@@ -71,8 +76,11 @@ export function AirframePanel() {
     else toast(t("airframeSaveFailed"), "error");
   }
 
+  const [flashing, setFlashing] = useState(false);
   async function handleFlash() {
+    setFlashing(true);
     const ok = await commitToFlash();
+    setFlashing(false);
     showFlashResult(ok, { successMessage: t("flashWritten") });
   }
 
@@ -97,7 +105,7 @@ export function AirframePanel() {
           <div className="p-4 rounded-lg bg-bg-tertiary border border-border-default">
             <div className="text-xs text-text-tertiary mb-1">{tr("currentAirframe")}</div>
             <div className="text-sm font-medium text-text-primary">
-              {currentEntry ? `${currentEntry.name} (${currentEntry.id})` : `Custom (${currentAirframe})`}
+              {currentEntry ? `${currentEntry.name} (${currentEntry.id})` : tr("custom", { id: currentAirframe })}
             </div>
             {currentEntry && (
               <div className="text-xs text-text-tertiary mt-1">{currentEntry.category}</div>
@@ -130,7 +138,7 @@ export function AirframePanel() {
                 value={selectedCategory ?? ""}
                 onChange={(v) => setSelectedCategory(v || null)}
                 options={[
-                  { value: "", label: "All Categories" },
+                  { value: "", label: tr("allCategories") },
                   ...CATEGORIES.map(c => ({ value: c, label: c })),
                 ]}
               />
@@ -142,6 +150,7 @@ export function AirframePanel() {
                 <button
                   key={af.id}
                   onClick={() => selectAirframe(af.id)}
+                  disabled={isHardBlocked}
                   className={`p-3 rounded-md text-left transition-colors border ${
                     af.id === (params.get("SYS_AUTOSTART") ?? 0)
                       ? "border-accent-primary bg-accent-primary/10 text-text-primary"
@@ -151,7 +160,7 @@ export function AirframePanel() {
                   }`}
                 >
                   <div className="text-xs font-medium">{af.name}</div>
-                  <div className="text-[10px] text-text-tertiary mt-0.5">ID: {af.id} | {af.category}</div>
+                  <div className="text-[10px] text-text-tertiary mt-0.5">{tr("idLine", { id: af.id, category: af.category })}</div>
                 </button>
               ))}
             </div>
@@ -168,6 +177,7 @@ export function AirframePanel() {
                   min={0}
                   value={String(params.get("SYS_AUTOSTART") ?? 0)}
                   onChange={(e) => selectAirframe(Number(e.target.value) || 0)}
+                  disabled={isHardBlocked}
                   className="h-8 text-xs flex-1"
                 />
               </div>
@@ -177,13 +187,14 @@ export function AirframePanel() {
 
         {/* Save / Flash */}
         {hasLoaded && (
-          <div className="flex gap-2 pt-2">
-            <Button size="sm" disabled={!hasDirty || saving} onClick={handleSave}>
-              <Save size={14} className="mr-1" /> {saving ? "Saving..." : "Save"}
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <Button size="sm" disabled={!hasDirty || saving || isHardBlocked} loading={saving} onClick={handleSave}>
+              <Save size={14} className="mr-1" /> <SaveBarLabel k="saveToFc" />
             </Button>
-            <Button size="sm" variant="secondary" disabled={!hasRamWrites} onClick={handleFlash}>
+            <Button size="sm" variant="secondary" disabled={!hasRamWrites || isHardBlocked || flashing} loading={flashing} onClick={handleFlash}>
               <HardDrive size={14} className="mr-1" /> <SaveBarLabel k="writeToFlash" />
             </Button>
+            {isHardBlocked && <span className="text-xs text-status-warning">{hardBlockMessage}</span>}
           </div>
         )}
       </div>

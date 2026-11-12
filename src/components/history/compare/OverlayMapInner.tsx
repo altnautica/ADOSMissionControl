@@ -13,6 +13,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { FlightRecord } from "@/lib/types";
+import { TILE_PROVIDERS } from "@/lib/tile-math";
 
 const COLORS = [
   "#3a82ff", "#eab308", "#22c55e", "#ef4444", "#a855f7",
@@ -56,8 +57,9 @@ export default function OverlayMapInner({ records }: OverlayMapInnerProps) {
     <div className="h-[360px] w-full overflow-hidden rounded border border-border-default">
       <MapContainer center={center} zoom={15} scrollWheelZoom className="h-full w-full bg-bg-tertiary">
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+          url={TILE_PROVIDERS.dark.url}
+          attribution={TILE_PROVIDERS.dark.attribution}
+          maxNativeZoom={TILE_PROVIDERS.dark.maxZoom}
           maxZoom={20}
         />
         {records.map((r, i) => {

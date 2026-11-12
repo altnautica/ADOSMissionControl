@@ -253,3 +253,23 @@ describe("proxy transport", () => {
     ).rejects.toThrow(/no connection path/i);
   });
 });
+
+describe("configAccessFrom in demo", () => {
+  afterEach(async () => {
+    const { useSettingsStore } = await import("@/stores/settings-store");
+    useSettingsStore.setState({ demoMode: false });
+  });
+
+  it("serves a simulated node from the demo agent, never the server-side proxy", async () => {
+    const { useSettingsStore } = await import("@/stores/settings-store");
+    const { useAgentConnectionStore } = await import("@/stores/agent-connection-store");
+    const { configAccessFrom } = await import("@/lib/agent/config-access");
+    useSettingsStore.setState({ demoMode: true, _hasHydrated: true });
+    const mock = { getConfig: vi.fn(), setConfigValue: vi.fn(), applySetup: vi.fn() };
+    useAgentConnectionStore.setState({ client: mock as never });
+    const access = configAccessFrom(null, { host: "gs-alpha.local", apiKey: null }, null);
+    expect(access).toEqual({ mode: "direct", client: mock });
+    useAgentConnectionStore.setState({ client: null });
+    expect(configAccessFrom(null, { host: "gs-alpha.local", apiKey: null }, null).mode).toBe("none");
+  });
+});

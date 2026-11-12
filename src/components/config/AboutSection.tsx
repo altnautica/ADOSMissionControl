@@ -3,8 +3,9 @@
  * @description The desktop app's About block on the Settings page: a "Check
  * for updates" row that asks the main process to query the release channel
  * now, instead of only at startup. What the check finds also reaches the
- * update banner, which owns download and install. Renders nothing in a
- * browser build.
+ * update banner, which owns download and install. Every build shows the app
+ * version and a link to the third-party licences; the update row is
+ * desktop-only.
  * @license GPL-3.0-only
  */
 
@@ -15,6 +16,9 @@ import { useTranslations } from "next-intl";
 import { Loader2, RefreshCw } from "lucide-react";
 import type { ElectronUpdateStatus } from "@/types/electron";
 import { usePlatform } from "@/hooks/use-platform";
+import { APP_VERSION } from "@/lib/app-version";
+
+const THIRD_PARTY_URL = "https://github.com/altnautica/ADOSMissionControl/network/dependencies";
 
 type CheckResult =
   | { kind: "idle" }
@@ -22,12 +26,10 @@ type CheckResult =
   | { kind: "done"; status: ElectronUpdateStatus }
   | { kind: "failed"; message: string };
 
-export function AboutSection(): React.ReactElement | null {
+export function AboutSection(): React.ReactElement {
   const t = useTranslations("desktopUpdate");
   const { isElectron } = usePlatform();
   const [result, setResult] = useState<CheckResult>({ kind: "idle" });
-
-  if (!isElectron) return null;
 
   const check = () => {
     const updates = window.electronAPI?.updates;
@@ -58,6 +60,18 @@ export function AboutSection(): React.ReactElement | null {
       <div className="mb-4">
         <h3 className="text-sm font-medium text-text-primary">{t("aboutTitle")}</h3>
       </div>
+      <div className="flex items-center justify-between gap-3 p-3 mb-2 border border-border-default bg-bg-secondary rounded-sm">
+        <span className="text-[11px] text-text-secondary">{t("version", { version: APP_VERSION })}</span>
+        <a
+          href={THIRD_PARTY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-accent-primary hover:underline"
+        >
+          {t("thirdPartyNotices")}
+        </a>
+      </div>
+      {isElectron && (
       <div className="flex items-center justify-between gap-3 p-3 border border-border-default bg-bg-secondary rounded-sm">
         <span className="text-[11px] text-text-secondary" role="status">
           {line ?? t("checkDescription")}
@@ -76,6 +90,7 @@ export function AboutSection(): React.ReactElement | null {
           {result.kind === "checking" ? t("checking") : t("checkForUpdates")}
         </button>
       </div>
+      )}
     </div>
   );
 }

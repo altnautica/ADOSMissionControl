@@ -28,7 +28,6 @@ import genericArt from "@/lib/cockpit-spec/gamepad-generic-art.json";
 import genericHotspots from "@/lib/cockpit-spec/gamepad-generic-hotspots.json";
 import { specString } from "@/lib/cockpit/spec-strings";
 import {
-  DS4_ACTIONS,
   DS4_CONTROLS,
   WEB_BUTTON_INDEX,
   actionLabel,
@@ -39,7 +38,6 @@ import {
 } from "@/lib/input/ds4-bindings";
 import { acquireGamepadPolling } from "@/lib/input/gamepad-poller";
 import { shortPadName, usePadStatusStore } from "@/lib/input/pad-status";
-import { useSkillRegistry } from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import {
   bindingsSaveError,
@@ -50,6 +48,7 @@ import {
 } from "@/stores/controls-store";
 import { useInputStore } from "@/stores/input-store";
 import { CalibrationCard, ClashedSkills, PrefsRow, ReplayTourRow, TestRow } from "./ControlsSettingsCards";
+import { ActionPicker } from "./ActionPicker";
 import { layoutLeaderLabels } from "./leader-labels";
 
 type Art = { viewBox: number[]; stroke_width: number; paths: { id: string; d: string; role: string }[] };
@@ -61,14 +60,6 @@ type Hotspot = {
 };
 
 const GESTURES: readonly Exclude<Ds4Gesture, "analog">[] = ["press", "tap", "hold", "double_tap"];
-const GROUP_LABEL: Record<string, string> = {
-  flight: "Flight",
-  skills: "Skills",
-  camera: "Camera",
-  view: "View & layers",
-  profile: "Profile",
-  none: "None",
-};
 /** The drawing's colours, from the cockpit spec's controller tokens. */
 const PRESSED = tokens.controller.pressed;
 const CONFLICT = tokens.controller.conflict;
@@ -223,45 +214,6 @@ function ControllerDrawing({
   );
 }
 
-function ActionPicker({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const tq = useTranslations("configUi.controlsSettings");
-  const registry = useSkillRegistry((s) => s.skills);
-  const skills = useMemo(() => [...registry.values()].filter((s) => s.source === "plugin"), [registry]);
-  return (
-    <select
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className="min-h-12 w-full rounded border border-border-default bg-bg-secondary px-2 text-xs"
-      aria-label={tq("action")}
-    >
-      {Object.keys(GROUP_LABEL).map((g) =>
-        g === "none" ? (
-          <option key="none" value="none">
-            {tq("none")}
-          </option>
-        ) : g === "skills" ? (
-          <optgroup key={g} label={GROUP_LABEL[g]}>
-            {skills.map((s) => (
-              <option key={s.id} value={`skill:${s.id}`}>
-                {s.id}
-              </option>
-            ))}
-          </optgroup>
-        ) : (
-          <optgroup key={g} label={GROUP_LABEL[g]}>
-            {DS4_ACTIONS.filter((a) => a.group === g).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </optgroup>
-        ),
-      )}
-    </select>
-  );
-}
-
 function ControlSheet({
   control,
   draft,
@@ -383,9 +335,12 @@ export function ControlsSettings() {
 
   const save = () => {
     if (saveError) return;
-    setBindings([...draft]);
+    // A draft equal to the ADOS default stores no custom table, so the
+    // profile reads "ADOS default" again.
+    if (JSON.stringify(draft) === JSON.stringify(effectiveBindings({ bindings: null }))) resetBindings();
+    else setBindings([...draft]);
     setDraft(null);
-    setMessage("Saved");
+    setMessage(tq("saved"));
   };
   const download = () => {
     const blob = new Blob([JSON.stringify(exportControls(), null, 2)], { type: "application/json" });
@@ -397,7 +352,7 @@ export function ControlsSettings() {
   };
   const upload = async (file: File) => {
     const err = importControls(await file.text());
-    setMessage(err ?? "Imported");
+    setMessage(err ?? tq("imported"));
     if (!err) setDraft([...effectiveBindings()]);
   };
 
@@ -406,7 +361,7 @@ export function ControlsSettings() {
       <header className="flex flex-wrap items-center gap-3">
         <h2 className="text-sm font-semibold">{specString("controls.title")}</h2>
         <span className="text-xs text-text-secondary" data-testid="controls-pad-name">
-          {pad.connected ? (shortPadName(pad.name) ?? "Controller") : specString("controls.press_any_button")}
+          {pad.connected ? (shortPadName(pad.name) ?? tq("controller")) : specString("controls.press_any_button")}
         </span>
         {pad.needsCalibration && <span className="text-xs text-status-warning">{specString("controls.not_standard")}</span>}
         <div className="ml-auto flex items-center gap-1" role="group" aria-label={tq("stickMode")}>
@@ -451,12 +406,26 @@ export function ControlsSettings() {
         <button
           type="button"
           onClick={() => {
-            resetBindings();
+            // Only the draft: Save keeps the default, Cancel restores the saved table.
             setDraft([...effectiveBindings({ bindings: null })]);
+            setMessage(tq("resetPending"));
           }}
+          data-testid="controls-reset"
           className="min-h-12 rounded border px-3 text-xs"
         >
           {specString("controls.reset")}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(null);
+            setMessage(null);
+          }}
+          disabled={!dirty}
+          data-testid="controls-cancel"
+          className="min-h-12 rounded border px-3 text-xs disabled:opacity-40"
+        >
+          {tq("cancel")}
         </button>
         <button type="button" onClick={download} className="min-h-12 rounded border px-3 text-xs">
           {specString("controls.export")}

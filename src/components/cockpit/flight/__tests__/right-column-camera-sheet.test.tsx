@@ -8,7 +8,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { useStreamQualityStore } from "@/lib/cockpit/stream-quality";
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 
@@ -65,6 +67,18 @@ describe("camera settings sheet", () => {
     // The camera fields stay in the sheet.
     expect(screen.getByTestId("stream-tabs")).not.toBeNull();
     expect(screen.getByTestId("camera-roster")).not.toBeNull();
+  });
+
+  it("offers Stream quality (Auto/High) and recording", async () => {
+    const sheet = await openSheet();
+    const group = within(sheet).getByRole("radiogroup", { name: specString("camera.quality") });
+    const high = within(group).getByRole("radio", { name: specString("camera.quality.high") });
+    const auto = within(group).getByRole("radio", { name: specString("camera.quality.auto") });
+    expect(high.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(auto);
+    expect(useStreamQualityStore.getState().byDrone["sheet-drone"]).toBe("auto");
+    expect(auto.getAttribute("aria-checked")).toBe("true");
+    expect(within(sheet).getByTestId("fs-camera-record").textContent).toBe(specString("cockpit.camera.record_video"));
   });
 
   it("closes on Escape", async () => {

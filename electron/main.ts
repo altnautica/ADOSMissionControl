@@ -1,7 +1,8 @@
-import { app, dialog, session } from "electron";
+import { app, dialog, Menu, session } from "electron";
 import fs from "fs";
 import path from "path";
 import { startupFailureBox } from "./desktop-dialogs";
+import { buildAppMenuTemplate } from "./app-menu";
 import { setupPermissions } from "./permissions";
 import { startServer, stopServer } from "./server";
 import { applyNavigationPolicy, createMainWindow } from "./window";
@@ -46,6 +47,10 @@ if (!gotLock) {
 
 app.whenReady().then(async () => {
   try {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate(buildAppMenuTemplate(app.isPackaged, process.platform)),
+    );
+
     // Start the embedded server. In dev (--dev, unpackaged) this is a live
     // `next dev` server with HMR; otherwise it's the production standalone bundle.
     const port = await startServer({ demo: isDemoMode, dev: isDevMode });

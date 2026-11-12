@@ -12,7 +12,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useTranslations } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
 import { usePairingStore } from "@/stores/pairing-store";
@@ -131,6 +132,8 @@ export function WelcomeModal() {
   const afterTheme: Step = computeAfterTheme(skipDownloadStep);
   const beforeReady: Step = computeBeforeReady(skipDownloadStep);
   const dotStep = computeDotStep(step, skipDownloadStep);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   if (!hasHydrated || onboarded) return null;
 
@@ -229,11 +232,15 @@ export function WelcomeModal() {
 
   // Step positions: current = center (0), before = left (-100%), after = right (100%)
   const stepX = (i: Step): string => computeStepX(i, step, direction);
+  // Off-screen steps stay mounted for the slide; `inert` keeps Tab and
+  // assistive tech on the visible one.
+  const pane = (i: Step) => ({ inert: i !== step });
 
   const baseStepClass = "absolute inset-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto [align-items:safe_center] [justify-content:safe_center] transition-transform duration-300 ease-in-out";
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[200] bg-bg-primary overflow-hidden transition-colors duration-300"
       role="dialog"
       aria-modal="true"
@@ -243,7 +250,7 @@ export function WelcomeModal() {
     >
       <div className="relative w-full h-full">
         {/* Step 0: Language */}
-        <div className={`${baseStepClass} ${stepX(0)}`}>
+        <div className={`${baseStepClass} ${stepX(0)}`} {...pane(0)}>
           <LanguageStep
             selectedLocale={selectedLocale}
             onLocaleChange={setSelectedLocale}
@@ -256,6 +263,7 @@ export function WelcomeModal() {
         {/* Step 1: Intro / Brand */}
         <div
           className={`absolute inset-0 flex flex-col md:flex-row overflow-y-auto transition-transform duration-300 ease-in-out ${stepX(1)}`}
+          {...pane(1)}
         >
           <IntroStep
             next={() => advance(2)}
@@ -266,7 +274,7 @@ export function WelcomeModal() {
         </div>
 
         {/* Step 2: Disclaimer */}
-        <div className={`${baseStepClass} ${stepX(2)}`}>
+        <div className={`${baseStepClass} ${stepX(2)}`} {...pane(2)}>
           <DisclaimerStep
             checked={disclaimerChecked}
             onChange={setDisclaimerChecked}
@@ -278,7 +286,7 @@ export function WelcomeModal() {
         </div>
 
         {/* Step 3: Preferences */}
-        <div className={`${baseStepClass} ${stepX(3)}`}>
+        <div className={`${baseStepClass} ${stepX(3)}`} {...pane(3)}>
           <PreferencesStep
             jurisdiction={jurisdiction}
             units={units}
@@ -301,7 +309,7 @@ export function WelcomeModal() {
         </div>
 
         {/* Step 4: Operating region */}
-        <div className={`${baseStepClass} ${stepX(4)}`}>
+        <div className={`${baseStepClass} ${stepX(4)}`} {...pane(4)}>
           <RegionStep
             selection={regionSelection}
             otherCode={regionOtherCode}
@@ -317,6 +325,7 @@ export function WelcomeModal() {
         {/* Step 5: Theme */}
         <div
           className={`absolute inset-0 flex flex-col items-center p-4 sm:p-6 md:p-8 pt-14 sm:pt-16 overflow-y-auto transition-transform duration-300 ease-in-out ${stepX(5)}`}
+          {...pane(5)}
         >
           <ThemeStep
             themeOrder={themeOrder}
@@ -332,7 +341,7 @@ export function WelcomeModal() {
 
         {/* Step 6: Desktop Download (skipped in Electron) */}
         {!skipDownloadStep && (
-          <div className={`${baseStepClass} ${stepX(6)}`}>
+          <div className={`${baseStepClass} ${stepX(6)}`} {...pane(6)}>
             <DownloadStep
               next={() => advance(7)}
               back={() => back(5)}
@@ -343,7 +352,7 @@ export function WelcomeModal() {
         )}
 
         {/* Step 7: Ready */}
-        <div className={`${baseStepClass} ${stepX(7)}`}>
+        <div className={`${baseStepClass} ${stepX(7)}`} {...pane(7)}>
           <ReadyStep
             onFinish={handleGetStarted}
             back={() => back(beforeReady)}

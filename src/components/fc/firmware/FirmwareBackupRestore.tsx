@@ -48,7 +48,7 @@ export function FirmwareBackupRestore({
   const handleBackupParams = useCallback(async () => {
     if (!protocol) return;
 
-    onMessage("Downloading parameters...");
+    onMessage(tk("downloading"));
     try {
       const params = await protocol.getAllParameters();
       const text = serializeParamFile(
@@ -57,14 +57,14 @@ export function FirmwareBackupRestore({
       );
       const blob = new Blob([text], { type: "text/plain" });
       downloadBlob(blob, `params-backup-${Date.now()}.param`);
-      onMessage(`Backed up ${params.length} parameters`);
+      onMessage(tk("backedUp", { count: params.length }));
       onParamBackupChecked();
       toast(t("backupDone", { count: params.length }), "success");
     } catch (err) {
-      onMessage(`Backup failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      onMessage(tk("backupFailed", { error: err instanceof Error ? err.message : tk("unknownError") }));
       toast(t("backupFailed"), "error");
     }
-  }, [protocol, toast, t, onMessage, onParamBackupChecked]);
+  }, [protocol, toast, t, tk, onMessage, onParamBackupChecked]);
 
   // Pick a file, then review the diff in the dialog; nothing is written here.
   const handleRestoreParams = useCallback(() => {
@@ -99,7 +99,7 @@ export function FirmwareBackupRestore({
         className="flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-accent-primary text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-accent-primary/80 transition-colors"
       >
         <Zap size={14} />
-        {isFlashing ? "Flashing..." : "Flash Firmware"}
+        {isFlashing ? tk("flashing") : tk("flashFirmware")}
       </button>
 
       <button
@@ -128,7 +128,7 @@ export function FirmwareBackupRestore({
         entries={restore?.entries ?? []}
         protocol={protocol}
         onClose={() => setRestore(null)}
-        onApplied={() => onMessage("Parameters restored")}
+        onApplied={() => onMessage(tk("restored"))}
       />
     </div>
   );

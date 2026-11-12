@@ -12,6 +12,8 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+const toastSpy = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: toastSpy }) }));
 vi.mock("@/components/cockpit/v2/MissionPlanIdentityBanner", () => ({ MissionPlanIdentityBanner: () => null }));
 vi.mock("@/components/map/local/use-occupancy-bitmaps", () => ({
   useOccupancyBitmaps: () => ({ lookup: () => null }),
@@ -41,6 +43,7 @@ import { useGpsOriginStore } from "@/stores/gps-origin-store";
 import { useGuidedStore } from "@/stores/guided-store";
 import { useLaunchRequestStore } from "@/stores/launch-request-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 const DRONE = "node:local-pick-test";
 const ORIGIN = { timestamp: 0, lat: 12.97, lon: 77.59, alt: 900 };
@@ -160,6 +163,25 @@ describe("LocalFrameMap point pick", () => {
     const { container } = render(<LocalFrameMap droneId={DRONE} compact />);
     fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
     expect(useGuidedStore.getState().confirmPending).toBeNull();
+    expect(useLaunchRequestStore.getState().pending).toBeNull();
+  });
+
+  it("a refused Fly here says why in a toast and opens no dialog", () => {
+    toastSpy.mockClear();
+    useNavStreamStore.setState({
+      byDrone: { [DRONE]: { pilot: { data: flying, receivedAt: Date.now() - 10_000 } } } as never,
+    });
+    const { container } = render(<LocalFrameMap droneId={DRONE} compact />);
+    fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
+    expect(toastSpy).toHaveBeenCalledWith(specString("refusal.pilot_stale"), "warning");
+    expect(useGuidedStore.getState().confirmPending).toBeNull();
+    expect(useLaunchRequestStore.getState().pending).toBeNull();
+  });
+
+  it("a fresh pilot with an unknown arm state offers no Launch here", () => {
+    setPilot({ ...grounded, armed: null, landed: null });
+    const { container } = render(<LocalFrameMap droneId={DRONE} compact />);
+    fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
     expect(useLaunchRequestStore.getState().pending).toBeNull();
   });
 });

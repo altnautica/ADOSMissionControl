@@ -58,6 +58,25 @@ export function waypointIssues(
     }
   }
 
+  // Regulatory ceiling: advisory, and checked even with no fence. A waypoint
+  // already blocked by a lower fence ceiling is not reported twice.
+  const ceiling = options?.advisoryCeiling;
+  if (
+    ceiling !== undefined &&
+    alt.aboveHome !== null &&
+    alt.aboveHome > ceiling &&
+    !(altLimit !== undefined && alt.aboveHome > altLimit)
+  ) {
+    warnings.push({
+      severity: "advisory",
+      code: "ALTITUDE_ABOVE_LIMIT",
+      message: `WP${i + 1}: Altitude ${Math.round(alt.aboveHome)}m above home is over the ${ceiling}m legal ceiling`,
+      text: { key: "wpAltitudeAboveLegalCeiling", params: { v0: i + 1, v1: Math.round(alt.aboveHome), v2: ceiling } },
+      waypointIndex: i,
+      waypointId: wp.id,
+    });
+  }
+
   // Fence floor, in the same above-home datum as the ceiling.
   const minAlt = options?.geofence?.minAltitude;
   if (minAlt !== undefined && minAlt > 0 && alt.aboveHome !== null && alt.aboveHome < minAlt) {

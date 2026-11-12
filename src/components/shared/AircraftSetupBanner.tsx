@@ -7,7 +7,8 @@
  * wizard and Later puts it off; either records the uid, so each aircraft is
  * offered once per device. It shows only on the ground: never while a flight
  * screen is mounted or a vehicle reports armed. A direct-serial FC (no agent
- * setup engine) never shows it.
+ * setup engine) never shows it, and neither does a selection that carries no
+ * flight controller surfaces (a ground station or compute node).
  *
  * @module components/shared/AircraftSetupBanner
  * @license GPL-3.0-only
@@ -22,12 +23,19 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
 import { useAircraftSetupOfferStore } from "@/stores/aircraft-setup-offer-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useNodeRegistryStore } from "@/stores/node-registry";
+import { showsFcSurfaces } from "@/lib/nodes/node-profile";
 
 /** The aircraft setup wizard (Settings › Aircraft setup). */
 export const AIRCRAFT_SETUP_HREF = "/config/aircraft-setup";
 
 export function AircraftSetupBanner(): React.ReactElement | null {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  // A profile not read yet (a bare FC) keeps the offer; a known profile must
+  // carry flight-controller surfaces. An agent setup status means the FC answers.
+  const selectedProfile = useNodeRegistryStore((s) =>
+    selectedDroneId ? (s.nodes[selectedDroneId]?.presence?.profile ?? null) : null,
+  );
   const setup = useAgentFcSetup(selectedDroneId);
   const pathname = usePathname();
   // On the ground only: no flight screen mounted and nothing armed.
@@ -40,6 +48,7 @@ export function AircraftSetupBanner(): React.ReactElement | null {
   const ground = status?.wizards.find((w) => w.id === "ground") ?? null;
   if (!uid || !ground || ground.state === "done") return null;
   if (!onGround || offered.includes(uid)) return null;
+  if (selectedProfile && !showsFcSurfaces(selectedProfile, true)) return null;
   if (pathname?.startsWith(AIRCRAFT_SETUP_HREF)) return null;
 
   return (

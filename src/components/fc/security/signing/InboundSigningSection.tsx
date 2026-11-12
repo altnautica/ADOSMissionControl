@@ -54,7 +54,7 @@ export function InboundSigningSection() {
                 <tr key={link.id}>
                   <td className="py-1">
                     {link.label}
-                    {link.isPrimary && <span className="ml-2 text-text-tertiary">primary</span>}
+                    {link.isPrimary && <span className="ml-2 text-text-tertiary">{tl("primary")}</span>}
                   </td>
                   <td className="py-1 text-right">{c ? c.signedOk : "—"}</td>
                   <td className={c && c.signedBad > 0 ? "py-1 text-right text-status-error" : "py-1 text-right"}>
@@ -74,10 +74,7 @@ export function InboundSigningSection() {
           onChange={(e) => setEnforce(e.target.checked)}
           className="mt-0.5 accent-accent-primary"
         />
-        <span>
-          Require signed telemetry. While a key is loaded, every frame that is unsigned or fails
-          verification is dropped. A vehicle that does not sign its replies goes silent.
-        </span>
+        <span>{tl("requireSignedBody")}</span>
       </label>
     </FcSection>
   );

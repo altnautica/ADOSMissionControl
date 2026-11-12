@@ -97,7 +97,7 @@ export const FC_NAV_ITEMS: FcNavItem[] = [
   // Betaflight and iNav set modes through Aux Modes and have no FLTMODE,
   // FRAME_* or sensor-type parameters. iNav's receiver and rate settings live
   // in its own panels; the shared ones are ArduPilot's and Betaflight's.
-  { id: "outputs", labelKey: "outputs", icon: <Cpu size={14} />, section: "Flight", labelOverride: { px4: "actuators" } },
+  { id: "outputs", labelKey: "outputs", icon: <Cpu size={14} />, excludeFirmware: ["betaflight", "inav"], section: "Flight", labelOverride: { px4: "actuators" } },
   { id: "receiver", labelKey: "receiver", icon: <Radio size={14} />, requiredCapability: "supportsReceiver", excludeFirmware: ["inav"], section: "Flight" },
   { id: "modes", labelKey: "flightModes", icon: <SlidersHorizontal size={14} />, requiredCapability: "supportsFlightModes", excludeFirmware: ["betaflight", "inav"], section: "Flight" },
   { id: "aux-modes", labelKey: "auxModes", icon: <ToggleLeft size={14} />, requiredCapability: "supportsAuxModes", section: "Flight" },
@@ -108,6 +108,8 @@ export const FC_NAV_ITEMS: FcNavItem[] = [
   { id: "sub-config", labelKey: "subConfig", icon: <Waves size={14} />, requiredCapability: "supportsSubConfig", vehicleClasses: ["sub"], section: "Flight" },
   // Safety
   { id: "failsafe", labelKey: "failsafe", icon: <ShieldAlert size={14} />, requiredCapability: "supportsFailsafe", excludeFirmware: ["betaflight", "inav"], section: "Safety" },
+  { id: "px4-safety", labelKey: "px4Safety", icon: <ShieldAlert size={14} />, requiredCapability: "supportsPx4Tuning", section: "Safety" },
+  { id: "bf-failsafe", labelKey: "failsafe", icon: <ShieldAlert size={14} />, requiredCapability: "supportsBetaflightConfig", section: "Safety" },
   { id: "geofence", labelKey: "geofence", icon: <Shield size={14} />, requiredCapability: "supportsGeoFence", excludeFirmware: ["inav"], section: "Safety" },
   { id: "safehome", labelKey: "safehome", icon: <Home size={14} />, requiredCapability: "supportsSafehome", section: "Safety" },
   { id: "geozone", labelKey: "geozone", icon: <MapPin size={14} />, requiredCapability: "supportsGeozone", section: "Safety" },

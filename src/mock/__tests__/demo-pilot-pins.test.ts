@@ -165,3 +165,19 @@ describe("demo pilot sessions", () => {
     expect(handle()).toBeUndefined();
   });
 });
+
+describe("demo pilot freeze", () => {
+  it("holds pilot frames back until released, so the last one ages", () => {
+    const before = useNavStreamStore.getState().byDrone[ID]!.pilot!.receivedAt;
+    handle()!.freeze(true);
+    vi.advanceTimersByTime(2500);
+    expect(useNavStreamStore.getState().byDrone[ID]!.pilot!.receivedAt).toBe(before);
+    handle()!.freeze(false);
+    expect(useNavStreamStore.getState().byDrone[ID]!.pilot!.receivedAt).toBeGreaterThan(before);
+  });
+
+  it("passes an unknown arm state through a pin", () => {
+    handle()!.pin({ armed: null, landed: null });
+    expect(pilot().armed).toBeNull();
+  });
+});

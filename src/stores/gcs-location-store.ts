@@ -36,6 +36,20 @@ function hasGeolocation(): boolean {
   return typeof navigator !== "undefined" && "geolocation" in navigator;
 }
 
+/**
+ * The desktop app on Linux has no position provider: the permission is
+ * granted but every fix fails with POSITION_UNAVAILABLE. Report that as
+ * "unavailable" instead of leaving the operator at "not requested".
+ */
+export function noPositionProvider(code: number): boolean {
+  return (
+    code === 2 &&
+    typeof window !== "undefined" &&
+    window.electronAPI?.isElectron === true &&
+    window.electronAPI.platform === "linux"
+  );
+}
+
 export const useGcsLocationStore = create<GcsLocationState>()((set, get) => ({
   // Default true to avoid SSR/client mismatch — actions check lazily and set false if unavailable
   permission: "prompt",
@@ -98,7 +112,8 @@ export const useGcsLocationStore = create<GcsLocationState>()((set, get) => ({
           resolve("granted");
         },
         (err) => {
-          const perm: GeoPermission = err.code === 1 ? "denied" : "prompt";
+          const perm: GeoPermission =
+            err.code === 1 ? "denied" : noPositionProvider(err.code) ? "unavailable" : "prompt";
           set({ permission: perm, lastError: err.message });
           resolve(perm);
         },
@@ -129,6 +144,9 @@ export const useGcsLocationStore = create<GcsLocationState>()((set, get) => ({
         set({ lastError: err.message });
         if (err.code === 1) {
           set({ permission: "denied" });
+          get().stopWatching();
+        } else if (noPositionProvider(err.code)) {
+          set({ permission: "unavailable" });
           get().stopWatching();
         }
       },

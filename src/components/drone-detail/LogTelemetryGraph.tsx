@@ -27,10 +27,10 @@ import type { BatteryData, RcData, VfrData } from "@/lib/types/telemetry";
 // ── Graph channel config ─────────────────────────────────────
 
 const GRAPH_CHANNELS = [
-  { key: "altitude" as const, label: "Alt", color: "var(--color-accent-primary)" },
-  { key: "speed" as const, label: "Spd", color: "#eab308" },
-  { key: "battery" as const, label: "Bat", color: "var(--color-status-success)" },
-  { key: "rssi" as const, label: "RSSI", color: "var(--color-status-warning)" },
+  { key: "altitude" as const, color: "var(--color-accent-primary)" },
+  { key: "speed" as const, color: "#eab308" },
+  { key: "battery" as const, color: "var(--color-status-success)" },
+  { key: "rssi" as const, color: "var(--color-status-warning)" },
 ] as const;
 
 type ChannelKey = (typeof GRAPH_CHANNELS)[number]["key"];
@@ -95,7 +95,7 @@ export function LogTelemetryGraph() {
     <div className="border-t border-border-default">
       {/* Channel toggles */}
       <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border-default">
-        {GRAPH_CHANNELS.map(({ key, label, color }) => (
+        {GRAPH_CHANNELS.map(({ key, color }) => (
           <button
             key={key}
             onClick={() => toggleChannel(key)}
@@ -107,7 +107,7 @@ export function LogTelemetryGraph() {
               className="w-1.5 h-1.5 rounded-full bg-bg-tertiary"
               style={activeChannels[key] ? { backgroundColor: color } : undefined}
             />
-            {label}
+            {tk(`channel.${key}`)}
           </button>
         ))}
       </div>
@@ -138,6 +138,7 @@ export function LogTelemetryGraph() {
                   key={key}
                   type="monotone"
                   dataKey={key}
+                  name={tk(`channel.${key}`)}
                   stroke={color}
                   dot={false}
                   strokeWidth={1.5}

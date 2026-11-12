@@ -25,6 +25,8 @@ import { cn } from "@/lib/utils";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
+import { useArmedLock } from "@/hooks/use-armed-lock";
+import { isFrameGeometryParam } from "../shared/frame-geometry-params";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
 import {
@@ -72,17 +74,23 @@ export function Px4ControlAllocationPanel() {
 
   const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const tShared = useTranslations("fcShared");
   const renderField = (f: CaField) => {
-    const value = params.get(f.param) ?? 0;
+    const read = params.get(f.param);
+    const value = read ?? 0;
+    const locked = isHardBlocked && isFrameGeometryParam(f.param);
     const isDirty = dirtyParams.has(f.param);
     const meta = paramMeta.get(f.param);
     return (
       <div key={f.param} className="grid grid-cols-[180px_1fr] items-center gap-3">
         <ParamFieldLabel label={f.label} param={pn(f.param)} meta={meta} />
-        {f.kind === "enum" && meta?.values && meta.values.size > 0 ? (
-          <EnumSelect values={meta.values} value={value} onChange={(v) => setLocalValue(f.param, v)} />
+        {read === undefined && hasLoaded ? (
+          <span className="text-xs font-mono text-text-tertiary">{tShared("notPresent")}</span>
+        ) : f.kind === "enum" && meta?.values && meta.values.size > 0 ? (
+          <EnumSelect values={meta.values} value={value} onChange={(v) => setLocalValue(f.param, v)} disabled={locked} />
         ) : (
-          <input
+          <input disabled={locked} title={locked ? hardBlockMessage : undefined}
             type="number" min={meta?.range?.min} max={meta?.range?.max} step="any" value={value}
             onChange={(e) => setLocalValue(f.param, parseFloat(e.target.value) || 0)}
             className={cn(
@@ -121,7 +129,7 @@ export function Px4ControlAllocationPanel() {
                 <span className="text-xs text-text-secondary">{tr("reversibleMotors")}</span>
                 <span className="text-[9px] text-text-tertiary block font-mono">{pn("CA_R_REV")}</span>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setRevEditor(true)}>
+              <Button variant="secondary" size="sm" disabled={isHardBlocked} onClick={() => setRevEditor(true)}>
                 {revValue === 0 ? "None" : `${revValue} — set bits…`}
               </Button>
             </div>

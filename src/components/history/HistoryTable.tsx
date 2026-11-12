@@ -169,13 +169,20 @@ export function HistoryTable({
                     {rec.favorite && <Star size={12} className="inline text-accent-primary fill-current" />}
                   </td>
                   <td className="px-3 py-2 text-text-primary font-mono">
-                    {rec.customName ? (
-                      <span className="text-text-primary">{rec.customName}</span>
-                    ) : rec.startTimeUnknown ? (
-                      <span className="text-text-tertiary" title={t("dateUnknownHint")}>{t("dateUnknown")}</span>
-                    ) : (
-                      formatDate(rec.startTime ?? rec.date)
-                    )}
+                    {/* A named flight shows its name over its date, so the
+                        date is never lost from the list. */}
+                    <div className="flex flex-col leading-tight">
+                      {rec.customName && (
+                        <span className="text-text-primary font-sans">{rec.customName}</span>
+                      )}
+                      {rec.startTimeUnknown ? (
+                        <span className="text-text-tertiary" title={t("dateUnknownHint")}>{t("dateUnknown")}</span>
+                      ) : (
+                        <span className={rec.customName ? "text-[10px] text-text-tertiary" : undefined}>
+                          {formatDate(rec.startTime ?? rec.date)}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-text-primary">
                     <div className="flex flex-col leading-tight">

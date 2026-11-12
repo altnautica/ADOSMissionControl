@@ -7,6 +7,8 @@ import { useTranslations } from "next-intl";
 import { Settings, AlertTriangle, LogOut, CloudOff, Zap, X, Star, BookOpen } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CommandNav } from "./CommandNav";
+import { ShellCompactMenu } from "./ShellCompactMenu";
+import { openCommandPalette, usePaletteChordLabel } from "@/lib/command-palette-open";
 import { RightRail } from "./RightRail";
 import { ShellBridges } from "./ShellBridges";
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
@@ -159,6 +161,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   useSkillToastBridge();
 
   const t = useTranslations("shell");
+  const paletteChord = usePaletteChordLabel();
   const { isElectron, isWindows, isLinux } = usePlatform();
   const {
     guardOpen,
@@ -278,7 +281,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Center — Navigation */}
-        <div className={cn("self-stretch flex", isElectron && !isLinux && "[-webkit-app-region:no-drag]")}>
+        <div className={cn("self-stretch hidden md:flex", isElectron && !isLinux && "[-webkit-app-region:no-drag]")}>
           <CommandNav />
         </div>
 
@@ -297,11 +300,22 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
             </Tooltip>
           )}
 
-          {/* Cmd+K hint */}
+          {/* Below md the nav and header links fold into one menu button. */}
+          <div className="md:hidden flex items-center">
+            <ShellCompactMenu />
+          </div>
+
+          <div className="hidden md:flex items-center gap-3">
+          {/* Command palette chord; a click opens the palette too */}
           <Tooltip content={t("commandPalette")} position="bottom">
-            <kbd className="text-[10px] text-text-tertiary border border-border-default px-1 py-0.5 font-mono hidden sm:inline">
-              ⌘K
-            </kbd>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              aria-label={t("commandPalette")}
+              className="text-[10px] text-text-tertiary hover:text-text-secondary border border-border-default px-1 py-0.5 font-mono"
+            >
+              {paletteChord}
+            </button>
           </Tooltip>
 
           {/* Community */}
@@ -368,6 +382,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
               <Settings size={16} />
             </Link>
           </Tooltip>
+          </div>
 
           {/* Auth — sign in or user menu (far right) */}
           {isAuthenticated && convexAvailable ? (

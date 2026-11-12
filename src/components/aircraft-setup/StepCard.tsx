@@ -18,7 +18,7 @@ import { AlertTriangle, CheckCircle2, CircleDashed, Gamepad2, Loader2, MinusCirc
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import { inputArgs, liveRows, outputQuestion } from "@/lib/fc-setup/parse";
-import { formatValue, optionText, setupImageUrl, setupLabel, setupText } from "@/lib/fc-setup/strings";
+import { formatValue, optionText, setupImageUrl, setupLabel, setupRefusalText, setupText } from "@/lib/fc-setup/strings";
 import { HOLD_CONFIRM_MS, type ActionStyle, type InputOption, type SetupAction, type SetupStep, type SetupValue, type StepInput, type StepState } from "@/lib/fc-setup/types";
 import { cn } from "@/lib/utils";
 
@@ -187,7 +187,7 @@ export function StepCard({ step, busy, error, onAction }: StepCardProps) {
           {step.blockers.map((b) => (
             <li key={b} className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>{setupText(b, step.args)}</span>
+              <span>{setupRefusalText(b, step.args)}</span>
             </li>
           ))}
         </ul>

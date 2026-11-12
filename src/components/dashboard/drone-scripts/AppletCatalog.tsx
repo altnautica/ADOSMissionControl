@@ -20,6 +20,10 @@ import { cn } from "@/lib/utils";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { APPLET_CATALOG, type AppletCatalogEntry } from "./applet-catalog";
 import { SCRIPTS_DIR } from "./scripts-constants";
+import { confirmArmedParamWrite } from "@/lib/protocol/param-write";
+
+/** Pending-write records from this surface are attributed to the scripts panel. */
+const PANEL_ID = "drone-scripts";
 
 export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
   const tq = useTranslations("dashboard.appletCatalog");
@@ -49,6 +53,14 @@ export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
           );
           return;
         }
+      }
+      // Same armed-write guard as every other parameter write: one
+      // confirmation naming the applet's tunables before anything is sent.
+      if (
+        entry.params?.length &&
+        !(await confirmArmedParamWrite(PANEL_ID, entry.params.map((p) => p.name)))
+      ) {
+        return;
       }
       const bytes = new TextEncoder().encode(entry.body);
       await protocol.uploadFileViaFtp(`${SCRIPTS_DIR}/${entry.filename}`, bytes);

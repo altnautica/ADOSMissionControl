@@ -25,7 +25,8 @@ import { MoreHorizontal } from "lucide-react";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { specOrAppText } from "@/lib/cockpit/spec-strings";
-import { useForgetNode } from "@/hooks/use-forget-node";
+import { useUnpairNode } from "@/hooks/use-unpair-node";
+import { nodeCanFly, showsFcSurfaces, type NodeProfile } from "@/lib/nodes/node-profile";
 import { useUiStore } from "@/stores/ui-store";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -50,6 +51,21 @@ const NAV_ITEMS = [
   { id: "view-logs", tab: "agent", panel: "logs", profile: null },
 ] as const;
 
+/**
+ * The flight actions a node's row menu offers. A node without flight
+ * controller surfaces (ground station, workstation, a Visor with no hub)
+ * gets none: a list of disabled Arm / Land / Kill entries there is noise. A
+ * Visor with a hub keeps only disarm and kill, the actions that make it safe.
+ */
+export function boardFlightSkills(
+  profile: NodeProfile,
+  fcReachable: boolean,
+): (typeof BOARD_ACTION_SKILLS)[number][] {
+  if (!showsFcSurfaces(profile, fcReachable)) return [];
+  if (nodeCanFly(profile)) return [...BOARD_ACTION_SKILLS];
+  return BOARD_ACTION_SKILLS.filter((id) => id === "disarm" || id === "kill");
+}
+
 export function NodeActionsMenu({
   node,
   skills,
@@ -62,11 +78,14 @@ export function NodeActionsMenu({
   const t = useTranslations();
   const tNodes = useTranslations("nodesView");
   const [confirmingUnpair, setConfirmingUnpair] = useState(false);
-  const forget = useForgetNode();
+  const { unpair, fallbackDialog } = useUnpairNode();
 
-  const flightActions = BOARD_ACTION_SKILLS.map((id) =>
-    skills.resolve(id),
-  ).filter((action): action is NodeSkillAction => action !== null);
+  const flightActions = boardFlightSkills(
+    node.profile,
+    Boolean(node.fcConnected || node.transportOpen),
+  )
+    .map((id) => skills.resolve(id))
+    .filter((action): action is NodeSkillAction => action !== null);
 
   const navItems = NAV_ITEMS.filter(
     (item) => item.profile === null || item.profile === node.profile,
@@ -146,11 +165,12 @@ export function NodeActionsMenu({
           variant="danger"
           onConfirm={() => {
             setConfirmingUnpair(false);
-            void forget(node._id, { convexId: node.convexId ?? null });
+            void unpair(node._id, { convexId: node.convexId ?? null, name: node.name });
           }}
           onCancel={() => setConfirmingUnpair(false)}
         />
       )}
+      {fallbackDialog}
     </>
   );
 }

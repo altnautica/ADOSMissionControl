@@ -11,7 +11,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { renderWithIntl } from "../helpers/intl-wrapper";
 import { activate, SPEC_HOLD_MS } from "@/lib/skills";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { resetCooldownState } from "@/lib/skills/cooldown";
@@ -109,11 +110,11 @@ describe("Fly Here altitude", () => {
 });
 
 describe("Fly Here dialog", () => {
-  function open(): void {
+  function open(flightScreenHost = false): void {
     useGuidedStore.setState({
       confirmPending: { droneId: drone, lat: 10, lon: 20, screenX: 0, screenY: 0 },
     });
-    render(<GuidedConfirmDialog />);
+    renderWithIntl(<GuidedConfirmDialog flightScreenHost={flightScreenHost} />);
   }
 
   it("never sends a cleared altitude box", async () => {
@@ -187,7 +188,8 @@ describe("Fly Here dialog", () => {
     root.setAttribute("data-testid", "flight-screen");
     document.body.appendChild(root);
     try {
-      open();
+      // On the flight screen only the screen's own dialog shows.
+      open(true);
       const dialog = screen.getByTestId("fly-here-dialog");
       expect(dialog.style.top).toContain("var(--fs-bar-b");
       expect(dialog.className).not.toContain("bottom-4");

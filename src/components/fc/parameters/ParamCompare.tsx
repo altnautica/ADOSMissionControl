@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { parseParamFile, compareParams, type ParamDiff } from "@/lib/formats/param-file-parser";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +35,8 @@ interface ParamCompareProps {
 
 export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProps) {
   const tl = useTranslations("fcPanels.paramCompare");
+  // A whole file is not applied to a vehicle that may be armed.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const { toast } = useToast();
   const t = useTranslations("fcToasts.parameters");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -125,7 +128,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
 
   const handleApply = useCallback(async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol || selected.size === 0) return;
+    if (!protocol || selected.size === 0 || isHardBlocked) return;
 
     const entries = diffs.filter((d) => selected.has(d.name));
     // Same armed-write guard as every other parameter write: one confirmation
@@ -169,7 +172,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
 
     setApplying(false);
     setApplyProgress({ current: 0, total: 0 });
-  }, [diffs, selected, metadata, toast, t, onApplied]);
+  }, [diffs, selected, metadata, toast, t, onApplied, isHardBlocked]);
 
   return (
     <div className="flex flex-col gap-4 max-h-[70vh]">
@@ -316,9 +319,10 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-tertiary">{selected.size} of {selectableCount} selectable params selected</span>
-            <Button variant="primary" size="sm" icon={<HardDrive size={12} />} onClick={handleApply} disabled={selected.size === 0 || applying} loading={applying}>
-              Apply {selected.size} Parameter{selected.size !== 1 ? "s" : ""}
+            <span className="text-xs text-text-tertiary">{tl("selectedOf", { selected: selected.size, total: selectableCount })}</span>
+            {isHardBlocked && <span role="alert" className="text-xs text-status-warning">{hardBlockMessage}</span>}
+            <Button variant="primary" size="sm" icon={<HardDrive size={12} />} onClick={handleApply} disabled={selected.size === 0 || applying || isHardBlocked} loading={applying}>
+              {tl("applyN", { count: selected.size })}
             </Button>
           </div>
         </>

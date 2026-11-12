@@ -5,17 +5,17 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../locales/en.json";
 
 // Spy on the shared dispatch pipeline while keeping the real registry + context
-// builder, so a selection is asserted to route through `activateBound` (never a
+// builder, so a selection is asserted to route through `activate` (never a
 // palette-local side effect).
 vi.mock("@/lib/skills", async () => {
   const actual = await vi.importActual<typeof import("@/lib/skills")>(
     "@/lib/skills",
   );
-  return { ...actual, activateBound: vi.fn(() => Promise.resolve()) };
+  return { ...actual, activate: vi.fn(() => Promise.resolve()) };
 });
 
 import { CockpitCommandPalette } from "@/components/cockpit/CockpitCommandPalette";
-import { activateBound, registerBuiltins } from "@/lib/skills";
+import { activate, registerBuiltins } from "@/lib/skills";
 import { useDroneManager } from "@/stores/drone-manager";
 
 const DRONE = "drone-1";
@@ -35,7 +35,7 @@ describe("CockpitCommandPalette", () => {
   beforeEach(() => {
     registerBuiltins();
     useDroneManager.setState({ selectedDroneId: DRONE });
-    (activateBound as unknown as ReturnType<typeof vi.fn>).mockClear();
+    (activate as unknown as ReturnType<typeof vi.fn>).mockClear();
   });
   afterEach(() => {
     cleanup();
@@ -46,6 +46,19 @@ describe("CockpitCommandPalette", () => {
     renderPalette();
     // Arm is always present (not gated behind autonomous nav).
     expect(screen.getByText(messages.skills.arm.label)).toBeTruthy();
+  });
+
+  it("names built-ins with the shared spec words", () => {
+    renderPalette();
+    expect(screen.getByText("Return home")).toBeTruthy();
+    expect(screen.getByText("Take off")).toBeTruthy();
+    expect(screen.queryByText("Return to Home")).toBeNull();
+  });
+
+  it("fires the row's own skill, not the chord-resolved one", () => {
+    renderPalette();
+    fireEvent.click(screen.getByText("Take off"));
+    expect((activate as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe("takeoff");
   });
 
   it("filters commands by the search query", () => {
@@ -67,8 +80,8 @@ describe("CockpitCommandPalette", () => {
   it("fires the chosen command through the shared pipeline and closes", () => {
     const { onClose } = renderPalette();
     fireEvent.click(screen.getByText(messages.skills.arm.label));
-    expect(activateBound).toHaveBeenCalledTimes(1);
-    expect((activateBound as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(
+    expect(activate).toHaveBeenCalledTimes(1);
+    expect((activate as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(
       "arm",
     );
     expect(onClose).toHaveBeenCalled();

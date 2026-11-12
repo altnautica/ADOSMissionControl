@@ -68,8 +68,12 @@ describe("cockpit readouts on spec keys", () => {
     const text = panel.textContent ?? "";
     for (const key of [
       "follow.phase.coasting",
-      "agl.source.baro",
-      "cockpit.readout.agl",
+    ]) {
+      expect(text).toContain(`<${key}>`);
+    }
+    // The bottom row owns the height above the ground.
+    expect(text).not.toContain("<cockpit.readout.agl>");
+    for (const key of [
       "follow.geo.depression:22°",
       "follow.geo.bearing:064",
       "follow.cue.ground",

@@ -93,6 +93,15 @@ describe("Menu in the top bar", () => {
     expect(screen.getByTestId("mode-sheet")).toBeTruthy();
   });
 
+  it("returns focus to the Menu button when Escape closes the Menu", () => {
+    mount();
+    openMenu();
+    expect(document.activeElement).not.toBe(screen.getByTestId("fs-menu-button"));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("fs-menu")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByTestId("fs-menu-button"));
+  });
+
   it("opens the pre-flight checklist sheet from the Pre-flight row", () => {
     mount();
     const menu = openMenu();

@@ -464,3 +464,23 @@ export function getMockVisorCapabilities(): AgentCapabilities & { profile: strin
     lora: false,
   };
 }
+
+/**
+ * Mock capability snapshot for the demo compute workstation: a GPU host that
+ * serves offloaded perception, with no cameras, radio or GNSS of its own.
+ */
+export function getMockWorkstationCapabilities(): AgentCapabilities & { profile: string } {
+  const gs = getMockGroundStationCapabilities();
+  return {
+    tier: 4,
+    cameras: [],
+    videoStreams: [],
+    compute: { npu_available: false, npu_runtime: "tensorrt", npu_tops: 0, npu_utilization_pct: jitter(41, 10), gpu_available: true },
+    vision: gs.vision,
+    models: gs.models,
+    runtimeMode: "native",
+    profile: "workstation",
+    gnss: false,
+    lora: false,
+  };
+}

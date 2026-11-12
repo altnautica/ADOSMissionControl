@@ -1,11 +1,18 @@
 import { BrowserWindow, dialog, session } from "electron";
 
-const ALLOWED_PERMISSIONS = new Set([
+/** Sony's USB vendor id: the only HID devices the app asks for (DS4 lightbar). */
+export const SONY_HID_VENDOR = 0x054c;
+
+export const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set([
   "clipboard-read",
   "clipboard-sanitized-write",
   "fullscreen",
   "serial",
   "usb",
+  // WebHID: the controller settings drive a DualShock 4 lightbar and rumble.
+  "hid",
+  // Immersive cockpit keeps the display awake with the Screen Wake Lock API.
+  "screen-wake-lock",
   // Operator position. `geolocation` was ABSENT, so `setPermissionCheckHandler`
   // reported `denied` and `setPermissionRequestHandler` denied
   // unconditionally — no OS prompt was ever shown — and Follow Me, which
@@ -134,4 +141,31 @@ export function setupPermissions(port: number): void {
 
     callback();
   });
+
+  // WebHID device selection: without a handler Electron grants nothing and
+  // the DS4 lightbar never connects. Only Sony controllers are offered.
+  ses.on("select-hid-device", (event, details, callback) => {
+    event.preventDefault();
+    const devices = sonyHidDevices(details.deviceList);
+    if (devices.length === 0) {
+      callback();
+      return;
+    }
+    const labels = devices.map((device) => device.name || device.deviceId);
+    const selection = dialog.showMessageBoxSync({
+      type: "question",
+      title: "Select controller",
+      message: "Choose the controller Mission Control should use.",
+      buttons: [...labels, "Cancel"],
+      cancelId: labels.length,
+      defaultId: 0,
+      noLink: true,
+    });
+    callback(selection >= 0 && selection < devices.length ? devices[selection].deviceId : undefined);
+  });
+}
+
+/** The HID devices the chooser offers: Sony controllers only. */
+export function sonyHidDevices<T extends { vendorId: number }>(list: readonly T[]): T[] {
+  return list.filter((device) => device.vendorId === SONY_HID_VENDOR);
 }

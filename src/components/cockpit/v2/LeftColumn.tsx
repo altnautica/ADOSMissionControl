@@ -116,8 +116,9 @@ export function LeftColumn({ droneId }: { droneId: string }) {
   }, []);
   // Only a fresh pilot frame says anything; a frozen one is no pilot at all.
   const pilot = pilotFresh(receivedAt, now) ? frame : null;
+  // An unknown arm state (null) may be a vehicle in the air: Land, not Take off.
   const armed = pilot ? pilot.armed : fcArmed;
-  const onGround = !armed || vehicleLanded(droneId, now) === true;
+  const onGround = armed === false || vehicleLanded(droneId, now) === true;
   const fire = (id: string) => void activate(id, buildSkillContext(droneId));
   // With the drone's pilot reachable, Take off opens the Launch sheet (one
   // hold runs checks, arm, take-off and the after-take-off action); without

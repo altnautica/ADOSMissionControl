@@ -20,17 +20,25 @@ import {
 } from "@/components/command/shared/SystemResourceGauges";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useVisionEngineStatus } from "@/hooks/use-vision-engine-models";
+import { useVisionEngineStatus, type VisionEngineConnection } from "@/hooks/use-vision-engine-models";
 
 const REFRESH_MS = 5000;
 
-export function PerceptionUsageCard() {
+/**
+ * @param agent The rendered node's own connection; null when it has none, so
+ *   neither another node's gauges nor its engine show here. Omitted: the
+ *   attached connection.
+ */
+export function PerceptionUsageCard({ agent }: { agent?: VisionEngineConnection | null } = {}) {
   const tv = useTranslations("vision");
   const ta = useTranslations("computeMetrics");
-  const resources = useAgentSystemStore((s) => s.resources);
+  const ambientResources = useAgentSystemStore((s) => s.resources);
   const fetchResources = useAgentSystemStore((s) => s.fetchResources);
-  const connected = useAgentConnectionStore((s) => s.connected);
-  const status = useVisionEngineStatus();
+  const ambientConnected = useAgentConnectionStore((s) => s.connected);
+  const status = useVisionEngineStatus(agent);
+  const ownNode = agent !== null;
+  const resources = ownNode ? ambientResources : null;
+  const connected = ownNode && ambientConnected;
 
   // Keep the core gauges fresh while the hub is open (no-op in cloud mode /
   // without a client — the store guards both).
@@ -71,7 +79,7 @@ export function PerceptionUsageCard() {
         <SystemResourceGauges resources={resources} />
       ) : (
         <div className="text-[10px] text-text-tertiary text-center py-2">
-          {tv("coreUsageAwaiting")}
+          {ownNode ? tv("coreUsageAwaiting") : tv("coreUsageUnreachable")}
         </div>
       )}
 

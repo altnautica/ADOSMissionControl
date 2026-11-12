@@ -61,7 +61,7 @@ export function TelRadioPanel() {
   const unread = (label: string) => (
     <div>
       <span className="text-xs text-text-secondary">{lbl(label)}</span>
-      <p className="text-xs font-mono text-text-tertiary">{hasLoaded ? "not present" : "—"}</p>
+      <p className="text-xs font-mono text-text-tertiary">{hasLoaded ? tr("notPresent") : "—"}</p>
     </div>
   );
   const enumField = (name: string, label: string) => {
@@ -125,13 +125,13 @@ export function TelRadioPanel() {
                 </div>
               </div>
             ) : (
-              <p className="text-[10px] text-text-tertiary">
-                No live radio telemetry: RADIO_STATUS not received recently
-              </p>
+              <p className="text-[10px] text-text-tertiary">{tr("noRadioTelemetry")}</p>
             )}
           </FcSection>
 
-          {!isPx4 && (
+          {isPx4 ? (
+            <p className="text-[10px] text-text-tertiary">{tr("px4BaudUnderPorts")}</p>
+          ) : (
             <>
               {/* Serial Port Config */}
               <FcSection icon={<Radio size={14} />} title={tr("serialPortConfiguration")} description={tr("protocolAndBaudRateFor")}>
@@ -156,27 +156,27 @@ export function TelRadioPanel() {
               {/* System ID */}
               <FcSection icon={<Radio size={14} />} title={tr("systemIdentification")} description={tr("mavlinkSystemAndGCSIDs")}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {idField("SYSID_THISMAV", "Vehicle System ID")}
-                  {idField("SYSID_MYGCS", "GCS System ID")}
+                  {idField("SYSID_THISMAV", tr("vehicleSystemId"))}
+                  {idField("SYSID_MYGCS", tr("gcsSystemId"))}
                 </div>
-                <p className="text-[10px] text-text-tertiary mt-1">
-                  Each vehicle on the same link needs a unique SYSID_THISMAV. Default GCS ID is 255.
-                </p>
+                <p className="text-[10px] text-text-tertiary mt-1">{tr("uniqueSysidHint")}</p>
               </FcSection>
             </>
           )}
 
-          {/* Save */}
-          <PanelSaveBar
-            onSave={handleSave}
-            saving={saving}
-            saveDisabled={!hasDirty || !connected}
-            showFlash={hasRamWrites}
-            onFlash={handleFlash}
-            flashing={flashing}
-            showConnectHint={!connected}
-            showUnsavedHint={hasDirty && connected}
-          />
+          {/* Save: PX4 has nothing to write here. */}
+          {!isPx4 && (
+            <PanelSaveBar
+              onSave={handleSave}
+              saving={saving}
+              saveDisabled={!hasDirty || !connected}
+              showFlash={hasRamWrites}
+              onFlash={handleFlash}
+              flashing={flashing}
+              showConnectHint={!connected}
+              showUnsavedHint={hasDirty && connected}
+            />
+          )}
         </div>
       </div>
     </ArmedWarningBanner>

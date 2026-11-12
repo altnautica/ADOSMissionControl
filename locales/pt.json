@@ -283,6 +283,8 @@
       "unknown": "Nó de agente"
     },
     "hero": {
+      "subjectAgent": "Agente",
+      "subjectFc": "Controladora de voo",
       "online": "Online",
       "offline": "Offline",
       "reconnecting": "Reconnecting…"
@@ -390,9 +392,9 @@
       "unmuteAlerts": "Reativar alertas",
       "resetPersonalization": "Redefinir personalização",
       "personalizationReset": "Personalização redefinida",
-      "forget": "Esquecer",
-      "forgetTitle": "Esquecer nó",
-      "forgetMessage": "Esquecer {node}? Isso remove o emparelhamento e apaga a personalização."
+      "forget": "Desparear",
+      "forgetTitle": "Desparear nó",
+      "forgetMessage": "Desparear {node}? O pareamento é liberado e o nó some da frota até ser pareado de novo."
     },
     "dotEditor": {
       "title": "Configurar pontos",
@@ -432,7 +434,8 @@
       "openSource": "Open Source GPL-3.0",
       "getStarted": "Começar",
       "privacy": "Seus dados ficam neste dispositivo.",
-      "privacyDetail": "Não coletamos nem rastreamos nada."
+      "privacyDetail": "Não coletamos nem rastreamos nada.",
+      "descriptionDesktop": "Configure, planeje missões e voe qualquer drone ArduPilot, PX4 ou Betaflight. Combine com o ADOS Drone Agent para rodar inteligência na borda. Código aberto. Roda no seu computador."
     },
     "disclaimer": {
       "title": "Antes de Voar",
@@ -567,8 +570,8 @@
       "region": "Region"
     },
     "themeSync": {
-      "syncedToCount": "Theme synced to {count} drone(s)",
-      "syncFailedCount": "Could not reach {count} drone(s)"
+      "syncedToCount": "Tema sincronizado com {count, plural, one {# nó} other {# nós}}",
+      "syncFailedCount": "Não foi possível alcançar {count, plural, one {# nó} other {# nós}}"
     },
     "region": {
       "title": "Operating region",
@@ -700,7 +703,8 @@
       "groupDarkThemes": "Temas escuros",
       "groupLightThemes": "Temas claros",
       "groupMidTone": "Tons médios",
-      "selectTheme": "Selecione um tema"
+      "selectTheme": "Selecione um tema",
+      "nvg": "Visão noturna"
     }
   },
   "guidance": {
@@ -820,6 +824,7 @@
     "signInForSync": "Entre para sincronizar na nuvem",
     "localOnly": "Apenas local",
     "commandPalette": "Paleta de comandos",
+    "menu": "Menu",
     "joinDiscord": "Entrar no Discord",
     "starOnGitHub": "Dar estrela no GitHub",
     "star": "Estrela",
@@ -836,7 +841,7 @@
     "notifications": "Notificações",
     "theme": "Tema",
     "data": "Dados",
-    "operator": "Operator & Aircraft",
+    "operator": "Operador e aeronaves",
     "plugins": "Extensões",
     "can": "DroneCAN",
     "aircraftSetup": "Aircraft setup",
@@ -846,9 +851,9 @@
     "title": "Configurações Gerais",
     "jurisdiction": "Jurisdição Regulatória (opcional)",
     "notSet": "— Não definida",
-    "units": "Unidades",
-    "metric": "Métrico (m, km/h, °C)",
-    "imperial": "Imperial (ft, mph, °F)",
+    "units": "Unidades do planejador",
+    "metric": "Métrico (m, m/s)",
+    "imperial": "Imperial (ft, mph)",
     "autoConnect": "Conectar automaticamente ao iniciar",
     "autoReconnect": "Reconectar automaticamente ao desconectar",
     "demoMode": "Modo Demonstração",
@@ -869,7 +874,9 @@
     "latAbbr": "LAT",
     "lonAbbr": "LON",
     "accAbbr": "ACC",
-    "altAbbr": "ALT"
+    "altAbbr": "ALT",
+    "tipsResetDone": "As dicas aparecerão novamente.",
+    "unitsScope": "Aplica-se ao planejador de missões e às ferramentas de desenho do mapa. As telas de voo usam as unidades métricas do cockpit."
   },
   "notifications": {
     "title": "Notificações",
@@ -967,11 +974,11 @@
     "testMode": "Modo de Teste",
     "testModeUnavailable": "Modo de teste do gamepad não disponível na demonstração",
     "manualControlLinkBlocked": "Os comandos não chegam a esta aeronave: {reason}. Nada está a ser transmitido.",
-    "stickMode": "Stick mode",
+    "stickMode": "Modo dos sticks",
     "stickMode2": "Mode 2 (throttle on the left stick)",
     "stickMode1": "Mode 1 (throttle on the right stick)",
-    "groundStationEmpty": "No controllers on the ground station.",
-    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
+    "groundStationEmpty": "Nenhum controle na estação terrestre.",
+    "groundStationEmptyHint": "Conecte um controle, joystick ou HOTAS USB ou Bluetooth à estação terrestre. Um controle ligado a este computador aparece em Entrada do navegador."
   },
   "data": {
     "title": "Gerenciamento de Dados",
@@ -990,10 +997,10 @@
   "communityNav": {
     "changelog": "Changelog",
     "contact": "Contato",
-    "unavailableTitle": "Os dados da comunidade (changelog, roadmap, contato) estão disponíveis na versão hospedada em",
-    "unavailableSetup": "Desativado por padrão em builds locais. Para rodar seu próprio quadro comunitário interno, configure um backend Convex e defina",
+    "unavailableTitle": "Os dados da comunidade (changelog, contato) estão disponíveis na versão hospedada em",
+    "unavailableSetup": "Desativado por padrão em builds locais. Para rodar seu próprio quadro comunitário interno, configure um backend Convex e defina {envVar}.",
     "unavailableOptional": "Totalmente opcional. O GCS funciona sem isso.",
-    "sectionError": "This page failed to load. Switch tabs or reload to try again."
+    "sectionError": "Esta página não carregou. Troque de aba ou recarregue para tentar de novo."
   },
   "contact": {
     "title": "Contato",
@@ -1128,7 +1135,7 @@
     },
     "quickActionsBar": {
       "newMission": "Nova missão",
-      "connectDrone": "Conectar drone",
+      "connectDrone": "Adicionar nó",
       "rthAll": "RTH de todos"
     },
     "droneScriptsTab": {
@@ -1283,7 +1290,7 @@
     "tryDemo": "Explore with a simulated fleet"
   },
   "connect": {
-    "title": "Conectar ao Drone",
+    "title": "Adicionar nó",
     "usbSerial": "USB Serial",
     "webSocket": "WebSocket",
     "savePreset": "Salvar Predefinição",
@@ -1391,7 +1398,8 @@
     "chip": {
       "available": "Disponível",
       "chromiumOnly": "Chrome ou Edge",
-      "desktopOrBridge": "Desktop ou ponte"
+      "desktopOrBridge": "Desktop ou ponte",
+      "desktopUnsupported": "Indisponível no app de desktop neste sistema"
     },
     "getDesktopApp": "Obter o aplicativo de desktop",
     "agentUdpNote": "Um drone emparelhado ao agente também expõe udp:[agent-ip]:14550 para qualquer estação de solo externa.",
@@ -1488,14 +1496,35 @@
     "flightSuite": "Suite",
     "px4EventsFeed": {
       "searchEvents": "Buscar eventos",
-      "flightControllerEvents": "Eventos da controladora de voo"
+      "flightControllerEvents": "Eventos da controladora de voo",
+      "emptyNone": "Ainda não há eventos. Os eventos estruturados da controladora aparecem aqui.",
+      "emptyNoMatch": "Nenhum evento corresponde à pesquisa.",
+      "severityLevel": "Nível {level}",
+      "severity": {
+        "emergency": "Emergência",
+        "alert": "Alerta",
+        "critical": "Crítico",
+        "error": "Erro",
+        "warning": "Aviso",
+        "notice": "Aviso",
+        "info": "Informação",
+        "debug": "Depuração"
+      }
     },
     "droneConfigureTab": {
       "somePanelsOSDLEDAre": "Alguns painéis (OSD, LED) não estão disponíveis para PX4.",
-      "betaflightFirmwareSomePanelsDiffer": "Firmware Betaflight. Alguns painéis diferem do ArduPilot."
+      "betaflightFirmwareSomePanelsDiffer": "Firmware Betaflight. Alguns painéis diferem do ArduPilot.",
+      "flightController": "Controladora de voo",
+      "loadingPanel": "Carregando painel…"
     },
     "logTelemetryGraph": {
-      "telemetryDataWillAppearHere": "Os dados de telemetria aparecerão aqui quando conectado"
+      "telemetryDataWillAppearHere": "Os dados de telemetria aparecerão aqui quando conectado",
+      "channel": {
+        "altitude": "Alt",
+        "speed": "Vel",
+        "battery": "Bat",
+        "rssi": "RSSI"
+      }
     }
   },
   "flight": {
@@ -1614,7 +1643,19 @@
       "gpsTrack": "Trajeto GPS",
       "waitingForGPSData": "Aguardando dados de GPS..."
     },
-    "clear": "Limpar"
+    "clear": "Limpar",
+    "severityLevel": {
+      "emergency": "EMERGÊNCIA",
+      "alert": "ALERTA",
+      "critical": "CRÍTICO",
+      "error": "ERRO",
+      "warning": "AVISO",
+      "notice": "AVISO",
+      "info": "INFO",
+      "debug": "DEPURAÇÃO"
+    },
+    "autoScrollOn": "Rolagem automática ligada",
+    "autoScrollOff": "Rolagem automática desligada"
   },
   "fcNav": {
     "apHeli": "Helicopter",
@@ -1716,7 +1757,8 @@
     "fcDisconnectedShort": "FC link down",
     "navDisabledHint": "Connect a flight controller to open this panel.",
     "pluginPanelGone": "This extension is no longer installed on this node.",
-    "aircraftSetup": "Configuração da aeronave"
+    "aircraftSetup": "Configuração da aeronave",
+    "px4Safety": "Falha e retorno"
   },
   "droneStatus": {
     "online": "Online",
@@ -1832,7 +1874,8 @@
     "battery": "Battery",
     "pluginPage": "Extension page",
     "pluginSurface": {
-      "unavailable": "This extension page is not loaded on this node yet."
+      "unavailable": "This extension page is not loaded on this node yet.",
+      "notPermitted": "Esta extensão não recebeu permissão para mostrar uma aba aqui."
     },
     "rebootNoFc": "No flight controller connected",
     "rebootSent": "Reboot command sent",
@@ -1842,6 +1885,9 @@
     "scrollTabsRight": "Scroll tabs right"
   },
   "vision": {
+    "coreUsageUnreachable": "Sem conexão com este nó",
+    "stateUnknownBody": "Este nó não informou seus recursos a esta GCS. Conecte-se a ele para ver se há um motor de visão rodando.",
+    "stateUnknownTitle": "Estado da visão desconhecido",
     "title": "Vision Engine",
     "subtitle": "Manage detection models and watch live detections from this drone.",
     "engineActive": "Engine Active",
@@ -2616,7 +2662,7 @@
     "pairNode": "Adicionar nó",
     "pairing": {
       "tab": {
-        "addDrone": "Add a drone",
+        "addDrone": "Adicionar nó",
         "enterCode": "Enter drone's code",
         "generateCode": "Generate a code"
       },
@@ -4082,7 +4128,8 @@
       "poiItem": "POI {n}",
       "rowMenu": "Ações do waypoint {n}",
       "resumeFromHere": "Retomar daqui…",
-      "resumeFirstReason": "O plano começa aqui; envie normalmente"
+      "resumeFirstReason": "O plano começa aqui; envie normalmente",
+      "rtlAltitude": "Retorna na altitude RTL do veículo"
     },
     "bar": {
       "plans": "Plans",
@@ -4159,8 +4206,11 @@
         "invalidSequence": "Os itens da missão chegaram fora de ordem. Tente enviar novamente.",
         "denied": "A controladora de voo não está aceitando missões no momento.",
         "cancelled": "A controladora de voo cancelou o envio.",
-        "unknown": "A controladora de voo recusou a missão (código {code})."
-      }
+        "unknown": "A controladora de voo recusou a missão (código {code}).",
+        "verifyMismatch": "O controlador de voo aceitou a missão, mas a cópia lida de volta é diferente. Envie novamente.",
+        "verifyFailed": "O controlador de voo aceitou a missão, mas a leitura de verificação falhou. Verifique o link e envie novamente."
+      },
+      "fenceCrossed": "A missão atravessa esta cerca. Corrija a missão antes de enviar a cerca."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -4428,7 +4478,9 @@
       "terrainUncheckedNoHome": "WP{wp}: distância do terreno não verificada — sem elevação do home para esta altitude relativa",
       "terrainUnknown": "WP{wp}: terreno desconhecido — sem amostra de elevação do solo neste waypoint, distância não verificada",
       "terrainClearanceGround": "WP{v0}: apenas {v1}m acima do terreno (mín.: {v2}m). Solo: {ground}m MSL",
-      "terrainClearanceGroundUnknown": "WP{v0}: apenas {v1}m acima do terreno (mín.: {v2}m). Solo desconhecido"
+      "terrainClearanceGroundUnknown": "WP{v0}: apenas {v1}m acima do terreno (mín.: {v2}m). Solo desconhecido",
+      "rtlAltitudeBelowTerrain": "A altitude RTL de {v0} m acima do home está {v1} m abaixo do terreno mais alto do trajeto de retorno (WP{v2}, {v3} m MSL)",
+      "wpAltitudeAboveLegalCeiling": "WP{v0}: A altitude de {v1} m acima do home ultrapassa o teto legal de {v2} m"
     }
   },
   "geofence": {
@@ -4739,7 +4791,8 @@
     "viewUnavailable": "A visualização 3D não está disponível neste dispositivo",
     "switchTo2d": "Mudar para 2D",
     "moreIssues": "+{count} mais",
-    "dismissWarning": "Dispensar aviso"
+    "dismissWarning": "Dispensar aviso",
+    "showPanel": "Mostrar painel"
   },
   "history": {
     "title": "Registros de voo",
@@ -5082,7 +5135,28 @@
       "sealed": "Selado",
       "verify": "Verificar",
       "unseal": "Remover selo",
-      "replay": "Reprodução"
+      "replay": "Reprodução",
+      "tabs": {
+        "overview": "Visão geral",
+        "map": "Mapa",
+        "charts": "Gráficos",
+        "events": "Eventos",
+        "analysis": "Análise",
+        "notes": "Notas",
+        "media": "Mídia",
+        "export": "Exportar"
+      },
+      "flightDetail": "Detalhe do voo",
+      "showList": "Mostrar lista de voos",
+      "hideList": "Ocultar lista de voos",
+      "signing": "Assinando…",
+      "signAndLock": "Assinar e bloquear",
+      "signFailed": "Falha ao assinar: {error}",
+      "unsealConfirm": "Remover o selo deste registro? Edições posteriores invalidarão a assinatura anterior. Um evento de auditoria será registrado.",
+      "unsealedEvent": "Registro com selo removido em {time}",
+      "verifyOk": "Assinatura válida: o registro não mudou.",
+      "verifyBad": "Assinatura inválida: o registro mudou depois de assinado.",
+      "recordingStopped": "Gravação parada em {time} (armazenamento cheio)"
     },
     "chartsTab": {
       "charts": "Gráficos",
@@ -5122,7 +5196,11 @@
       "compliance": "Conformidade",
       "jurisdiction": "Jurisdição",
       "noTelemetryRecordingAttachedConnect": "Nenhuma gravação de telemetria anexada. Conecte e arme um drone para iniciar a gravação.",
-      "fullFlightRecordIncludingStatsPath": "FlightRecord completo, incluindo estatísticas, trajeto e metadados."
+      "fullFlightRecordIncludingStatsPath": "FlightRecord completo, incluindo estatísticas, trajeto e metadados.",
+      "errorCount": "{count, plural, one {# erro} other {# erros}}",
+      "warningCount": "{count, plural, one {# aviso} other {# avisos}}",
+      "ready": "Pronto",
+      "generating": "Gerando…"
     },
     "analysisTab": {
       "healthSummary": "Resumo de saúde",
@@ -5183,7 +5261,8 @@
       "dropLogFilesHereOr": "Solte os arquivos de log aqui ou clique para procurar",
       "importFlightLogs": "Importar logs de voo",
       "cancel": "Cancelar",
-      "close": "Fechar"
+      "close": "Fechar",
+      "unknownFormat": "Formato desconhecido"
     },
     "preflightCard": {
       "noChecklistCaptured": "Nenhum checklist registrado",
@@ -5342,7 +5421,8 @@
     "connect": "Conectar",
     "writeToFcCount": "Gravar {n} na controladora de voo",
     "writingProgress": "Gravando {current}/{total}…",
-    "writeToFcHint": "Enviar parâmetros alterados para a controladora de voo"
+    "writeToFcHint": "Enviar parâmetros alterados para a controladora de voo",
+    "notPresent": "não presente nesta placa"
   },
   "calibration": {
     "title": "Calibração",
@@ -5832,7 +5912,7 @@
   "commandPalette": {
     "placeholder": "Digite um comando...",
     "noResults": "Nenhum resultado encontrado",
-    "connectDrone": "Conectar Drone",
+    "connectDrone": "Adicionar nó",
     "disconnectDrone": "Desconectar Drone",
     "armVehicle": "Armar Drone",
     "disarmVehicle": "Desarmar Veículo",
@@ -5842,7 +5922,7 @@
     "switchTab": "Ir para {tab}",
     "toggleImmersive": "Alternar Modo Imersivo",
     "goToDashboard": "Ir para o Painel",
-    "goToPlan": "Ir para o Planejador de Missão",
+    "goToPlan": "Ir para Planejar",
     "goToHistory": "Ir para Registros de voo",
     "goToAnalytics": "Ir para Análises",
     "goToConfig": "Ir para Configuração",
@@ -5867,7 +5947,8 @@
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
     "noBatteryData": "No battery data available",
-    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})",
+    "selectVehicleForParams": "Selecione um veículo para pesquisar seus parâmetros"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -6313,7 +6394,7 @@
     },
     "hdmiKiosk": {
       "title": "HDMI Cockpit",
-      "description": "Configure the HDMI kiosk the ground station shows on a wired panel: the page it loads and touch calibration.",
+      "description": "Configure o quiosque HDMI que este nó mostra num painel com fio: a página que carrega e a calibração de toque.",
       "pathHdmi": "HDMI active",
       "pathLcd": "SPI LCD active",
       "pathNone": "Display off",
@@ -7028,15 +7109,15 @@
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
     "pageTitle": "Extensions",
-    "pageBlurb": "Browse and manage extensions. Extensions install on a drone — pick the target below, or install from that drone's Extensions tab. They run sandboxed and only do what their granted permissions allow.",
+    "pageBlurb": "As extensões são instaladas por nó, na aba Agent → Extensões desse nó. Esta página é uma visão somente leitura do que está instalado na frota, mais o navegador do registro.",
     "loadingInstalls": "Loading…",
     "cancel": "Cancel",
     "fetching": "Fetching…",
     "install": "Install",
     "scopeDrone": "Drone",
     "scopeGcs": "GCS",
-    "emptyTitle": "No extensions installed yet.",
-    "emptyBlurb": "Drag a .adosplug file or pick one to install.",
+    "emptyTitle": "Ainda não há nada instalado em nenhum nó.",
+    "emptyBlurb": "Navegue pelo registro abaixo e instale pela aba Extensões do nó.",
     "badges": {
       "agent": "Agent",
       "gcs": "GCS",
@@ -8231,7 +8312,8 @@
       "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
       "failed": "Could not open a DroneCAN session: {error}",
       "unsupported": "This connection cannot forward CAN frames."
-    }
+    },
+    "px4BusSetup": "O PX4 configura seu driver CAN com UAVCAN_* em Parâmetros. A configuração de barramento aqui edita parâmetros CAN do ArduPilot e não é exibida nesta placa."
   },
   "linkUp": {
     "no-fc-direct": {
@@ -8289,6 +8371,7 @@
     }
   },
   "blackbox": {
+    "unreachable": "Este nó não pode ser alcançado a partir desta GCS",
     "title": "ADOS Black Box",
     "session": "Session",
     "allSessions": "All sessions",
@@ -8526,8 +8609,10 @@
       "none": "Unbound"
     },
     "flyModeFlag": "Cockpit",
+    "confirmPadHint": "Comando: segure Cruz. Teclado: segure Enter.",
     "plugin": {
       "confirm": {
+        "titleNamed": "Ativar {skill} em {drone}",
         "title": "Activate skill",
         "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
@@ -8657,6 +8742,7 @@
     "utilization": "{pct}% utilization",
     "utilizationNotReported": "Utilization not reported",
     "waitingForCapabilities": "Waiting for agent capabilities…",
+    "capabilitiesNotReported": "Capacidades não informadas",
     "visionOff": "Off",
     "visionInitializing": "Initializing",
     "visionReady": "Ready",
@@ -9266,11 +9352,11 @@
       "open-cockpit": "Open cockpit",
       "configure": "Configure",
       "view-logs": "View logs",
-      "unpair": "Unpair"
+      "unpair": "Desparear"
     },
     "unpair": {
-      "title": "Unpair node",
-      "message": "Forget {name}? Its pairing is released and it disappears from the fleet until it is paired again."
+      "title": "Desparear nó",
+      "message": "Desparear {name}? O pareamento é liberado e o nó some da frota até ser pareado de novo."
     },
     "selectAll": "Select all visible nodes",
     "selectNode": "Select {name}",
@@ -9336,6 +9422,11 @@
     "fc": {
       "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
       "notFlightNode": "This node does not fly — no flight controller readings"
+    },
+    "unpairUnreachable": {
+      "title": "Nó inacessível",
+      "message": "{name} não conseguiu liberar o pareamento e continua pareado. Esquecer só nesta GCS? O nó mantém o pareamento antigo até ser redefinido.",
+      "forgetHere": "Esquecer só nesta GCS"
     }
   },
   "rcElrsLink": {
@@ -9465,7 +9556,9 @@
     "checkDescription": "Check the release channel for a newer version of this app.",
     "checkForUpdates": "Check for updates",
     "checking": "Checking…",
-    "upToDate": "You are on the latest version."
+    "upToDate": "You are on the latest version.",
+    "version": "Versão {version}",
+    "thirdPartyNotices": "Licenças de terceiros"
   },
   "batteryHealth": {
     "title": "Battery",
@@ -10274,7 +10367,9 @@
         "frame": "Frame",
         "rc_tx": "TX RC"
       }
-    }
+    },
+    "pageTitle": "Operador e aeronaves",
+    "pageBlurb": "Registros de piloto, organização, seguro, aeronaves, baterias e equipamentos. Usados nas exportações de conformidade e no instantâneo de piloto, aeronave e carga de cada voo."
   },
   "fcCalibration": {
     "wizard": {
@@ -10573,7 +10668,8 @@
       "closeWithoutCopying": "Fechar sem copiar",
       "copyAgain": "Copiar novamente",
       "tryAgain": "Tentar novamente",
-      "iClearedIt": "Já limpei"
+      "iClearedIt": "Já limpei",
+      "typeToContinue": "Digite <word>EXPORT</word> para continuar."
     },
     "framePanel": {
       "frameConfiguration": "Configuração do frame",
@@ -10591,7 +10687,15 @@
       "type": "Tipo:",
       "frameCLASS": "FRAME_CLASS",
       "frameTYPE": "FRAME_TYPE",
-      "frameCONFIG": "FRAME_CONFIG"
+      "frameCONFIG": "FRAME_CONFIG",
+      "frameTypeNotUsed": "Não usado por esta classe de estrutura",
+      "unknown": "Desconhecido",
+      "typeUnrecognised": "Não reconhecido (neste veículo)",
+      "typeUnknownNote": "Este veículo informa {param} = {value}, para o qual esta versão não tem layout de motores. O valor é mostrado como está e NÃO é alterado; escolha um tipo da lista só se quiser reconfigurar a estrutura.",
+      "selectClassForLayout": "Selecione uma classe de estrutura para ver o layout dos motores.",
+      "noLayoutForType": "Não há layout de motores para {cls}, tipo {type}.",
+      "noLayoutForClass": "Não há diagrama de motores para {cls}.",
+      "classStillSent": "{description}. {param} ainda será enviado à controladora."
     },
     "sensorsPanel": {
       "sensors": "Sensores",
@@ -10652,7 +10756,11 @@
       "patternPreview": "Prévia do padrão",
       "visualRepresentationOfLEDStrip": "Representação visual da fita de LED",
       "betaflightLEDStripUsesPacked": "A fita de LED do Betaflight usa bitmasks compactadas de posição/função/cor, que são melhor configuradas pela CLI.",
-      "useThe": "Use o"
+      "useThe": "Use o",
+      "useLedCommand": "Use o comando <cmd>led</cmd> no painel Console FC para configurar as atribuições da fita LED.",
+      "ledCmdShow": "Mostrar a configuração atual da fita LED",
+      "ledCmdExample": "Exemplo: definir o LED 0",
+      "colorCmd": "Mostrar/definir cores do LED"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "Perfis de mixer",
@@ -10687,7 +10795,18 @@
       "escCalibrationSaved": "Calibração do ESC salva",
       "compassmotMotorInterference": "CompassMot (interferência dos motores)",
       "measuresMagneticInterferenceFromMotors": "Mede a interferência magnética dos motores/ESCs em vários níveis de aceleração. Compensa as leituras da bússola.",
-      "compassmotCalibrationSaved": "Calibração CompassMot salva"
+      "compassmotCalibrationSaved": "Calibração CompassMot salva",
+      "escAck": "Todas as hélices foram removidas",
+      "compassmotAck": "O veículo está preso e a área ao redor está livre",
+      "escTip1": "CRÍTICO: remova TODAS as hélices antes de começar",
+      "escTip2": "Desconecte a bateria antes de iniciar a sequência",
+      "escTip3": "Alguns ESCs exigem esta calibração no primeiro uso",
+      "escTip4": "ESCs BLHeli/SimonK: use as ferramentas deles",
+      "escTip5": "Roda como passagem direta do acelerador ao reiniciar e não informa conclusão via MAVLink. Siga os bipes do ESC; o assistente terminar por tempo é esperado.",
+      "compassmotTip1": "Garanta fix GPS 3D antes de começar",
+      "compassmotTip2": "O veículo deve estar em área aberta longe de metais",
+      "compassmotTip3": "Hélices MONTADAS: os motores VÃO girar",
+      "compassmotTip4": "Interferência < 30% aceitável, < 15% boa"
     },
     "telRadioPanel": {
       "telemetryRadio": "Rádio de telemetria",
@@ -10705,7 +10824,13 @@
       "protocol": "Protocolo",
       "baudRate": "Taxa de transmissão",
       "systemIdentification": "Identificação do sistema",
-      "mavlinkSystemAndGCSIDs": "IDs de sistema MAVLink e GCS para configurações com vários veículos"
+      "mavlinkSystemAndGCSIDs": "IDs de sistema MAVLink e GCS para configurações com vários veículos",
+      "notPresent": "ausente",
+      "noRadioTelemetry": "Sem telemetria de rádio ao vivo: RADIO_STATUS não recebido recentemente",
+      "px4BaudUnderPorts": "O PX4 define a taxa das portas de telemetria em Portas (SER_TEL1_BAUD, SER_TEL2_BAUD). Esta página não grava nada na controladora.",
+      "vehicleSystemId": "ID de sistema do veículo",
+      "gcsSystemId": "ID de sistema da GCS",
+      "uniqueSysidHint": "Cada veículo no mesmo link precisa de um SYSID_THISMAV único. O ID padrão da GCS é 255."
     },
     "signingEnabledSection": {
       "signingEnabled": "Assinatura ativada",
@@ -10887,7 +11012,12 @@
       "masterThrottle2": "Aceleração mestre",
       "motorsWillSpinWhenTested": "Os motores vão girar durante o teste. Não remover as hélices pode causar ferimentos ou danos.",
       "enableMotorTest": "Ativar teste de motores",
-      "stopAllMotors": "Parar todos os motores"
+      "stopAllMotors": "Parar todos os motores",
+      "removePropellers": "REMOVA TODAS AS HÉLICES ANTES DO TESTE",
+      "motorN": "Motor {n}",
+      "motorThrottleN": "Acelerador do motor {n}",
+      "setPct": "definido {pct}%",
+      "mixed": "misto"
     },
     "iNavMissionPanel": {
       "inavMission": "Missão iNav",
@@ -10897,7 +11027,9 @@
       "replaceTheCurrentPlan": "Substituir o plano atual?",
       "replacePlan": "Substituir plano",
       "noMissionLoadedOpenThe": "Nenhuma missão carregada. Abra a aba Planejar para criar uma.",
-      "openMissionPlanner": "Abrir planejador de missões"
+      "openMissionPlanner": "Abrir planejador de missões",
+      "waypointActionsTitle": "Ações de waypoint do iNav",
+      "waypointActionsBody": "O iNav suporta oito tipos de ação de waypoint. Na aba Plan, escolha Waypoint, Poshold (ilimitado ou temporizado), RTH ou Land como ação e adicione Set POI, Jump ou Set heading da lista de ações do waypoint."
     },
     "bfDshotCommands": {
       "iConfirmAllPropellersHave": "Confirmo que todas as hélices foram removidas",
@@ -10990,7 +11122,10 @@
       "changingAirframeRequiresAReboot": "Alterar o airframe requer reinicialização. Todos os parâmetros voltarão aos padrões do airframe.",
       "searchAirframes": "Buscar airframes...",
       "noAirframesMatchYourSearch": "Nenhum airframe corresponde à sua busca.",
-      "customAirframeID": "ID de airframe personalizado"
+      "customAirframeID": "ID de airframe personalizado",
+      "custom": "Personalizado ({id})",
+      "allCategories": "Todas as categorias",
+      "idLine": "ID: {id} | {category}"
     },
     "firmwarePx4Section": {
       "retry": "Tentar novamente",
@@ -11114,7 +11249,12 @@
       "iConfirmAllPropellersHave": "Confirmo que todas as hélices foram removidas",
       "disarmToTestActuators": "Desarme para testar os atuadores.",
       "output": "Saída",
-      "stop": "Parar"
+      "stop": "Parar",
+      "removePropellers": "REMOVA TODAS AS HÉLICES ANTES DO TESTE",
+      "testExplain": "O motor selecionado gira (ou o servo se move) no valor escolhido por {seconds} s e depois a controladora o restaura. A controladora rejeita o teste quando armada.",
+      "throttle": "Acelerador",
+      "position": "Posição",
+      "runSeconds": "Executar {seconds} s"
     },
     "px4PowerSections": {
       "batterySettings": "Configurações da bateria",
@@ -11134,19 +11274,31 @@
       "pidTuning": "Ajuste de PID",
       "presetProfiles": "Perfis predefinidos",
       "filterSettings": "Configurações de filtro",
-      "insGyroAccelLowPass": "Filtros passa-baixa de giroscópio/acelerômetro do INS e filtro notch harmônico"
+      "insGyroAccelLowPass": "Filtros passa-baixa de giroscópio/acelerômetro do INS e filtro notch harmônico",
+      "subtitleCopter": "PIDs de taxa do ArduCopter — rolagem, arfagem, guinada",
+      "subtitleCopterPx4": "PIDs de taxa multirrotor do PX4 (MC_*) — rolagem, arfagem, guinada. As taxas de asa fixa de um VTOL estão em Ajuste de asa fixa.",
+      "subtitleRover": "PIDs de taxa de direção e velocidade/acelerador do ArduRover",
+      "subtitleRoverPx4": "PIDs de taxa de direção e velocidade do rover PX4",
+      "subtitlePlane": "Ganhos PID de servo do ArduPlane — rolagem, arfagem, guinada",
+      "subtitlePlanePx4": "PIDs de taxa de asa fixa do PX4 (FW_*) — rolagem, arfagem, guinada. O ajuste de atitude e velocidade está em Ajuste de asa fixa."
     },
     "outputsPanel": {
       "servoMotorOutputs": "Saídas de servo / motor",
       "connectToADroneTo": "Conecte-se a um drone para configurar as saídas.",
       "outputFunctionAssignmentPWMLimits": "Atribuição de funções de saída, limites de PWM e teste de motor",
-      "save": "Salvar"
+      "save": "Salvar",
+      "unsaved": "NÃO SALVO"
     },
     "motorTestSection": {
       "motorTest": "Teste de motor",
       "enableMotorTestSafetyMaster": "Ativar teste de motor (chave mestra de segurança)",
       "motor": "Motor",
-      "removePropellersBeforeTestingMotors": "Remova as hélices antes de testar os motores. Certifique-se de que o drone está preso."
+      "removePropellersBeforeTestingMotors": "Remova as hélices antes de testar os motores. Certifique-se de que o drone está preso.",
+      "throttleLabel": "Acelerador: {value}% (máx. {max}%)",
+      "durationLabel": "Duração: {value} s",
+      "testMotorN": "Testar motor {n}",
+      "motorN": "Motor {n}",
+      "stop": "Parar"
     },
     "navConfigPanel": {
       "navigationConfig": "Configuração de navegação",
@@ -11211,7 +11363,8 @@
       "telemetryStreamRates": "Taxas de stream de telemetria",
       "perPortMAVLinkMessageGroup": "Taxas dos grupos de mensagens MAVLink por porta (Hz)",
       "mavlinkChannel": "Canal MAVLink",
-      "gcsManagesTelemetryRatesOn": "A GCS gerencia as taxas de telemetria. Ao conectar, restaurar o link e reiniciar a controladora de voo, esta GCS solicita suas próprias taxas no canal pelo qual está conectada. Desative para manter inalteradas as taxas definidas aqui ou pelo roteador do agente."
+      "gcsManagesTelemetryRatesOn": "A GCS gerencia as taxas de telemetria. Ao conectar, restaurar o link e reiniciar a controladora de voo, esta GCS solicita suas próprias taxas no canal pelo qual está conectada. Desative para manter inalteradas as taxas definidas aqui ou pelo roteador do agente.",
+      "notPresent": "ausente"
     },
     "signingHistorySection": {
       "history": "Histórico",
@@ -11304,7 +11457,8 @@
     },
     "displayPortOsdPanel": {
       "osdPreview": "Prévia do OSD",
-      "liveReconstructionOfTheOSD": "Reconstrução ao vivo do OSD desenhado pela controladora de voo (MSP DisplayPort). Os quadros só chegam quando a FC está configurada para enviar o OSD via MSP DisplayPort nesta conexão (configuração de óculos HD / DJI). Glifos de fonte personalizada aparecem como um ponto; campos de texto e numéricos são exibidos como enviados."
+      "liveReconstructionOfTheOSD": "Reconstrução ao vivo do OSD desenhado pela controladora de voo (MSP DisplayPort). Os quadros só chegam quando a FC está configurada para enviar o OSD via MSP DisplayPort nesta conexão (configuração de óculos HD / DJI). Glifos de fonte personalizada aparecem como um ponto; campos de texto e numéricos são exibidos como enviados.",
+      "noFramesYet": "ainda não há quadros OSD"
     },
     "tempSensorsPanel": {
       "temperatureSensors": "Sensores de temperatura",
@@ -11318,13 +11472,18 @@
     },
     "flightModesHeader": {
       "flightModes": "Modos de voo",
-      "read": "Ler"
+      "read": "Ler",
+      "unsavedCount": "{count} não salvo(s)",
+      "save": "Salvar",
+      "saveCount": "Salvar ({count})"
     },
     "firmwarePanel": {
-      "flashTool": "Ferramenta de gravação"
+      "flashTool": "Ferramenta de gravação",
+      "subtitle": "Gravar firmware via USB DFU ou bootloader serial"
     },
     "calibrationRebootBanner": {
-      "rebootRequired": "Reinicialização necessária"
+      "rebootRequired": "Reinicialização necessária",
+      "applyHint": "{label}. Reinicie a controladora de voo para aplicar."
     },
     "pwmRangeSlider": {
       "rangeStart": "Início da faixa",
@@ -11471,7 +11630,9 @@
       "loadParamFile": "Carregar arquivo .param",
       "selectAll": "Selecionar tudo",
       "selectNone": "Desmarcar tudo",
-      "noParametersMatchTheCurrent": "Nenhum parâmetro corresponde ao filtro atual."
+      "noParametersMatchTheCurrent": "Nenhum parâmetro corresponde ao filtro atual.",
+      "applyN": "Aplicar {count} {count, plural, one {parâmetro} other {parâmetros}}",
+      "selectedOf": "{selected} de {total} parâmetros selecionados"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirmar gravação de parâmetros",
@@ -11481,7 +11642,11 @@
       "thisBatchIncludesFlightSafety": "Este lote inclui parâmetros de segurança de voo. Revise com atenção antes de gravar.",
       "flightSafety": "Segurança de voo",
       "iUnderstandThisChangeAffects": "Entendo que esta alteração afeta a segurança de voo",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "willBeWritten": "{count, plural, one {# parâmetro será gravado} other {# parâmetros serão gravados}} na controladora de voo.",
+      "writeN": "Gravar {count} {count, plural, one {parâmetro} other {parâmetros}}",
+      "outOfRange": "Fora da faixa permitida ({min} .. {max})",
+      "outOfRangeBlocked": "Corrija os valores fora da faixa antes de gravar."
     },
     "disconnectGuard": {
       "uncommittedParameterChanges": "Alterações de parâmetros não confirmadas",
@@ -11517,7 +11682,9 @@
       "link": "Link",
       "verified": "Verificado",
       "failed": "Falhou",
-      "unsigned": "Não assinado"
+      "unsigned": "Não assinado",
+      "primary": "principal",
+      "requireSignedBody": "Exigir telemetria assinada. Enquanto houver uma chave carregada, todo quadro sem assinatura ou que falhe na verificação é descartado. Um veículo que não assina suas respostas fica em silêncio."
     },
     "servoMixerTable": {
       "targetCh": "Canal de destino",
@@ -11553,7 +11720,9 @@
       "programmingJS": "Programação (JS)",
       "writeExpressionsAndCompileThem": "Escreva expressões e compile-as em Logic Conditions. O carregamento as coloca nos slots livres da controladora de voo, mantendo intactas as condições já em uso; revise-as no editor de Logic Conditions e grave-as na FC a partir dele.",
       "compile": "Compilar",
-      "loadIntoLogicConditions": "Carregar em Logic Conditions"
+      "loadIntoLogicConditions": "Carregar em Logic Conditions",
+      "compilesToLogicConditions": "compila para Logic Conditions",
+      "operation": "operação"
     },
     "customOsdElementsPanel": {
       "customOSD": "OSD personalizado",
@@ -11727,7 +11896,13 @@
       "landHeading1Deg0": "Rumo de pouso 1 (graus, 0 = desligado)",
       "landHeading2Deg0": "Rumo de pouso 2 (graus, 0 = desligado)",
       "altitudeReference": "Referência de altitude",
-      "thisPanelAppliesToFixed": "Este painel se aplica a plataformas de asa fixa e tricóptero. A controladora de voo conectada está configurada como multirrotor."
+      "thisPanelAppliesToFixed": "Este painel se aplica a plataformas de asa fixa e tricóptero. A controladora de voo conectada está configurada como multirrotor.",
+      "unsaved": "não salvo",
+      "approachN": "Aproximação {n}",
+      "save": "Salvar",
+      "saving": "Salvando…",
+      "seaLevel": "Nível do mar",
+      "relativeToHome": "Relativo à base"
     },
     "sensorGraphPanel": {
       "sensorGraphs": "Gráficos de sensores",
@@ -11755,7 +11930,27 @@
     "compassPreflightChecks": {
       "compassPreFlightChecks": "Verificações de bússola pré-voo",
       "enabled": "Ativado",
-      "fix": "Corrigir"
+      "fix": "Corrigir",
+      "loading": "Carregando…",
+      "unavailable": "Indisponível",
+      "disabledHint": "Desativado — ative COMPASS_USE primeiro",
+      "none": "Nenhuma",
+      "lenient": "Tolerante",
+      "recommendLenient": "{value} — recomenda-se 3 para detecção de orientação tolerante",
+      "lowLimit": "limite baixo",
+      "increaseTo": "Aumentar para {value}",
+      "unknownValue": "Desconhecido ({value})",
+      "extInternal": "Interna",
+      "extExternal": "Externa",
+      "extForced": "Externa forçada",
+      "learnOff": "Desligado",
+      "learnInternal": "Interno",
+      "learnEkf": "EKF",
+      "learnInFlight": "Em voo",
+      "unknown": "Desconhecido",
+      "notChanged": "{name} não foi alterado: {reason}",
+      "noReply": "sem resposta da controladora de voo",
+      "setTo": "{name} definido como {value}"
     },
     "pidAnalysisSummary": {
       "tuneScore": "Pontuação do ajuste",
@@ -11785,7 +11980,8 @@
       "nonGPSPositioning": "Posicionamento sem GPS",
       "ekf3SourceSetsAndExternal": "Conjuntos de fontes do EKF3 e backends de navegação externa / beacon",
       "externalNavigationVISO": "Navegação externa (VISO)",
-      "beaconBCN": "Beacon (BCN)"
+      "beaconBCN": "Beacon (BCN)",
+      "sourceSet": "Conjunto de fontes {n}"
     },
     "arduPilotHeliPanel": {
       "helicopter": "Helicóptero",
@@ -11815,7 +12011,8 @@
     "osdScreenPreview": {
       "grid": "Grade",
       "live": "Ao vivo",
-      "dragElementsToRepositionClick": "Arraste os elementos para reposicioná-los. Clique nos elementos da barra lateral para alternar a visibilidade."
+      "dragElementsToRepositionClick": "Arraste os elementos para reposicioná-los. Clique nos elementos da barra lateral para alternar a visibilidade.",
+      "osdPreview": "PRÉVIA DO OSD"
     },
     "keyAgeNudge": {
       "rotateNow": "Rotacionar agora",
@@ -11827,7 +12024,14 @@
     },
     "firmwareBackupRestore": {
       "backupParameters": "Fazer backup dos parâmetros",
-      "restoreParameters": "Restaurar parâmetros"
+      "restoreParameters": "Restaurar parâmetros",
+      "downloading": "Baixando parâmetros…",
+      "backedUp": "{count} parâmetros copiados",
+      "backupFailed": "Falha no backup: {error}",
+      "unknownError": "Erro desconhecido",
+      "flashing": "Gravando…",
+      "flashFirmware": "Gravar firmware",
+      "restored": "Parâmetros restaurados"
     },
     "gnssConstellationEditor": {
       "receiverDefault": "Padrão do receptor"
@@ -11846,6 +12050,32 @@
     },
     "firmwareFcWizard": {
       "dismiss": "Dispensar"
+    },
+    "bfFailsafe": {
+      "title": "Failsafe",
+      "subtitle": "O que a aeronave faz ao perder o link de rádio",
+      "stage2": "Failsafe estágio 2",
+      "procedure": "Procedimento (0 cair, 1 pousar, 2 resgate GPS)",
+      "delay": "Tempo de guarda (0,1 s)",
+      "offDelay": "Atraso de desligar motores (0,1 s)",
+      "throttle": "Acelerador de pouso (µs)",
+      "throttleLowDelay": "Atraso de acelerador baixo (0,1 s)",
+      "switchMode": "Chave failsafe (0 estágio 1, 1 cortar, 2 estágio 2)"
+    },
+    "px4Safety": {
+      "title": "Detector de falhas e retorno",
+      "subtitle": "Limites de atitude que disparam falha e o caminho de retorno. Circuit breakers ficam em Parâmetros.",
+      "failureDetector": "Detector de falhas",
+      "maxPitch": "Arfagem máx. (°)",
+      "maxRoll": "Rolagem máx. (°)",
+      "pitchTrigger": "Tempo de disparo de arfagem (s)",
+      "rollTrigger": "Tempo de disparo de rolagem (s)",
+      "returnToLaunch": "Retorno ao lançamento",
+      "rtlType": "Tipo de retorno",
+      "returnAlt": "Altitude de retorno (m)",
+      "descendAlt": "Altitude de descida (m)",
+      "landDelay": "Pairar antes de pousar (s, -1 = nunca pousar)",
+      "coneAngle": "Semiângulo do cone de retorno"
     }
   },
   "diagnostics": {
@@ -11898,7 +12128,12 @@
       "moveToControl": "Mova para controlar",
       "stickMode": "Modo dos sticks",
       "none": "Nenhum",
-      "close": "Fechar"
+      "close": "Fechar",
+      "saved": "Salvo",
+      "imported": "Importado. Salve para manter.",
+      "resetPending": "Padrão ADOS carregado. Salve para manter ou Cancele para voltar.",
+      "cancel": "Cancelar",
+      "tourReplayDone": "O tour do controle será exibido na próxima vez que abrir Voo."
     },
     "rpcTraceTable": {
       "node": "Nó",
@@ -11921,7 +12156,8 @@
     },
     "controlsSettingsCards": {
       "doneSticksReleased": "Concluído (sticks soltos)",
-      "start": "Iniciar"
+      "start": "Iniciar",
+      "noControllerGranted": "Nenhum controle autorizado"
     },
     "languageSection": {
       "github": "GitHub"
@@ -11949,7 +12185,15 @@
       "setAsPrimary": "Definir como principal",
       "noPairedBluetoothDevices": "Nenhum dispositivo Bluetooth pareado.",
       "forget": "Esquecer",
-      "calibrateAndTuneControllersConnected": "Calibre e ajuste controles conectados diretamente a este navegador pela Web Gamepad API."
+      "calibrateAndTuneControllersConnected": "Calibre e ajuste controles conectados diretamente a este navegador pela Web Gamepad API.",
+      "typeUnknown": "Desconhecido",
+      "kindJoystick": "Joystick",
+      "kindWheel": "Volante",
+      "kindGamepad": "Controle",
+      "forgetTitle": "Esquecer {name}?",
+      "forgetMessage": "A estação de solo o desemparelha. Será preciso emparelhar de novo para usar.",
+      "forgotDevice": "{name} esquecido",
+      "forgetFailed": "Não foi possível esquecer {name}"
     },
     "community": {
       "communityNavigation": "Navegação da comunidade",

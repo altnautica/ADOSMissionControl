@@ -27,6 +27,9 @@ function selectProtocol(protocol: DroneProtocol): void {
 }
 
 function baseProtocol(extra: Partial<DroneProtocol>): DroneProtocol {
+  // The vehicle echoes the mission it accepted, as the read-back check expects.
+  let onVehicle: MissionItem[] = [];
+  const upload = extra.uploadMission;
   return {
     getVehicleInfo: () => ({ firmwareType: "ardupilot-copter" }),
     setParameter: vi.fn(async () => ({ success: true, resultCode: 0, message: "ok" })),
@@ -37,7 +40,17 @@ function baseProtocol(extra: Partial<DroneProtocol>): DroneProtocol {
       index: 0,
       count: 0,
     })),
+    downloadMission: async () => onVehicle,
     ...extra,
+    ...(upload
+      ? {
+          uploadMission: async (items: MissionItem[], onProgress?: Parameters<DroneProtocol["uploadMission"]>[1]) => {
+            const result = await upload(items, onProgress);
+            if (result.success) onVehicle = items;
+            return result;
+          },
+        }
+      : {}),
   } as Partial<DroneProtocol> as DroneProtocol;
 }
 
@@ -90,6 +103,18 @@ describe("fence upload", () => {
 
     expect(result.success).toBe(false);
     expect(uploadFenceMission).not.toHaveBeenCalled();
+  });
+
+  it("keeps the vehicle's result code on a refused fence or rally upload", async () => {
+    const uploadFenceMission = vi.fn(async (_elements: FenceElement[]) => ({ success: false, resultCode: 4, message: "rejected: type 4" }));
+    const uploadRallyPoints = vi.fn(async () => ({ success: false, resultCode: 13, message: "rejected: type 13" }));
+    selectProtocol(baseProtocol({ uploadFenceMission, uploadRallyPoints }));
+    useGeofenceStore.getState().setFenceType("polygon");
+    useGeofenceStore.getState().setPolygonPoints(square);
+    useRallyStore.setState({ points: [{ id: "r1", lat: 1, lon: 1, alt: 40 }] });
+
+    await expect(useGeofenceStore.getState().uploadFence()).resolves.toMatchObject({ success: false, resultCode: 4 });
+    await expect(useRallyStore.getState().uploadRallyPoints()).resolves.toMatchObject({ success: false, resultCode: 13 });
   });
 });
 

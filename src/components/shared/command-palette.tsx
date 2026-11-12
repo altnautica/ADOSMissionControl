@@ -16,12 +16,16 @@ import { activateBound, buildSkillContext, useSkillRegistry } from "@/lib/skills
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { resolveSkillIcon } from "@/lib/skills/skill-icon";
 import { RthAllConfirmDialog } from "./rth-all-confirm-dialog";
+import { useParamMetadataMap } from "@/hooks/use-param-metadata";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/command-palette-open";
 
 
 interface CommandAction {
   id: string;
   label: string;
   category: string;
+  /** Second line under the label (a parameter's name and units). */
+  detail?: string;
   icon?: React.ReactNode;
   action: () => void;
 }
@@ -41,6 +45,7 @@ export function CommandPalette() {
   const selectedIsDrone = useFleetDrones(
     (drones) => drones.find((d) => d.id === selectedDroneId)?.profile === "drone",
   );
+  const paramMeta = useParamMetadataMap();
 
   // `/analytics` and `/wizard` had entries here and neither route exists under
   // `src/app`, so two localised palette items navigated straight to a 404 from
@@ -118,26 +123,42 @@ export function CommandPalette() {
   const paramActions: CommandAction[] = (() => {
     if (!query || query.length < 2) return [];
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) return [];
+    // No FC selected: say why there are no parameter results instead of
+    // silently showing none.
+    if (!protocol) {
+      return [{
+        id: "param-no-vehicle",
+        label: t("selectVehicleForParams"),
+        category: t("parameters"),
+        icon: <SlidersHorizontal size={14} />,
+        action: () => {},
+      }];
+    }
     const allNames = protocol.getCachedParameterNames();
     if (allNames.length === 0) return [];
     const parts = query.toLowerCase().split(/\s+/);
     return allNames
       .filter(p => parts.every(part => p.toLowerCase().includes(part)))
       .slice(0, 8)
-      .map(p => ({
-        id: `param-${p}`,
-        label: p,
-        category: t("parameters"),
-        icon: <SlidersHorizontal size={14} />,
-        action: () => {
-          // Navigate to dashboard, switch to Parameters tab, pre-fill search filter
-          const ui = useUiStore.getState();
-          ui.setPendingParamSearch(p);
-          ui.setPendingDetailTab("parameters");
-          router.push("/");
-        },
-      }));
+      .map(p => {
+        const meta = paramMeta.get(p);
+        const name = meta?.humanName && meta.humanName !== p ? meta.humanName : meta?.description;
+        const detail = [name, meta?.units ? `(${meta.units})` : undefined].filter(Boolean).join(" ");
+        return {
+          id: `param-${p}`,
+          label: p,
+          detail: detail || undefined,
+          category: t("parameters"),
+          icon: <SlidersHorizontal size={14} />,
+          action: () => {
+            // Navigate to dashboard, switch to Parameters tab, pre-fill search filter
+            const ui = useUiStore.getState();
+            ui.setPendingParamSearch(p);
+            ui.setPendingDetailTab("parameters");
+            router.push("/");
+          },
+        };
+      });
   })();
 
   const filteredActions = query
@@ -153,6 +174,9 @@ export function CommandPalette() {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        // Opening under another open dialog would sit behind it while that
+        // dialog's Escape and focus trap keep running; leave the chord alone.
+        if (!open && document.querySelector('[aria-modal="true"]')) return;
         e.preventDefault();
         setOpen((prev) => !prev);
         setQuery("");
@@ -182,6 +206,16 @@ export function CommandPalette() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    const openFromEvent = () => {
+      setOpen(true);
+      setQuery("");
+      setSelectedIndex(0);
+    };
+    window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, openFromEvent);
+    return () => window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, openFromEvent);
+  }, []);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -260,7 +294,14 @@ export function CommandPalette() {
                       onMouseEnter={() => setSelectedIndex(idx)}
                     >
                       {action.icon}
-                      {action.label}
+                      {action.detail ? (
+                        <span className="flex min-w-0 flex-col">
+                          <span>{action.label}</span>
+                          <span className="truncate text-[10px] text-text-tertiary">{action.detail}</span>
+                        </span>
+                      ) : (
+                        action.label
+                      )}
                     </div>
                   );
                 })}

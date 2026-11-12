@@ -104,6 +104,14 @@ describe("left column and a stale pilot frame", () => {
     expect(button("takeoff")).toBeNull();
   });
 
+  it("a fresh frame with an unknown arm state may be airborne: Land, not Take off", () => {
+    // The FC's last word was a disarm; the pilot no longer hears it.
+    setPilot({ armed: null, landed: null }, 0);
+    mount();
+    expect(button("land")).not.toBeNull();
+    expect(button("takeoff")).toBeNull();
+  });
+
   it("sends Take off to the built-in, not the Launch sheet, once the frame is stale", () => {
     setPilot({ armed: false, landed: true }, 3000);
     mount();

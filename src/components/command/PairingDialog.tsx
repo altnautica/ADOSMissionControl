@@ -9,14 +9,14 @@
  * @license GPL-3.0-only
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { X } from "lucide-react";
 import { useMutation } from "convex/react";
-import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/modal";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { AgentConnectPanel } from "./AgentConnectPanel";
 import { PairingResult } from "./pairing/PairingResult";
 import { PairingPrompt } from "./pairing/PairingPrompt";
@@ -34,6 +34,9 @@ interface PairingDialogProps {
   /** Deep-link supplied code. When set, the dialog claims this code
    *  instead of showing the tabbed Add-a-drone form. */
   initialCode?: string | null;
+  /** Deep-link supplied host. Pre-loaded (before the code) into the Add tab
+   *  whenever the tabbed body shows for a deep link. */
+  initialHost?: string;
 }
 
 export function PairingDialog(props: PairingDialogProps) {
@@ -47,7 +50,8 @@ export function PairingDialog(props: PairingDialogProps) {
   return <PairingDialogDeepLink {...props} />;
 }
 
-/** Modal chrome shared by both branches. */
+/** Modal chrome shared by both branches: the shell's `Modal`, so the dialog
+ *  is named, traps focus and only handles Escape while on top. */
 function PairingShell({
   onClose,
   children,
@@ -56,47 +60,24 @@ function PairingShell({
   children: React.ReactNode;
 }) {
   const t = useTranslations("command");
-  const tCommon = useTranslations("common");
-
-  // Close on ESC
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-bg-secondary border border-border-default rounded-lg shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-default">
-          <h2 className="text-sm font-semibold text-text-primary">
-            {t("pairNewNode")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-            title={tCommon("close")}
-            aria-label={tCommon("close")}
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="px-5 py-5">{children}</div>
-      </div>
-    </div>
+    <Modal open onClose={onClose} title={t("pairNewNodeTitle")} size="sm" className="max-h-[90vh] overflow-y-auto">
+      {children}
+    </Modal>
   );
 }
 
+/** Hand a deep link's host (or code) to the Add tab's field, once. */
+function prefillAddTab(initialCode?: string | null, initialHost?: string): void {
+  const value = initialHost || initialCode;
+  if (value) usePairDialogStore.setState({ prefillHost: value });
+}
+
 /** No-deep-link path: the unified tabbed pairing body. */
-function PairingDialogTabbed({ open, onClose, onPaired }: PairingDialogProps) {
+function PairingDialogTabbed({ open, onClose, onPaired, initialCode, initialHost }: PairingDialogProps) {
+  useEffect(() => {
+    prefillAddTab(initialCode, initialHost);
+  }, [initialCode, initialHost]);
   return (
     <PairingShell onClose={onClose}>
       <AgentConnectPanel open={open} onClose={onClose} onPaired={onPaired} />
@@ -137,6 +118,7 @@ function PairingDialogDeepLinkBase({
   onClose,
   onPaired,
   initialCode,
+  initialHost,
   claimCode,
   preGenerate,
   requiresSignIn,
@@ -148,7 +130,10 @@ function PairingDialogDeepLinkBase({
   // When the cloud claim fails for a local-mode agent, flip to the tabbed
   // Add-a-Node body (LAN pairing).
   const [revealTabs, setRevealTabs] = useState(false);
-  const pairLocally = useCallback(() => setRevealTabs(true), []);
+  const pairLocally = useCallback(() => {
+    prefillAddTab(initialCode, initialHost);
+    setRevealTabs(true);
+  }, [initialCode, initialHost]);
   const [signInOpen, setSignInOpen] = useState(false);
 
   const flow = usePairingFlow({

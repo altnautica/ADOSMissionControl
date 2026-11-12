@@ -78,7 +78,11 @@ export function FlightMenu({
     ref.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
     // The navigation source's popover, opened from the Menu, closes first.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && document.querySelector(NAV_POPOVER) === null) onClose();
+      if (e.key !== "Escape" || document.querySelector(NAV_POPOVER) !== null) return;
+      // Focus goes back to the Menu button, so the next Tab continues there.
+      const button = document.querySelector<HTMLElement>("[data-testid='fs-menu-button']");
+      onClose();
+      button?.focus({ preventScroll: true });
     };
     const onDown = (e: PointerEvent) => {
       const el = ref.current;

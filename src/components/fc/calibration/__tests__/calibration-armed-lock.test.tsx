@@ -135,6 +135,17 @@ describe("CalibrationWizard · blockedReason", () => {
     render(<CalibrationWizard {...base} status="idle" />, { wrapper: IntlWrapper });
     expect(screen.getByRole("button", { name: "Start" })).toBeEnabled();
   });
+
+  it("keeps Start disabled until the safety statement is ticked", () => {
+    const onStart = vi.fn();
+    render(<CalibrationWizard {...base} onStart={onStart} status="idle" startAcknowledgement="Props removed" />, { wrapper: IntlWrapper });
+    const start = screen.getByRole("button", { name: "Start" });
+    expect(start).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Props removed"));
+    expect(start).toBeEnabled();
+    fireEvent.click(start);
+    expect(onStart).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("MSP calibration · arm lock", () => {

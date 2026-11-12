@@ -27,12 +27,18 @@ export function videoPlacement(view: CockpitViewId, grid: FlightGrid): CSSProper
   return rectStyle(videoRect(view, grid));
 }
 
-/** Where the map pane sits: the whole screen (the video zone in portrait)
- * when it is the main picture, else the Split view's share right of the
+/** Where the map pane sits: as the main picture, the grid's free centre
+ * (below the top bar, between the columns, above the card and bottom row),
+ * so its own controls, scale and banner are never under the flight chrome;
+ * the video zone in portrait. Else the Split view's share right of the
  * divider, inside the video zone in portrait. */
 export function mapPlacement(main: boolean, grid: FlightGrid): CSSProperties {
   const video = grid.zones.video;
-  if (main) return grid.cls === "portrait" && video ? rectStyle(video) : { inset: 0 };
+  if (main) {
+    if (grid.cls === "portrait" && video) return rectStyle(video);
+    const centre = grid.zones.center;
+    return centre ? rectStyle(centre) : { inset: 0 };
+  }
   return rectStyle(splitMapRect(grid));
 }
 

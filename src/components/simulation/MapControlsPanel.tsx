@@ -13,6 +13,16 @@ import { useTranslations } from "next-intl";
 import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
 import { BasemapSwitcher } from "@/components/map/BasemapSwitcher";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+
+/** Viewport width from which the panel starts open. */
+export const MAP_CONTROLS_OPEN_MIN_WIDTH = 1200;
+
+function startsOpen(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
+  return window.matchMedia(`(min-width: ${MAP_CONTROLS_OPEN_MIN_WIDTH}px)`).matches;
+}
 
 interface MapControlsPanelProps {
   hasIonToken: boolean;
@@ -38,12 +48,24 @@ export function MapControlsPanel({ hasIonToken, placement = "top-4 left-4" }: Ma
   const setRoundedTurns = useSettingsStore((s) => s.setRoundedTurnsPreview);
 
   const buildingsDisabled = !hasIonToken;
+  // On a narrow window the open panel covers the HUD and the view, so it
+  // starts collapsed there; the header opens it.
+  const [open, setOpen] = useState(startsOpen);
 
   return (
     <div className={cn("absolute z-10 flex flex-col gap-2 p-2 bg-bg-primary/70 backdrop-blur-md border border-border-default rounded-lg", placement)}>
-      <span className="text-[9px] font-mono text-text-tertiary text-center">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex min-h-6 items-center justify-center gap-1 text-[9px] font-mono text-text-tertiary hover:text-text-primary cursor-pointer"
+      >
         {t("map")}
-      </span>
+        <ChevronDown size={10} className={cn("transition-transform", open ? "rotate-180" : "")} />
+      </button>
+
+      {open && (
+      <>
 
       {/* Imagery / basemap — shared segmented switcher (matches the planner). */}
       <BasemapSwitcher
@@ -164,6 +186,8 @@ export function MapControlsPanel({ hasIonToken, placement = "top-4 left-4" }: Ma
           {t("roundedTurns.subtitle")}
         </span>
       </div>
+      </>
+      )}
     </div>
   );
 }

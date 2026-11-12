@@ -58,12 +58,13 @@ function subscribeVisibility(onChange: () => void): () => void {
 }
 
 /** Live flight context for the AR layout, read at draw time into `out`. A
- * `loaded` mission previews only while disarmed or owner ∈ {pilot, fc_mode}. */
-function readFlight(droneId: string, out: FlightContext): void {
+ * `loaded` mission previews only while known disarmed or owner ∈ {pilot,
+ * fc_mode}; an unknown arm state may be in the air. */
+export function readFlight(droneId: string, out: FlightContext): void {
   const p = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data ?? null;
   out.mission = p?.mission ?? null;
   out.avoid = p?.avoidState ?? null;
-  out.showLoaded = !p || !p.armed || p.owner === "pilot" || p.owner === "fc_mode";
+  out.showLoaded = !p || p.armed === false || p.owner === "pilot" || p.owner === "fc_mode";
 }
 
 /** Commit counter for the performance gate (zero commits while frames stream). */

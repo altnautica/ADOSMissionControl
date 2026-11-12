@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, cleanup, fireEvent, waitFor, within, act } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { renderWithIntl } from "../../helpers/intl-wrapper";
+import messages from "../../../locales/en.json";
 
 const mocks = vi.hoisted(() => ({ errors: [] as unknown[], push: vi.fn() }));
 
@@ -286,5 +287,40 @@ describe("SendToVehicleDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(within(screen.getByTestId("send-row-mission")).getByText("Failed")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Fly this mission" })).toBeNull();
+  });
+});
+
+describe("SendToVehicleDialog fence row", () => {
+  it("blocks the fence while the mission crosses it, and keeps rally sendable", async () => {
+    mocks.errors = [{ code: "OUTSIDE_GEOFENCE", severity: "blocking" }];
+    renderDialog();
+    const fence = screen.getByLabelText("Geofence");
+    expect(fence).not.toBeChecked();
+    expect(fence).toBeDisabled();
+    expect(screen.getByTestId("send-geofence-crossed")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(calls).toEqual(["rally"]));
+  });
+
+  it("leaves the fence sendable for other mission errors", () => {
+    mocks.errors = [{ code: "ALTITUDE_EXCEEDED", severity: "blocking" }];
+    renderDialog();
+    expect(screen.getByLabelText("Geofence")).toBeChecked();
+  });
+
+  it("puts a refused fence upload into words, never the raw result number", async () => {
+    useGeofenceStore.setState({
+      uploadFence: vi.fn(async () => ({ success: false, message: "Fence rejected: type 4", resultCode: 4 })),
+    });
+    useRallyStore.setState({
+      uploadRallyPoints: vi.fn(async () => ({ success: false, message: "Rally rejected: type 13", resultCode: 13 })),
+    });
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => {
+      expect(within(screen.getByTestId("send-row-geofence")).getByText(messages.planner.send.result.noSpace)).toBeInTheDocument();
+      expect(within(screen.getByTestId("send-row-rally")).getByText(messages.planner.send.result.invalidSequence)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/type 4|type 13/)).toBeNull();
   });
 });

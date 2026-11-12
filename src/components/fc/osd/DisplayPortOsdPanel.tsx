@@ -66,7 +66,7 @@ export function DisplayPortOsdPanel() {
                   <div key={r} className="whitespace-pre">{line.length ? line : " "}</div>
                 ))
               ) : (
-                <div className="whitespace-pre text-text-tertiary">no OSD frames yet</div>
+                <div className="whitespace-pre text-text-tertiary">{tr("noFramesYet")}</div>
               )}
             </div>
           </div>

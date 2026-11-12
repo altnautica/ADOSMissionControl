@@ -81,6 +81,19 @@ export interface LogContext {
   compId: number
   logListDownload: LogListState | null
   logDataDownload: LogDataState | null
+  /**
+   * Bytes of downloads that stopped short (cancel, stall, supersede), by log
+   * id: downloading the same log again resumes from them instead of byte 0.
+   */
+  partialLogs?: Map<number, LogPartial>
+}
+
+/** What a stopped download had received, kept so a retry can resume. */
+export interface LogPartial {
+  data: Uint8Array
+  receivedBytes: number
+  gaps: LogDataGap[]
+  endBytes: number | null
 }
 
 /**
@@ -172,13 +185,19 @@ export async function downloadLog(ctx: LogContext, logId: number, onProgress?: L
   }
 
   const { promise, resolve, reject } = Promise.withResolvers<Uint8Array>()
+  const partial = ctx.partialLogs?.get(logId)
+  ctx.partialLogs?.delete(logId)
   const dl: LogDataState = {
-    logId, data: new Uint8Array(0),
-    receivedBytes: 0, gaps: [], endBytes: null, pendingGap: null,
+    logId, data: partial?.data ?? new Uint8Array(0),
+    receivedBytes: partial?.receivedBytes ?? 0,
+    gaps: partial ? partial.gaps.map((g) => ({ ...g })) : [],
+    endBytes: partial?.endBytes ?? null,
+    pendingGap: null,
     onProgress, resolve, reject,
     inactivityTimer: null, retryCount: 0, settled: false,
   }
   ctx.logDataDownload = dl
+  if (partial) onProgress?.(dl.receivedBytes, 0)
   requestMissing(ctx, dl)
   armInactivityTimer(ctx, dl)
   return promise
@@ -247,8 +266,18 @@ function settleLogDataDownload(ctx: LogContext, dl: LogDataState, error: Error |
   clearTimeout(dl.inactivityTimer ?? undefined)
   dl.inactivityTimer = null
   if (ctx.logDataDownload === dl) ctx.logDataDownload = null
-  if (error) dl.reject(error)
-  else dl.resolve(dl.data.slice(0, dl.endBytes ?? dl.receivedBytes))
+  if (error) {
+    // Keep what arrived so downloading this log again picks up from here.
+    if (dl.receivedBytes > 0) {
+      ctx.partialLogs ??= new Map()
+      ctx.partialLogs.set(dl.logId, {
+        data: dl.data, receivedBytes: dl.receivedBytes, gaps: dl.gaps, endBytes: dl.endBytes,
+      })
+    }
+    dl.reject(error)
+  } else {
+    dl.resolve(dl.data.slice(0, dl.endBytes ?? dl.receivedBytes))
+  }
   if (ctx.transport?.isConnected) {
     ctx.transport.send(encodeLogRequestEnd(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
   }
@@ -260,6 +289,8 @@ export async function eraseAllLogs(ctx: LogContext): Promise<CommandResult> {
     return { success: false, resultCode: -1, message: 'Not connected' }
   }
   ctx.transport.send(encodeLogErase(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  // Erased logs are gone; a later log may reuse an id.
+  ctx.partialLogs?.clear()
   return { success: true, resultCode: 0, acknowledged: false, message: 'Erase command sent, unacknowledged' }
 }
 

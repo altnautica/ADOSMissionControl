@@ -28,7 +28,10 @@ export function HistoryStatsBar({ records }: HistoryStatsBarProps) {
   const kpis = useMemo(() => computeAggregateKpis(records), [records]);
 
   return (
-    <div className="flex items-center gap-6 px-4 py-2 border-b border-border-default bg-bg-secondary/40 shrink-0 text-[11px] font-mono">
+    <div
+      data-testid="history-stats-bar"
+      className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 border-b border-border-default bg-bg-secondary/40 shrink-0 text-[11px] font-mono"
+    >
       <Stat label={t("statsFlights")} value={kpis.totalFlights.toString()} />
       <Stat label={t("statsHours")} value={formatDecimal(kpis.totalHours, 1, locale)} />
       <Stat label={t("statsDistance")} value={formatKilometres(kpis.totalDistanceKm, 1, locale)} />

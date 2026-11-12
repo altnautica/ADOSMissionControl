@@ -2,7 +2,7 @@
  * @license GPL-3.0-only
  *
  * The skill picker's Tweak panel names each parameter by its manifest label
- * (the raw key only when the manifest has none), its words come from the
+ * (the key in words only when the manifest has none), its words come from the
  * shared spec strings, and the skill colour comes from the spec tokens.
  */
 
@@ -87,7 +87,7 @@ afterEach(() => {
 });
 
 describe("skill picker Tweak panel", () => {
-  it("shows the manifest label, and the raw key only when there is none", () => {
+  it("shows the manifest label, and the key in words only when there is none", () => {
     setSkill("idle");
     renderPicker();
     fireEvent.click(screen.getByTestId("skill-picker-chip"));
@@ -95,15 +95,16 @@ describe("skill picker Tweak panel", () => {
     const panel = screen.getByTestId("tweak-panel");
     expect(panel.textContent).toContain("Follow distance");
     expect(panel.textContent).not.toContain("follow_distance_m");
-    expect(panel.textContent).toContain("orbit_rate_dps");
+    expect(panel.textContent).toContain("Orbit rate (dps)");
+    expect(panel.textContent).not.toContain("orbit_rate_dps");
     expect(panel.textContent).toContain("Tweak");
     expect(screen.getByRole("button", { name: "Go" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
   });
 
-  it("falls back to the key with no manifest entry", () => {
-    expect(paramLabel(undefined, "orbit_rate_dps")).toBe("orbit_rate_dps");
-    expect(paramLabel([{ key: "a", ui: { label: "" } }], "a")).toBe("a");
+  it("falls back to the key in words with no manifest entry", () => {
+    expect(paramLabel(undefined, "orbit_rate_dps")).toBe("Orbit rate (dps)");
+    expect(paramLabel([{ key: "a", ui: { label: "" } }], "a")).toBe("A");
     expect(paramLabel([{ key: "a", ui: { label: "Alpha" } }], "a")).toBe("Alpha");
   });
 

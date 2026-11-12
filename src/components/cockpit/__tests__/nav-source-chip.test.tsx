@@ -12,6 +12,8 @@ import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
 import { EKF_FLAG } from "@/lib/hud/nav-source";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
+import { useClockStore } from "@/stores/clock-store";
 import { useEkfSourceStore } from "@/stores/ekf-source-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -78,6 +80,9 @@ describe("NavSourceChip", () => {
     } as never);
     setEkfSourceSet.mockClear();
     mocks.toast.mockClear();
+    // A live flight controller link unless a test says otherwise.
+    useDroneStore.setState({ lastHeartbeat: Date.now() });
+    useClockStore.setState({ now: Date.now() });
   });
   afterEach(() => {
     cleanup();
@@ -162,7 +167,20 @@ describe("NavSourceChip", () => {
     });
     expect(setEkfSourceSet).toHaveBeenCalledWith(2);
     expect(useEkfSourceStore.getState().lastCommanded[DRONE]).toBe(2);
-    expect(mocks.toast).toHaveBeenCalledWith(specString("nav_source.set_active", { n: 2 }), "success");
+    // Acknowledged but not yet shown by the nav state: "sent", not "active".
+    expect(mocks.toast).toHaveBeenCalledWith(specString("nav_source.set_sent", { n: 2 }), "info");
+    expect(screen.getByRole("dialog", { name: specString("cockpit.status.source.nav_source") })).toBe(pop);
+  });
+
+  it("disables the switches without live flight controller telemetry", () => {
+    useDroneStore.setState({ lastHeartbeat: 0 });
+    setSrc(3, 3);
+    pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_ABS);
+    renderChip();
+    fireEvent.click(chip().querySelector("button")!);
+    const use = screen.getByText(specString("nav_source.use_set", { n: 2 })) as HTMLButtonElement;
+    expect(use.disabled).toBe(true);
+    expect(screen.getByTestId("nav-no-fc").textContent).toBe(specString("nav_source.no_fc"));
   });
 
   it("notes automatic switching while vision-nav runs external nav", () => {
@@ -176,12 +194,13 @@ describe("NavSourceChip", () => {
       obstacleRateHz: null,
       minObstacleM: null,
       gpsFix: null,
-      poseAgeMs: null,
+      poseAgeMs: 42.4,
     });
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
     renderChip();
     fireEvent.click(chip().querySelector("button")!);
     expect(screen.getByText(specString("nav_source.auto_note"))).toBeTruthy();
     expect(screen.getByTestId("nav-set-2").textContent).toContain(specString("nav_source.active"));
+    expect(screen.getByTestId("nav-pose-age").textContent).toBe(specString("nav_source.pose_age", { ms: 42 }));
   });
 });

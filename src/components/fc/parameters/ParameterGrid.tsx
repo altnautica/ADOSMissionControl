@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { RotateCw, Star, ChevronUp, ChevronDown, Lock, AlertTriangle, HardDrive } from "lucide-react";
@@ -28,13 +28,16 @@ interface ParameterGridProps {
   columnVisibility: ParamColumnVisibility;
   docContext?: ParamDocContext | null;
   docsLinkLabel?: string;
+  /** Exact parameter name to highlight, scroll to and focus (e.g. from the
+   *  command palette), so "RTL_ALT" lands on RTL_ALT, not RTL_ALT_FINAL. */
+  focusParam?: string | null;
 }
 
 const ROW_HEIGHT = 32;
 
 const HEADER_CLASS = "px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap text-xs";
 
-export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel }: ParameterGridProps) {
+export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel, focusParam = null }: ParameterGridProps) {
   const tr = useTranslations("fcPanels.parameterGrid");
   const t = useTranslations("parameters");
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -59,7 +62,7 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
     vis.description && "minmax(100px, 1.5fr)",       // Description
     vis.value && "minmax(160px, 2fr)",               // Value
     vis.options && "minmax(140px, 1.5fr)",           // Options
-    vis.range && "minmax(100px, 1fr)",               // Range
+    vis.range && "minmax(140px, 1fr)",               // Range
     vis.units && "minmax(50px, 0.5fr)",              // Units
     vis.type && "minmax(60px, 0.5fr)",               // Type
   ].filter(Boolean).join(" "), [vis.index, vis.name, vis.description, vis.value, vis.options, vis.range, vis.units, vis.type]);
@@ -87,6 +90,15 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
   });
+
+  const focusIndex = focusParam ? filtered.findIndex((p) => p.name === focusParam) : -1;
+  useEffect(() => {
+    if (focusIndex < 0) return;
+    rowVirtualizer.scrollToIndex(focusIndex, { align: "center" });
+    requestAnimationFrame(() => {
+      parentRef.current?.querySelector<HTMLElement>('[data-param-focus="true"]')?.focus();
+    });
+  }, [focusIndex, rowVirtualizer]);
 
   const startEdit = useCallback((param: ParameterValue) => {
     const meta = metadata?.get(param.name);
@@ -158,8 +170,11 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                 <div
                   key={`${param.name}-${param.index}`}
                   data-index={virtualRow.index}
+                  data-param-focus={param.name === focusParam ? "true" : undefined}
+                  tabIndex={param.name === focusParam ? -1 : undefined}
+                  aria-current={param.name === focusParam ? "true" : undefined}
                   ref={rowVirtualizer.measureElement}
-                  className={cn("grid items-center border-b border-border-default h-8 transition-colors", isModified ? "bg-status-warning/5" : isPendingRam ? "bg-status-serious/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
+                  className={cn("grid items-center border-b border-border-default h-8 transition-colors", param.name === focusParam ? "bg-accent-primary/15 outline outline-1 outline-accent-primary" : isModified ? "bg-status-warning/5" : isPendingRam ? "bg-status-serious/8" : differsFromDefault && "border-l-2 border-l-accent-primary bg-accent-primary/5")}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -248,7 +263,15 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
                       )}
                     </div>
                   )}
-                  {vis.range && <div className="px-3 text-text-tertiary font-mono whitespace-nowrap">{meta?.range ? `${meta.range.min} .. ${meta.range.max}` : "—"}</div>}
+                  {vis.range && (
+                    <div
+                      data-testid="param-range-cell"
+                      className="min-w-0 truncate px-3 text-text-tertiary font-mono whitespace-nowrap"
+                      title={meta?.range ? `${meta.range.min} .. ${meta.range.max}` : undefined}
+                    >
+                      {meta?.range ? `${meta.range.min} .. ${meta.range.max}` : "—"}
+                    </div>
+                  )}
                   {vis.units && <div className="px-3 text-text-tertiary">{meta?.units || "—"}</div>}
                   {vis.type && <div className="px-3 text-text-tertiary font-mono">{MAV_PARAM_TYPE_LABELS[param.type] ?? `T${param.type}`}</div>}
                 </div>

@@ -64,7 +64,7 @@ export function LcProgrammingPanel() {
         <div className="flex items-center gap-2">
           <Code size={16} className="text-accent-primary" />
           <h2 className="text-sm font-medium text-text-primary">{tl("programmingJS")}</h2>
-          <span className="ml-auto text-[10px] text-text-tertiary">compiles to Logic Conditions</span>
+          <span className="ml-auto text-[10px] text-text-tertiary">{tl("compilesToLogicConditions")}</span>
         </div>
 
         <p className="text-[10px] text-text-tertiary">
@@ -104,7 +104,7 @@ export function LcProgrammingPanel() {
                 <thead>
                   <tr className="text-text-tertiary">
                     <th className="text-left pr-3 pb-1">#</th>
-                    <th className="text-left pr-3 pb-1">operation</th>
+                    <th className="text-left pr-3 pb-1">{tl("operation")}</th>
                     <th className="text-left pr-3 pb-1">A</th>
                     <th className="text-left pb-1">B</th>
                   </tr>

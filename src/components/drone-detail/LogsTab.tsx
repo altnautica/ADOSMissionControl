@@ -19,6 +19,7 @@ import { DroneFlightsTab } from "@/components/drone-detail/DroneFlightsTab";
 import { BlackBoxTab } from "@/components/command/BlackBoxTab";
 import { Px4EventsFeed } from "@/components/drone-detail/Px4EventsFeed";
 import { useDroneManager } from "@/stores/drone-manager";
+import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 type LogsView = "flights" | "recorder" | "events";
 
@@ -30,9 +31,13 @@ interface LogsTabProps {
   /** Show the Flights sub-view. Only a drone profile flies; ground-station and
    * compute nodes pass false and render the Recorder view alone. */
   showFlights?: boolean;
+  /** The GCS reaches the node's agent directly (its connection is coming). */
+  directReach?: boolean;
+  /** A relayed drone's ground-station relay-proxy reach. */
+  relayReach?: RelayReach | null;
 }
 
-export function LogsTab({ droneId, nodeDeviceId, showFlights = false }: LogsTabProps) {
+export function LogsTab({ droneId, nodeDeviceId, showFlights = false, directReach, relayReach }: LogsTabProps) {
   const t = useTranslations("dronePanel.logsViews");
   const [view, setView] = useState<LogsView>(
     showFlights ? "flights" : "recorder",
@@ -46,7 +51,7 @@ export function LogsTab({ droneId, nodeDeviceId, showFlights = false }: LogsTabP
   // No Flights sub-view to switch to: render the Recorder body directly with
   // no switcher chrome (ground-station / compute nodes).
   if (!showFlights) {
-    return <BlackBoxTab nodeDeviceId={nodeDeviceId} />;
+    return <BlackBoxTab nodeDeviceId={nodeDeviceId} directReach={directReach} relayReach={relayReach} />;
   }
 
   const views: LogsView[] = isPx4
@@ -83,7 +88,7 @@ export function LogsTab({ droneId, nodeDeviceId, showFlights = false }: LogsTabP
         ) : view === "events" ? (
           <Px4EventsFeed />
         ) : (
-          <BlackBoxTab nodeDeviceId={nodeDeviceId} />
+          <BlackBoxTab nodeDeviceId={nodeDeviceId} directReach={directReach} relayReach={relayReach} />
         )}
       </div>
     </div>

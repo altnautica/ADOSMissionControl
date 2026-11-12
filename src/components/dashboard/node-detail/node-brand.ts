@@ -36,6 +36,29 @@ export function effectiveNodeProfile(ctx: SurfaceContext): EffProfile {
   return ctx.agentIdentityKnown ? "drone" : "flight-controller";
 }
 
+/** The node's title: an operator-set name wins, but a metadata profile still
+ *  carrying its default (the bare id) yields to the fleet row's name, so the
+ *  page and the fleet list name the node the same way. */
+export function nodeDisplayName(
+  metadataName: string | undefined,
+  fleetName: string | undefined,
+  ids: readonly string[],
+): string {
+  if (metadataName && !ids.includes(metadataName)) return metadataName;
+  return fleetName || metadataName || ids[0];
+}
+
+/** Whether this node's FC session is open AND its heartbeat is fresh on the
+ *  shared clock. An open transport with a silent FC (a port with no MAVLink)
+ *  is not live. Reads the selected vehicle's heartbeat: the node panel
+ *  selects the node it shows. */
+export function useFcHeartbeatFresh(fcConnected: boolean): boolean {
+  const fcHeartbeatAt = useDroneStore((s) => s.lastHeartbeat);
+  useClockTick();
+  const now = useClockStore((s) => s.now);
+  return fcConnected && isFresh(fcHeartbeatAt, now);
+}
+
 export interface NodeBrandDescriptor {
   effProfile: EffProfile;
   Icon: LucideIcon;
@@ -45,6 +68,8 @@ export interface NodeBrandDescriptor {
   typeBadge: string;
   /** Secondary badge — the WFB reach hop, when present. */
   subBadge?: string;
+  /** What the status line describes: the flight controller or the agent. */
+  statusSubject: string;
   statusLine: string;
   statusLevel: StatusLevel;
 }
@@ -72,17 +97,15 @@ export function useNodeBrand(args: {
   const t = useTranslations("nodeConsole");
   const connected = useAgentConnectionStore((s) => s.connected);
   const stale = useAgentSystemStore((s) => s.stale);
-  // The open node's FC heartbeat (the panel selects the node it shows), aged
-  // on the shared clock so a silent link reads as reconnecting.
-  const fcHeartbeatAt = useDroneStore((s) => s.lastHeartbeat);
-  useClockTick();
-  const now = useClockStore((s) => s.now);
+  // The open node's FC heartbeat, aged on the shared clock so a silent link
+  // reads as reconnecting.
+  const fcFresh = useFcHeartbeatFresh(fcConnected);
   let statusLine: string;
   let statusLevel: StatusLevel;
   let subBadge: string | undefined;
 
   if (profile === "flight-controller") {
-    if (fcConnected && isFresh(fcHeartbeatAt, now)) {
+    if (fcFresh) {
       statusLine = t("hero.online");
       statusLevel = "good";
     } else if (fcConnected) {
@@ -118,6 +141,7 @@ export function useNodeBrand(args: {
     title,
     typeBadge: t(`type.${profileKey(profile)}`),
     subBadge,
+    statusSubject: profile === "flight-controller" ? t("hero.subjectFc") : t("hero.subjectAgent"),
     statusLine,
     statusLevel,
   };
