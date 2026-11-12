@@ -54,6 +54,7 @@ import messages from "../../../../../locales/en.json";
 import { DroneOverview } from "../DroneOverview";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 
 const NODE_ID = "node:drone-b";
 
@@ -100,6 +101,7 @@ describe("drone Overview companion band", () => {
   afterEach(() => {
     cleanup();
     useAgentConnectionStore.setState({ nodeDeviceId: null, agentUrl: null } as never);
+    useNodeRegistryStore.setState({ nodes: {} } as never);
   });
 
   it("shows the unreachable notice, not the attached agent, on another node's page", () => {
@@ -113,5 +115,24 @@ describe("drone Overview companion band", () => {
     attach("drone-b");
     renderOverview();
     expect(screen.queryByText(messages.dronePanel.companionOffline.title)).toBeNull();
+  });
+
+  it("says this browser is not connected, not unreachable, for a live node on another page", () => {
+    useNodeRegistryStore.setState({
+      nodes: { [NODE_ID]: { presence: { lastHeartbeat: Date.now() }, fc: { lastHeartbeat: 0 } } },
+    } as never);
+    attach("drone-a");
+    renderOverview();
+    expect(screen.getByText(messages.agent.notAttached.title)).toBeTruthy();
+    expect(screen.queryByText(messages.dronePanel.companionOffline.title)).toBeNull();
+  });
+
+  it("does not count an FC heartbeat alone as the companion being live", () => {
+    useNodeRegistryStore.setState({
+      nodes: { [NODE_ID]: { presence: { lastHeartbeat: 0 }, fc: { lastHeartbeat: Date.now() } } },
+    } as never);
+    attach("drone-a");
+    renderOverview();
+    expect(screen.getByText(messages.dronePanel.companionOffline.title)).toBeTruthy();
   });
 });

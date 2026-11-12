@@ -43,6 +43,9 @@ import { openPairNode } from "@/components/shared/link-up/link-up-actions";
 import { NodeReachBlock } from "../shared/NodeReachBlock";
 import { useNodeDirectAgent } from "../settings/use-node-direct-agent";
 import { NodeBrandHeader } from "./NodeBrandHeader";
+import { NodeNotAttachedNotice } from "./NodeNotAttachedNotice";
+import { useNodeLastSeen } from "@/hooks/use-node-last-seen";
+import { livenessFromTimestamp } from "@/lib/nodes/presence";
 import { OverviewTile, OverviewSection, OverviewGrid } from "./OverviewGrid";
 import type { SurfaceContext } from "@/components/dashboard/node-detail/surface-types";
 import { surfaceNodeDeviceId } from "@/components/dashboard/node-detail/surface-types";
@@ -71,6 +74,10 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
   // node) it would show the attached agent's status and restart it.
   const directAgent = useNodeDirectAgent(surfaceNodeDeviceId(ctx));
   const bandReachable = agentReachable && directAgent !== null;
+  // Heard from recently (presence or status row) but not attached here: the
+  // node is up, so the notice says this browser is not connected to it rather
+  // than that the companion is unreachable under an "Online" header.
+  const nodeLive = livenessFromTimestamp(useNodeLastSeen(surfaceNodeDeviceId(ctx))) === "live";
   const profile = effectiveNodeProfile(ctx);
   // A WFB-linked drone reached only through a ground node names its reach hop
   // on the hero. Undefined for a directly-reached drone (no sub-badge).
@@ -101,7 +108,14 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
       {/* A companion this node HAS but the GCS cannot reach. Rendering
           nothing here lost half the surface with no explanation, and the
           add-a-computer CTA was suppressed because the companion IS known. */}
-      {!bandReachable && companionKnown && (
+      {!bandReachable && companionKnown && nodeLive && (
+        <OverviewGrid>
+          <OverviewTile span="half">
+            <NodeNotAttachedNotice />
+          </OverviewTile>
+        </OverviewGrid>
+      )}
+      {!bandReachable && companionKnown && !nodeLive && (
         <OverviewGrid>
           <OverviewTile span="half">
             <CompanionOfflineNotice

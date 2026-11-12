@@ -2,8 +2,9 @@
 
 /**
  * @module hooks/use-node-last-seen
- * @description When one node was last heard from, judged by that node alone:
- * the freshest of its presence heartbeat, its FC heartbeat and its status row.
+ * @description When one node's agent was last heard from, judged by that node
+ * alone: the freshest of its presence heartbeat and its status row. An FC
+ * heartbeat is not the agent's (a bare FC link reports one with no agent up).
  * A node page reads this instead of the attached agent connection's clock,
  * which describes whichever node happens to be attached.
  * @license GPL-3.0-only
@@ -29,7 +30,6 @@ export function useNodeLastSeen(nodeDeviceId: string | null): number | null {
   useClockTick();
   const lastSeen = Math.max(
     node?.presence.lastHeartbeat ?? 0,
-    node?.fc.lastHeartbeat ?? 0,
     statusAt,
   );
   return lastSeen > 0 ? lastSeen : null;
