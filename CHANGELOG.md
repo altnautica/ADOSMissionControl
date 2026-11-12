@@ -53,6 +53,28 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Betaflight failsafe procedure** writes 0 for Land and 1 for Drop, as the
+  firmware defines them; the dropdown had the two swapped.
+- **Pad stop hold with the top bar's STOP sheet open** sends the stop once
+  and closes the sheet, so completing it later cannot send a second stop.
+- **Extension telemetry** keeps updating after the drone's clock steps back
+  (a power cycle with no clock source, or a clock correction).
+- **Mission read-back on ArduPilot** compares altitudes in the whole
+  centimetres the vehicle stores (35.67 m no longer reads as different) and
+  reads continue-and-change-altitude, loiter-to-altitude, guided enable,
+  relay, go-around and VTOL transition items by the fields the vehicle keeps.
+- **Send to vehicle** holds back the geofence when a waypoint is below its
+  floor.
+- **Frame and Heli panels** hold Save, with the reason, while a staged frame
+  edit cannot be written because the vehicle may be armed.
+- **Reboot-required banner** cannot be confirmed once the vehicle arms with
+  the confirmation open.
+- **Drone overview** says a live node is not connected to this browser,
+  rather than unreachable; an FC heartbeat alone no longer marks the
+  companion online. Cameras in a cloud session show one notice, and the
+  extension disable confirm notes an unknown arm state with no local link.
+- **Parameters** opened from the palette keep their focus and highlight until
+  the filter changes. Compare, restore and scripting labels are translated.
 - **Stop and Pause confirmed on their sheet** are sent even when the link
   drops or returns during the hold. Holding the pad stop chord while the stop
   sheet is open sends the stop.
