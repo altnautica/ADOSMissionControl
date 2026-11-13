@@ -6,6 +6,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Planned path on the local-frame map.** While a go-to or a skill flies and
+  the pilot's frame is fresh, the local-frame minimap draws the pilot's
+  planned path as a dashed line and a ring on its goal, in the go-to colour,
+  or in the blocked colour while the pilot reports the way blocked. It
+  matches the drone's own cockpit and the Android app.
+
 ## [0.64.0] - 2026-11-13
 
 This release covers everything since 0.63.0: thirty-one commits over
