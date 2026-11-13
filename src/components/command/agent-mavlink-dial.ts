@@ -19,6 +19,9 @@
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import type { Transport } from "@/lib/protocol/types/transport";
+// Static: the shell already bundles this transport (auto-reconnect imports
+// it), so loading it lazily here saved nothing.
+import { WebSocketTransport } from "@/lib/protocol/transport/websocket";
 import {
   mintWsTicket,
   WS_TICKET_PROTOCOL,
@@ -44,6 +47,9 @@ export interface AgentDialPlan {
   cloudDeviceId: string | null;
   /** True for an MSP FC (Betaflight/iNav), which rides the relay's MSP lane. */
   mspLane: boolean;
+  /** True for the focused agent: its dial outcome sets the store's
+   * pair-this-node state. A background node's dial leaves it alone. */
+  reportPairing: boolean;
 }
 
 /** Which dial paths a plan can use. */
@@ -124,13 +130,10 @@ export async function dialAgentFc(
   const { mavlinkUrl, agentUrl, apiKey, cloudDeviceId } = plan;
   const none = { transport: null, pairRequired: false } as const;
 
-  // Loaded lazily: the transports (MQTT especially) are heavy and most
-  // sessions never dial an agent FC.
-  const { WebSocketTransport } = await import("@/lib/protocol/transport/websocket");
   const tryWs = async (
     url: string,
     protocols?: string | string[],
-  ): Promise<InstanceType<typeof WebSocketTransport>> => {
+  ): Promise<WebSocketTransport> => {
     const wsTransport = new WebSocketTransport();
     const timeout = Promise.withResolvers<never>();
     const timer = setTimeout(() => timeout.reject(new Error("timeout")), WS_TIMEOUT_MS);
@@ -195,13 +198,17 @@ export async function dialAgentFc(
         if (isCancelled()) return none;
       }
     }
-    useAgentConnectionStore.getState().setMavlinkPairRequired(pairRequired);
+    if (plan.reportPairing) {
+      useAgentConnectionStore.getState().setMavlinkPairRequired(pairRequired);
+    }
     if (transport) return { transport, connType: "websocket" };
   }
 
   // Try 3: MQTT relay. An MSP FC rides the agent's MSP topic lane.
   if (paths.relay && cloudDeviceId) {
     try {
+      // Loaded lazily: the MQTT transport is heavy and most sessions never
+      // ride the relay.
       const { MqttMavlinkTransport } = await import(
         "@/lib/protocol/transport/mqtt-mavlink"
       );

@@ -6,7 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-This release covers everything since 0.63.0: twenty-five commits over
+This release covers everything since 0.63.0: twenty-six commits over
 2026-11-12 and 2026-11-13, from a whole-app audit of Mission Control, the
 Android app and the drone's own cockpit. Three threads run through it.
 
@@ -82,6 +82,11 @@ words, and pages that cannot reach a node say so instead of showing blanks.
 
 ### Fixed
 
+- **The planner lists a LAN-paired drone after a reload.** Mission Control
+  keeps a link open to every drone paired on this network whose flight
+  controller is up, not only to the drone open on the dashboard. A full page
+  load, or leaving the drone's page, no longer empties the planner's Drone
+  list, and a dropped link is dialled again every 3 s.
 - **Map point menu on the cockpit minimap** draws above the card's corner
   buttons, so the AUTO / LOCAL / MAP toggle no longer covers "Fly Here", and
   stays inside the window: on a small map every item is reachable.
