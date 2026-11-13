@@ -70,14 +70,17 @@ describe("camera commands", () => {
     expect(sent).toEqual([{ command: 2000, params: [0, 0, 1, 7, 0, 0, 0], targetCompId: CAMERA_COMPID }]);
   });
 
-  it("steps the zoom with MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP", async () => {
+  it("steps the zoom with continuous zoom, then a stop (ArduPilot denies ZOOM_TYPE_STEP)", async () => {
     const sent: Sent[] = [];
     await cmdSetCameraZoom(ctx(sent), 1);
     await cmdSetCameraZoom(ctx(sent), -1, CAMERA_COMPID);
     expect(sent).toEqual([
-      { command: 531, params: [0, 1, 0, 0, 0, 0, 0], targetCompId: undefined },
-      { command: 531, params: [0, -1, 0, 0, 0, 0, 0], targetCompId: CAMERA_COMPID },
+      { command: 531, params: [1, 1, 0, 0, 0, 0, 0], targetCompId: undefined },
+      { command: 531, params: [1, 0, 0, 0, 0, 0, 0], targetCompId: undefined },
+      { command: 531, params: [1, -1, 0, 0, 0, 0, 0], targetCompId: CAMERA_COMPID },
+      { command: 531, params: [1, 0, 0, 0, 0, 0, 0], targetCompId: CAMERA_COMPID },
     ]);
+    expect(sent.some((s) => s.params[0] === 0)).toBe(false);
   });
 });
 
@@ -201,7 +204,8 @@ describe("adapter camera discovery", () => {
     const sent = link.commands().filter((c) => c.command === 2000 || c.command === 531);
     expect(sent).toEqual([
       { command: 2000, params: [0, 0, 1, 1, 0, 0, 0], targetComp: CAMERA_COMPID },
-      { command: 531, params: [0, -1, 0, 0, 0, 0, 0], targetComp: CAMERA_COMPID },
+      { command: 531, params: [1, -1, 0, 0, 0, 0, 0], targetComp: CAMERA_COMPID },
+      { command: 531, params: [1, 0, 0, 0, 0, 0, 0], targetComp: CAMERA_COMPID },
       { command: 2000, params: [0, 0, 1, 2, 0, 0, 0], targetComp: CAMERA_COMPID },
     ]);
   });

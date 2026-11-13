@@ -115,9 +115,24 @@ const PARAM_KEYS = ["param1", "param2", "param3", "param4"] as const;
  * the float32 product (`location.alt = packet.z * 100.0f` into an int32), and
  * echoes those centimetres back: compare in its units.
  */
+function arduPilotAltCm(sent: number): number {
+  return Math.trunc(Math.fround(Math.fround(sent) * 100));
+}
+
 function sameArduPilotAlt(sent: number, echoed: number): boolean {
   if (Number.isNaN(sent)) return Number.isNaN(echoed) || echoed === 0;
-  return Math.trunc(Math.fround(Math.fround(sent) * 100)) === Math.round(echoed * 100);
+  return arduPilotAltCm(sent) === Math.round(echoed * 100);
+}
+
+/**
+ * The item an ArduPilot vehicle echoes for an uploaded `item`: a location
+ * command's altitude comes back as its whole stored centimetres. Other slots
+ * are left as sent.
+ */
+export function arduPilotStoredItem(item: MissionItem): MissionItem {
+  if (!ARDUPILOT_KEPT[item.command]?.location) return { ...item };
+  const z = Number.isNaN(item.z) ? 0 : Math.fround(arduPilotAltCm(item.z) * Math.fround(0.01));
+  return { ...item, z };
 }
 
 function samePosition(a: MissionItem, b: MissionItem, arduPilot: boolean): boolean {

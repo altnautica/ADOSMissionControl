@@ -57,7 +57,7 @@ describe("MapContextMenu", () => {
       }, [m]);
       return null;
     }
-    const { container } = render(
+    render(
       <MapContainer center={[12.97, 77.59]} zoom={14} style={{ width: 400, height: 300 }}>
         <Grab />
         <MapContextMenu />
@@ -68,7 +68,8 @@ describe("MapContextMenu", () => {
     act(() => {
       m.fire("contextmenu", { latlng, originalEvent: { preventDefault() {} } });
     });
-    const menu = () => container.querySelector(".z-\\[2000\\]") as HTMLElement | null;
+    // The menu is portalled to the body, above anything layered over the map.
+    const menu = () => document.body.querySelector('[data-testid="map-context-menu"]') as HTMLElement | null;
     expect(menu()).not.toBeNull();
     const leftBefore = menu()!.style.left;
 

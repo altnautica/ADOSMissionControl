@@ -100,7 +100,7 @@ export interface MavlinkCamera {
   zoom: boolean;
   /** MAV_CMD_IMAGE_START_CAPTURE for one image. */
   capture: () => Promise<CameraAnswer>;
-  /** MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP. */
+  /** MAV_CMD_SET_CAMERA_ZOOM: one continuous-zoom pulse, then a stop. */
   zoomStep: (by: 1 | -1) => Promise<CameraAnswer>;
 }
 

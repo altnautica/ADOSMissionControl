@@ -47,10 +47,12 @@ describe("demo vehicle camera", () => {
     await expect(camera!.zoomStep(-1)).resolves.toMatchObject({ ok: true, answered: true });
   });
 
-  it("acks MAV_CMD_IMAGE_START_CAPTURE and MAV_CMD_SET_CAMERA_ZOOM", async () => {
+  it("acks MAV_CMD_IMAGE_START_CAPTURE and continuous MAV_CMD_SET_CAMERA_ZOOM, and denies ZOOM_TYPE_STEP as ArduPilot does", async () => {
     const protocol = useDroneManager.getState().drones.get(ID)!.protocol as MockProtocol;
     await expect(protocol.sendCommand(2000, [0, 0, 1, 0, 0, 0, 0])).resolves.toMatchObject({ success: true, resultCode: 0 });
-    await expect(protocol.sendCommand(531, [0, 1, 0, 0, 0, 0, 0])).resolves.toMatchObject({ success: true, resultCode: 0 });
+    await expect(protocol.sendCommand(531, [1, 1, 0, 0, 0, 0, 0])).resolves.toMatchObject({ success: true, resultCode: 0 });
+    await expect(protocol.sendCommand(531, [1, 0, 0, 0, 0, 0, 0])).resolves.toMatchObject({ success: true, resultCode: 0 });
+    await expect(protocol.sendCommand(531, [0, 1, 0, 0, 0, 0, 0])).resolves.toMatchObject({ success: false, resultCode: 2 });
   });
 });
 

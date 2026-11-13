@@ -86,6 +86,24 @@ describe("tile map point menu", () => {
     expect(screen.getByText("Fly Here")).toBeTruthy();
   });
 
+  it("draws above anything layered over the map: portalled to the body at the point's viewport position", () => {
+    vi.useFakeTimers();
+    useDroneStore.setState({ connectionState: "armed", armState: "armed", flightMode: "ALT_HOLD" });
+    setPilot(flying);
+    const rect = vi.spyOn(container, "getBoundingClientRect").mockReturnValue({ left: 100, top: 200 } as DOMRect);
+    Object.defineProperty(container, "clientWidth", { value: 600, configurable: true });
+    Object.defineProperty(container, "clientHeight", { value: 600, configurable: true });
+    const { container: host } = render(<MapContextMenu />);
+    fireEvent.pointerDown(container, { pointerId: 1, pointerType: "touch", isPrimary: true, clientX: 50, clientY: 40 });
+    act(() => vi.advanceTimersByTime(layoutSpec.map_long_press_ms));
+    const menu = screen.getByTestId("map-context-menu");
+    expect(menu.parentElement).toBe(document.body);
+    expect(host.contains(menu)).toBe(false);
+    expect(menu.className).toContain("fixed");
+    expect([menu.style.left, menu.style.top]).toEqual(["150px", "240px"]);
+    rect.mockRestore();
+  });
+
   it("offers Launch here on the ground only with the EKF origin known", () => {
     setPilot(grounded);
     expect(itemIds()).not.toContain("launch-here");

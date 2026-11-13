@@ -8,6 +8,9 @@
  *
  * Thin orchestrator: owns the menu shell, positioning, click-outside, keyboard
  * navigation, and renders. Per-action handlers live under `./context-menu/`.
+ * The menu is portalled to the document body at fixed viewport coordinates,
+ * so controls layered over a small map (the cockpit minimap's corner buttons)
+ * never cover its rows.
  *
  * @license GPL-3.0-only
  */
@@ -15,6 +18,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useCallback, useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -337,7 +341,8 @@ export function MapContextMenu() {
     if (left < 0) left = 8;
     if (top < 0) top = 8;
 
-    return { left, top, minWidth: menuW };
+    const rect = container.getBoundingClientRect();
+    return { left: rect.left + left, top: rect.top + top, minWidth: menuW };
   }, [menuPos, map, menuItems.length]);
 
   // ── Render ──────────────────────────────────────────────
@@ -348,10 +353,11 @@ export function MapContextMenu() {
   const groups = new Set(menuItems.map((i) => i.group));
   const sortedGroups = Array.from(groups).sort((a, b) => a - b);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
-      className="absolute z-[2000] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden"
+      data-testid="map-context-menu"
+      className="fixed z-[2000] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden"
       style={menuStyle}
       onContextMenu={(e) => e.preventDefault()}
       onMouseDown={(e) => e.stopPropagation()}
@@ -433,6 +439,7 @@ export function MapContextMenu() {
           {dist > 0 && bearingToDrone > 0 && <span>{Math.round(bearingToDrone)}°</span>}
         </span>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

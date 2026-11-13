@@ -15,8 +15,11 @@ export function cmdCameraTrigger(ctx: CommandContext): Promise<CommandResult> {
   return ctx.sendCommandLong(203, [0, 0, 0, 0, 1, 0, 0])
 }
 
-/** CAMERA_ZOOM_TYPE ZOOM_TYPE_STEP: param2 is a step direction (1 in, -1 out). */
-const ZOOM_TYPE_STEP = 0
+/** CAMERA_ZOOM_TYPE ZOOM_TYPE_CONTINUOUS: param2 is a zoom rate (1 in, -1 out, 0 stop).
+ *  ArduPilot denies ZOOM_TYPE_STEP and accepts only continuous and range zoom. */
+const ZOOM_TYPE_CONTINUOUS = 1
+/** How long one zoom step runs the zoom before the stop. */
+export const ZOOM_STEP_PULSE_MS = 300
 
 /**
  * MAV_CMD_IMAGE_START_CAPTURE (2000): one image from every camera on
@@ -28,9 +31,19 @@ export function cmdImageStartCapture(ctx: CommandContext, sequence: number, came
   return ctx.sendCommandLong(2000, [0, 0, 1, sequence, 0, 0, 0], undefined, cameraCompId)
 }
 
-/** MAV_CMD_SET_CAMERA_ZOOM (531), one step in (1) or out (-1). */
-export function cmdSetCameraZoom(ctx: CommandContext, step: 1 | -1, cameraCompId?: number): Promise<CommandResult> {
-  return ctx.sendCommandLong(531, [ZOOM_TYPE_STEP, step, 0, 0, 0, 0, 0], undefined, cameraCompId)
+/**
+ * MAV_CMD_SET_CAMERA_ZOOM (531), one step in (1) or out (-1): continuous zoom
+ * at that rate for ZOOM_STEP_PULSE_MS, then rate 0. The stop goes out once the
+ * start was accepted; the step's answer is the start's, given once the stop
+ * is sent.
+ */
+export async function cmdSetCameraZoom(ctx: CommandContext, step: 1 | -1, cameraCompId?: number): Promise<CommandResult> {
+  const start = await ctx.sendCommandLong(531, [ZOOM_TYPE_CONTINUOUS, step, 0, 0, 0, 0, 0], undefined, cameraCompId)
+  if (!start.success) return start
+  await new Promise<void>((resolve) => setTimeout(resolve, ZOOM_STEP_PULSE_MS))
+  // The stop's own ack is not waited on: the step is answered by the start.
+  void ctx.sendCommandLong(531, [ZOOM_TYPE_CONTINUOUS, 0, 0, 0, 0, 0, 0], undefined, cameraCompId).catch(() => undefined)
+  return start
 }
 
 export function cmdSetGimbalAngle(ctx: CommandContext, pitch: number, roll: number, yaw: number): Promise<CommandResult> {

@@ -249,9 +249,10 @@ function capture(firmwareType: FirmwareType = "ardupilot-copter") {
       return Promise.resolve({ success: true, resultCode: 0, message: "ok" });
     },
   };
-  /** The command id of the one command the sender issued, ack-tracked or not. */
+  /** The command id the sender issued, ack-tracked or not (a zoom step is
+   *  two of the same command: the rate, then the stop). */
   const command = (): number => {
-    if (sent.length === 1 && frames.length === 0) return sent[0].command;
+    if (sent.length > 0 && frames.length === 0 && sent.every((c) => c.command === sent[0].command)) return sent[0].command;
     expect(frames).toHaveLength(1);
     const frame = frames[0];
     expect(frame[7] | (frame[8] << 8) | (frame[9] << 16)).toBe(76); // COMMAND_LONG

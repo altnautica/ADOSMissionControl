@@ -82,6 +82,13 @@ words, and pages that cannot reach a node say so instead of showing blanks.
 
 ### Fixed
 
+- **Map point menu on the cockpit minimap** draws above the card's corner
+  buttons, so the AUTO / LOCAL / MAP toggle no longer covers "Fly Here".
+- **Demo ArduPilot drones** keep an uploaded mission altitude in whole
+  centimetres, as the firmware does, so a 35.67 m upload verifies and "Fly
+  this mission" appears.
+- **Camera zoom** steps with continuous zoom and then a stop, which ArduPilot
+  accepts; it denied the step zoom sent before.
 - **Dialogs open on first load**, such as a pairing link, move focus into
   the dialog.
 - **Aircraft setup** says the ground wizard waits for the vehicle to report

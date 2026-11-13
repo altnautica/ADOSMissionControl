@@ -8,6 +8,7 @@
  */
 
 import type { CommandResult, MissionItem } from "@/lib/protocol/types";
+import { arduPilotStoredItem } from "@/lib/mission/mission-verify";
 import { getMockMission } from "./mock-protocol-data";
 
 /** Transfer latency a download simulates. */
@@ -31,8 +32,9 @@ export class MockMission {
     this.items = [];
   }
 
+  /** An ArduPilot vehicle keeps a location's altitude in whole centimetres. */
   async upload(items: readonly MissionItem[]): Promise<CommandResult> {
-    this.items = copyItems(items);
+    this.items = this.homeSlot() ? items.map(arduPilotStoredItem) : copyItems(items);
     return { success: true, resultCode: 0, message: "Mission uploaded" };
   }
 

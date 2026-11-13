@@ -146,7 +146,7 @@ export interface DroneProtocolBase {
    * advertised itself in CAMERA_INFORMATION, else to the autopilot.
    */
   imageStartCapture?(): Promise<CommandResult>;
-  /** One zoom step in (1) or out (-1) (MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP), same target. */
+  /** One zoom step in (1) or out (-1) (MAV_CMD_SET_CAMERA_ZOOM: a continuous-zoom pulse, then rate 0), same target. */
   setCameraZoom?(step: 1 | -1): Promise<CommandResult>;
 
   // ── Orbit ────────────────────────────────────────────────

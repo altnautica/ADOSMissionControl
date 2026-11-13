@@ -47,17 +47,27 @@ export class MockCamera {
     return { ...ACCEPTED, message: `Image ${this.images} captured` };
   }
 
-  /** One zoom step (MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP). */
+  /** One zoom step (MAV_CMD_SET_CAMERA_ZOOM, continuous). */
   async setCameraZoom(step: 1 | -1): Promise<CommandResult> {
     if (!this.advertised()) return { success: false, resultCode: 3, message: "No camera" };
     this.zoomSteps += step;
     return { ...ACCEPTED, message: `Zoom step ${this.zoomSteps}` };
   }
 
+  /** MAV_CMD_SET_CAMERA_ZOOM as ArduPilot answers it: continuous (1) and
+   *  range (2) zoom only, ZOOM_TYPE_STEP denied; a zero rate stops. */
+  private zoomCommand(params: readonly number[]): Promise<CommandResult> {
+    const [type = 0, value = 0] = params;
+    if (type !== 1 && type !== 2) return Promise.resolve({ success: false, resultCode: 2, message: "Zoom type denied" });
+    if (!this.advertised()) return Promise.resolve({ success: false, resultCode: 3, message: "No camera" });
+    if (type === 1 && value === 0) return Promise.resolve({ ...ACCEPTED, message: "Zoom stopped" });
+    return this.setCameraZoom(value < 0 ? -1 : 1);
+  }
+
   /** The ack for a COMMAND_LONG this camera handles, or null for another command. */
   ackCommand(commandId: number, params: readonly number[]): Promise<CommandResult> | null {
     if (commandId === MAV_CMD_IMAGE_START_CAPTURE) return this.imageStartCapture();
-    if (commandId === MAV_CMD_SET_CAMERA_ZOOM) return this.setCameraZoom((params[1] ?? 0) < 0 ? -1 : 1);
+    if (commandId === MAV_CMD_SET_CAMERA_ZOOM) return this.zoomCommand(params);
     return null;
   }
 }
