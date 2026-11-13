@@ -90,7 +90,7 @@ jobs:
       # before anything is published.
       RELEASE_PUBKEY: RWQ/CJ1+gk7rjVfGSoy6MOL50e8TmO30KD/J+goaEj+WMI1uzEf92rHN
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: tools/deploy/dist
           pattern: ados-deploy-*
