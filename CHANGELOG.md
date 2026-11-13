@@ -28,6 +28,7 @@ the project follows [Semantic Versioning](https://semver.org/).
   and the straight way to it on the pilot frame, so the local-frame map draws
   both in the blocked colour instead of dropping them. The AR goal ring now
   takes the blocked colour too, as the path already did.
+
 ## [0.64.0] - 2026-11-13
 
 This release covers everything since 0.63.0: thirty-one commits over
