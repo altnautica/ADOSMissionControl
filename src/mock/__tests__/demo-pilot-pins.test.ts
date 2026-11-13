@@ -154,6 +154,15 @@ describe("pinned tuning step", () => {
   });
 });
 
+describe("pinned GNSS-denied speed cap", () => {
+  it("reaches the pilot frame and the chip's secondary line", () => {
+    handle()!.pin({ speed_cap: { reason: "gnss-denied", v_h_mps: 2.0 } });
+    vi.advanceTimersByTime(100);
+    expect(pilot().speedCap).toEqual({ reason: "gnss-denied", vHMps: 2 });
+    expect(chip().secondary.map((l) => l.text)).toContain("GNSS-denied: 2 m/s max");
+  });
+});
+
 describe("demo pilot sessions", () => {
   it("starts each drone's session without the last one's pins or stick input", () => {
     handle()!.pin({ fc_failsafe: true, failsafe_cause: "fc" });

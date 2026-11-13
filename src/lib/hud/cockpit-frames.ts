@@ -160,6 +160,15 @@ export interface PilotState {
   /** Why `fcFailsafe`: `rc_or_failsafe` (RC input was present, so an RC
    *  switch is possible) or `fc`; null while not in a failsafe. */
   failsafeCause: string | null;
+  /** A horizontal speed cap the pilot applies to every setpoint it flies
+   *  (`gnss-denied` while the EKF horizontal source is not GNSS), or null. */
+  speedCap: SpeedCap | null;
+}
+
+/** The pilot's horizontal speed cap: why, and the limit in m/s. */
+export interface SpeedCap {
+  reason: string;
+  vHMps: number;
 }
 
 /** One FC STATUSTEXT line; severity is MAVLink's (0 emergency … 4 warning). */
@@ -171,6 +180,13 @@ export interface FcStatusText {
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off"];
 const SEQ_STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
+
+function parseSpeedCap(raw: unknown): SpeedCap | null {
+  const o = obj(raw);
+  const reason = o ? str(o.reason) : null;
+  const vHMps = o ? num(o.v_h_mps) : null;
+  return reason !== null && vHMps !== null ? { reason, vHMps } : null;
+}
 
 function parseStatusText(raw: unknown): FcStatusText[] {
   if (!Array.isArray(raw)) return [];
@@ -254,6 +270,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     setupStep: str(p.setup_step),
     fcFailsafe: p.fc_failsafe === true,
     failsafeCause: str(p.failsafe_cause),
+    speedCap: parseSpeedCap(p.speed_cap),
   };
 }
 

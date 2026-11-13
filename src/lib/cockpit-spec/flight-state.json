@@ -27,8 +27,9 @@
     "land": { "copter": [9], "plane": [20] }
   },
   "secondary": {
-    "order": ["fc_failsafe", "mission_paused_line", "hold_reason", "avoid_state", "control_mode"],
+    "order": ["fc_failsafe", "speed_cap", "mission_paused_line", "hold_reason", "avoid_state", "control_mode"],
     "fc_failsafe": { "text": "Failsafe", "color": "blocked" },
+    "speed_cap": { "text": "GNSS-denied: {v} m/s max", "color": "avoiding", "text_key": "pilot.speed_cap.gnss_denied" },
     "mission_paused_line": { "match": { "owner": "pilot", "mission_state": "paused" }, "text": "Mission paused · WP {seq}/{total}", "color": "mission" },
     "avoid_state": {
       "detour": { "text": "Avoiding", "color": "avoiding" },

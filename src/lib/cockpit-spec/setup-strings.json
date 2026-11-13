@@ -457,6 +457,7 @@
     "pilot.profile.cine": "Cine",
     "pilot.profile.normal": "Normal",
     "pilot.profile.sport": "Sport",
+    "pilot.speed_cap.gnss_denied": "GNSS-denied: {v} m/s max",
     "radar.no_heading": "no heading",
     "radar.range_change": "Radar range {r}; change range",
     "radar.title": "Radar",

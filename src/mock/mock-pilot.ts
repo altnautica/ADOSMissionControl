@@ -10,7 +10,9 @@
  * mock-pilot-vehicle). Stick input echoes as owner `pilot`; a stick session
  * that stops streaming holds with `controller-lost`, as the real pilot does.
  * Demo scenarios pin states the vehicle does not fly on its own (an FC
- * failsafe, a tuning step) through `window.__adosDemoPilot` (see
+ * failsafe, a tuning step, the GNSS-denied speed cap via
+ * `pin({ speed_cap: { reason: "gnss-denied", v_h_mps: 2 } })`) through
+ * `window.__adosDemoPilot` (see
  * mock-pilot-wire); each drone's session starts without the last one's pins.
  * @license GPL-3.0-only
  */

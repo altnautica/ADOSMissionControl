@@ -30,6 +30,7 @@ const HOLD_REASON_LABELS: Readonly<Record<string, string>> = flightStateJson.hol
 const CHIP_SECONDARY = flightStateJson.secondary as {
   order: string[];
   fc_failsafe: { text: string; color: string };
+  speed_cap: { text: string; color: string };
   mission_paused_line: { match: Record<string, string | number | boolean>; text: string; color: string };
   avoid_state: Record<string, { text: string; color: string } | null>;
   hold_reason: { text: string; color: string };
@@ -69,6 +70,8 @@ export interface ChipFacts {
   launchStep: string | null;
   /** The FC flies a failsafe RTL or land of its own. */
   fcFailsafe: boolean;
+  /** The pilot's horizontal speed cap in m/s, or null with none. */
+  speedCapMps: number | null;
   /** Age of the pilot state in ms. */
   ageMs: number;
 }
@@ -197,13 +200,17 @@ function holdReasonLabel(reason: string): string {
   return HOLD_REASON_LABELS[reason] ?? reason.replace(/[-_]/g, " ");
 }
 
-/** The secondary line, in the spec's order: FC failsafe, a mission the pilot
- *  holds paused, hold reason, avoidance state, control mode. */
+/** The secondary line, in the spec's order: FC failsafe, the pilot's speed
+ *  cap, a mission the pilot holds paused, hold reason, avoidance state,
+ *  control mode. */
 export function chipSecondary(f: ChipFacts): ChipLine[] {
   const out: ChipLine[] = [];
   for (const part of CHIP_SECONDARY.order) {
     if (part === "fc_failsafe" && f.fcFailsafe) {
       out.push({ text: CHIP_SECONDARY.fc_failsafe.text, color: colorOf(CHIP_SECONDARY.fc_failsafe.color) });
+    } else if (part === "speed_cap" && f.speedCapMps !== null) {
+      const line = CHIP_SECONDARY.speed_cap;
+      out.push({ text: line.text.replace("{v}", f.speedCapMps.toFixed(0)), color: colorOf(line.color) });
     } else if (part === "mission_paused_line" && matches(CHIP_SECONDARY.mission_paused_line.match, f)) {
       const line = CHIP_SECONDARY.mission_paused_line;
       out.push({ text: fill(line.text, f), color: colorOf(line.color) });
@@ -304,6 +311,7 @@ export function chipFacts(
     avoidState: p.avoidState,
     launchStep: p.sequence && p.sequence.step !== "done" && p.sequence.error === null ? p.sequence.step : null,
     fcFailsafe: p.fcFailsafe,
+    speedCapMps: p.speedCap?.vHMps ?? null,
     ageMs,
   };
 }
