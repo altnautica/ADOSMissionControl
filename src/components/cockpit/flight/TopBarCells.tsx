@@ -108,8 +108,8 @@ const SIG = [5, 8, 11, 14];
 export type LinkSeverity = "none" | "ok" | "warning" | "critical";
 
 /**
- * The link cell's reading of the newest vehicle frame: its age in whole
- * seconds (or "no link" when none has arrived) and the icon's severity by
+ * The link cell's reading of the newest vehicle frame: its age in seconds,
+ * one decimal below 10 s and whole seconds above (as the onboard cockpit) (or "no link" when none has arrived) and the icon's severity by
  * the spec's thresholds.
  */
 export function linkAgeView(lastFrameAt: number, now: number): { text: string; severity: LinkSeverity } {
@@ -117,7 +117,7 @@ export function linkAgeView(lastFrameAt: number, now: number): { text: string; s
   const age = Math.max(0, now - lastFrameAt);
   const { ok_below_ms, warning_below_ms } = LINK_SPEC.icon_color;
   return {
-    text: specString(LINK_SPEC.text, { s: Math.floor(age / 1000) }),
+    text: specString(LINK_SPEC.text, { s: age < 10_000 ? (age / 1000).toFixed(1) : String(Math.round(age / 1000)) }),
     severity: age < ok_below_ms ? "ok" : age < warning_below_ms ? "warning" : "critical",
   };
 }

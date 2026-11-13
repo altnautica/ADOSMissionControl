@@ -244,13 +244,17 @@ export function StatusPill({ droneId }: { droneId: string }) {
       if (!rootRef.current?.contains(t) && !listRef.current?.contains(t)) close();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key !== "Escape") return;
+      // Consume the key: one Escape closes the list and nothing beneath it.
+      e.preventDefault();
+      e.stopPropagation();
+      close();
     };
     window.addEventListener("pointerdown", onDown);
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     return () => {
       window.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
     };
   }, [open, keys, ackShown, setOpen]);
 

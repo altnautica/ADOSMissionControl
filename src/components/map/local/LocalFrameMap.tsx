@@ -219,7 +219,7 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
   };
 
   return (
-    <div ref={wrapRef} className={cn("lfmap", className)}>
+    <div ref={wrapRef} className={cn("lfmap", compact && "lfmap-compact", className)}>
       {!compact && <MissionPlanIdentityBanner droneId={droneId} className="absolute left-1/2 top-2 z-[1001] -translate-x-1/2" />}
       <canvas
         ref={canvasRef}
@@ -234,7 +234,9 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
         role="img"
       />
       <div className="lfmap-head">
-        <span className="lfmap-title lbl">{specString("minimap.local_ne")}</span>
+        {/* The compact card has no room for a title beside the frame toggle,
+            whose pressed LOCAL already names the frame. */}
+        {!compact && <span className="lfmap-title lbl">{specString("minimap.local_ne")}</span>}
         {data.fcPos && <span className="lfmap-fcpos lbl">{specString("minimap.fc_pos")}</span>}
         <span className="lfmap-spacer" />
         {headerExtra}

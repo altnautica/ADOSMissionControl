@@ -17,7 +17,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
@@ -66,9 +66,12 @@ import { nodeDisplayName } from "./node-brand";
 interface NodeDetailPanelProps {
   droneId: string;
   onClose: () => void;
+  /** Leads the header: the dashboard's fleet drawer toggle, shown below md
+   * where the fleet sidebar is hidden. */
+  fleetToggle?: ReactNode;
 }
 
-export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ droneId, onClose, fleetToggle }: NodeDetailPanelProps) {
   const t = useTranslations("dronePanel");
   const tNode = useTranslations("nodeConsole");
   // The panel is deliberately not remounted per node (no `key` at the call
@@ -221,10 +224,18 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             node's agent connection and must survive the toggle. */}
         <div
           className={cn(
-            "flex items-center gap-2 px-3 py-1.5 border-b border-border-default bg-bg-secondary flex-shrink-0",
+            "flex flex-col border-b border-border-default bg-bg-secondary flex-shrink-0",
             immersiveMode && "hidden",
           )}
         >
+          {/* Identity, chips and actions wrap onto more lines when narrow; the
+              tabs never share this row, so badges and actions cannot squeeze
+              the strip down to one tab or none. */}
+          <div
+            data-testid="node-header-identity"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5"
+          >
+            {fleetToggle}
             <h1 className="text-sm font-semibold text-text-primary shrink-0">{displayName}</h1>
             {/* Flight vocabulary belongs to a node that flies. Labelled as the
                 node's reach so it is not read as the hero's FC state. */}
@@ -245,7 +256,16 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
               aria-label={t("backToDashboard")}
               onClick={onClose}
             />
-            <div className="w-px h-5 bg-border-default shrink-0" />
+            <NodeHeaderActions
+              droneId={drone.id}
+              displayName={displayName}
+              isConnected={isConnected}
+              isDroneProfile={drone.profile === "drone"}
+              onClose={onClose}
+            />
+          </div>
+          {/* The tab strip owns a full-width row and scrolls its own overflow. */}
+          <div data-testid="node-header-tabs" className="flex h-9 px-1 border-t border-border-default/60">
             <NodeTabStrip
               surfaces={surfaces}
               pluginIds={pluginIds}
@@ -254,13 +274,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
               bareDeviceId={bareDeviceId}
               nodeProfile={drone.profile}
             />
-            <NodeHeaderActions
-              droneId={drone.id}
-              displayName={displayName}
-              isConnected={isConnected}
-              isDroneProfile={drone.profile === "drone"}
-              onClose={onClose}
-            />
+          </div>
         </div>
 
         <RelayedNodeNotices

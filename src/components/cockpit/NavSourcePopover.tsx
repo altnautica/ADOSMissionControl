@@ -107,17 +107,21 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
   // Escape or a press outside closes it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // Consume the key: one Escape closes the popover and nothing beneath it.
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
     };
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (rootRef.current?.contains(target) || anchor.current?.contains(target)) return;
       onClose();
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     document.addEventListener("pointerdown", onDown);
     return () => {
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
       document.removeEventListener("pointerdown", onDown);
     };
   }, [anchor, onClose]);

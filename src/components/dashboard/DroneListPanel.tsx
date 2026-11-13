@@ -28,6 +28,9 @@ const PROFILE_RANK: Record<FleetNodeEntry["profile"], number> = {
 interface DroneListPanelProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** Called after any choice in the panel (a node, or the fleet overview), so
+   * the narrow-width drawer can close. */
+  onPicked?: () => void;
 }
 
 /**
@@ -37,7 +40,7 @@ interface DroneListPanelProps {
  * the dashboard's `useDroneManager` selection (`node:<deviceId>`). Compute and
  * ground nodes sort to the bottom.
  */
-export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelProps) {
+export function DroneListPanel({ collapsed, onToggleCollapse, onPicked }: DroneListPanelProps) {
   const tq = useTranslations("dashboard.droneListPanel");
   const t = useTranslations("fleet");
   const nodes = useFleetNodes();
@@ -79,7 +82,14 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
   const openContext = useCallback((nodeId: string, x: number, y: number) => {
     setContextMenu({ nodeId, x, y });
   }, []);
-  const selectNode = useCallback((n: FleetNodeEntry) => selectDrone(n._id), [selectDrone]);
+  const pick = useCallback(
+    (id: string | null) => {
+      selectDrone(id);
+      onPicked?.();
+    },
+    [selectDrone, onPicked],
+  );
+  const selectNode = useCallback((n: FleetNodeEntry) => pick(n._id), [pick]);
 
   const activeContextNode = contextMenu
     ? nodes.find((n) => n._id === contextMenu.nodeId) ?? null
@@ -94,7 +104,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
           onClose={() => setContextMenu(null)}
           onOpen={(n) => {
             setContextMenu(null);
-            selectDrone(n._id);
+            pick(n._id);
           }}
           onForget={(n) => {
             setContextMenu(null);
@@ -156,7 +166,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
               node={node}
               selected={node._id === selectedDroneId}
               title={node.name}
-              onSelect={(n) => selectDrone(n._id)}
+              onSelect={(n) => pick(n._id)}
               onContext={openContext}
             />
           ))}
@@ -201,7 +211,7 @@ export function DroneListPanel({ collapsed, onToggleCollapse }: DroneListPanelPr
       {/* Fleet overview CTA — jump back to the Agent Overview grid. */}
       <div className="px-3 pt-2">
         <button
-          onClick={() => selectDrone(null)}
+          onClick={() => pick(null)}
           className={cn(
             "flex w-full items-center gap-2 rounded border px-2.5 py-1.5 text-xs font-medium transition-colors",
             selectedDroneId === null

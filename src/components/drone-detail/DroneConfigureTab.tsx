@@ -20,6 +20,7 @@ import { FC_NAV_ITEMS, type FcNavItem } from "./fc-nav-items";
 import { FcPanelRouter } from "./FcPanelRouter";
 import { FcPanelErrorBoundary } from "./FcPanelErrorBoundary";
 import { FcSourcePicker } from "@/components/command/shared/FcSourcePicker";
+import { Select, type SelectOptionGroup } from "@/components/ui/select";
 
 /** Prefix for a plugin-contributed FC tab's active-panel id, so the panel
  * switch can tell a plugin tab from a built-in FC panel. */
@@ -170,9 +171,66 @@ export function DroneConfigureTab({
     }
   }, [visibleItems, activePanel, fcPluginTabs, isConnected]);
 
+  const itemLabel = (item: FcNavItem) =>
+    t((firmwareType && item.labelOverride?.[firmwareType]) ?? item.labelKey);
+  // The same choices as the side nav, for the picker that replaces it below md.
+  const panelOptions: SelectOptionGroup[] = [
+    ...[...sections.entries()].map(([section, items]) => ({
+      label: sectionLabels[section] ?? section,
+      options: items.map((item) => ({
+        value: item.id,
+        label: itemLabel(item),
+        disabled: !(isConnected || item.agentSide === true),
+      })),
+    })),
+    ...(fcPluginTabs.length > 0
+      ? [
+          {
+            label: t("extensionsSection"),
+            options: fcPluginTabs.map((c) => ({
+              value: `${FC_PLUGIN_PREFIX}${c.panelId}`,
+              label: c.title ?? c.panelId,
+              disabled: !isConnected,
+            })),
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <div className="flex-1 flex min-h-0 overflow-hidden">
-      <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
+    // Below md the 200 px side nav would leave a phone almost no room for the
+    // panel, so it gives way to a full-width picker above the panel.
+    <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+      <div
+        data-testid="fc-panel-picker"
+        className="md:hidden flex-shrink-0 border-b border-border-default bg-bg-secondary px-3 py-2"
+      >
+        <div className="mb-1.5 flex items-center gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            {tk("flightController")}
+          </h2>
+          {firmwareLabel && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-primary/15 text-accent-primary">
+              {firmwareLabel}
+            </span>
+          )}
+          {!isConnected && (
+            <span className="text-[10px] text-status-warning">
+              {fcLinking ? t("linkingTitle") : t("fcDisconnectedShort")}
+            </span>
+          )}
+        </div>
+        <Select
+          ariaLabel={tk("flightController")}
+          options={panelOptions}
+          value={activePanel}
+          onChange={setActivePanel}
+          searchable
+          maxHeight={420}
+          className="h-11"
+        />
+      </div>
+      <nav className="hidden md:block md:w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
         <div className="px-3 py-3 border-b border-border-default">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
             {tk("flightController")}
@@ -231,7 +289,7 @@ export function DroneConfigureTab({
                     )}
                   >
                     {item.icon}
-                    {t((firmwareType && item.labelOverride?.[firmwareType]) ?? item.labelKey)}
+                    {itemLabel(item)}
                   </button>
                 );
               })}

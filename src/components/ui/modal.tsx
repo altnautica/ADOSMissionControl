@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -105,6 +105,8 @@ function focusableWithin(root: HTMLElement | null): HTMLElement[] {
   });
 }
 
+const noopSubscribe = () => () => {};
+
 export function Modal({
   open,
   onClose,
@@ -122,6 +124,9 @@ export function Modal({
 }: ModalProps) {
   const t = useTranslations("common");
   const depth = useContext(ModalDepthContext) + 1;
+  // The portal targets document.body, which exists only after hydration: a
+  // server render (a modal open on first load) renders nothing.
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   // The element to hand focus back to on close, captured while rendering the
@@ -200,7 +205,7 @@ export function Modal({
     return () => restore?.focus?.();
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !hydrated) return null;
 
   return createPortal(
     <ModalDepthContext.Provider value={depth}>

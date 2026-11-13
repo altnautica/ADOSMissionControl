@@ -74,7 +74,7 @@ export const COUNTDOWN_TEXT = "#000000";
 
 /** The banner's args with the spec's sub-keys resolved (`source: "rc"` →
  * "RC switch", `cause: "rc_or_failsafe"` → "RC switch or failsafe") and the
- * profile in the chip's upper case. */
+ * profile in the chip's sentence case ("Normal", as the spec's profile labels). */
 export function bannerText(banner: NonNullable<PilotState["banner"]>): string {
   const args: Record<string, unknown> = { ...banner.args };
   for (const name of ["source", "cause"] as const) {
@@ -83,7 +83,9 @@ export function bannerText(banner: NonNullable<PilotState["banner"]>): string {
       args[name] = specString(`pilot.banner.${name}.${code}`);
     }
   }
-  if (typeof args.profile === "string") args.profile = args.profile.toUpperCase();
+  if (typeof args.profile === "string" && args.profile) {
+    args.profile = args.profile.charAt(0).toUpperCase() + args.profile.slice(1).toLowerCase();
+  }
   return specString(banner.textKey, args);
 }
 

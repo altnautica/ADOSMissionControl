@@ -43,7 +43,7 @@ describe("demo heartbeat and grounded tick", () => {
     const sys: number[] = [];
     const agl: number[] = [];
     p.onSysStatus((s) => sys.push(s.batteryRemaining));
-    p.onTerrain((t) => agl.push(t.currentHeight - t.terrainHeight));
+    p.onTerrain((t) => agl.push(t.currentHeight));
     tickGroundedDrone("n1", p, 5, true, now + 1000);
     const tel = useTelemetryStore.getState();
     expect(tel.battery.latest()?.remaining).toBe(72);

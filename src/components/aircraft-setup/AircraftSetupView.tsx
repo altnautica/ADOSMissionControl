@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle, ChevronRight, CircleStop, Cpu, FileClock, Play, RotateCcw } from "lucide-react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { currentStep } from "@/lib/fc-setup/parse";
 import { formatValue, setupLabel, setupRefusalText, setupText } from "@/lib/fc-setup/strings";
 import { HOLD_CONFIRM_MS, type SetupReport, type SetupSnapshot, type SetupStatus, type SetupStep, type Wizard } from "@/lib/fc-setup/types";
@@ -25,7 +26,7 @@ import { ProgressRing, StepCard, StepStateIcon } from "./StepCard";
 
 const BUTTON = "inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold disabled:opacity-40";
 
-export function AircraftSetupView({ setup }: { setup: FcSetupController }) {
+export function AircraftSetupView({ setup, droneId }: { setup: FcSetupController; /** The drone the wizards act on; its arm state gates the ground wizard. */ droneId?: string }) {
   const t = useTranslations("aircraftSetup");
   const [wizardId, setWizardId] = useState<string | null>(null);
   const { status } = setup;
@@ -72,7 +73,7 @@ export function AircraftSetupView({ setup }: { setup: FcSetupController }) {
             </button>
           ))}
         </div>
-        {shown && <WizardPanel key={shown.id} wizard={shown} status={status} setup={setup} />}
+        {shown && <WizardPanel key={shown.id} wizard={shown} status={status} setup={setup} droneId={droneId} />}
         {status.report && <ReportCard report={status.report} wizards={status.wizards} setup={setup} />}
       </>
     );
@@ -111,8 +112,14 @@ function AircraftSummary({ status }: { status: SetupStatus }) {
   );
 }
 
-function WizardPanel({ wizard, status, setup }: { wizard: Wizard; status: SetupStatus; setup: FcSetupController }) {
+function WizardPanel({ wizard, status, setup, droneId }: { wizard: Wizard; status: SetupStatus; setup: FcSetupController; droneId?: string }) {
   const t = useTranslations("aircraftSetup");
+  // The engine refuses the ground wizard's calibrations while armed; say so up
+  // front, like the calibration panels, instead of offering a Start it refuses.
+  const { isHardBlocked } = useArmedLock(droneId);
+  const armedLocked = wizard.id === "ground" && isHardBlocked;
+  // The armed note above already says it; do not repeat the engine's blocker.
+  const blockers = armedLocked ? wizard.blockers.filter((b) => b !== "setup.blocker.armed") : wizard.blockers;
   const [picked, setPicked] = useState<string | null>(null);
   const isRunning = wizard.state === "running";
   // While the wizard runs the screen follows the engine; otherwise the operator
@@ -134,7 +141,8 @@ function WizardPanel({ wizard, status, setup }: { wizard: Wizard; status: SetupS
         ) : (
           <button
             type="button"
-            disabled={busy || !wizard.available}
+            disabled={busy || !wizard.available || armedLocked}
+            title={armedLocked ? setupText("setup.err.armed") : undefined}
             onClick={() => void setup.start(wizard.id)}
             className={cn(BUTTON, "bg-accent-primary text-white")}
             data-testid="setup-start"
@@ -145,9 +153,16 @@ function WizardPanel({ wizard, status, setup }: { wizard: Wizard; status: SetupS
         )}
       </div>
 
-      {wizard.blockers.length > 0 && (
+      {!isRunning && armedLocked && (
+        <p className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm text-status-warning" data-testid="setup-armed">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          {setupText("setup.err.armed")}
+        </p>
+      )}
+
+      {blockers.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm text-status-warning">
-          {wizard.blockers.map((b) => (
+          {blockers.map((b) => (
             <li key={b} className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               {setupRefusalText(b)}
@@ -166,7 +181,7 @@ function WizardPanel({ wizard, status, setup }: { wizard: Wizard; status: SetupS
               step={s}
               active={s.step === step?.step}
               rerunnable={!isRunning && (s.state === "done" || s.state === "failed" || s.state === "skipped")}
-              busy={busy}
+              busy={busy || armedLocked}
               onPick={() => setPicked(s.step)}
               onRerun={() => void setup.runStep(s.wizard, s.step)}
             />

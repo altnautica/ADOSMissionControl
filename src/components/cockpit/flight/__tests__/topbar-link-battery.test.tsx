@@ -53,11 +53,13 @@ describe("link age", () => {
   });
 
   it.each([
-    [0, "0 s", "ok"],
-    [2_999, "2 s", "ok"],
-    [3_000, "3 s", "warning"],
-    [9_999, "9 s", "warning"],
+    [0, "0.0 s", "ok"],
+    [400, "0.4 s", "ok"],
+    [2_999, "3.0 s", "ok"],
+    [3_000, "3.0 s", "warning"],
+    [9_999, "10.0 s", "warning"],
     [10_000, "10 s", "critical"],
+    [12_600, "13 s", "critical"],
     [75_400, "75 s", "critical"],
   ] as const)("a frame %i ms old reads %s, icon %s", (age, text, severity) => {
     expect(linkAgeView(NOW - age, NOW)).toEqual({ text, severity });
@@ -67,7 +69,7 @@ describe("link age", () => {
     radio();
     useDroneStore.setState({ lastHeartbeat: Date.now() - 4_500 } as never);
     renderWithIntl(<LinkCell droneId={DRONE} detail />);
-    expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: 4 }));
+    expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: "4.5" }));
     const icon = screen.getByTestId("fs-link-icon");
     expect(icon.getAttribute("data-severity")).toBe("warning");
     const bars = [...icon.children].map((b) => (b as HTMLElement).style.background);
@@ -93,7 +95,7 @@ describe("link age", () => {
       vi.setSystemTime(NOW);
       useDroneStore.setState({ lastHeartbeat: NOW - 1_000 } as never);
       renderWithIntl(<LinkCell droneId={DRONE} detail />);
-      expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: 1 }));
+      expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: "1.0" }));
       act(() => void vi.advanceTimersByTime(11_000));
       expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: 12 }));
       expect(screen.getByTestId("fs-link-icon").getAttribute("data-severity")).toBe("critical");

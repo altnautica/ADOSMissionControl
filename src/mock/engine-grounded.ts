@@ -73,7 +73,7 @@ export function tickGroundedDrone(
     });
     // TERRAIN_REPORT with the vehicle on the ground: height above terrain 0.
     if (position) {
-      protocol.emitTerrain({ timestamp: now, lat: position.lat, lon: position.lon, terrainHeight: position.alt, currentHeight: position.alt, spacing: 30, pending: 0, loaded: 4 });
+      protocol.emitTerrain({ timestamp: now, lat: position.lat, lon: position.lon, terrainHeight: position.alt, currentHeight: 0, spacing: 30, pending: 0, loaded: 4 });
     }
   }
 }

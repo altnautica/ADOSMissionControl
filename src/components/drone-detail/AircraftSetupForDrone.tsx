@@ -23,7 +23,7 @@ export function AircraftSetupForDrone({ droneId, droneName }: { droneId: string;
     <section className="flex flex-col gap-3" aria-label={t("settingUp", { name: droneName })}>
       <h2 className="text-sm font-semibold text-text-primary">{t("settingUp", { name: droneName })}</h2>
       {transport ? (
-        <AircraftSetupView setup={setup} />
+        <AircraftSetupView setup={setup} droneId={droneId} />
       ) : (
         <p className="rounded-md border border-border-default bg-bg-secondary px-4 py-3 text-sm text-text-secondary">
           {t("noAgent")}

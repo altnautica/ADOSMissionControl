@@ -228,7 +228,7 @@ describe("launch, banners and voice", () => {
   it("renders the handover banner from the spec strings", () => {
     expect(bannerText({ textKey: "pilot.banner.ados_engaged", args: { source: "rc" }, untilMs: null })).toBe("ADOS engaged by RC switch");
     expect(bannerText({ textKey: "pilot.banner.ados_control", args: { profile: "normal" }, untilMs: null })).toBe(
-      "ADOS has control · Pilot NORMAL",
+      "ADOS has control · Pilot Normal",
     );
   });
 

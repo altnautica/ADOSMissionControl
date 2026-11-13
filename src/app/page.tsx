@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useCallback, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Tabs, tabButtonId } from "@/components/ui/tabs";
@@ -16,6 +16,8 @@ import { NodesView } from "@/components/command/nodes-view/NodesView";
 import { SwarmView } from "@/components/command/swarm-view/SwarmView";
 import { NodeDetailPanel } from "@/components/dashboard/node-detail/NodeDetailPanel";
 import { EmptyFleetState } from "@/components/dashboard/EmptyFleetState";
+import { FleetDrawerButton } from "@/components/dashboard/FleetDrawerButton";
+import { cn } from "@/lib/utils";
 
 /**
  * Consumes a Settings "Install on a node…" hand-off (`/?preselect=<pluginId>`):
@@ -43,6 +45,7 @@ const DASHBOARD_VIEW_PANEL = "dashboard-view-panel";
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
+  const tFleet = useTranslations("fleet");
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectDrone = useDroneManager((s) => s.selectDrone);
   const fleetNodes = useFleetNodes();
@@ -64,6 +67,12 @@ export default function DashboardPage() {
     useConnectDialogStore.getState().openDialog();
   }
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  // Below md the fleet sidebar is a drawer over the page, closed by default,
+  // so a node's detail (or the fleet views) gets the phone's full width. From
+  // md up the sidebar is always in the row and this flag is unused.
+  const [fleetOpen, setFleetOpen] = useState(false);
+  const closeFleet = useCallback(() => setFleetOpen(false), []);
+  const openFleet = useCallback(() => setFleetOpen(true), []);
 
   // The Flight Logs rail moved into the global right-hand RightRail (shell-wide,
   // alongside the MCP activity watch), so the Dashboard no longer owns it.
@@ -86,34 +95,67 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 flex h-full overflow-hidden">
+    <div className="relative flex-1 flex h-full overflow-hidden">
       <Suspense fallback={null}>
         <PreselectHandoff />
       </Suspense>
       {!immersiveMode && (
-        <DroneListPanel collapsed={panelCollapsed} onToggleCollapse={() => setPanelCollapsed((p) => !p)} />
+        <>
+          {fleetOpen && (
+            <button
+              type="button"
+              aria-label={tFleet("collapsePanel")}
+              onClick={closeFleet}
+              className="md:hidden absolute inset-0 z-30 bg-black/50"
+            />
+          )}
+          <div
+            data-testid="fleet-sidebar"
+            className={cn(
+              "h-full md:flex",
+              fleetOpen
+                ? "flex max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl"
+                : "hidden",
+            )}
+          >
+            <DroneListPanel
+              collapsed={panelCollapsed && !fleetOpen}
+              onToggleCollapse={fleetOpen ? closeFleet : () => setPanelCollapsed((p) => !p)}
+              onPicked={closeFleet}
+            />
+          </div>
+        </>
       )}
       {selectedDroneId ? (
-        <NodeDetailPanel droneId={selectedDroneId} onClose={() => selectDrone(null)} />
+        <NodeDetailPanel
+          droneId={selectedDroneId}
+          onClose={() => selectDrone(null)}
+          fleetToggle={<FleetDrawerButton open={fleetOpen} onOpen={openFleet} />}
+        />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* View switch: node grid (live video tiles), map + status cards,
-              node table, swarm. */}
-          <Tabs
-            label={t("viewSwitchLabel")}
-            activeTab={dashboardView}
-            onChange={(id) => {
-              const view = DASHBOARD_VIEWS.find((v) => v === id);
-              if (view) setDashboardView(view);
-            }}
-            tabs={[
-              { id: "grid", label: t("viewGrid"), panelId: DASHBOARD_VIEW_PANEL },
-              { id: "overview", label: t("viewOverview"), panelId: DASHBOARD_VIEW_PANEL },
-              { id: "nodes", label: t("viewNodes"), panelId: DASHBOARD_VIEW_PANEL },
-              { id: "swarm", label: t("viewSwarm"), panelId: DASHBOARD_VIEW_PANEL },
-            ]}
-            className="justify-end px-3 bg-bg-secondary"
-          />
+              node table, swarm. Below md it leads with the fleet drawer. */}
+          <div className="flex items-stretch bg-bg-secondary">
+            <div className="md:hidden pl-2 border-b border-border-default self-stretch flex items-center">
+              <FleetDrawerButton open={fleetOpen} onOpen={openFleet} />
+            </div>
+            <Tabs
+              label={t("viewSwitchLabel")}
+              activeTab={dashboardView}
+              onChange={(id) => {
+                const view = DASHBOARD_VIEWS.find((v) => v === id);
+                if (view) setDashboardView(view);
+              }}
+              tabs={[
+                { id: "grid", label: t("viewGrid"), panelId: DASHBOARD_VIEW_PANEL },
+                { id: "overview", label: t("viewOverview"), panelId: DASHBOARD_VIEW_PANEL },
+                { id: "nodes", label: t("viewNodes"), panelId: DASHBOARD_VIEW_PANEL },
+                { id: "swarm", label: t("viewSwarm"), panelId: DASHBOARD_VIEW_PANEL },
+              ]}
+              className="flex-1 min-w-0 justify-end px-3 bg-bg-secondary"
+            />
+          </div>
           <div
             role="tabpanel"
             id={DASHBOARD_VIEW_PANEL}

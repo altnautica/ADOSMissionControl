@@ -110,8 +110,7 @@ export function NodeTabStrip({
   }, [visibleTab]);
 
   return (
-    // The wrapper takes the free row space (`flex-1 min-w-0`) so the strip
-    // never shoves the header actions (node ID, remove) off-screen; the strip
+    // The wrapper fills its own header row (`flex-1 min-w-0`); the strip
     // inside SCROLLS its own overflow. A vertical wheel scrolls it sideways,
     // the selected tab is kept in view, and edge buttons appear while tabs
     // are hidden on that side, so a long ground-station strip never reads

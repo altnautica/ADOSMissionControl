@@ -25,6 +25,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -51,6 +52,10 @@ interface TooltipProps {
   // sidebar row — so the trigger fills its column instead of collapsing and the
   // overlay anchors off the child's real bounds.
   triggerClassName?: string;
+  // False keeps a tap from opening the overlay: touch emulates the hover
+  // that opens it, and with no pointer to leave it stays open over whatever
+  // the tap opened. For hover-only extras such as a row's status card.
+  openOnTouch?: boolean;
 }
 
 interface OverlayPosition {
@@ -74,6 +79,7 @@ export function Tooltip({
   multiline = false,
   className,
   triggerClassName = "relative inline-flex",
+  openOnTouch = true,
 }: TooltipProps) {
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -102,10 +108,23 @@ export function Tooltip({
     }, CLOSE_DELAY_MS);
   }, [cancelClose]);
 
+  // Whether the last pointer over the trigger was a finger. A tap's
+  // emulated mouseenter and focus follow its pointer events.
+  const touchRef = useRef(false);
+  const notePointer = useCallback((e: ReactPointerEvent) => {
+    touchRef.current = e.pointerType === "touch";
+  }, []);
+
   const openNow = useCallback(() => {
+    if (!openOnTouch && touchRef.current) return;
     cancelClose();
     setShow(true);
-  }, [cancelClose]);
+  }, [cancelClose, openOnTouch]);
+
+  const onBlur = useCallback(() => {
+    touchRef.current = false;
+    scheduleClose();
+  }, [scheduleClose]);
 
   // Compute the overlay's viewport position from the trigger's bounds.
   // Runs on `show` toggle and on every resize / scroll while open.
@@ -132,18 +151,27 @@ export function Tooltip({
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
+    // A side placement with no room on its side would be clamped back over
+    // its own trigger (a fleet row's status card covered the row, so the
+    // click meant for the row landed on the card). Fall back to below.
+    const side =
+      (position === "right" && rect.right + 6 + overlayWidth > vw - VIEWPORT_MARGIN) ||
+      (position === "left" && rect.left - 6 - overlayWidth < VIEWPORT_MARGIN)
+        ? "bottom"
+        : position;
+
     // Default placement: bottom-end. The overlay's right edge sits at
     // the trigger's right edge and the body extends left.
     let top = rect.bottom + 6;
     let left = rect.right - overlayWidth;
     let flipped = false;
 
-    if (position === "top") {
+    if (side === "top") {
       top = rect.top - overlayHeight - 6;
-    } else if (position === "left") {
+    } else if (side === "left") {
       top = rect.top + rect.height / 2 - overlayHeight / 2;
       left = rect.left - overlayWidth - 6;
-    } else if (position === "right") {
+    } else if (side === "right") {
       top = rect.top + rect.height / 2 - overlayHeight / 2;
       left = rect.right + 6;
     }
@@ -152,11 +180,11 @@ export function Tooltip({
     // bottom, place it above the trigger instead. Only relevant for
     // `bottom` placement (where the original frame put it below).
     if (
-      (position === "bottom" || position === "top") &&
+      (side === "bottom" || side === "top") &&
       top + overlayHeight > vh - VIEWPORT_MARGIN
     ) {
       top = rect.top - overlayHeight - 6;
-      flipped = position === "bottom";
+      flipped = side === "bottom";
     }
     if (top < VIEWPORT_MARGIN) {
       top = VIEWPORT_MARGIN;
@@ -273,10 +301,12 @@ export function Tooltip({
         ref={triggerRef}
         className={triggerClassName}
         aria-describedby={show ? tooltipId : undefined}
+        onPointerEnter={notePointer}
+        onPointerDown={notePointer}
         onMouseEnter={openNow}
         onMouseLeave={scheduleClose}
         onFocus={openNow}
-        onBlur={scheduleClose}
+        onBlur={onBlur}
       >
         {children}
       </span>

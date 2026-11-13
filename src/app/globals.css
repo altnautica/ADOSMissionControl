@@ -1219,6 +1219,10 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .lfmap .lfmap-zoom button:hover { color: var(--hud-ink); }
 .lfmap .lfmap-zoom button:focus-visible { outline: none; }
 .lfmap .lfmap-zoom button:focus-visible::before { outline: 2px solid var(--hud-primary); outline-offset: 1px; }
+/* A compact card too short for the zoom column under the header keeps wheel
+   zoom only, so the + button never sits on the frame toggle. */
+.lfmap.lfmap-compact { container-type: size; }
+@container (max-height: 159px) { .lfmap.lfmap-compact .lfmap-zoom { display: none; } }
 .lfmap .lfmap-scale { position: absolute; left: 7px; bottom: 6px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
 .lfmap .lfmap-scale .bar { display: block; height: 4px; border: 1px solid var(--hud-ink-2); border-top: 0; }
 

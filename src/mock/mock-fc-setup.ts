@@ -14,6 +14,7 @@
 import { fcSetupUrls, SetupRequestError, type SetupTransport } from "@/lib/fc-setup/client";
 import { parseFrame } from "@/lib/fc-setup/parse";
 import type { SetupFrame, StepState, Wizard } from "@/lib/fc-setup/types";
+import { resolveNodeId, useNodeRegistryStore } from "@/stores/node-registry";
 
 type Json = Record<string, unknown>;
 
@@ -21,6 +22,7 @@ const ACCEL_POSES = ["accel_level", "accel_left", "accel_right", "accel_nose_dow
 const MOTORS = 4;
 
 interface DemoState {
+  deviceId: string;
   wizards: Record<"ground" | "air", { state: Wizard["state"]; completed_at: string | null }>;
   steps: Record<string, Json>;
   order: Record<"ground" | "air", string[]>;
@@ -53,7 +55,7 @@ function baseStep(wizard: string, step: string, state: StepState = "pending"): J
   };
 }
 
-function create(): DemoState {
+function create(deviceId: string): DemoState {
   const ground = ["detect", "frame", "accel", "level", "compass", "outputs", "battery", "initial_params", "ados_profile", "ados_intro"];
   const air = ["first_hover", "autotune", "verify"];
   const steps: Record<string, Json> = {};
@@ -69,6 +71,7 @@ function create(): DemoState {
     result: { frame_class: "QUAD", frame_type: "X" },
   });
   return {
+    deviceId,
     wizards: { ground: { state: "not_started", completed_at: null }, air: { state: "not_started", completed_at: null } },
     steps,
     order: { ground, air },
@@ -81,19 +84,26 @@ function create(): DemoState {
 function engine(deviceId: string): DemoState {
   let e = engines.get(deviceId);
   if (!e) {
-    e = create();
+    e = create(deviceId);
     engines.set(deviceId, e);
   }
   return e;
 }
 
+/** The demo drone's arm state, as the mock flight engine mirrors it into the registry. */
+function isArmed(e: DemoState): boolean {
+  return useNodeRegistryStore.getState().getEntry(resolveNodeId(e.deviceId))?.fc.armState === "armed";
+}
+
 function wizardOf(e: DemoState, id: "ground" | "air"): Json {
   const groundDone = e.wizards.ground.state === "done";
+  // Like the agent, an armed aircraft blocks the ground wizard (its calibrations).
+  const blockers = id === "air" && !groundDone ? ["setup.blocker.ground_required"] : id === "ground" && isArmed(e) ? ["setup.blocker.armed"] : [];
   return {
     id,
     state: e.wizards[id].state,
-    available: id === "ground" || groundDone,
-    blockers: id === "air" && !groundDone ? ["setup.blocker.ground_required"] : [],
+    available: (id === "ground" || groundDone) && blockers.length === 0,
+    blockers,
     completed_at: e.wizards[id].completed_at,
     steps: e.order[id].map((s) => e.steps[`${id}/${s}`]),
   };
@@ -326,6 +336,10 @@ export function demoSetupTransport(deviceId: string): SetupTransport {
       const parts = parsePath(path);
       if (parts[0] === "revert") return { ok: true, restored: 42, snapshot: (body as Json)?.snapshot ?? null };
       const wizard = asWizard(parts[0]);
+      if (wizard === "ground" && (parts[1] === "start" || parts[3] === "run") && isArmed(e)) {
+        // The agent refuses calibrations on an armed aircraft with `armed`.
+        throw new SetupRequestError(409, "armed", "vehicle armed");
+      }
       if (parts[1] === "start") {
         e.wizards[wizard] = { state: "running", completed_at: null };
         const first = e.order[wizard].find((id) => e.steps[`${wizard}/${id}`].state !== "done");

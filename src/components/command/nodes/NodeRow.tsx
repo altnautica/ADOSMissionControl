@@ -221,6 +221,9 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
       triggerClassName="relative block w-full"
       position="right"
       multiline
+      // A tap opens the node; the status card is a hover extra, and on a
+      // phone it would stay open over the detail the tap just opened.
+      openOnTouch={false}
       content={<NodeStatusHoverCard node={node} />}
     >
       {row}

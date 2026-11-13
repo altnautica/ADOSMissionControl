@@ -27,6 +27,15 @@ export function videoPlacement(view: CockpitViewId, grid: FlightGrid): CSSProper
   return rectStyle(videoRect(view, grid));
 }
 
+/** How far the Split view's map pane reaches under the top bar: its body
+ * starts that far down. Zero when the pane already starts below the bar
+ * (portrait, where the pane is inside the video zone). */
+export function splitMapChromeInset(grid: FlightGrid): number {
+  const bar = grid.zones.top_bar;
+  if (!bar) return 0;
+  return Math.max(0, bar.y + bar.h - splitMapRect(grid).y);
+}
+
 /** Where the map pane sits: as the main picture, the grid's free centre
  * (below the top bar, between the columns, above the card and bottom row),
  * so its own controls, scale and banner are never under the flight chrome;
@@ -94,6 +103,7 @@ export function FlightVideoFrame({
  * the divider. */
 export function FlightMapFrame({ main, children }: { main: boolean; children: ReactNode }) {
   const grid = useFlightGrid();
+  const inset = main ? 0 : splitMapChromeInset(grid);
   return (
     <>
       <div
@@ -101,7 +111,11 @@ export function FlightMapFrame({ main, children }: { main: boolean; children: Re
         data-split={main ? undefined : "map"}
         style={mapPlacement(main, grid)}
       >
-        {children}
+        {/* The map and its own chrome (header, controls, banner) start below
+            the top bar, so the bar never clips them. */}
+        <div className="absolute inset-x-0 bottom-0" style={{ top: inset }} data-testid="fs-map-pane-body">
+          {children}
+        </div>
       </div>
       {!main && <SplitDivider />}
     </>

@@ -52,7 +52,7 @@ describe("CockpitMinimap frame", () => {
     expect(useMinimapModeStore.getState().pinByVehicle[DRONE]).toBe("local");
     expect(container.querySelector(".mmap")?.getAttribute("data-frame")).toBe("local");
     expect(container.querySelector(".lfmap")).not.toBeNull();
-    expect(container.textContent).toContain(specString("minimap.local_ne"));
+    expect(container.querySelector(".lfmap-compact")).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: specString("minimap.pin.auto") }));
     expect(useMinimapModeStore.getState().pinByVehicle[DRONE]).toBeUndefined();

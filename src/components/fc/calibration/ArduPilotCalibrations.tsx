@@ -9,6 +9,7 @@ import { RcChannelMapSection } from "../receiver/RcChannelMapSection";
 import { GpsConfigSection } from "../sensors/GpsConfigSection";
 import { ServoCalibrationSection } from "../misc/ServoCalibrationSection";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
+import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
   LEVEL_STEPS, AIRSPEED_STEPS, BARO_STEPS, ESC_CAL_STEPS, COMPASSMOT_STEPS,
 } from "./calibration-types";
@@ -46,6 +47,9 @@ export function ArduPilotCalibrations({
   const ol = useOptionLabels();
   const tr = useTranslations("fcPanels.arduPilotCalibrations");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  // Airspeed calibration needs a pitot tube: only planes and VTOLs carry one.
+  const { vehicleClass } = useFirmwareCapabilities();
+  const hasAirspeed = vehicleClass === "plane" || vehicleClass === "vtol";
 
   return (
     <>
@@ -66,7 +70,7 @@ export function ArduPilotCalibrations({
         <CalibrationRebootBanner label={tr("levelCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
-      <AgentSetupStep setup={setup} wizard="ground" step="airspeed"><CalibrationWizard
+      {hasAirspeed && <AgentSetupStep setup={setup} wizard="ground" step="airspeed"><CalibrationWizard
         title={tr("airspeedCalibration")}
         description={tr("arduplaneOnlyCoverThePitot")}
         steps={ol(AIRSPEED_STEPS)}
@@ -77,7 +81,7 @@ export function ArduPilotCalibrations({
         onStart={() => startCalibration("airspeed", setAirspeed, AIRSPEED_STEPS.length)}
         blockedReason={blockedReason}
         onCancel={() => cancelCalibration("airspeed", setAirspeed)}
-      /></AgentSetupStep>
+      /></AgentSetupStep>}
 
       <CalibrationWizard
         title={tr("barometerCalibration")}

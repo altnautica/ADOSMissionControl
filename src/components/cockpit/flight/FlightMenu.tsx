@@ -79,6 +79,10 @@ export function FlightMenu({
     // The navigation source's popover, opened from the Menu, closes first.
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || document.querySelector(NAV_POPOVER) !== null) return;
+      // Consume the key: one Escape closes the Menu and nothing beneath it
+      // (full screen stays on).
+      e.preventDefault();
+      e.stopPropagation();
       // Focus goes back to the Menu button, so the next Tab continues there.
       const button = document.querySelector<HTMLElement>("[data-testid='fs-menu-button']");
       onClose();
@@ -89,10 +93,10 @@ export function FlightMenu({
       const target = e.target as HTMLElement;
       if (el && !el.contains(target) && !target.closest(`[data-testid='fs-menu-button'], ${NAV_POPOVER}`)) onClose();
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     window.addEventListener("pointerdown", onDown);
     return () => {
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("pointerdown", onDown);
     };
   }, [onClose]);
