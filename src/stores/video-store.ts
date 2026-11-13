@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { clearG2G, recordG2G } from "@/lib/video/g2g-ring";
 
 // detected transport for the active video stream.
 // "lan-whep"   = WHEP from a private/loopback URL (LAN direct, lowest latency)
@@ -263,21 +264,6 @@ interface VideoStoreState {
   clearForSelection: () => void;
 }
 
-// Module-local ring buffer for the last N G2G samples. Lives outside
-// the store because (a) it's per-tab and (b) we don't want every push
-// to trigger a re-render — only the recomputed EWMA + std-dev do.
-const G2G_RING_SIZE = 30;
-const g2gRing: number[] = [];
-
-function pushG2G(ms: number): { ewma: number; stddev: number } {
-  g2gRing.push(ms);
-  if (g2gRing.length > G2G_RING_SIZE) g2gRing.shift();
-  const mean = g2gRing.reduce((a, b) => a + b, 0) / g2gRing.length;
-  const variance =
-    g2gRing.reduce((acc, v) => acc + (v - mean) ** 2, 0) / g2gRing.length;
-  return { ewma: mean, stddev: Math.sqrt(variance) };
-}
-
 export const useVideoStore = create<VideoStoreState>((set) => ({
   streamUrl: null,
   isStreaming: false,
@@ -427,23 +413,24 @@ export const useVideoStore = create<VideoStoreState>((set) => ({
         updatedAt: Date.now(),
       },
     })),
-  recordG2GSample: (ms) => {
-    const { ewma, stddev } = pushG2G(ms);
-    set((prev) => ({
-      latency: {
-        ...prev.latency,
-        trueG2GMs: ewma,
-        trueG2GStdDevMs: stddev,
-        updatedAt: Date.now(),
-      },
-    }));
-  },
+  // Rate-limited in `lib/video/g2g-ring`: one sample per frame, ≤ 4 writes/s.
+  recordG2GSample: (ms) =>
+    recordG2G(ms, ({ ewma, stddev, at }) =>
+      set((prev) => ({
+        latency: {
+          ...prev.latency,
+          trueG2GMs: ewma,
+          trueG2GStdDevMs: stddev,
+          updatedAt: at,
+        },
+      })),
+    ),
   resetLatency: () => {
-    g2gRing.length = 0;
+    clearG2G();
     set({ latency: emptyBreakdown() });
   },
   clearForSelection: () => {
-    g2gRing.length = 0;
+    clearG2G();
     set({
       agentVideoState: "unknown",
       agentWhepUrl: null,

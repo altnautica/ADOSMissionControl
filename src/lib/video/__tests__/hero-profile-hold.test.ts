@@ -1,8 +1,8 @@
 /**
  * The hero hold takes a renewed lease under one per-tab holder, shares it
  * between surfaces, releases it after a grace, never promotes a ground
- * station, retries a rate-limited promotion while still held, and falls back
- * to a plain set on an agent without leases.
+ * station, retries a failed promotion and a failed renewal while still held,
+ * and falls back to a plain set on an agent without leases.
  *
  * @license GPL-3.0-only
  */
@@ -13,8 +13,9 @@ import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import {
   acquireHeroProfile,
   HERO_LEASE_S,
-  HERO_RATE_LIMIT_BACKOFF_MS,
+  HERO_PROMOTE_RETRY_MS,
   HERO_RELEASE_GRACE_MS,
+  HERO_RETRY_BACKOFF_MS,
   HERO_RENEW_MS,
   heroHolderId,
   type HeroProfileClient,
@@ -71,13 +72,13 @@ describe("acquireHeroProfile", () => {
     expect(heroHolderId()).toBe(id);
   });
 
-  it("leases hero, renews at half the lease, releases after the grace", async () => {
+  it("leases hero, renews at a third of the lease, releases after the grace", async () => {
     const { client, setVideoProfile, releaseVideoProfile } = fakeClient("thumbnail");
     const release = acquireHeroProfile(agent, client);
     await settle();
     const lease = { holder: heroHolderId(), leaseS: HERO_LEASE_S };
     expect(setVideoProfile.mock.calls).toEqual([["hero", lease]]);
-    expect(HERO_RENEW_MS).toBe((HERO_LEASE_S * 1000) / 2);
+    expect(HERO_RENEW_MS).toBe((HERO_LEASE_S * 1000) / 3);
     await vi.advanceTimersByTimeAsync(HERO_RENEW_MS);
     expect(setVideoProfile.mock.calls).toEqual([["hero", lease], ["hero", lease]]);
     release();
@@ -135,16 +136,60 @@ describe("acquireHeroProfile", () => {
     expect(releaseVideoProfile).toHaveBeenCalledTimes(1);
   });
 
-  it("does not release or renew after a promotion the agent refused", async () => {
+  it("retries a refused promotion on the next poll and renews the lease it takes", async () => {
     const { client, setVideoProfile, releaseVideoProfile } = fakeClient("thumbnail");
-    setVideoProfile.mockRejectedValueOnce(new Error("503"));
+    setVideoProfile.mockRejectedValueOnce(new AgentHttpError(503, "restarting"));
     const release = acquireHeroProfile(agent, client);
     await settle();
+    expect(setVideoProfile).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(HERO_PROMOTE_RETRY_MS);
+    expect(setVideoProfile).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(HERO_RENEW_MS);
+    expect(setVideoProfile).toHaveBeenCalledTimes(3);
+    release();
+    await vi.advanceTimersByTimeAsync(HERO_RELEASE_GRACE_MS);
+    expect(releaseVideoProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up only on an agent with no profile route", async () => {
+    const { client, setVideoProfile, releaseVideoProfile } = fakeClient("thumbnail");
+    setVideoProfile.mockRejectedValueOnce(new AgentHttpError(404, "not found"));
+    const release = acquireHeroProfile(agent, client);
+    await settle();
+    await vi.advanceTimersByTimeAsync(HERO_PROMOTE_RETRY_MS + HERO_RENEW_MS);
     release();
     await vi.advanceTimersByTimeAsync(HERO_RELEASE_GRACE_MS);
     expect(setVideoProfile).toHaveBeenCalledTimes(1);
     expect(releaseVideoProfile).not.toHaveBeenCalled();
+  });
+
+  it("retries a failed renewal within two seconds, with backoff", async () => {
+    const { client, setVideoProfile } = fakeClient("thumbnail");
+    acquireHeroProfile(agent, client);
+    await settle();
+    setVideoProfile.mockRejectedValueOnce(new Error("network"));
+    // A reply without a live lease is a failure too, not a renewal.
+    setVideoProfile.mockResolvedValueOnce({
+      profile: "thumbnail",
+      width: 320,
+      height: 180,
+      fps: 1,
+      bitrate_kbps: 100,
+      ceiling_kbps: null,
+    });
+    await vi.advanceTimersByTimeAsync(HERO_RENEW_MS);
+    expect(setVideoProfile).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(HERO_RETRY_BACKOFF_MS[0]);
+    expect(setVideoProfile).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(HERO_RETRY_BACKOFF_MS[1] - 1);
+    expect(setVideoProfile).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(setVideoProfile).toHaveBeenCalledTimes(4);
+    // Back on the normal cadence once a renewal lands.
+    await vi.advanceTimersByTimeAsync(HERO_RENEW_MS - 1);
+    expect(setVideoProfile).toHaveBeenCalledTimes(4);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(setVideoProfile).toHaveBeenCalledTimes(5);
   });
 
   it("retries a rate-limited promotion and renews the lease it then takes", async () => {
@@ -153,7 +198,7 @@ describe("acquireHeroProfile", () => {
     acquireHeroProfile(agent, client);
     await settle();
     expect(setVideoProfile).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(HERO_RATE_LIMIT_BACKOFF_MS[0]);
+    await vi.advanceTimersByTimeAsync(HERO_RETRY_BACKOFF_MS[0]);
     const lease = { holder: heroHolderId(), leaseS: HERO_LEASE_S };
     expect(getFullStatus).toHaveBeenCalledTimes(2);
     expect(setVideoProfile.mock.calls).toEqual([["hero", lease]]);
@@ -161,14 +206,16 @@ describe("acquireHeroProfile", () => {
     expect(setVideoProfile.mock.calls).toEqual([["hero", lease], ["hero", lease]]);
   });
 
-  it("retries a rate-limited lease request too, a bounded number of times", async () => {
+  it("keeps retrying a rate-limited lease request while held, and stops on release", async () => {
     const { client, setVideoProfile } = fakeClient("thumbnail");
     setVideoProfile.mockRejectedValue(new AgentHttpError(429, "slow down"));
-    acquireHeroProfile(agent, client);
+    const release = acquireHeroProfile(agent, client);
     await settle();
-    for (const delay of HERO_RATE_LIMIT_BACKOFF_MS) await vi.advanceTimersByTimeAsync(delay);
-    await vi.advanceTimersByTimeAsync(HERO_RENEW_MS * 2);
-    expect(setVideoProfile).toHaveBeenCalledTimes(HERO_RATE_LIMIT_BACKOFF_MS.length + 1);
+    for (const delay of HERO_RETRY_BACKOFF_MS) await vi.advanceTimersByTimeAsync(delay);
+    expect(setVideoProfile).toHaveBeenCalledTimes(HERO_RETRY_BACKOFF_MS.length + 1);
+    release();
+    await vi.advanceTimersByTimeAsync(HERO_RELEASE_GRACE_MS + HERO_RENEW_MS * 2);
+    expect(setVideoProfile).toHaveBeenCalledTimes(HERO_RETRY_BACKOFF_MS.length + 1);
   });
 
   it("stops retrying once the last surface lets go", async () => {

@@ -50,7 +50,7 @@ import {
 } from "@/lib/plugins/video-overlay-props";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly, type Timestamped } from "@/lib/telemetry/freshness";
-import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
+import { readVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { useClockStore } from "@/stores/clock-store";
 
 /** Timestamp accessor for the nearest-sample lookup. */
@@ -240,11 +240,6 @@ export function VideoOverlayHost({
   useClockTick();
   const now = useClockStore((s) => s.now);
 
-  // How far behind the live world the presented frame is. Drives the attitude
-  // lookup below and is published so an overlay can correct for the skew
-  // itself. `null` when no estimator knows it.
-  const frameAge = useVideoFrameAge();
-
   // ── Build the host-props payload when a batch lands or the clock ticks. ──
   const hostProps = useMemo<VideoOverlayHostProps>(() => {
     const fresh = batch != null && now - batch.receivedAt <= staleAfterMs;
@@ -292,7 +287,10 @@ export function VideoOverlayHost({
     // instant, and the payload states whether it managed to. `now` is the 1 Hz
     // clock, so it only drives the staleness gates: sampling at it would hand
     // every batch within a second the same attitude.
-    const frameAgeMs = frameAge?.ms ?? null;
+    // The frame age is read here, not subscribed: the estimate moves with
+    // every frame, and keying this memo on it re-posted to every plugin
+    // iframe at the frame rate. The payload refreshes on a batch or the clock.
+    const frameAgeMs = readVideoFrameAge()?.ms ?? null;
     const sampleAt = (batch?.receivedAt ?? now) - (frameAgeMs ?? 0);
     const att = freshOnly(
       useTelemetryStore.getState().attitude.nearest(sampleAt, sampleTs),
@@ -315,7 +313,7 @@ export function VideoOverlayHost({
     };
     // `now` is a dependency so a staleness transition re-pushes with
     // detections and attitude collapsed to null, with no new data arriving.
-  }, [droneId, batch, geometry, staleAfterMs, now, frameAge]);
+  }, [droneId, batch, geometry, staleAfterMs, now]);
 
   const hostEvent = useMemo(
     () => ({

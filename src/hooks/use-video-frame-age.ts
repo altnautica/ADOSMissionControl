@@ -58,3 +58,18 @@ export function useVideoFrameAge(): FrameAge | null {
   );
   return resolveFrameAge(trueG2GMs, endToEndP50Ms);
 }
+
+/**
+ * The same answer as `useVideoFrameAge`, read once without subscribing.
+ *
+ * For consumers that already re-run on their own cadence (a rAF loop, a memo
+ * keyed on a detection batch or the 1 Hz clock): subscribing them to the age
+ * as well re-rendered them every time the estimate moved, which on an SEI
+ * stream was every frame.
+ */
+export function readVideoFrameAge(): FrameAge | null {
+  return resolveFrameAge(
+    useVideoStore.getState().latency.trueG2GMs,
+    frameMetadataEndToEndMs(),
+  );
+}

@@ -32,6 +32,7 @@ import {
   JITTER_TARGET_MAX_MS,
   MIN_DWELL_MS,
   NEGOTIATED_JITTER_TARGET_MS,
+  RELAX_DWELL_MS,
   type JitterSample,
 } from "@/lib/video/webrtc/jitter-controller";
 
@@ -155,7 +156,7 @@ describe("hysteresis", () => {
       nowMs: 0,
     });
     const escalated = state.rung;
-    let now = MIN_DWELL_MS;
+    let now = RELAX_DWELL_MS;
 
     // One clean window short of the requirement: still holding the depth.
     for (let i = 0; i < CLEAN_WINDOWS_TO_RELAX - 1; i += 1) {
@@ -203,6 +204,41 @@ describe("hysteresis", () => {
     state = nextJitterTarget(state, { ...CLEAN, nowMs: now });
     expect(state.cleanWindows).toBe(1);
     expect(state.rung).toBe(escalated);
+  });
+
+  it("does not step down before the relax dwell, however clean the run", () => {
+    let state = nextJitterTarget(initialJitterState(), {
+      ...CLEAN,
+      freezeDelta: 1,
+      nowMs: 0,
+    });
+    const escalated = state.rung;
+    for (let now = 1_000; now < RELAX_DWELL_MS; now += 1_000) {
+      state = nextJitterTarget(state, { ...CLEAN, nowMs: now });
+      expect(state.rung).toBe(escalated);
+    }
+    state = nextJitterTarget(state, { ...CLEAN, nowMs: RELAX_DWELL_MS });
+    expect(state.rung).toBe(escalated - 1);
+  });
+
+  it("holds a steady depth on a link that alternates freezes and clean stretches", () => {
+    // A freeze every 6 s with clean windows between: the pattern that used to
+    // retarget the buffer every few seconds. The depth may only climb, once
+    // per dwell at most, and never comes back down between freezes.
+    let state = initialJitterState();
+    const rungs: number[] = [];
+    let changes = 0;
+    for (let now = 1_000; now <= 120_000; now += 1_000) {
+      const freeze = now % 6_000 === 0 ? 1 : 0;
+      const decision = nextJitterTarget(state, { ...CLEAN, freezeDelta: freeze, nowMs: now });
+      if (decision.changed) changes += 1;
+      state = decision;
+      rungs.push(state.rung);
+    }
+    for (let i = 1; i < rungs.length; i += 1) {
+      expect(rungs[i]).toBeGreaterThanOrEqual(rungs[i - 1]);
+    }
+    expect(changes).toBeLessThanOrEqual(JITTER_TARGET_LADDER_MS.length - 1);
   });
 
   it("relaxes BELOW the negotiated baseline on a permanently clean link", () => {

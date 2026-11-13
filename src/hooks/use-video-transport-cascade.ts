@@ -65,6 +65,11 @@ interface CascadeOpts {
   videoEl: HTMLVideoElement | null;
   retryKey: number;                // bump to force re-cascade
   enabled: boolean;                // false when video service not running
+  /** The surface wants the drone on hero. Unlike `enabled` it does not follow
+   *  transient session states: a pipeline restart, a missing element during a
+   *  remount or a status gap must not release the hold, because the release
+   *  drops the drone to thumbnail and the next hold respawns the encoder. */
+  holdHero: boolean;
   // No broker credential is threaded here. The signalling flow reads the
   // operator's own minted write grant from the process-wide singleton at
   // connect time, so an override parameter would only be a second way to say
@@ -97,6 +102,7 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
     videoEl,
     retryKey,
     enabled,
+    holdHero,
   } = opts;
 
   const [state, setState] = useState<CascadeResult["state"]>("idle");
@@ -114,8 +120,7 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const quality = useStreamQualityStore((s) => streamQualityFor(s.byDrone, selectedDroneId));
   const heroEligible =
     quality === "high" &&
-    enabled &&
-    videoEl !== null &&
+    holdHero &&
     whepApiKey !== null &&
     (transportMode === "auto" || transportMode === "lan-whep") &&
     typeof window !== "undefined" &&

@@ -128,6 +128,9 @@ export function useSingletonAgentVideo({
     videoEl,
     retryKey,
     enabled: stableEnabled && !suspended,
+    // The hero hold outlives a "not running" stretch: that stretch is often
+    // the encoder respawning, and releasing here would demote the drone.
+    holdHero: !suspended,
   });
 
   // A healthy connect stops any pending countdown display.

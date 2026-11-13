@@ -79,6 +79,7 @@ describe("cascade session holds", () => {
         videoEl: el,
         retryKey: 0,
         enabled: true,
+        holdHero: true,
       }),
     );
     expect(startStream).not.toHaveBeenCalled();
@@ -98,6 +99,7 @@ describe("cascade session holds", () => {
         videoEl: el,
         retryKey: 0,
         enabled: false,
+        holdHero: true,
       }),
     );
     unmount();
@@ -114,6 +116,7 @@ describe("cascade session holds", () => {
         videoEl: null,
         retryKey: 0,
         enabled: true,
+        holdHero: true,
       }),
     );
     unmount();
@@ -130,6 +133,7 @@ describe("cascade session holds", () => {
         videoEl: el,
         retryKey: 0,
         enabled: true,
+        holdHero: true,
       }),
     );
     await vi.waitFor(() => expect(result.current.state).toBe("connected"));
@@ -151,6 +155,7 @@ describe("cascade session holds", () => {
         videoEl: el,
         retryKey: 0,
         enabled: true,
+        holdHero: true,
       }),
     );
     await vi.waitFor(() => expect(result.current.state).toBe("failed"));
@@ -173,6 +178,7 @@ describe("cascade WHEP credential", () => {
         videoEl: el,
         retryKey: 0,
         enabled: true,
+        holdHero: true,
       }),
     );
   }

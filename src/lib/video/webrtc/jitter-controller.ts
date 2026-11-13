@@ -72,11 +72,21 @@ export const JITTER_TARGET_MIN_MS = 0;
 export const JITTER_TARGET_MAX_MS = 4000;
 
 /**
- * Minimum time between two changes in either direction. A buffer resize
+ * Minimum time between two changes, the floor for a step up. A buffer resize
  * costs a resync, so changing faster than the link changes is a cost with no
- * benefit.
+ * benefit. Four seconds, not two: at 2 s a link alternating between freezes
+ * and clean stretches retargeted the buffer every few seconds, and the
+ * playout visibly stretched and compressed with it.
  */
-export const MIN_DWELL_MS = 2000;
+export const MIN_DWELL_MS = 4000;
+
+/**
+ * Minimum time since the last change before a step DOWN. Asymmetric on
+ * purpose: stepping up answers a freeze the operator saw, stepping down only
+ * saves a few frames of delay, and a step down on a link that is about to
+ * freeze again buys one more freeze and one more resync.
+ */
+export const RELAX_DWELL_MS = 15_000;
 
 /**
  * RTP interarrival jitter above this is treated as harm. Just above one
@@ -91,14 +101,12 @@ export const LOSS_ESCALATE = 0.02;
 export const LOSS_RELAX = 0.005;
 
 /**
- * Consecutive clean windows required before stepping down one rung.
- *
- * Three, not five: with the 2 s dwell this returns a clean link to the rung
- * below in ~5 s instead of ~7 s. Five windows of buffer nobody needs is
- * five windows of latency nobody asked for, and the dwell gate is what
- * actually prevents oscillation.
+ * Consecutive clean windows (one per ~1 s stats poll) required before
+ * stepping down one rung: a sustained clean stretch, not a lull between
+ * freezes. A link that freezes every few seconds never earns one, so it holds
+ * the deeper buffer steadily instead of oscillating around it.
  */
-export const CLEAN_WINDOWS_TO_RELAX = 3;
+export const CLEAN_WINDOWS_TO_RELAX = 10;
 
 /** One poll window's worth of receiver measurements. */
 export interface JitterSample {
@@ -211,9 +219,11 @@ export function nextJitterTarget(
   // The dwell gate applies to the *change*, not to the measurement: harm seen
   // during the dwell window is still remembered by `cleanWindows` resetting,
   // so a link that is genuinely bad escalates on the next eligible tick.
-  const dwellElapsed =
-    state.lastChangeAtMs === null ||
-    sample.nowMs - state.lastChangeAtMs >= MIN_DWELL_MS;
+  const sinceChange =
+    state.lastChangeAtMs === null
+      ? Number.POSITIVE_INFINITY
+      : sample.nowMs - state.lastChangeAtMs;
+  const dwellElapsed = sinceChange >= MIN_DWELL_MS;
 
   const atTop = state.rung >= JITTER_TARGET_LADDER_MS.length - 1;
   const atBottom = state.rung <= 0;
@@ -233,7 +243,7 @@ export function nextJitterTarget(
   if (
     !harm &&
     cleanWindows >= CLEAN_WINDOWS_TO_RELAX &&
-    dwellElapsed &&
+    sinceChange >= RELAX_DWELL_MS &&
     !atBottom
   ) {
     const rung = state.rung - 1;

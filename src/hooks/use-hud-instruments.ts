@@ -32,15 +32,17 @@
  * reads are ahead of the picture they are read against. Each channel is
  * therefore sampled at `now - frameAgeMs` through the ring buffers'
  * nearest-timestamp lookup, so an instrument travels with its frame. When no
- * estimator knows the frame age (`useVideoFrameAge` returns null) the offset
- * is zero and the lookup collapses to the newest sample.
+ * estimator knows the frame age (`readVideoFrameAge` returns null) the offset
+ * is zero and the lookup collapses to the newest sample. The age is read in
+ * the frame loop rather than subscribed, so a moving estimate never
+ * re-renders the HUD by itself; only a changed reading does.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
+import { readVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { deriveHudInstruments, type HudInstruments } from "@/lib/hud-readings";
 import type { Timestamped } from "@/lib/telemetry/freshness";
 
@@ -83,20 +85,14 @@ export function sameHudInstruments(a: HudInstruments, b: HudInstruments): boolea
 }
 
 export function useHudInstruments(): HudInstruments {
-  const frameAgeMs = useVideoFrameAge()?.ms ?? 0;
-  const frameAgeRef = useRef(frameAgeMs);
   const [reading, setReading] = useState<HudInstruments>(() =>
-    readHudInstruments(frameAgeMs),
+    readHudInstruments(readVideoFrameAge()?.ms ?? 0),
   );
-
-  useEffect(() => {
-    frameAgeRef.current = frameAgeMs;
-  }, [frameAgeMs]);
 
   useEffect(() => {
     let raf = 0;
     const frame = () => {
-      const next = readHudInstruments(frameAgeRef.current);
+      const next = readHudInstruments(readVideoFrameAge()?.ms ?? 0);
       // Functional update keeps the previous object when nothing changed, so
       // React bails out of the render entirely.
       setReading((prev) => (sameHudInstruments(prev, next) ? prev : next));

@@ -6,7 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-This release covers everything since 0.63.0: twenty-nine commits over
+This release covers everything since 0.63.0: thirty commits over
 2026-11-12 and 2026-11-13, from a whole-app audit of Mission Control, the
 Android app and the drone's own cockpit. Three threads run through it.
 
@@ -81,6 +81,17 @@ words, and pages that cannot reach a node say so instead of showing blanks.
   theme actually applied, so night vision always drops it.
 
 ### Fixed
+
+- **Smoother live video.** The glass-to-glass figure updates four times a
+  second instead of once per frame, so the HUD, attitude radar and plugin
+  overlays no longer re-render at the frame rate. The jitter buffer waits
+  longer between changes and steps down only after a sustained clean stretch,
+  so a link that freezes now and then holds one steady depth instead of
+  stretching and compressing the picture every few seconds.
+- **The full-quality stream holds.** A failed lease renewal is retried within
+  seconds, renewals run at a third of the lease, a failed promotion is retried
+  on the next poll, and a camera pipeline restart no longer drops the drone to
+  the 1 fps thumbnail.
 
 - **Take control refused by the flight controller** reads "The flight
   controller refused: …" with the controller's own reason, and "No answer

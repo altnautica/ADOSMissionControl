@@ -4,17 +4,21 @@
  * The singleton video session stays enabled through a short "not running"
  * blip from the agent, and is disabled once the agent has kept reporting video
  * as not running for the grace window. A steady report never changes the
- * prop, so the gate has to be driven by time, not by re-renders.
+ * prop, so the gate has to be driven by time, not by re-renders. The hero
+ * hold does not follow that gate: a "not running" stretch is usually the
+ * encoder respawning, and releasing the hold there demoted the drone.
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
 const enabledCalls: boolean[] = [];
+const holdCalls: boolean[] = [];
 
 vi.mock("@/hooks/use-video-transport-cascade", () => ({
-  useVideoTransportCascade: (opts: { enabled: boolean }) => {
+  useVideoTransportCascade: (opts: { enabled: boolean; holdHero: boolean }) => {
     enabledCalls.push(opts.enabled);
+    holdCalls.push(opts.holdHero);
     return { state: "idle", activeTransport: null, error: null };
   },
 }));
@@ -23,6 +27,7 @@ import { useSingletonAgentVideo } from "../use-singleton-agent-video";
 
 afterEach(() => {
   enabledCalls.length = 0;
+  holdCalls.length = 0;
   vi.useRealTimers();
 });
 
@@ -52,6 +57,9 @@ describe("useSingletonAgentVideo enable gate", () => {
     });
 
     expect(enabledCalls.at(-1)).toBe(false);
+    // The session is down, but the surface still wants hero.
+    expect(holdCalls.length).toBeGreaterThan(0);
+    expect(holdCalls.every(Boolean)).toBe(true);
   });
 
   it("stays enabled through a blip shorter than the grace window", () => {
