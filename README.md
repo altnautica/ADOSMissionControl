@@ -311,7 +311,7 @@ When the paired agent runs in the ground-station profile, the node panel shows r
 |----------|-------------|-------|
 | Web (recommended) | Chrome 89+ or Edge 89+ | WebSerial and WebUSB for FC connection and firmware flashing |
 | Web (limited) | Firefox, Safari | No WebSerial or WebUSB. WebSocket connections work. |
-| Desktop (macOS) | Intel or Apple Silicon | Electron app, not code-signed |
+| Desktop (macOS) | Intel or Apple Silicon | Electron app, not code-signed; build it locally, since releases include it only when the maintainers enable the macOS build |
 | Desktop (Windows) | x64 | Electron app, `.exe` installer |
 | Desktop (Linux) | x64 or arm64 | `.AppImage` |
 
@@ -396,7 +396,7 @@ npm run desktop:build:win   # Windows .exe installer
 npm run desktop:build:linux # Linux .AppImage
 ```
 
-macOS: the app is not code-signed yet, so right-click it, choose Open, then Open again.
+macOS: the app is not code-signed yet, so right-click it, choose Open, then Open again. Releases attach a macOS build only when the macOS release build is enabled; otherwise build it with `npm run desktop:build:mac`.
 
 ---
 

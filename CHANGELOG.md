@@ -14,6 +14,13 @@ the project follows [Semantic Versioning](https://semver.org/).
   or in the blocked colour while the pilot reports the way blocked. It
   matches the drone's own cockpit and the Android app.
 
+### Changed
+
+- **macOS desktop builds are optional.** The desktop release workflow builds
+  the macOS app only when the repository variable `MC_MACOS` is `true`, and
+  publishes the Windows and Linux builds without it. When a release ships
+  without macOS, its notes say so.
+
 ## [0.64.0] - 2026-11-13
 
 This release covers everything since 0.63.0: thirty-one commits over
