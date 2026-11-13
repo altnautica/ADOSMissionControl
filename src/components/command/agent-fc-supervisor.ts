@@ -57,8 +57,12 @@ export class AgentFcSupervisor {
   /** Ids the operator disconnected, with the pairing key they had then. Not
    * dialled until the operator connects them again or re-pairs them. */
   private readonly operatorStopped = new Map<string, string | null>();
-  /** Whether each id was the focused target at the last reconcile. */
-  private readonly wasFocused = new Map<string, boolean>();
+  /** The agent the operator has focused (device id, else URL), whether or not
+   * its link is up. The link flag flips with no operator action. */
+  private focusKey: string | null = null;
+  /** Set when the operator focuses a different agent; spent by the first
+   * focused target that sees it. Only this re-arms an operator-stopped FC. */
+  private freshFocus = false;
   /** The id a focused agent with no device identity is attached under. */
   private anon: { agentUrl: string | null; id: string } | null = null;
   private grantEpoch: number | null = null;
@@ -78,6 +82,12 @@ export class AgentFcSupervisor {
     if (this.grantEpoch !== null && this.grantEpoch !== grantEpoch) this.dropRelaySessions();
     this.grantEpoch = grantEpoch;
 
+    const conn = useAgentConnectionStore.getState();
+    const focusKey = conn.nodeDeviceId ?? conn.agentUrl ?? null;
+    if (focusKey !== this.focusKey) {
+      this.focusKey = focusKey;
+      this.freshFocus = focusKey !== null;
+    }
     const targets = this.readTargets();
     for (const id of Array.from(this.held)) {
       const target = targets.get(id);
@@ -90,10 +100,10 @@ export class AgentFcSupervisor {
       if (manager.drones.has(id)) manager.disconnectDrone(id);
     }
     for (const [id, target] of targets) {
-      const focusedBefore = this.wasFocused.get(id) ?? false;
-      this.wasFocused.set(id, target.focused);
+      const refocused = target.focused && this.freshFocus;
+      if (target.focused) this.freshFocus = false;
       if (this.operatorStopped.has(id)) {
-        const reconnected = (target.focused && !focusedBefore) || manager.drones.has(id);
+        const reconnected = refocused || manager.drones.has(id);
         const repaired = this.operatorStopped.get(id) !== this.pairKey(id);
         if (!reconnected && !repaired) {
           this.stopLoop(id);
@@ -111,9 +121,6 @@ export class AgentFcSupervisor {
       const loop: NodeLoop = { key, cancelled: false };
       this.loops.set(id, loop);
       void this.supervise(id, loop);
-    }
-    for (const id of Array.from(this.wasFocused.keys())) {
-      if (!targets.has(id)) this.wasFocused.set(id, false);
     }
     for (const id of Array.from(this.loops.keys())) {
       if (!targets.has(id)) this.stopLoop(id);

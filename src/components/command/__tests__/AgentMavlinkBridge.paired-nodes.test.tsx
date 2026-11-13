@@ -301,6 +301,37 @@ describe("AgentMavlinkBridge when the focus is released", () => {
     view.rerender(<AgentMavlinkBridge />);
     await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(2));
   });
+
+  it("keeps an FC the operator disconnected down when the agent link drops and recovers", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    useLocalNodesStore.setState({ nodes: [lanNode("dev-a", 60)] });
+    reportFc("dev-a", true);
+    const focused: ConnState = {
+      ...UNFOCUSED,
+      connected: true,
+      nodeDeviceId: "dev-a",
+      mavlinkUrl: "ws://192.168.1.60:8765/",
+      agentUrl: "http://192.168.1.60:8080",
+      apiKey: "key-dev-a",
+    };
+    h.conn.current = focused;
+    h.sys.status = { fc_connected: true, board: { name: "Drone" } };
+    const view = render(<AgentMavlinkBridge />);
+    await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(1));
+
+    useDroneManager.getState().disconnectDrone("node:dev-a");
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    // The agent's polls fail long enough for the store to mark it offline,
+    // then recover. The focused node never changed.
+    h.conn.current = { ...focused, connected: false };
+    view.rerender(<AgentMavlinkBridge />);
+    await vi.advanceTimersByTimeAsync(6_000);
+    h.conn.current = { ...focused };
+    view.rerender(<AgentMavlinkBridge />);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(addDrone).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("AgentMavlinkBridge with a focus that has no dial path", () => {
