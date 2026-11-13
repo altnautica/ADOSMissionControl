@@ -2,11 +2,14 @@
  * @module map/local/paint-local-scene
  * @description Strokes a {@link LocalScene} onto a 2D canvas. Every position
  * comes from the scene; this file only owns line widths, dash patterns and
- * the order of the layers. Colours are the resolved `--hud-*` values.
+ * the order of the layers. Colours are the resolved `--hud-*` values; the
+ * pilot's planned path takes `tokens.json` `state.goto`, `state.blocked`
+ * while the pilot reports blocked.
  *
  * @license GPL-3.0-only
  */
 
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import type { LocalScene } from "@/lib/hud/local-scene";
 
 export interface LocalSceneColours {
@@ -34,6 +37,36 @@ export const LOCAL_SCENE_VARS: Record<keyof LocalSceneColours, string> = {
 
 const DIAMOND_HALF_PX = 5;
 const ARROW_PX = 7;
+const GOAL_RING_PX = 5;
+const PLAN_DASH: number[] = [5, 4];
+
+/** The pilot's planned path, dashed, and a ring on its goal. */
+export function paintPlan(ctx: CanvasRenderingContext2D, plan: NonNullable<LocalScene["plan"]>, c: LocalSceneColours): void {
+  const colour = plan.blocked ? tokens.state.blocked : tokens.state.goto;
+  const strokeBoth = () => {
+    // A dark halo under the colour keeps it legible on tiles.
+    ctx.strokeStyle = c.glass;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  };
+  ctx.lineJoin = "round";
+  if (plan.points.length >= 2) {
+    ctx.setLineDash(PLAN_DASH);
+    ctx.beginPath();
+    ctx.moveTo(plan.points[0][0], plan.points[0][1]);
+    for (let i = 1; i < plan.points.length; i++) ctx.lineTo(plan.points[i][0], plan.points[i][1]);
+    strokeBoth();
+    ctx.setLineDash([]);
+  }
+  if (plan.goal) {
+    ctx.beginPath();
+    ctx.arc(plan.goal[0], plan.goal[1], GOAL_RING_PX, 0, Math.PI * 2);
+    strokeBoth();
+  }
+}
 
 function paintTarget(ctx: CanvasRenderingContext2D, t: NonNullable<LocalScene["target"]>, c: LocalSceneColours): void {
   const colour = t.dashed ? c.coast : c.track;
@@ -146,6 +179,7 @@ export function paintLocalScene(
   ctx.font = `9px ${colours.mono}`;
   ctx.fillText(originLabel, ox + 7, oy - 3);
 
+  if (scene.plan) paintPlan(ctx, scene.plan, colours);
   if (scene.target) paintTarget(ctx, scene.target, colours);
   if (scene.drone) paintDrone(ctx, scene.drone, colours);
 }

@@ -5,8 +5,9 @@
  * @description Gathers the local-frame layers for one drone with their
  * freshness rules applied: the SLAM trail and occupancy grid (dimmed when the
  * last poll is older than 5 s), the scan in the map frame (only while both
- * the scan and the pose are under 500 ms old), the follow target, and the
- * drone from the pose when fresh, else from LOCAL_POSITION_NED (`fcPos`).
+ * the scan and the pose are under 500 ms old), the follow target, the
+ * pilot's planned path and goal (while its frame is fresh), and the drone
+ * from the pose when fresh, else from LOCAL_POSITION_NED (`fcPos`).
  * Heading comes from ATTITUDE when fresh, else from the pose.
  *
  * @license GPL-3.0-only
@@ -23,7 +24,9 @@ import {
   type OccupancyGrid,
   type TrailPoint,
 } from "@/lib/hud/local-frame";
-import type { LocalSceneDrone, LocalSceneTarget } from "@/lib/hud/local-scene";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
+import { localPlan, type LocalSceneDrone, type LocalScenePlan, type LocalSceneTarget } from "@/lib/hud/local-scene";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import {
   FOLLOW_STALE_MS,
@@ -31,12 +34,18 @@ import {
   POSE_STALE_MS,
   SCAN_STALE_MS,
   freshData,
+  type Stamped,
 } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 /** Redraw cadence for the age-based rules (scan and pose expire at 500 ms). */
 const FRAME_TICK_MS = 250;
 const NO_TRAIL: TrailPoint[] = [];
+
+/** The pilot's planned path and goal while its frame is fresh, else null. */
+export function framePlan(pilot: Stamped<PilotState> | undefined, now: number): LocalScenePlan | null {
+  return pilot && pilotFresh(pilot.receivedAt, now) ? localPlan(pilot.data) : null;
+}
 
 export interface LocalFrameData {
   now: number;
@@ -46,6 +55,7 @@ export interface LocalFrameData {
   scanPoints: Array<[number, number]> | null;
   target: LocalSceneTarget | null;
   drone: LocalSceneDrone | null;
+  plan: LocalScenePlan | null;
   /** The drone is placed from LOCAL_POSITION_NED, not the SLAM pose. */
   fcPos: boolean;
 }
@@ -96,6 +106,7 @@ export function useLocalFrameData(droneId: string): LocalFrameData {
     scanPoints,
     target,
     drone,
+    plan: framePlan(feed?.pilot, now),
     fcPos: !pose && local !== undefined,
   };
 }

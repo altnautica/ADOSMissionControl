@@ -29,6 +29,7 @@ vi.mock("@/components/map/local/use-local-frame-data", () => ({
     target: null,
     // The view centres on the drone.
     drone: { north: 4, east: -2, yawDeg: 0 },
+    plan: null,
     fcPos: false,
   }),
 }));

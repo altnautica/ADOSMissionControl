@@ -6,6 +6,7 @@ import { EMPTY_OCCUPANCY, type OccupancyGrid } from "@/lib/hud/local-frame";
 import {
   RECENTRE_AFTER_MS,
   buildLocalScene,
+  localPlan,
   stepZoom,
   viewCentre,
   wheelZoom,
@@ -25,6 +26,7 @@ function input(over: Partial<LocalSceneInput> = {}): LocalSceneInput {
     scanPoints: null,
     target: null,
     drone: null,
+    plan: null,
     ...over,
   };
 }
@@ -93,6 +95,18 @@ describe("buildLocalScene", () => {
     );
     expect(scene.dim).toBe(true);
     expect(scene.trail).toEqual([{ points: [[100, 100], [100, 90]], dashed: false }]);
+  });
+
+  it("projects the pilot's planned path and goal, north up the screen", () => {
+    const scene = buildLocalScene(
+      input({
+        plan: localPlan({ planNed: [[0, 0], [5, 0], [5, 2]], goalNed: [5, 2, -5], avoidState: "clear" }),
+      }),
+    );
+    expect(scene.plan).toEqual({ points: [[100, 100], [100, 50], [120, 50]], goal: [120, 50], blocked: false });
+    const blocked = localPlan({ planNed: [], goalNed: [1, 0, -5], avoidState: "blocked" });
+    expect(buildLocalScene(input({ plan: blocked })).plan).toEqual({ points: [], goal: [100, 90], blocked: true });
+    expect(buildLocalScene(input()).plan).toBeNull();
   });
 });
 

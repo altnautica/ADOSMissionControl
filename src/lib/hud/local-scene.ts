@@ -4,7 +4,7 @@
  * local mode and the node-detail Map tab). Pure: every coordinate here is a
  * screen pixel from `mapToScreen`; the canvas painter only strokes and fills
  * what this returns, back to front: grid, occupancy, dim, trail, scan,
- * origin, target, drone.
+ * origin, planned path and goal, target, drone.
  *
  * @license GPL-3.0-only
  */
@@ -20,6 +20,7 @@ import {
   type OccupancyGrid,
   type TrailPoint,
 } from "./local-frame";
+import type { PilotState } from "./cockpit-frames";
 
 /** The view recentres on the drone this long after the last pan. */
 export const RECENTRE_AFTER_MS = 10_000;
@@ -42,6 +43,26 @@ export interface LocalSceneDrone {
   yawDeg: number;
 }
 
+/** The pilot's planned path (`plan_ned`, drone to goal) and goal while a
+ *  go-to or a skill flies, in map NED metres; `blocked` from the pilot's
+ *  avoid state. */
+export interface LocalScenePlan {
+  points: ReadonlyArray<readonly [number, number]>;
+  goal: readonly [number, number] | null;
+  blocked: boolean;
+}
+
+/** The plan a pilot frame reports, or null when it reports none. The caller
+ *  passes null for a stale frame. */
+export function localPlan(pilot: Pick<PilotState, "planNed" | "goalNed" | "avoidState"> | null): LocalScenePlan | null {
+  if (!pilot || (pilot.planNed.length === 0 && !pilot.goalNed)) return null;
+  return {
+    points: pilot.planNed,
+    goal: pilot.goalNed ? [pilot.goalNed[0], pilot.goalNed[1]] : null,
+    blocked: pilot.avoidState === "blocked",
+  };
+}
+
 export interface LocalSceneInput {
   width: number;
   height: number;
@@ -54,6 +75,9 @@ export interface LocalSceneInput {
   scanPoints: ReadonlyArray<readonly [number, number]> | null;
   target: LocalSceneTarget | null;
   drone: LocalSceneDrone | null;
+  /** The pilot's plan, or null while nothing planned flies or the pilot
+   *  frame is stale. */
+  plan: LocalScenePlan | null;
 }
 
 export interface LocalSceneTile {
@@ -71,6 +95,7 @@ export interface LocalScene {
   trail: Array<{ points: Array<[number, number]>; dashed: boolean }>;
   scan: Array<[number, number]>;
   origin: { sx: number; sy: number };
+  plan: { points: Array<[number, number]>; goal: [number, number] | null; blocked: boolean } | null;
   target: { sx: number; sy: number; tickX: number | null; tickY: number | null; dashed: boolean } | null;
   drone: { sx: number; sy: number; yawDeg: number } | null;
   scaleBar: { m: number; px: number };
@@ -160,6 +185,14 @@ export function buildLocalScene(input: LocalSceneInput): LocalScene {
     target = { sx, sy, tickX, tickY, dashed: t.dashed };
   }
 
+  const plan: LocalScene["plan"] = input.plan
+    ? {
+        points: input.plan.points.map(([n, e]) => project(n, e)),
+        goal: input.plan.goal ? project(input.plan.goal[0], input.plan.goal[1]) : null,
+        blocked: input.plan.blocked,
+      }
+    : null;
+
   let drone: LocalScene["drone"] = null;
   if (input.drone) {
     const [sx, sy] = project(input.drone.north, input.drone.east);
@@ -179,6 +212,7 @@ export function buildLocalScene(input: LocalSceneInput): LocalScene {
     scan,
     origin: { sx: ox, sy: oy },
     target,
+    plan,
     drone,
     scaleBar: { m: gridStepM, px: gridStepM * view.pxPerM },
   };
