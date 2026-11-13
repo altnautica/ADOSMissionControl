@@ -11,6 +11,9 @@ the project follows [Semantic Versioning](https://semver.org/).
 - **Cockpit spec sync.** Flight-state chips read in sentence case, an unknown
   arm state with no flight controller link refuses Fly here with "No flight
   controller link", and the plugin contract mirror tracks pilot contract v2.
+- **Cockpit words.** Follow controls, setup steps and unrecognised modes read
+  in sentence case, and the link age follows the shared format: one decimal
+  below 10 s, whole seconds above.
 
 ### Added
 
@@ -59,6 +62,13 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Dialogs open on first load**, such as a pairing link, move focus into
+  the dialog.
+- **Aircraft setup** says the ground wizard waits for the vehicle to report
+  disarmed when its arm state is not known yet, as the calibration panels do,
+  instead of "Disarm first".
+- **Parameters.** Picking the same parameter from the palette again moves
+  focus back to its row.
 - **Betaflight failsafe procedure** writes 0 for Land and 1 for Drop, as the
   firmware defines them; the dropdown had the two swapped.
 - **Pad stop hold with the top bar's STOP sheet open** sends the stop once
@@ -98,7 +108,7 @@ the project follows [Semantic Versioning](https://semver.org/).
   demo drones with a companion take gimbal rates.
 - **Relayed commands.** Cancel leaves a pending extension install to its own
   cancel instead of failing the install.
-- **Unknown arm state counts as possibly flying** in the Flight tab (Land,
+- **Unknown arm state counts as possibly airborne** in the Flight tab (Land,
   not Take off), Disconnect, camera changes, extension Disable and every
   flight-controller reboot control, which now share one confirm that is off
   while the vehicle may be armed.
@@ -151,8 +161,8 @@ the project follows [Semantic Versioning](https://semver.org/).
   scrolls on short windows.
 - **Demo.** Copters and plain planes no longer report the quadplane group.
 - The model registry no longer lists models whose download does not exist.
-- **Perception** names the CPU tier ("CPU — on-node, no accelerator") when the
-  agent runs its detector on the CPU, instead of reading it as unknown.
+- **Perception** names the CPU tier, on the node with no accelerator, when
+  the agent runs its detector on the CPU, instead of reading it as unknown.
 - **Cockpit safety.** An unknown arm state counts as possibly airborne: no
   tips, pre-flight items hidden, Land instead of Take off. Fly Here is not
   offered through the flight controller during a pilot failsafe, and a refused

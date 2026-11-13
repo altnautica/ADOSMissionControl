@@ -154,6 +154,11 @@ function capitalFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** A wire identifier (`autotune_roll`) as a sentence-case word ("Autotune roll"). */
+function wordLabel(s: string): string {
+  return capitalFirst(s.replace(/[-_]+/g, " ").toLowerCase());
+}
+
 /** A profile as the mode sheet labels it (`mode_sheet.profile`), "Normal"
  *  when none is reported; an unknown value reads with a capital first letter. */
 function profileLabel(profile: string | null): string {
@@ -174,7 +179,7 @@ function fill(template: string, f: ChipFacts): string {
     mode_detail: f.modeDetail ?? "Active",
     dist_m: num(f.distM),
     home_dist_m: num(f.homeDistM),
-    setup_step: (f.setupStep ?? "").toUpperCase(),
+    setup_step: wordLabel(f.setupStep ?? ""),
     seq: num(f.seq),
     total: num(f.total),
     eta: fmtEta(f.etaS),
@@ -208,7 +213,7 @@ export function chipSecondary(f: ChipFacts): ChipLine[] {
       const s = CHIP_SECONDARY.avoid_state[f.avoidState];
       if (s) out.push({ text: s.text, color: colorOf(s.color) });
     } else if (part === "control_mode" && f.controlMode) {
-      out.push({ text: CHIP_SECONDARY.control_mode[f.controlMode] ?? f.controlMode.toUpperCase(), color: colorOf("fc") });
+      out.push({ text: CHIP_SECONDARY.control_mode[f.controlMode] ?? wordLabel(f.controlMode), color: colorOf("fc") });
     }
   }
   return out;
@@ -236,7 +241,7 @@ export function flightStateChip(f: ChipFacts): ChipView {
   if (!rule) {
     return {
       ruleId: "none",
-      text: f.owner.toUpperCase(),
+      text: wordLabel(f.owner),
       color: colorOf("fc"),
       dim: false,
       button: null,

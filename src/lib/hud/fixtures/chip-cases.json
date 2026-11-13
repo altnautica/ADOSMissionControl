@@ -1817,7 +1817,7 @@
     },
     "expected": {
       "rule": "tuning",
-      "text": "Tuning · AUTOTUNE_ROLL",
+      "text": "Tuning · Autotune roll",
       "color": "tuning",
       "dim": false,
       "button": null,

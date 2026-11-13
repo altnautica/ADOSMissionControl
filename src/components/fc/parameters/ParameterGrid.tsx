@@ -31,13 +31,16 @@ interface ParameterGridProps {
   /** Exact parameter name to highlight, scroll to and focus (e.g. from the
    *  command palette), so "RTL_ALT" lands on RTL_ALT, not RTL_ALT_FINAL. */
   focusParam?: string | null;
+  /** Bumped on every jump to `focusParam`, so picking the same parameter
+   *  again focuses its row again. */
+  focusRequest?: number;
 }
 
 const ROW_HEIGHT = 32;
 
 const HEADER_CLASS = "px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap text-xs";
 
-export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel, focusParam = null }: ParameterGridProps) {
+export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel, focusParam = null, focusRequest = 0 }: ParameterGridProps) {
   const tr = useTranslations("fcPanels.parameterGrid");
   const t = useTranslations("parameters");
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -91,21 +94,22 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
     overscan: 10,
   });
 
-  // The target is focused once per `focusParam`; it stays highlighted (and
+  // The target is focused once per jump (`focusRequest`); it stays highlighted (and
   // focusable) until the owner clears it, so a later filter edit neither
   // pulls focus back to the row nor drops the row the operator landed on.
   const focusIndex = focusParam ? filtered.findIndex((p) => p.name === focusParam) : -1;
-  const focusedName = useRef<string | null>(null);
+  const focusedJump = useRef<string | null>(null);
   useEffect(() => {
-    if (!focusParam) { focusedName.current = null; return; }
-    if (focusIndex < 0 || focusedName.current === focusParam) return;
-    focusedName.current = focusParam;
+    if (!focusParam) { focusedJump.current = null; return; }
+    const jump = `${focusRequest}:${focusParam}`;
+    if (focusIndex < 0 || focusedJump.current === jump) return;
+    focusedJump.current = jump;
     rowVirtualizer.scrollToIndex(focusIndex, { align: "center" });
     const frame = requestAnimationFrame(() => {
       parentRef.current?.querySelector<HTMLElement>('[data-param-focus="true"]')?.focus();
     });
     return () => cancelAnimationFrame(frame);
-  }, [focusParam, focusIndex, rowVirtualizer]);
+  }, [focusParam, focusRequest, focusIndex, rowVirtualizer]);
 
   const startEdit = useCallback((param: ParameterValue) => {
     const meta = metadata?.get(param.name);

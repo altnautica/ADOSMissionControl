@@ -119,6 +119,8 @@ export function ParametersPanel() {
 
   // The palette passes an exact name: filter to it and focus that row.
   const [focusParam, setFocusParam] = useState<string | null>(null);
+  // Counts palette jumps, so a repeat jump to the same name refocuses its row.
+  const [focusRequest, setFocusRequest] = useState(0);
   // Editing the filter ends the palette jump: the row stops being the target.
   const changeFilter = useCallback((next: string) => { setFilter(next); setFocusParam(null); }, []);
   useEffect(() => {
@@ -126,6 +128,7 @@ export function ParametersPanel() {
       setFilter(pendingParamSearch); setCategory(null);
       setShowModifiedOnly(false); setShowFavorites(false); setShowNonDefault(false);
       setFocusParam(pendingParamSearch);
+      setFocusRequest((n) => n + 1);
       setPendingParamSearch(null);
     }
   }, [pendingParamSearch, setPendingParamSearch]);
@@ -255,7 +258,7 @@ export function ParametersPanel() {
               )}
               <ParameterGrid parameters={filteredParams} modified={modified} onModify={handleModify}
                 filter={debouncedFilter} showModifiedOnly={showModifiedOnly} metadata={metadata} columnVisibility={columnVisibility}
-                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} />
+                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} focusRequest={focusRequest} />
             </div>
           </>
         )}

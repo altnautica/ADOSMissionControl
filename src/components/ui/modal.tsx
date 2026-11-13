@@ -192,9 +192,10 @@ export function Modal({
 
   // Move focus into the dialog once, on open, and restore it on close, so
   // keyboard users are not left stranded behind the modal. A child that
-  // already took focus (an `autoFocus` input) keeps it.
+  // already took focus (an `autoFocus` input) keeps it. A modal open on first
+  // load mounts its dialog only after hydration, so it moves focus then.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !hydrated) return;
     const node = dialogRef.current;
     if (!node?.contains(document.activeElement)) {
       const target =
@@ -203,7 +204,7 @@ export function Modal({
     }
     const restore = restoreTargetRef.current;
     return () => restore?.focus?.();
-  }, [open]);
+  }, [open, hydrated]);
 
   if (!open || !hydrated) return null;
 

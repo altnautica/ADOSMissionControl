@@ -56,7 +56,7 @@ describe("FollowRangePanel", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
     renderPanel("medium");
     expect(rows()).toEqual(["range", "interval"]);
-    expect(screen.getByText("FOLLOWING")).toBeTruthy();
+    expect(screen.getByText("Following")).toBeTruthy();
     expect(screen.getByText("9.6 – 10.8 m")).toBeTruthy();
   });
 
@@ -76,7 +76,7 @@ describe("FollowRangePanel", () => {
     ]);
     expect(cues).toEqual([
       ["GND", "true"],
-      ["BOX", "false"],
+      ["Box", "false"],
       ["LIDAR", "true"],
     ]);
     const lat = screen.getByText("LAT 300 ms");
@@ -84,16 +84,16 @@ describe("FollowRangePanel", () => {
     // The bottom row owns the height above the ground; the panel never repeats it.
     expect(screen.queryByText("BARO")).toBeNull();
     expect(document.body.textContent).not.toContain("AGL");
-    expect(screen.getByText("SMART")).toBeTruthy();
-    expect(screen.getByText("COASTING").getAttribute("style")).toContain("--hud-coast");
+    expect(screen.getByText("Smart")).toBeTruthy();
+    expect(screen.getByText("Coasting").getAttribute("style")).toContain("--hud-coast");
   });
 
-  it("blanks every value and reads STALE when the report is older than 2 s", () => {
+  it("blanks every value and reads Stale when the report is older than 2 s", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState(), Date.now() - 3000);
     renderPanel("tv");
     const panel = screen.getByTestId("follow-range-panel");
     expect(panel.getAttribute("data-stale")).toBe("true");
-    expect(screen.getByText("STALE")).toBeTruthy();
+    expect(screen.getByText("Stale")).toBeTruthy();
     expect(panel.textContent).not.toContain("10.2");
     expect(panel.querySelector(".frp-range")?.textContent).toBe(NO_DATA_GLYPH);
   });
@@ -107,14 +107,14 @@ describe("FollowRangePanel", () => {
     expect(rows()).toEqual([]);
     expect(screen.getByTestId("follow-range-value").textContent).toBe("10.2 m");
     expect(panel.textContent).toContain("±0.3");
-    expect(panel.textContent).toContain("FOLLOWING");
+    expect(panel.textContent).toContain("Following");
   });
 
   it("blanks the line variant's range when stale, keeping its slot", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState(), Date.now() - 3000);
     renderPanel("expanded", "line");
     expect(screen.getByTestId("follow-range-value").textContent).toBe(NO_DATA_GLYPH);
-    expect(screen.getByText("STALE")).toBeTruthy();
+    expect(screen.getByText("Stale")).toBeTruthy();
   });
 
   it("opens the sheet's detail variant as rows even on a compact cockpit", () => {

@@ -83,7 +83,7 @@ describe("FollowRail", () => {
     useSelectedTargetStore.setState({ designated: { droneId: DRONE } as never });
     renderRail();
     const btn = screen.getByTestId("frail-follow");
-    expect(btn.textContent).toContain("FOLLOW ▸");
+    expect(btn.textContent).toContain("Follow ▸");
     fireEvent.click(btn);
     expect(mocks.activateBound).toHaveBeenCalledWith(FOLLOW_SKILL_ID, { droneId: DRONE });
   });
@@ -101,32 +101,32 @@ describe("FollowRail", () => {
   it("shows a pending mode until it echoes", async () => {
     useNavStreamStore.getState().setFollow(DRONE, followState({ reacquireMode: "smart" }));
     renderRail();
-    fireEvent.click(screen.getByText("STRICT"));
+    fireEvent.click(screen.getByText("Strict"));
     expect(mocks.write).toHaveBeenCalledWith({
       droneId: "rail-test",
       pluginId: "com.altnautica.follow-me",
       key: "reacquire_mode",
       value: "strict",
     });
-    expect(screen.getByText("STRICT").getAttribute("data-pending")).toBe("true");
-    expect(screen.getByText("STRICT").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("Strict").getAttribute("data-pending")).toBe("true");
+    expect(screen.getByText("Strict").getAttribute("aria-pressed")).toBe("true");
     await act(async () => {
       useNavStreamStore.getState().setFollow(DRONE, followState({ reacquireMode: "strict" }));
     });
-    expect(screen.getByText("STRICT").getAttribute("data-pending")).toBeNull();
-    expect(screen.getByText("STRICT").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("Strict").getAttribute("data-pending")).toBeNull();
+    expect(screen.getByText("Strict").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("reverts and warns when no echo arrives in 3 s", async () => {
     vi.useFakeTimers();
     useNavStreamStore.getState().setFollow(DRONE, followState({ reacquireMode: "smart" }));
     renderRail();
-    fireEvent.click(screen.getByText("STRICT"));
+    fireEvent.click(screen.getByText("Strict"));
     await act(async () => {
       vi.advanceTimersByTime(REACQUIRE_ECHO_TIMEOUT_MS + 10);
     });
-    expect(screen.getByText("STRICT").getAttribute("data-pending")).toBeNull();
-    expect(screen.getByText("SMART").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("Strict").getAttribute("data-pending")).toBeNull();
+    expect(screen.getByText("Smart").getAttribute("aria-pressed")).toBe("true");
     expect(mocks.toast).toHaveBeenCalledWith(specString("follow.reacquire_not_applied"), "warning");
   });
 

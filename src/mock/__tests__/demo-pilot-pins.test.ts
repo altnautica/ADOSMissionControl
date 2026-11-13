@@ -146,7 +146,7 @@ describe("pinned tuning step", () => {
     handle()!.pin({ owner: "tuning", setup_step: "rate_roll" });
     vi.advanceTimersByTime(100);
     expect(pilot()).toMatchObject({ owner: "tuning", setupStep: "rate_roll" });
-    expect(chip()).toMatchObject({ ruleId: "tuning", text: "Tuning · RATE_ROLL" });
+    expect(chip()).toMatchObject({ ruleId: "tuning", text: "Tuning · Rate roll" });
   });
 });
 

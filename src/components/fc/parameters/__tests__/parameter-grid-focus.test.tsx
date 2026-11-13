@@ -92,4 +92,38 @@ describe("ParameterGrid focusParam", () => {
     expect(scrollToIndex).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(search);
   });
+
+  it("focuses the row again when the palette picks the same parameter again", async () => {
+    const PARAMS = [
+      { name: "RTL_ALT", value: 1500, type: 9, index: 0, count: 2 },
+      { name: "RTL_ALT_FINAL", value: 0, type: 9, index: 1, count: 2 },
+    ];
+    function Harness({ request }: { request: number }) {
+      return (
+        <>
+          <input aria-label="search" />
+          <ParameterGrid
+            parameters={PARAMS}
+            modified={new Map()}
+            onModify={vi.fn()}
+            filter="RTL_ALT"
+            showModifiedOnly={false}
+            focusParam="RTL_ALT"
+            focusRequest={request}
+            columnVisibility={{ index: true, name: true, description: true, value: true, options: true, range: true, units: true, type: true } as never}
+          />
+        </>
+      );
+    }
+    const frame = () => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+    scrollToIndex.mockClear();
+    const { rerender } = render(<Harness request={1} />, { wrapper: IntlWrapper });
+    await frame();
+    const search = screen.getByLabelText("search");
+    search.focus();
+    rerender(<Harness request={2} />);
+    await frame();
+    expect(scrollToIndex).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(document.querySelector('[aria-current="true"]'));
+  });
 });

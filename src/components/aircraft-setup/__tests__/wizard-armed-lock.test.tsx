@@ -10,14 +10,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { IntlWrapper } from "../../../../tests/helpers/intl-wrapper";
 
-const arm = { state: "armed" as "armed" | "disarmed" };
+const arm = { state: "armed" as "armed" | "disarmed" | "unknown" };
+const UNKNOWN_NOTE = "This control is disabled until the vehicle reports it is disarmed.";
 
 vi.mock("@/hooks/use-armed-lock", () => ({
   useArmedLock: () => ({
     isArmed: arm.state === "armed",
-    isHardBlocked: arm.state === "armed",
+    isHardBlocked: arm.state !== "disarmed",
     lockMessage: "",
-    hardBlockMessage: "",
+    hardBlockMessage: arm.state === "unknown" ? UNKNOWN_NOTE : arm.state === "armed" ? "armed" : "",
   }),
 }));
 vi.mock("@/stores/node-registry", () => ({
@@ -45,6 +46,15 @@ describe("aircraft setup while armed", () => {
     const start = (await screen.findByTestId("setup-start")) as HTMLButtonElement;
     expect(start.disabled).toBe(true);
     expect(screen.getByTestId("setup-armed").textContent).toBe(setupText("setup.err.armed"));
+  });
+
+  it("words an unknown arm state as the calibration panels do, not as armed", async () => {
+    arm.state = "unknown";
+    render(<Harness />, { wrapper: IntlWrapper });
+    const start = (await screen.findByTestId("setup-start")) as HTMLButtonElement;
+    expect(start.disabled).toBe(true);
+    expect(screen.getByTestId("setup-armed").textContent).toBe(UNKNOWN_NOTE);
+    expect(start.title).toBe(UNKNOWN_NOTE);
   });
 
   it("offers Start on a disarmed aircraft", async () => {

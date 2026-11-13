@@ -116,8 +116,10 @@ function WizardPanel({ wizard, status, setup, droneId }: { wizard: Wizard; statu
   const t = useTranslations("aircraftSetup");
   // The engine refuses the ground wizard's calibrations while armed; say so up
   // front, like the calibration panels, instead of offering a Start it refuses.
-  const { isHardBlocked } = useArmedLock(droneId);
+  const { isArmed, isHardBlocked, hardBlockMessage } = useArmedLock(droneId);
   const armedLocked = wizard.id === "ground" && isHardBlocked;
+  // An unknown arm state reads as the calibration panels word it, not "Disarm first".
+  const armedNote = isArmed ? setupText("setup.err.armed") : hardBlockMessage;
   // The armed note above already says it; do not repeat the engine's blocker.
   const blockers = armedLocked ? wizard.blockers.filter((b) => b !== "setup.blocker.armed") : wizard.blockers;
   const [picked, setPicked] = useState<string | null>(null);
@@ -142,7 +144,7 @@ function WizardPanel({ wizard, status, setup, droneId }: { wizard: Wizard; statu
           <button
             type="button"
             disabled={busy || !wizard.available || armedLocked}
-            title={armedLocked ? setupText("setup.err.armed") : undefined}
+            title={armedLocked ? armedNote : undefined}
             onClick={() => void setup.start(wizard.id)}
             className={cn(BUTTON, "bg-accent-primary text-white")}
             data-testid="setup-start"
@@ -156,7 +158,7 @@ function WizardPanel({ wizard, status, setup, droneId }: { wizard: Wizard; statu
       {!isRunning && armedLocked && (
         <p className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm text-status-warning" data-testid="setup-armed">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          {setupText("setup.err.armed")}
+          {armedNote}
         </p>
       )}
 

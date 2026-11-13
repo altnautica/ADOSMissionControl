@@ -41,6 +41,12 @@
         "metric": "newest_vehicle_frame_age",
         "text": "cockpit.link.age",
         "never": "cockpit.link.never",
+        "age_format": {
+          "$description": "{s} for cockpit.link.age: the age in seconds with `decimals` places below `decimals_below_s`, else whole seconds rounded half up. cases are [age_ms, text] golden rows every surface must reproduce.",
+          "decimals_below_s": 10,
+          "decimals": 1,
+          "cases": [[0, "0.0 s"], [400, "0.4 s"], [9900, "9.9 s"], [10000, "10 s"], [12600, "13 s"]]
+        },
         "icon_color": { "ok_below_ms": 3000, "warning_below_ms": 10000, "else": "critical" },
         "detail": "RSSI and link quality live in the link popover (cockpit.link.rssi)"
       }

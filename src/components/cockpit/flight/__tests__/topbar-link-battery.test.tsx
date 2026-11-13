@@ -17,6 +17,7 @@ vi.mock("../../band/use-band-reserve", () => ({ useBandReserve: () => reserve.va
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import { specString } from "@/lib/cockpit/spec-strings";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useFlightSheetStore } from "../flight-sheet";
@@ -65,10 +66,21 @@ describe("link age", () => {
     expect(linkAgeView(NOW - age, NOW)).toEqual({ text, severity });
   });
 
+  const topBar = (layoutSpec.zones as unknown as { id: string; link?: { age_format: { cases: [number, string][] } } }[]).find(
+    (z) => z.id === "top_bar",
+  );
+  it.each(topBar?.link?.age_format.cases ?? [])("reproduces the shared link-age row %i ms -> %s", (age, text) => {
+    expect(linkAgeView(NOW - age, NOW).text).toBe(text);
+  });
+
   it("shows the age as the link text and colours the icon, keeping RSSI out of the bar", () => {
     radio();
-    useDroneStore.setState({ lastHeartbeat: Date.now() - 4_500 } as never);
+    // A frozen clock, so a slow render cannot age the frame past 4.5 s.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    useDroneStore.setState({ lastHeartbeat: NOW - 4_500 } as never);
     renderWithIntl(<LinkCell droneId={DRONE} detail />);
+    vi.useRealTimers();
     expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: "4.5" }));
     const icon = screen.getByTestId("fs-link-icon");
     expect(icon.getAttribute("data-severity")).toBe("warning");

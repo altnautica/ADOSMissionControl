@@ -42,6 +42,7 @@ interface TopBarZoneSpec {
   link?: {
     text: string;
     never: string;
+    age_format: { decimals_below_s: number; decimals: number; cases: [number, string][] };
     icon_color: { ok_below_ms: number; warning_below_ms: number };
   };
   battery?: { time_to_reserve?: { text: string; short: string } };
@@ -51,6 +52,7 @@ const TOP_BAR = (layoutSpec.zones as unknown as TopBarZoneSpec[]).find((z) => z.
 const LINK_SPEC = TOP_BAR?.link ?? {
   text: "cockpit.link.age",
   never: "cockpit.link.never",
+  age_format: { decimals_below_s: 10, decimals: 1, cases: [] },
   icon_color: { ok_below_ms: 3000, warning_below_ms: 10000 },
 };
 const RESERVE_SPEC = TOP_BAR?.battery?.time_to_reserve ?? {
@@ -108,16 +110,18 @@ const SIG = [5, 8, 11, 14];
 export type LinkSeverity = "none" | "ok" | "warning" | "critical";
 
 /**
- * The link cell's reading of the newest vehicle frame: its age in seconds,
- * one decimal below 10 s and whole seconds above (as the onboard cockpit) (or "no link" when none has arrived) and the icon's severity by
- * the spec's thresholds.
+ * The link cell's reading of the newest vehicle frame: its age in the spec's
+ * shared format (`top_bar.link.age_format`), "no link" when none has arrived,
+ * and the icon's severity by the spec's thresholds.
  */
 export function linkAgeView(lastFrameAt: number, now: number): { text: string; severity: LinkSeverity } {
   if (!(lastFrameAt > 0)) return { text: specString(LINK_SPEC.never), severity: "none" };
   const age = Math.max(0, now - lastFrameAt);
   const { ok_below_ms, warning_below_ms } = LINK_SPEC.icon_color;
+  const s = age / 1000;
+  const f = LINK_SPEC.age_format;
   return {
-    text: specString(LINK_SPEC.text, { s: age < 10_000 ? (age / 1000).toFixed(1) : String(Math.round(age / 1000)) }),
+    text: specString(LINK_SPEC.text, { s: s < f.decimals_below_s ? s.toFixed(f.decimals) : String(Math.round(s)) }),
     severity: age < ok_below_ms ? "ok" : age < warning_below_ms ? "warning" : "critical",
   };
 }
