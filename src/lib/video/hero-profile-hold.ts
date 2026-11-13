@@ -92,6 +92,9 @@ interface Hold {
   count: number;
   client: HeroProfileClient;
   outcome: Promise<Outcome>;
+  /** The promotion gave up because no surface held the drone at a retry;
+   * a re-acquire inside the grace starts it again. */
+  abandoned: boolean;
   renewTimer: ReturnType<typeof setTimeout> | undefined;
   releaseTimer: ReturnType<typeof setTimeout> | undefined;
 }
@@ -155,6 +158,29 @@ async function renewOnce(client: HeroProfileClient, holder: string): Promise<boo
   }
 }
 
+/** Promote `hold` and, once it holds a lease, keep renewing it while live. */
+function startPromotion(agentUrl: string, hold: Hold, holder: string): void {
+  hold.abandoned = false;
+  const live = () => holds.get(agentUrl) === hold;
+  const outcome = promote(hold.client, holder, () => live() && hold.count > 0).then((o) => {
+    if (o === "none" && live() && hold.count === 0) hold.abandoned = true;
+    return o;
+  });
+  hold.outcome = outcome;
+  const scheduleRenew = (delay: number, failures: number) => {
+    hold.renewTimer = setTimeout(() => {
+      void renewOnce(hold.client, holder).then((ok) => {
+        if (!live()) return;
+        if (ok) scheduleRenew(HERO_RENEW_MS, 0);
+        else scheduleRenew(retryDelay(failures), failures + 1);
+      });
+    }, delay);
+  };
+  void outcome.then((o) => {
+    if (o === "lease" && live()) scheduleRenew(HERO_RENEW_MS, 0);
+  });
+}
+
 /**
  * Take a hero hold on the agent at `agentUrl`. Returns the release; calling it
  * more than once releases once.
@@ -166,30 +192,20 @@ export function acquireHeroProfile(agentUrl: string, client: HeroProfileClient):
     clearTimeout(hold.releaseTimer);
     hold.releaseTimer = undefined;
     hold.count += 1;
+    // A promotion that stopped retrying while every surface had let go must
+    // resume now one holds the drone again, or it stays on thumbnail.
+    if (hold.abandoned) startPromotion(agentUrl, hold, holder);
   } else {
     const created: Hold = {
       count: 1,
       client,
-      // Wanted while this is the agent's hold and some surface holds it; the
-      // check runs only after a backoff, once `created` is assigned.
-      outcome: promote(client, holder, () => holds.get(agentUrl) === created && created.count > 0),
+      outcome: Promise.resolve("none"),
+      abandoned: false,
       renewTimer: undefined,
       releaseTimer: undefined,
     };
-    const live = () => holds.get(agentUrl) === created;
-    const scheduleRenew = (delay: number, failures: number) => {
-      created.renewTimer = setTimeout(() => {
-        void renewOnce(created.client, holder).then((ok) => {
-          if (!live()) return;
-          if (ok) scheduleRenew(HERO_RENEW_MS, 0);
-          else scheduleRenew(retryDelay(failures), failures + 1);
-        });
-      }, delay);
-    };
-    void created.outcome.then((outcome) => {
-      if (outcome === "lease" && live()) scheduleRenew(HERO_RENEW_MS, 0);
-    });
     holds.set(agentUrl, created);
+    startPromotion(agentUrl, created, holder);
     hold = created;
   }
   const held = hold;

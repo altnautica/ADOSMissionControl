@@ -231,6 +231,29 @@ describe("acquireHeroProfile", () => {
     expect(releaseVideoProfile).not.toHaveBeenCalled();
   });
 
+  it("resumes a failing promotion when a surface returns inside the grace", async () => {
+    const { client, setVideoProfile, releaseVideoProfile } = fakeClient("thumbnail");
+    setVideoProfile.mockRejectedValueOnce(new AgentHttpError(503, "restarting"));
+    setVideoProfile.mockRejectedValueOnce(new AgentHttpError(503, "restarting"));
+    const release = acquireHeroProfile(agent, client);
+    await settle();
+    expect(setVideoProfile).toHaveBeenCalledTimes(1);
+    release();
+    // The retry lands while no surface holds the drone, so it stops there.
+    await vi.advanceTimersByTimeAsync(HERO_PROMOTE_RETRY_MS);
+    expect(setVideoProfile).toHaveBeenCalledTimes(1);
+    const again = acquireHeroProfile(agent, client);
+    await settle();
+    expect(setVideoProfile).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(HERO_PROMOTE_RETRY_MS);
+    expect(setVideoProfile).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(HERO_RENEW_MS);
+    expect(setVideoProfile).toHaveBeenCalledTimes(4);
+    again();
+    await vi.advanceTimersByTimeAsync(HERO_RELEASE_GRACE_MS);
+    expect(releaseVideoProfile).toHaveBeenCalledTimes(1);
+  });
+
   describe("agent without leases", () => {
     it("demotes only a drone it promoted from thumbnail", async () => {
       const { client, setVideoProfile, releaseVideoProfile } = fakeClient("thumbnail", {
