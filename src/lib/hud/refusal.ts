@@ -2,9 +2,11 @@
 // motion lease or a setup step with, from the spec's `refusal.*` keys. Codes
 // the client makes up itself (`no response`, `no pilot link`, `closed`) carry
 // spaces on the wire and map to underscores. `not_ready:<id>` names the
-// readiness item that refused. An unknown code is shown, never dropped; a code
-// naming one of the templates (`unknown`, a bare `not_ready`) is unknown too,
-// so it never reads as a prefix with nothing after it.
+// readiness item that refused; `fc_refused:<text>` carries the flight
+// controller's own reason for refusing a mode change. An unknown code is shown,
+// never dropped; a code naming one of the templates (`unknown`, a bare
+// `not_ready`) is unknown too, so it never reads as a prefix with nothing after
+// it.
 
 import { hasSpecText, specTakesArgs, specText } from "./spec-text";
 
@@ -17,6 +19,10 @@ export function refusalText(code: string | undefined | null, readinessLabel?: (i
     const id = code.slice("not_ready:".length);
     const item = readinessLabel?.(id) ?? (hasSpecText(`readiness.item.${id}`) ? specText(`readiness.item.${id}`) : id);
     return specText("refusal.not_ready", { item });
+  }
+  if (code.startsWith("fc_refused:")) {
+    const reason = code.slice("fc_refused:".length).trim();
+    return reason ? specText("refusal.fc_refused_reason", { reason }) : specText("refusal.fc_refused");
   }
   const key = `refusal.${code.replace(/ /g, "_")}`;
   return hasSpecText(key) && !specTakesArgs(key) ? specText(key) : specText("refusal.unknown", { code });

@@ -6,7 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-This release covers everything since 0.63.0: twenty-six commits over
+This release covers everything since 0.63.0: twenty-seven commits over
 2026-11-12 and 2026-11-13, from a whole-app audit of Mission Control, the
 Android app and the drone's own cockpit. Three threads run through it.
 
@@ -81,6 +81,10 @@ words, and pages that cannot reach a node say so instead of showing blanks.
   theme actually applied, so night vision always drops it.
 
 ### Fixed
+
+- **Take control refused by the flight controller** reads "The flight
+  controller refused: …" with the controller's own reason, and "No answer
+  from the flight controller" when it does not reply, instead of a raw code.
 
 - **The planner lists a LAN-paired drone after a reload.** Mission Control
   keeps a link open to every drone paired on this network whose flight

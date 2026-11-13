@@ -529,5 +529,50 @@
     "expected": {
       "text": "Refused: fly_here_prefix"
     }
+  },
+  {
+    "name": "fc_refused",
+    "input": {
+      "code": "fc_refused"
+    },
+    "expected": {
+      "text": "The flight controller refused the mode change"
+    }
+  },
+  {
+    "name": "fc_refused_with_reason",
+    "input": {
+      "code": "fc_refused:Mode change to Guided failed: requires position"
+    },
+    "expected": {
+      "text": "The flight controller refused: Mode change to Guided failed: requires position"
+    }
+  },
+  {
+    "name": "fc_refused_empty_reason",
+    "input": {
+      "code": "fc_refused:"
+    },
+    "expected": {
+      "text": "The flight controller refused the mode change"
+    }
+  },
+  {
+    "name": "fc_no_answer",
+    "input": {
+      "code": "fc_no_answer"
+    },
+    "expected": {
+      "text": "No answer from the flight controller"
+    }
+  },
+  {
+    "name": "template_key_fc_refused_reason",
+    "input": {
+      "code": "fc_refused_reason"
+    },
+    "expected": {
+      "text": "Refused: fc_refused_reason"
+    }
   }
 ]
