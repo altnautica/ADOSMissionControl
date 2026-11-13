@@ -6,14 +6,28 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed
+This release covers everything since 0.63.0: twenty-one commits over
+2026-11-12 and 2026-11-13, from a whole-app audit of Mission Control, the
+Android app and the drone's own cockpit. Three threads run through it.
 
-- **Cockpit spec sync.** Flight-state chips read in sentence case, an unknown
-  arm state with no flight controller link refuses Fly here with "No flight
-  controller link", and the plugin contract mirror tracks pilot contract v2.
-- **Cockpit words.** Follow controls, setup steps and unrecognised modes read
-  in sentence case, and the link age follows the shared format: one decimal
-  below 10 s, whole seconds above.
+The first is a quieter cockpit that lives where the rest of the drone does.
+The cockpit is now the drone's Flight tab, beside Overview and Configure,
+with a Full screen button instead of a takeover. Panels are sharper and
+calmer, every top-bar control has one height, status reads as a dot and
+words, and badges across the app are outlined. The fleet sidebar is compact
+and the demo fleet is smaller.
+
+The second is safety on every path that ends a flight. Kill goes out in any
+arm state, including after a link loss left it unknown, and a confirmed stop
+or pause is never dropped mid-hold. An unknown arm state is treated as
+possibly airborne everywhere: Land rather than Take off, no tips, and no
+setup or reboot controls. The Betaflight failsafe dropdown writes the values
+the firmware defines, and Fly Here sends only from the dialog on screen.
+
+The third is the rest of the app. Configure panels follow the flight
+controller's firmware and refuse writes to a vehicle that may be armed, the
+planner reads uploads back and offers "Fly this mission", flight logs read as
+words, and pages that cannot reach a node say so instead of showing blanks.
 
 ### Added
 
@@ -39,6 +53,12 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Cockpit spec sync.** Flight-state chips read in sentence case, an unknown
+  arm state with no flight controller link refuses Fly here with "No flight
+  controller link", and the plugin contract mirror tracks pilot contract v2.
+- **Cockpit words.** Follow controls, setup steps and unrecognised modes read
+  in sentence case, and the link age follows the shared format: one decimal
+  below 10 s, whole seconds above.
 - **Sharper, quieter chrome.** Panels use a smaller radius, light blur, thin
   borders and no shadows. Every top-bar control has one height. The
   flight-state chip and status pill are outlines with a status dot.
@@ -204,7 +224,12 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Notes
 
-- Relayed command cancel needs the matching cloud function deployed.
+- **Self-hosted backends.** Cancelling a relayed command uses a new Convex
+  function. Run `npx convex deploy` from your backend after upgrading, or the
+  Cancel button in the waiting notice has nothing to call.
+- **Flight tab.** Saved tab choices that pointed at the old Flight overview
+  open the drone's first tab instead; the cockpit's own entry points (Fly,
+  the node menu, the command palette) open the Flight tab as before.
 
 ## [0.63.0] - 2026-11-10
 
