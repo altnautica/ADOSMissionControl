@@ -8,6 +8,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// Arming starts the flight log's weather and place lookups; keep them off the
+// network so no request outlives the test file.
+vi.mock("@/lib/environment/weather-provider", () => ({ getWeatherSnapshot: async () => undefined }));
+vi.mock("@/lib/geocoding/reverse", () => ({ reverseGeocode: async () => undefined }));
 import type { ReactNode } from "react";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
