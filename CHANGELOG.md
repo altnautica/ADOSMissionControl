@@ -6,6 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-11-13
+
 This release covers everything since 0.63.0: thirty-one commits over
 2026-11-12 and 2026-11-13, from a whole-app audit of Mission Control, the
 Android app and the drone's own cockpit. Three threads run through it.
