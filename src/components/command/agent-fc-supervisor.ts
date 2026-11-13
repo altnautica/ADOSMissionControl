@@ -6,10 +6,14 @@
  *
  * A loop stops dialling only for a reason a retry cannot fix: the agent
  * reports it needs pairing, or the operator disconnected the FC on purpose.
- * Either lasts until the node's link or its FC report changes, which starts a
- * fresh loop. A session closes when its agent reports the FC gone, or when
- * its node stops being a target (the focus moved off an agent that is not
- * LAN-paired in this browser).
+ * Pairing lasts until the node's link or its FC report changes, which starts
+ * a fresh loop. An operator disconnect lasts until the operator connects the
+ * node again (focuses it afresh, or another link attaches its FC) or re-pairs
+ * it; leaving the node's page, the next check and a credential change all
+ * leave it down. A node with no usable dial path (a drone focused through a
+ * ground station's relay) gets no loop. A session closes when its agent
+ * reports the FC gone, or when its node stops being a target (the focus moved
+ * off an agent that is not LAN-paired in this browser).
  *
  * Owned by `AgentMavlinkBridge`, which feeds it store changes.
  * @license GPL-3.0-only
@@ -21,13 +25,18 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
-import { resolveNodeId } from "@/lib/agent/node-id";
+import { nodeIdForDevice, resolveNodeId } from "@/lib/agent/node-id";
 import { createFcAdapter } from "@/lib/protocol/select-fc-adapter";
-import { dialAgentFc } from "./agent-mavlink-dial";
+import { dialAgentFc, planDialPaths, type AgentDialPlan } from "./agent-mavlink-dial";
 import { planAgentFcTargets, targetLinkKey, type AgentFcTarget } from "./agent-fc-targets";
 
 /** Gap between session checks, and so between re-dials of a missing session. */
 export const AGENT_FC_REDIAL_MS = 3_000;
+
+function hasDialPath(plan: AgentDialPlan): boolean {
+  const paths = planDialPaths(plan);
+  return paths.auth || paths.legacy || paths.relay;
+}
 
 /** One node's supervision loop. Replaced when the node's link changes. */
 interface NodeLoop {
@@ -45,6 +54,11 @@ export class AgentFcSupervisor {
   private readonly loops = new Map<string, NodeLoop>();
   /** Ids a credential-driven teardown deselected, to select again on re-dial. */
   private readonly reselect = new Set<string>();
+  /** Ids the operator disconnected, with the pairing key they had then. Not
+   * dialled until the operator connects them again or re-pairs them. */
+  private readonly operatorStopped = new Map<string, string | null>();
+  /** Whether each id was the focused target at the last reconcile. */
+  private readonly wasFocused = new Map<string, boolean>();
   /** The id a focused agent with no device identity is attached under. */
   private anon: { agentUrl: string | null; id: string } | null = null;
   private grantEpoch: number | null = null;
@@ -76,7 +90,18 @@ export class AgentFcSupervisor {
       if (manager.drones.has(id)) manager.disconnectDrone(id);
     }
     for (const [id, target] of targets) {
-      if (target.fc !== "active") {
+      const focusedBefore = this.wasFocused.get(id) ?? false;
+      this.wasFocused.set(id, target.focused);
+      if (this.operatorStopped.has(id)) {
+        const reconnected = (target.focused && !focusedBefore) || manager.drones.has(id);
+        const repaired = this.operatorStopped.get(id) !== this.pairKey(id);
+        if (!reconnected && !repaired) {
+          this.stopLoop(id);
+          continue;
+        }
+        this.operatorStopped.delete(id);
+      }
+      if (target.fc !== "active" || (!this.held.has(id) && !hasDialPath(target.plan))) {
         this.stopLoop(id);
         continue;
       }
@@ -87,9 +112,20 @@ export class AgentFcSupervisor {
       this.loops.set(id, loop);
       void this.supervise(id, loop);
     }
+    for (const id of Array.from(this.wasFocused.keys())) {
+      if (!targets.has(id)) this.wasFocused.set(id, false);
+    }
     for (const id of Array.from(this.loops.keys())) {
       if (!targets.has(id)) this.stopLoop(id);
     }
+  }
+
+  /** The LAN pairing key held for a node id, so a re-pair can be told apart. */
+  private pairKey(id: string): string | null {
+    const node = useLocalNodesStore
+      .getState()
+      .nodes.find((n) => nodeIdForDevice(n.deviceId) === id);
+    return node?.apiKey ?? null;
   }
 
   private readTargets(): Map<string, AgentFcTarget> {
@@ -157,8 +193,13 @@ export class AgentFcSupervisor {
         return;
       }
       this.held.delete(id);
-      // Removed on purpose (the operator disconnected it): stay down.
-      if (!this.dropped.has(id)) return;
+      if (!this.dropped.has(id)) {
+        // Removed on purpose (the operator disconnected it): stay down, across
+        // fresh loops too, until the operator connects it again.
+        this.operatorStopped.set(id, this.pairKey(id));
+        this.loops.delete(id);
+        return;
+      }
       this.dropped.delete(id);
     } else if (manager.drones.has(id)) {
       // Another link already carries this node's FC: leave it to its owner.

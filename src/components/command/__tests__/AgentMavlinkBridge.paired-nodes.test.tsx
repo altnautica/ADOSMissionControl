@@ -98,6 +98,7 @@ vi.mock("@/stores/drone-manager", () => {
 import { AgentMavlinkBridge } from "../AgentMavlinkBridge";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
+import { useDroneManager } from "@/stores/drone-manager";
 
 const { wsConnect, mintWsTicket, addDrone, disconnectDrone } = h;
 
@@ -262,5 +263,60 @@ describe("AgentMavlinkBridge when the focus is released", () => {
     expect(disconnectDrone).not.toHaveBeenCalled();
     expect(addDrone).toHaveBeenCalledTimes(1);
     expect(wsConnect).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an FC the operator disconnected down after they leave its page", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    useLocalNodesStore.setState({ nodes: [lanNode("dev-a", 60)] });
+    reportFc("dev-a", true);
+    const focused: ConnState = {
+      ...UNFOCUSED,
+      connected: true,
+      nodeDeviceId: "dev-a",
+      mavlinkUrl: "ws://192.168.1.60:8765/",
+      agentUrl: "http://192.168.1.60:8080",
+      apiKey: "key-dev-a",
+    };
+    h.conn.current = focused;
+    h.sys.status = { fc_connected: true, board: { name: "Drone" } };
+    const view = render(<AgentMavlinkBridge />);
+    await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(1));
+
+    // The operator disconnects the FC from the connections panel.
+    useDroneManager.getState().disconnectDrone("node:dev-a");
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(addDrone).toHaveBeenCalledTimes(1);
+
+    // Leaving the node's page releases the focus: still down.
+    h.conn.current = { ...UNFOCUSED };
+    h.sys.status = null;
+    view.rerender(<AgentMavlinkBridge />);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(addDrone).toHaveBeenCalledTimes(1);
+    expect(wsConnect).toHaveBeenCalledTimes(1);
+
+    // Opening the node again is the operator connecting it: dialled again.
+    h.conn.current = focused;
+    h.sys.status = { fc_connected: true, board: { name: "Drone" } };
+    view.rerender(<AgentMavlinkBridge />);
+    await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("AgentMavlinkBridge with a focus that has no dial path", () => {
+  it("runs no dial loop for a drone focused through a ground station", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // A relay focus carries no MAVLink URL and no cloud id of its own.
+    h.conn.current = { ...UNFOCUSED, connected: true, nodeDeviceId: "dev-r" };
+    h.sys.status = { fc_connected: true, board: { name: "Relayed" } };
+    render(<AgentMavlinkBridge />);
+    await vi.advanceTimersByTimeAsync(15_000);
+    const failures = warn.mock.calls.filter((c) =>
+      String(c[0]).includes("All MAVLink connection methods failed"),
+    );
+    warn.mockRestore();
+    expect(failures).toHaveLength(0);
+    expect(wsConnect).not.toHaveBeenCalled();
   });
 });
