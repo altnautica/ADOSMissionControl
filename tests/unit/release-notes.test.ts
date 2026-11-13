@@ -114,3 +114,18 @@ describe("commitListMarkdown", () => {
     ).toBe("");
   });
 });
+
+describe("releaseBody", () => {
+  const base = { tag: "v1.2.0", section: "### Added\n- x", commitList: "" };
+
+  it("lists the macOS installers by default", () => {
+    expect(notes.releaseBody(base)).toContain("- **macOS:**");
+  });
+
+  it("leaves macOS out of Downloads when the release has no .dmg", () => {
+    const body = notes.releaseBody({ ...base, macos: false });
+    expect(body).not.toContain("macOS");
+    expect(body).toContain("- **Windows:**");
+    expect(body).toContain("- **Linux:**");
+  });
+});

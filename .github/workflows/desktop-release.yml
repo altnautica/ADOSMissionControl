@@ -87,8 +87,11 @@ jobs:
               --title "${TAG#v}" --notes ""
           fi
 
+  # The macOS build runs only when the repository variable MC_MACOS is "true";
+  # without it the release ships the Windows and Linux installers alone.
   build-macos:
     needs: gate
+    if: vars.MC_MACOS == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
@@ -198,6 +201,11 @@ jobs:
 
   update-release-notes:
     needs: [build-macos, build-windows, build-linux]
+    if: >-
+      always() &&
+      needs.build-windows.result == 'success' &&
+      needs.build-linux.result == 'success' &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -214,14 +222,19 @@ jobs:
           merge-multiple: true
 
       - name: Build SHA256SUMS
+        env:
+          MACOS_RESULT: ${{ needs.build-macos.result }}
         run: |
           set -euo pipefail
           cd installers
           shopt -s nullglob
           files=(*.dmg *.exe *.AppImage)
-          # Two macOS images (x64, arm64), one Windows installer, one AppImage.
-          if [ "${#files[@]}" -lt 4 ]; then
-            echo "FAIL: expected at least 4 installers, found ${#files[@]}: ${files[*]}" >&2
+          # One Windows installer, one AppImage, plus two macOS images (x64,
+          # arm64) when the macOS build ran.
+          want=2
+          if [ "${MACOS_RESULT}" = "success" ]; then want=4; fi
+          if [ "${#files[@]}" -lt "${want}" ]; then
+            echo "FAIL: expected at least ${want} installers, found ${#files[@]}: ${files[*]}" >&2
             exit 1
           fi
           sha256sum "${files[@]}" > SHA256SUMS
@@ -265,6 +278,7 @@ jobs:
                 tag,
                 repoUrl: `https://github.com/${context.repo.owner}/${context.repo.repo}`,
               }),
+              macos: fs.readdirSync('installers').some((f) => f.endsWith('.dmg')),
             });
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,

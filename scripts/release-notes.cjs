@@ -85,7 +85,8 @@ function commitListMarkdown({ commits, prevTag, tag, repoUrl }) {
   ].join('\n');
 }
 
-function releaseBody({ tag, section, commitList }) {
+// `macos` is false when the release ships no .dmg (the macOS build is off).
+function releaseBody({ tag, section, commitList, macos = true }) {
   return [
     `## Altnautica Command ${tag}`,
     '',
@@ -96,7 +97,7 @@ function releaseBody({ tag, section, commitList }) {
     '',
     '### Downloads',
     '',
-    '- **macOS:** `.dmg` (Intel and Apple Silicon), unsigned and not notarized',
+    ...(macos ? ['- **macOS:** `.dmg` (Intel and Apple Silicon), unsigned and not notarized'] : []),
     '- **Windows:** `.exe` installer, unsigned',
     '- **Linux:** `.AppImage`',
     '',
