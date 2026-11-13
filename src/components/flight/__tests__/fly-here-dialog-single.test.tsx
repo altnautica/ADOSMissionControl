@@ -5,6 +5,7 @@
  *
  * @license GPL-3.0-only
  */
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
@@ -45,6 +46,17 @@ describe("Fly Here dialog on the flight screen", () => {
     const dialogs = screen.getAllByTestId("fly-here-dialog");
     expect(dialogs).toHaveLength(1);
     expect(screen.getByRole("dialog", { name: specString("map.fly_here") })).toBe(dialogs[0]);
+  });
+
+  it("stays open through React's development double mount", () => {
+    renderWithIntl(
+      <StrictMode>
+        <FlightScreen />
+      </StrictMode>,
+    );
+    pick();
+    expect(screen.getAllByTestId("fly-here-dialog")).toHaveLength(1);
+    expect(useGuidedStore.getState().confirmPending).not.toBeNull();
   });
 
   it("closes on Escape", () => {

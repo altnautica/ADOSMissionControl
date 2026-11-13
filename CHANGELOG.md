@@ -89,6 +89,9 @@ words, and pages that cannot reach a node say so instead of showing blanks.
   this mission" appears.
 - **Camera zoom** steps with continuous zoom and then a stop, which ArduPilot
   accepts; it denied the step zoom sent before.
+- **Fly Here from the local minimap** opens its dialog in flight; the dialog
+  closed itself as it opened on a remount. A point that offers nothing now
+  says so in a toast instead of doing nothing.
 - **Dialogs open on first load**, such as a pairing link, move focus into
   the dialog.
 - **Aircraft setup** says the ground wizard waits for the vehicle to report

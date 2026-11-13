@@ -8,7 +8,8 @@
  * the pilot advertising `goto`, it requests the Launch sheet.
  */
 
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { StrictMode } from "react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
@@ -35,6 +36,8 @@ vi.mock("@/components/map/local/use-local-frame-data", () => ({
 import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
+import { GuidedConfirmDialog } from "@/components/flight/GuidedConfirmDialog";
+import { useDroneManager } from "@/stores/drone-manager";
 import { parsePilotState, type PilotState } from "@/lib/hud/cockpit-frames";
 import { DEFAULT_LOCAL_ZOOM } from "@/lib/hud/local-scene";
 import { nedToLatLon } from "@/lib/nav/ned-geo";
@@ -159,11 +162,31 @@ describe("LocalFrameMap point pick", () => {
     expect(useLaunchRequestStore.getState().pending).toBeNull();
   });
 
-  it("offers nothing without a live pilot or a guided FC mode", () => {
+  it("offers nothing without a live pilot or a guided FC mode, and says so", () => {
+    toastSpy.mockClear();
     const { container } = render(<LocalFrameMap droneId={DRONE} compact />);
     fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
     expect(useGuidedStore.getState().confirmPending).toBeNull();
     expect(useLaunchRequestStore.getState().pending).toBeNull();
+    expect(toastSpy).toHaveBeenCalledWith("Fly here is not available now", "warning");
+  });
+
+  it("airborne under the ADOS pilot, a right-click on the flight screen's minimap shows the Fly Here dialog", () => {
+    // The pilot state of an airborne goto under the ADOS pilot: owner pilot,
+    // GUIDED, armed, not landed, 4 m above ground, goto advertised.
+    setPilot({ ...flying, owner: "pilot", fcMode: 4, fcModeName: "GUIDED" });
+    useDroneManager.setState({ selectedDroneId: DRONE });
+    const { container } = render(
+      <StrictMode>
+        <div data-testid="flight-screen">
+          <LocalFrameMap droneId={DRONE} compact />
+          <GuidedConfirmDialog flightScreenHost />
+        </div>
+      </StrictMode>,
+    );
+    fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
+    expect(screen.getByTestId("fly-here-dialog")).toBeTruthy();
+    useDroneManager.setState({ selectedDroneId: null });
   });
 
   it("a refused Fly here says why in a toast and opens no dialog", () => {

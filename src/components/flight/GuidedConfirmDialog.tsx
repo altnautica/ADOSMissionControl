@@ -277,14 +277,16 @@ function FlyHereDialog({
  */
 function FlyHereSheetClaim({ onClosed }: { onClosed: () => void }) {
   const [open, setOpen] = useFlightSheet("fly_here");
-  const claimed = useRef(false);
+  // Closed only once it has been seen open: a remount (React's development
+  // double mount included) releases the sheet and claims it again, and that
+  // must not read as another sheet taking over.
+  const seenOpen = useRef(false);
   useEffect(() => {
-    if (!claimed.current) {
-      claimed.current = true;
-      setOpen(true);
-    } else if (!open) {
-      onClosed();
-    }
-  }, [open, setOpen, onClosed]);
+    setOpen(true);
+  }, [setOpen]);
+  useEffect(() => {
+    if (open) seenOpen.current = true;
+    else if (seenOpen.current) onClosed();
+  }, [open, onClosed]);
   return null;
 }
