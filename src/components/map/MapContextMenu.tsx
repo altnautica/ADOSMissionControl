@@ -46,6 +46,7 @@ import {
 import { useRallyStore } from "@/stores/rally-store";
 import { haversineDistance } from "@/lib/geo/distance";
 import { attachLongPress, isTouchContextMenu, mapPointOffer } from "./map-point";
+import { menuViewportStyle } from "./context-menu/menu-position";
 import { specString } from "@/lib/cockpit/spec-strings";
 
 export function MapContextMenu() {
@@ -328,21 +329,13 @@ export function MapContextMenu() {
 
   const menuStyle = useMemo(() => {
     if (!menuPos) return {};
-    const container = map.getContainer();
-    const cw = container.clientWidth;
-    const ch = container.clientHeight;
-    const menuW = 220;
-    const menuH = menuItems.length * 32 + 40; // rough estimate
-
-    let left = menuPos.x;
-    let top = menuPos.y;
-    if (left + menuW > cw) left = cw - menuW - 8;
-    if (top + menuH > ch) top = ch - menuH - 8;
-    if (left < 0) left = 8;
-    if (top < 0) top = 8;
-
-    const rect = container.getBoundingClientRect();
-    return { left: rect.left + left, top: rect.top + top, minWidth: menuW };
+    const rect = map.getContainer().getBoundingClientRect();
+    return menuViewportStyle(
+      menuPos,
+      rect,
+      { width: 220, height: menuItems.length * 32 + 40 }, // rough estimate
+      { width: window.innerWidth, height: window.innerHeight },
+    );
   }, [menuPos, map, menuItems.length]);
 
   // ── Render ──────────────────────────────────────────────
@@ -357,7 +350,7 @@ export function MapContextMenu() {
     <div
       ref={menuRef}
       data-testid="map-context-menu"
-      className="fixed z-[2000] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-hidden"
+      className="fixed z-[2000] bg-bg-secondary/95 backdrop-blur-sm border border-border-default rounded-lg shadow-lg overflow-y-auto"
       style={menuStyle}
       onContextMenu={(e) => e.preventDefault()}
       onMouseDown={(e) => e.stopPropagation()}

@@ -6,7 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-This release covers everything since 0.63.0: twenty-one commits over
+This release covers everything since 0.63.0: twenty-five commits over
 2026-11-12 and 2026-11-13, from a whole-app audit of Mission Control, the
 Android app and the drone's own cockpit. Three threads run through it.
 
@@ -83,12 +83,15 @@ words, and pages that cannot reach a node say so instead of showing blanks.
 ### Fixed
 
 - **Map point menu on the cockpit minimap** draws above the card's corner
-  buttons, so the AUTO / LOCAL / MAP toggle no longer covers "Fly Here".
+  buttons, so the AUTO / LOCAL / MAP toggle no longer covers "Fly Here", and
+  stays inside the window: on a small map every item is reachable.
 - **Demo ArduPilot drones** keep an uploaded mission altitude in whole
   centimetres, as the firmware does, so a 35.67 m upload verifies and "Fly
   this mission" appears.
 - **Camera zoom** steps with continuous zoom and then a stop, which ArduPilot
-  accepts; it denied the step zoom sent before.
+  accepts; it denied the step zoom sent before. The stop goes out on time
+  even when the zoom's answer is lost or late, so the camera never runs on to
+  the end of its zoom.
 - **Fly Here from the local minimap** opens its dialog in flight; the dialog
   closed itself as it opened on a remount. A point that offers nothing now
   says so in a toast instead of doing nothing.

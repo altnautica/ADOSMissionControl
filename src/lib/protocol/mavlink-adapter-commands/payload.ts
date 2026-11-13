@@ -33,17 +33,34 @@ export function cmdImageStartCapture(ctx: CommandContext, sequence: number, came
 
 /**
  * MAV_CMD_SET_CAMERA_ZOOM (531), one step in (1) or out (-1): continuous zoom
- * at that rate for ZOOM_STEP_PULSE_MS, then rate 0. The stop goes out once the
- * start was accepted; the step's answer is the start's, given once the stop
- * is sent.
+ * at that rate for ZOOM_STEP_PULSE_MS, then rate 0.
+ *
+ * The stop is timed from the start's transmission, not its answer, and goes
+ * out whatever the start's answer is: a lost ack or an IN_PROGRESS that times
+ * out still leaves a camera that took the start zooming. While the start is
+ * unanswered its resends can restart the zoom after the stop, so a second
+ * stop follows once the start settles. The stops' own acks are not waited
+ * on; the step is answered by the start.
  */
 export async function cmdSetCameraZoom(ctx: CommandContext, step: 1 | -1, cameraCompId?: number): Promise<CommandResult> {
-  const start = await ctx.sendCommandLong(531, [ZOOM_TYPE_CONTINUOUS, step, 0, 0, 0, 0, 0], undefined, cameraCompId)
-  if (!start.success) return start
+  const send = (rate: number): Promise<CommandResult> => {
+    try {
+      return ctx.sendCommandLong(531, [ZOOM_TYPE_CONTINUOUS, rate, 0, 0, 0, 0, 0], undefined, cameraCompId)
+    } catch (err) {
+      return Promise.reject(err)
+    }
+  }
+  const stop = () => { void send(0).catch(() => undefined) }
+  let settled = false
+  const start = send(step)
+    .catch((err: unknown): CommandResult => ({ success: false, resultCode: -1, message: err instanceof Error ? err.message : String(err) }))
+    .finally(() => { settled = true })
   await new Promise<void>((resolve) => setTimeout(resolve, ZOOM_STEP_PULSE_MS))
-  // The stop's own ack is not waited on: the step is answered by the start.
-  void ctx.sendCommandLong(531, [ZOOM_TYPE_CONTINUOUS, 0, 0, 0, 0, 0, 0], undefined, cameraCompId).catch(() => undefined)
-  return start
+  stop()
+  const unansweredAtStop = !settled
+  const result = await start
+  if (unansweredAtStop) stop()
+  return result
 }
 
 export function cmdSetGimbalAngle(ctx: CommandContext, pitch: number, roll: number, yaw: number): Promise<CommandResult> {

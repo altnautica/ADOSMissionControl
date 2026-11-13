@@ -7,13 +7,13 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { MAVLinkAdapter } from "../mavlink-adapter";
 import { buildFrame } from "../encoders/frame";
 import { decodeCameraInformation } from "../messages";
 import { handleCameraInformation } from "../handlers/debug-handlers";
 import { cmdImageStartCapture, cmdSetCameraZoom, type CommandContext } from "../mavlink-adapter-commands";
-import type { CameraInformationCallback, Transport, TransportEventMap } from "../types";
+import type { CameraInformationCallback, CommandResult, Transport, TransportEventMap } from "../types";
 import { useSettingsStore } from "@/stores/settings-store";
 
 const COMMAND_LONG = 76;
@@ -81,6 +81,52 @@ describe("camera commands", () => {
       { command: 531, params: [1, 0, 0, 0, 0, 0, 0], targetCompId: CAMERA_COMPID },
     ]);
     expect(sent.some((s) => s.params[0] === 0)).toBe(false);
+  });
+
+  describe("the zoom always stops", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    function answered(sent: Sent[], startAnswer: () => Promise<CommandResult>): CommandContext {
+      return {
+        sendCommandLong: (command, params, _timeout, targetCompId) => {
+          sent.push({ command, params: [...params], targetCompId });
+          return params[1] === 0 ? Promise.resolve({ success: true, resultCode: 0, message: "ok" }) : startAnswer();
+        },
+      } as CommandContext;
+    }
+    const stops = (sent: Sent[]) => sent.filter((s) => s.command === 531 && s.params[1] === 0).length;
+
+    it("stops a denied start", async () => {
+      const sent: Sent[] = [];
+      const step = cmdSetCameraZoom(answered(sent, () => Promise.resolve({ success: false, resultCode: 2, message: "denied" })), 1);
+      await vi.advanceTimersByTimeAsync(300);
+      expect(await step).toMatchObject({ success: false, resultCode: 2 });
+      expect(stops(sent)).toBe(1);
+    });
+
+    it.each([
+      ["a lost ack", { success: false, resultCode: -1, message: "timed out" }],
+      ["an IN_PROGRESS-only ack", { success: false, resultCode: -1, message: "timed out", acknowledged: true }],
+      ["a late accept", { success: true, resultCode: 0, message: "ok" }],
+    ] as [string, CommandResult][])("stops on time after %s, and again once the start settles", async (_name, result) => {
+      const sent: Sent[] = [];
+      // The queue's 3 s ack timeout, on the fake clock.
+      const step = cmdSetCameraZoom(answered(sent, () => new Promise<CommandResult>((resolve) => setTimeout(() => resolve(result), 3000))), -1);
+      await vi.advanceTimersByTimeAsync(300);
+      expect(stops(sent)).toBe(1);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(await step).toMatchObject({ success: result.success });
+      expect(stops(sent)).toBe(2);
+    });
+
+    it("still sends the stop when the link throws on the start", async () => {
+      const sent: Sent[] = [];
+      const step = cmdSetCameraZoom(answered(sent, () => Promise.reject(new Error("link down"))), 1);
+      await vi.advanceTimersByTimeAsync(300);
+      expect(await step).toMatchObject({ success: false, message: "link down" });
+      expect(stops(sent)).toBe(1);
+    });
   });
 });
 
