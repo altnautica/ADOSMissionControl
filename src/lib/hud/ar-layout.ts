@@ -254,7 +254,11 @@ export function layoutAr(cam: ArCamera, rect: Rect, opts: ArLayoutOptions, out: 
         op.x = px(it.x);
         op.y = py(it.y);
         op.r = 7;
-        op.color = LAYER_COLORS.follow;
+        // A blocked way reads blocked at the goal too: the pilot's avoid
+        // state, else the state the agent gave this camera's path.
+        const path = opts.avoid ? null : cam.items.find((p) => p.t === "fpath");
+        const state = opts.avoid ?? (path?.t === "fpath" ? path.state : null);
+        op.color = state === "blocked" ? LAYER_COLORS.blocked : LAYER_COLORS.follow;
         op.width = 2;
         break;
       }

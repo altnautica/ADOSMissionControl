@@ -21,6 +21,13 @@ the project follows [Semantic Versioning](https://semver.org/).
   publishes the Windows and Linux builds without it. When a release ships
   without macOS, its notes say so.
 
+### Fixed
+
+- **A blocked go-to stays on the map and in AR.** With agent 0.109.134 and
+  later, a go-to the drone holds because a wall blocks the way keeps its goal
+  and the straight way to it on the pilot frame, so the local-frame map draws
+  both in the blocked colour instead of dropping them. The AR goal ring now
+  takes the blocked colour too, as the path already did.
 ## [0.64.0] - 2026-11-13
 
 This release covers everything since 0.63.0: thirty-one commits over

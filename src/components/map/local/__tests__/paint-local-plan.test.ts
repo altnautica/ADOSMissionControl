@@ -61,6 +61,24 @@ describe("local map plan", () => {
     expect(strokes.some((s) => s.colour === tokens.state.goto)).toBe(false);
   });
 
+  it("keeps a go-to the planner holds blocked on the map, in state.blocked", () => {
+    // The frame the pilot sends while a wall blocks a go-to: the commanded
+    // goal and the straight way to it, with the avoid state blocked.
+    const data = parsePilotState({
+      owner: "goto",
+      avoid_state: "blocked",
+      hold_reason: "blocked",
+      goal_ned: [20, 0, -5],
+      plan_ned: [[0, 0], [20, 0]],
+    })!;
+    const plan = framePlan({ data, receivedAt: 1_000 }, 1_500);
+    expect(plan).toEqual({ points: [[0, 0], [20, 0]], goal: [20, 0], blocked: true });
+    const { ctx, strokes } = recorder();
+    paintPlan(ctx, { points: [[100, 100], [100, 0]], goal: [100, 0], blocked: plan!.blocked }, colours);
+    expect(strokes.filter((s) => s.colour === tokens.state.blocked)).toHaveLength(2);
+    expect(strokes.some((s) => s.colour === tokens.state.goto)).toBe(false);
+  });
+
   it("takes the plan from a fresh pilot frame only", () => {
     const data = parsePilotState({ owner: "goto", plan_ned: [[0, 0], [5, 0]], goal_ned: [5, 0, -5], avoid_state: "clear" })!;
     expect(framePlan({ data, receivedAt: 1_000 }, 1_500)).toEqual({ points: [[0, 0], [5, 0]], goal: [5, 0], blocked: false });
