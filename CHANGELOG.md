@@ -12,6 +12,39 @@ the project follows [Semantic Versioning](https://semver.org/).
 - Cockpit: a position the drone cannot vouch for reads red. The flight-state chip shows "Position unverified · <reason>" (after the flight controller's RTH, Landing and Transition chips, with Take control while the flight controller flies its own mode), the reason read in words from the shared spec, a lost heading or IMU feed included. The hold reads "Holding · position unverified", and the nav-source chip turns crit with FLOW DISAGREES, CORRIDOR or UNVERIFIED. Fly here is not offered while the position is unverified, through the pilot or as a reposition in GUIDED, and the pilot's refusal and readiness item read "Position unverified (nav); fly manually or land" and "Position check (nav)". A stale pilot frame never keeps the nav chip crit. Demo: `__adosDemoPilot.pin` reaches the state.
 - Cockpit: a mission or return that stops making progress shows a stall card next to the countdowns, with Skip waypoint, Return and Land here (a blocked return offers Land here only) and the time left before the pilot acts on its own. The status pill lists the stall, the voice prompts speak it, and the Flight map marks the waypoints the drone skipped. Demo: `__adosDemoPilot` pins a stall, counts it down and answers the three actions.
 - Cockpit and planner: a confined-space place class. The Launch sheet and the planner pick Open or Confined space and show the margin each keeps (a confined place keeps the propeller-tip radius plus 0.1 m). A plan saves its class, in the plan library, the native file, a `.plan` and a share link; a plan with an unknown class loads as Open. The Launch sheet launches only once the pilot flies with the chosen class. A Confined chip on the top bar opens the route check: whether the route keeps the margin, the tight leg with its clearance and the clearance needed, a mission the agent has not downloaded yet, the waypoints the check could not place, and the speed cap near walls. The send dialog shows the same report before a mission is flown. Demo: `__adosDemoPilot.confinedPins("feasible" | "unverified" | "infeasible")`.
+- **Follow-me recovery phases.** When follow-me loses its subject, the range
+  readout under the top bar follows the recovery: Predicting, Moving to look
+  and Searching, each with the seconds left of the search budget, then
+  "Waiting for you" in the critical colour once the drone holds for the
+  operator. The lock chip reads "Waiting for you" too. The re-acquired notice
+  names what hid the subject when the drone reported it. A follow report
+  older than 2 s blanks the values and reads Stale.
+- **Waiting prompt.** While follow-me holds for the operator, a prompt drops
+  from the follow strip and says why: the search found nothing, the lock was
+  lost, predictive search is off, no prediction is left, or the follow camera
+  stopped sending frames. It offers Search again (R), Pick a target (P),
+  Return home (H), Land (L) and Stop following (X). Search again is left out
+  in strict re-acquire, with no prediction left, and while the camera sends
+  nothing. Return home and Land run the same checks as the left column. The
+  prompt never takes focus: its keys answer only once focus is inside it, and
+  a tapped button hands focus straight back, so a key meant for another
+  binding never presses a prompt action. Critical alerts stack below the
+  prompt instead of covering its title.
+- **Follow quick settings on the rail.** The follow strip carries STRICT |
+  SMART re-acquire, FOLLOW | HOLD for when the tracker is unsure, and the
+  predictive search switch, which shows only in smart re-acquire. A change
+  shows a dashed outline until the drone confirms it. If no confirmation
+  arrives within 3 s, the control goes back to the drone's value and a
+  warning names the setting that was not applied. On a narrow strip, such as
+  a phone held upright, the settings move behind a More button, and the
+  buttons show icons only, so REC and the range readout stay on the row.
+- **Recovery on the maps.** While the subject is sought, the local-frame
+  minimap and the geographic map draw the search area, the predicted path and
+  the point the drone moves to for a clear look, under the follow target.
+- **Recovery in the demo.** The demo follow loses its subject, predicts,
+  moves to look, searches, finds it again under a new track, and on the next
+  loss holds and waits for the operator. Search again resumes the search, and
+  the quick settings take effect in the demo.
 
 ### Changed
 
