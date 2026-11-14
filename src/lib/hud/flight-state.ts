@@ -28,6 +28,7 @@ const CHIP_RULES: readonly ChipRule[] = flightStateJson.rules as unknown as Chip
 export const CHIP_STALE_AFTER_MS: number = flightStateJson.stale_after_ms;
 const FC_MODE_CLASSES = flightStateJson.fc_mode_classes as unknown as Record<"rtl" | "land", Record<"copter" | "plane", number[]>>;
 const HOLD_REASON_LABELS: Readonly<Record<string, string>> = flightStateJson.hold_reason_labels;
+const POSITION_UNVERIFIED_LABELS: Readonly<Record<string, string>> = flightStateJson.position_unverified_labels;
 const CHIP_SECONDARY = flightStateJson.secondary as {
   order: string[];
   fc_failsafe: { text: string; color: string };
@@ -73,6 +74,9 @@ export interface ChipFacts {
   fcFailsafe: boolean;
   /** The pilot's horizontal speed cap in m/s, or null with none. */
   speedCapMps: number | null;
+  /** The pilot's position-unverified label key (its `detail` when the spec
+   *  labels it, else its `reason`), or null while the position is trusted. */
+  positionUnverified: string | null;
   /** Age of the pilot state in ms. */
   ageMs: number;
 }
@@ -135,6 +139,9 @@ function matches(match: ChipRule["match"], f: ChipFacts): boolean {
       case "fc_failsafe":
         if (f.fcFailsafe !== want) return false;
         break;
+      case "position_unverified":
+        if ((f.positionUnverified !== null) !== want) return false;
+        break;
       default:
         // A condition this cockpit does not know never matches.
         return false;
@@ -189,12 +196,23 @@ function fill(template: string, f: ChipFacts): string {
     eta: fmtEta(f.etaS),
     fc_mode_name_upper: (f.fcModeName ?? "—").toUpperCase(),
     step: launchStepName(f.launchStep),
+    position_unverified_label:
+      f.positionUnverified === null
+        ? ""
+        : (POSITION_UNVERIFIED_LABELS[f.positionUnverified] ?? wordLabel(f.positionUnverified)),
   };
   return template.replace(/\{([a-z_]+)\}/g, (_, k: string) => values[k] ?? "").replace(/ · $/, "");
 }
 
 function colorOf(name: string): string {
   return STATE_COLORS[name] ?? STATE_COLORS.fc ?? "#909090";
+}
+
+/** The label key of a pilot's `position_unverified`: vision-nav's detail when
+ *  the spec labels it, else the pilot's reason. */
+export function positionUnverifiedKey(p: PilotState["positionUnverified"]): string | null {
+  if (!p) return null;
+  return p.detail !== null && p.detail in POSITION_UNVERIFIED_LABELS ? p.detail : p.reason;
 }
 
 function holdReasonLabel(reason: string): string {
@@ -313,6 +331,7 @@ export function chipFacts(
     launchStep: p.sequence && p.sequence.step !== "done" && p.sequence.error === null ? p.sequence.step : null,
     fcFailsafe: p.fcFailsafe,
     speedCapMps: p.speedCap?.vHMps ?? null,
+    positionUnverified: positionUnverifiedKey(p.positionUnverified),
     ageMs,
   };
 }

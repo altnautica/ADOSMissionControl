@@ -42,7 +42,10 @@ export type NavQuality =
   | "glitch"
   | "holdOk"
   | "noFlow"
-  | "drift";
+  | "drift"
+  | "flowDisagrees"
+  | "corridor"
+  | "unverified";
 export type NavTone = "good" | "warn" | "crit" | "muted";
 export type GpsFixWord = "none" | "2d" | "3d" | "dgps" | "rtkFloat" | "rtkFixed";
 
@@ -56,6 +59,9 @@ export interface NavSourceInput {
   lastCommandedSet: 1 | 2 | 3 | null;
   /** EK3_SRC{1,2,3}_{POSXY,VELXY,YAW} values; null when not loaded. */
   params: Readonly<Record<string, number>> | null;
+  /** The pilot's `position_unverified` (its reason and vision-nav's detail),
+   *  or null / absent while the pilot trusts the position or is unheard. */
+  positionUnverified?: { reason: string; detail: string | null } | null;
 }
 
 export interface NavSourceResult {
@@ -106,8 +112,28 @@ function gpsRow(
   return { ...base, quality: "fair", tone: "warn" };
 }
 
+/** The crit word for a position nobody can vouch for: the flow disagreeing,
+ *  a corridor with no measured speed, or unverified for another reason. */
+function unverifiedWord(reason: string | null): NavQuality {
+  switch (reason) {
+    case "flow_disagrees":
+    case "ekf_flow_disagree":
+      return "flowDisagrees";
+    case "corridor_unmeasured":
+      return "corridor";
+    default:
+      return "unverified";
+  }
+}
+
 function extRow(flags: number, nav: NavState | null, activeSet: 1 | 2 | 3): NavSourceResult {
   const h = nav?.extnavHealth ?? null;
+  // A reason from vision-nav on a degraded or lost pose says why the
+  // position cannot be trusted: never just "DEGRADED".
+  const why = nav?.healthReason ?? null;
+  if (why !== null && (h === "degraded" || h === "lost")) {
+    return { kind: "ext", quality: unverifiedWord(why), tone: "crit", activeSet };
+  }
   if (h === "good") return { kind: "ext", quality: "good", tone: "good", activeSet };
   if (h === "degraded") return { kind: "ext", quality: "degraded", tone: "warn", activeSet };
   if (h === "lost") return { kind: "ext", quality: "lost", tone: "crit", activeSet };
@@ -122,8 +148,16 @@ function flowRow(flags: number, activeSet: 1 | 2 | 3): NavSourceResult {
     : { kind: "flow", quality: "noFlow", tone: "crit", activeSet };
 }
 
-/** Resolve the nav-source chip. */
+/** Resolve the nav-source chip. The pilot's `position_unverified` turns any
+ *  live row crit with its reason. */
 export function resolveNavSource(input: NavSourceInput): NavSourceResult {
+  const r = resolveSourceRow(input);
+  const pu = input.positionUnverified ?? null;
+  if (pu === null || r.kind === "stale" || r.kind === "dr") return r;
+  return { ...r, quality: unverifiedWord(pu.detail ?? pu.reason), tone: "crit" };
+}
+
+function resolveSourceRow(input: NavSourceInput): NavSourceResult {
   const activeSet = activeSourceSet(input.nav, input.lastCommandedSet);
   const { ekf } = input;
   if (!ekf || ekf.ageMs >= EKF_STALE_MS) {
@@ -173,6 +207,9 @@ const QUALITY_EN: Record<NavQuality, string> = {
   holdOk: "HOLD OK",
   noFlow: "NO FLOW",
   drift: "DRIFT",
+  flowDisagrees: "FLOW DISAGREES",
+  corridor: "CORRIDOR",
+  unverified: "UNVERIFIED",
 };
 
 /** English label and quality word, matching the `hud.nav.*` keys. */

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "ext_good",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "good" } },
+    "expected": { "label": "EXT NAV", "word": "GOOD", "tone": "good" }
+  },
+  {
+    "name": "ext_degraded_without_a_reason_warns",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "degraded" } },
+    "expected": { "label": "EXT NAV", "word": "DEGRADED", "tone": "warn" }
+  },
+  {
+    "name": "ext_with_a_flow_disagreement_reads_crit",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "degraded", "health_reason": "ekf_flow_disagree" } },
+    "expected": { "label": "EXT NAV", "word": "FLOW DISAGREES", "tone": "crit" }
+  },
+  {
+    "name": "ext_pose_slid_against_the_flow_reads_crit",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "degraded", "health_reason": "flow_disagrees" } },
+    "expected": { "label": "EXT NAV", "word": "FLOW DISAGREES", "tone": "crit" }
+  },
+  {
+    "name": "ext_corridor_without_measured_speed_reads_crit",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "lost", "health_reason": "corridor_unmeasured" } },
+    "expected": { "label": "EXT NAV", "word": "CORRIDOR", "tone": "crit" }
+  },
+  {
+    "name": "ext_reading_good_while_the_pilot_sees_the_flow_disagree_reads_crit",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "good" }, "position_unverified": { "reason": "flow_disagrees" } },
+    "expected": { "label": "EXT NAV", "word": "FLOW DISAGREES", "tone": "crit" }
+  },
+  {
+    "name": "pilot_unverified_with_an_unlabelled_reason",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "lost" }, "position_unverified": { "reason": "extnav_lost" } },
+    "expected": { "label": "EXT NAV", "word": "UNVERIFIED", "tone": "crit" }
+  },
+  {
+    "name": "pilot_unverified_takes_vision_nav_detail",
+    "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "lost" }, "position_unverified": { "reason": "extnav_lost", "detail": "corridor_unmeasured" } },
+    "expected": { "label": "EXT NAV", "word": "CORRIDOR", "tone": "crit" }
+  },
+  {
+    "name": "gps_row_with_the_flow_disagreeing_reads_crit",
+    "input": { "ekf_flags": 18, "params": { "EK3_SRC1_POSXY": 3 }, "gps": { "fix_type": 3, "satellites": 14, "hdop": 0.9 }, "position_unverified": { "reason": "flow_disagrees" } },
+    "expected": { "label": "GPS 3D·14", "word": "FLOW DISAGREES", "tone": "crit" }
+  },
+  {
+    "name": "stale_ekf_stays_muted_whatever_the_pilot_says",
+    "input": { "ekf_flags": 10, "ekf_age_ms": 5000, "position_unverified": { "reason": "flow_disagrees" } },
+    "expected": { "label": "NAV —", "word": null, "tone": "muted" }
+  },
+  {
+    "name": "dead_reckoning_stays_drift",
+    "input": { "ekf_flags": 128, "position_unverified": { "reason": "flow_disagrees" } },
+    "expected": { "label": "DR", "word": "DRIFT", "tone": "crit" }
+  }
+]

@@ -77,6 +77,10 @@ export interface NavState {
   mode: string;
   activeSet: 1 | 2 | 3 | null;
   extnavHealth: NavHealth | null;
+  /** Why the pose is degraded or lost (`health_reason`: `corridor_unmeasured`,
+   *  `flow_disagrees`, `ekf_flow_disagree`, …); null when none is named or an
+   *  older vision-nav sends none. */
+  healthReason: string | null;
   odomRateHz: number | null;
   lastResetCounter: number | null;
   obstacleRateHz: number | null;
@@ -276,6 +280,7 @@ export function parseNavState(raw: unknown): NavState | null {
     mode,
     activeSet: set === 1 || set === 2 || set === 3 ? set : null,
     extnavHealth: oneOf(raw.extnav_health, HEALTH),
+    healthReason: str(raw.health_reason),
     odomRateHz: num(raw.odom_rate_hz),
     lastResetCounter: int(raw.last_reset_counter),
     obstacleRateHz: num(raw.obstacle_rate_hz),

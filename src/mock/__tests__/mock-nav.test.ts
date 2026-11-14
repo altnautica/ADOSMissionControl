@@ -13,6 +13,8 @@ import { EMPTY_OCCUPANCY, mergeOccupancy, tileFootprint } from "@/lib/hud/local-
 import { getMockEkfSourceSet, mockEkfFlags, setMockEkfSourceSet } from "@/mock/mock-ekf-source";
 import { MockNavStream, demoMapStatus } from "@/mock/mock-nav";
 import { mockPilot } from "@/mock/mock-pilot";
+import { DEMO_POSITION_UNVERIFIED_PIN } from "@/mock/mock-pilot-wire";
+import { resolveNavSource } from "@/lib/hud/nav-source";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import { demoLoopAt, obstacleSectorsCm, rayCast, scanRanges, yawMatrix } from "@/mock/mock-nav-world";
 import {
@@ -169,6 +171,19 @@ describe("MockNavStream", () => {
       activeSet: 2,
       mode: "optical_flow",
     });
+  });
+
+  it("reports a degraded pose with the flow disagreement while the pilot reports the position unverified", () => {
+    stream.start("node:demo", Date.now());
+    mockPilot.pin(DEMO_POSITION_UNVERIFIED_PIN);
+    vi.advanceTimersByTime(500);
+    const nav = useNavStreamStore.getState().byDrone["node:demo"]?.nav?.data;
+    expect(nav).toMatchObject({ extnavHealth: "degraded", healthReason: "ekf_flow_disagree" });
+    expect(resolveNavSource({ ekf: { flags: 2 + 8, ageMs: 0 }, gps: null, nav: nav!, lastCommandedSet: null, params: null }))
+      .toMatchObject({ kind: "ext", quality: "flowDisagrees", tone: "crit" });
+    mockPilot.pin({});
+    vi.advanceTimersByTime(500);
+    expect(useNavStreamStore.getState().byDrone["node:demo"]?.nav?.data.healthReason).toBeNull();
   });
 
   it("clears the drone's feed on stop", () => {

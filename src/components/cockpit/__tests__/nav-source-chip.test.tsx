@@ -11,6 +11,9 @@ import { NavSourceChip } from "@/components/cockpit/NavSourceChip";
 import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
 import { EKF_FLAG } from "@/lib/hud/nav-source";
+import { parsePilotState } from "@/lib/hud/cockpit-frames";
+import type { NavState } from "@/lib/hud/nav-types";
+import { DEMO_POSITION_UNVERIFIED_PIN, demoPilotWire } from "@/mock/mock-pilot-wire";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useClockStore } from "@/stores/clock-store";
@@ -121,6 +124,7 @@ describe("NavSourceChip", () => {
       mode: "external_nav",
       activeSet: 1,
       extnavHealth: "degraded",
+      healthReason: null,
       odomRateHz: 30,
       lastResetCounter: 0,
       obstacleRateHz: null,
@@ -133,6 +137,50 @@ describe("NavSourceChip", () => {
     expect(chip().textContent).toContain(specString("nav_source.ext_nav"));
     expect(chip().textContent).toContain(specString("nav_source.q.degraded"));
     expect(chip().getAttribute("data-tone")).toBe("warn");
+  });
+
+  const EXT_GOOD: NavState = {
+    mode: "external_nav",
+    activeSet: 1,
+    extnavHealth: "good",
+    healthReason: null,
+    odomRateHz: 30,
+    lastResetCounter: 0,
+    obstacleRateHz: null,
+    minObstacleM: null,
+    gpsFix: null,
+    poseAgeMs: null,
+  };
+  const unverifiedPilot = () => parsePilotState(demoPilotWire({ armed: true, landed: false, ...DEMO_POSITION_UNVERIFIED_PIN }))!;
+
+  it("reads EXT NAV crit with vision-nav's reason for a degraded pose", () => {
+    setSrc(6, 6);
+    useNavStreamStore.getState().setNav(DRONE, { ...EXT_GOOD, extnavHealth: "degraded", healthReason: "ekf_flow_disagree" });
+    pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
+    renderChip();
+    expect(chip().textContent).toContain(specString("nav_source.q.flow_disagrees"));
+    expect(chip().getAttribute("data-tone")).toBe("crit");
+  });
+
+  it("carries a fresh pilot's position_unverified into the chip, whatever vision-nav says", () => {
+    setSrc(6, 6);
+    useNavStreamStore.getState().setNav(DRONE, EXT_GOOD);
+    useNavStreamStore.getState().setPilot(DRONE, unverifiedPilot());
+    pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
+    renderChip();
+    expect(chip().textContent).toContain(specString("nav_source.ext_nav"));
+    expect(chip().textContent).toContain(specString("nav_source.q.flow_disagrees"));
+    expect(chip().getAttribute("data-tone")).toBe("crit");
+  });
+
+  it("does not take position_unverified from a stale pilot", () => {
+    setSrc(6, 6);
+    useNavStreamStore.getState().setNav(DRONE, EXT_GOOD);
+    useNavStreamStore.getState().setPilot(DRONE, unverifiedPilot(), Date.now() - 10_000);
+    pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
+    renderChip();
+    expect(chip().textContent).toContain(specString("nav_source.q.good"));
+    expect(chip().getAttribute("data-tone")).toBe("good");
   });
 
   it("reads FLOW, and drops the quality word at compact", () => {
@@ -189,6 +237,7 @@ describe("NavSourceChip", () => {
       mode: "external_nav",
       activeSet: 2,
       extnavHealth: "good",
+      healthReason: null,
       odomRateHz: 30,
       lastResetCounter: 0,
       obstacleRateHz: null,

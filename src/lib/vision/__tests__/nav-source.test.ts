@@ -11,6 +11,7 @@ function nav(over: Partial<NavState>): NavState {
     mode: "external_nav",
     activeSet: null,
     extnavHealth: null,
+    healthReason: null,
     odomRateHz: null,
     lastResetCounter: null,
     obstacleRateHz: null,

@@ -11,7 +11,9 @@
  * that stops streaming holds with `controller-lost`, as the real pilot does.
  * Demo scenarios pin states the vehicle does not fly on its own (an FC
  * failsafe, a tuning step, the GNSS-denied speed cap via
- * `pin({ speed_cap: { reason: "gnss-denied", v_h_mps: 2 } })`) through
+ * `pin({ speed_cap: { reason: "gnss-denied", v_h_mps: 2 } })`, a position
+ * the optical flow disagrees with via `DEMO_POSITION_UNVERIFIED_PIN`, which
+ * the demo vision-nav echoes as a degraded pose) through
  * `window.__adosDemoPilot` (see
  * mock-pilot-wire); each drone's session starts without the last one's pins.
  * @license GPL-3.0-only
@@ -34,7 +36,14 @@ import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { demoNavStreamBlockedAt, demoTelemetryFrozen } from "./demo-link";
 import { MockProtocol } from "./mock-protocol";
 import { DEMO_DRONES } from "./drones";
-import { DEMO_SURFACE_OPS, PilotPins, demoPilotWire, type Json } from "./mock-pilot-wire";
+import {
+  DEMO_SURFACE_OPS,
+  PilotPins,
+  demoPilotWire,
+  pinnedPositionUnverified,
+  type DemoPositionUnverified,
+  type Json,
+} from "./mock-pilot-wire";
 import { DemoVehicleDriver } from "./mock-pilot-vehicle";
 
 export { demoPilotWire } from "./mock-pilot-wire";
@@ -163,6 +172,11 @@ export class MockPilot {
     const seen = this.pins.over(this.wire);
     const skill = seen.skill as Json | null | undefined;
     return seen.armed === true && seen.owner === "skill" && skill?.plugin_id === FOLLOW_ME_PLUGIN_ID;
+  }
+
+  /** The `position_unverified` this pilot reports (pinned), or null. */
+  positionUnverified(): DemoPositionUnverified | null {
+    return this.droneId ? pinnedPositionUnverified(this.pins.over(this.wire)) : null;
   }
 
   /**

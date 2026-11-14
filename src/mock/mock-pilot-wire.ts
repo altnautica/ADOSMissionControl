@@ -59,6 +59,32 @@ export function demoPilotWire(over: Json = {}): Json {
   };
 }
 
+/**
+ * The pin for a position the pilot cannot trust: the optical flow measures
+ * 5.3 m/s while the estimate reads 0.3 m/s (the estimate froze while the
+ * drone flew on), and the pilot holds for it. The demo vision-nav echoes it
+ * as a degraded pose (`mock-nav`). From the console:
+ * `__adosDemoPilot.pin({ hold_reason: "position-unverified", position_unverified:
+ * { reason: "flow_disagrees", flow_mps: 5.3, estimate_mps: 0.3 } })`.
+ */
+export const DEMO_POSITION_UNVERIFIED_PIN: Json = {
+  hold_reason: "position-unverified",
+  position_unverified: { reason: "flow_disagrees", flow_mps: 5.3, estimate_mps: 0.3 },
+};
+
+/** The wire's `position_unverified` reason and detail. */
+export interface DemoPositionUnverified {
+  reason: string;
+  detail: string | null;
+}
+
+/** `position_unverified` on a wire state, or null when absent. */
+export function pinnedPositionUnverified(wire: Json): DemoPositionUnverified | null {
+  const pu = wire.position_unverified as Json | null | undefined;
+  if (!pu || typeof pu.reason !== "string") return null;
+  return { reason: pu.reason, detail: typeof pu.detail === "string" ? pu.detail : null };
+}
+
 /** Pins a demo scenario lays over the live wire state. */
 export class PilotPins {
   private fields: Json = {};

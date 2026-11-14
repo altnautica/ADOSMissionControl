@@ -6,6 +6,7 @@
     { "id": "launching", "match": { "sequence_running": true }, "text": "Taking off · {step}", "color": "pilot", "button": "abort" },
     { "id": "idle_ready", "match": { "owner": "idle", "ready": true }, "text": "Ready", "color": "ready", "button": null },
     { "id": "idle_not_ready", "match": { "owner": "idle", "ready": false }, "text": "Not ready · {first_block_msg}", "color": "not_ready", "button": "setup_link_when_setup_needed" },
+    { "id": "position_unverified", "match": { "position_unverified": true }, "text": "Position unverified · {position_unverified_label}", "color": "blocked", "button": null },
     { "id": "pilot", "match": { "owner": "pilot" }, "text": "Pilot · {profile}", "color": "pilot", "button": null, "button_if": { "match": { "mission_state": "paused" }, "button": "resume" } },
     { "id": "skill", "match": { "owner": "skill" }, "text": "{skill_label} · {mode_detail}", "color": "skill", "button": null },
     { "id": "goto", "match": { "owner": "goto" }, "text": "Goto · {dist_m} m", "color": "goto", "button": null },
@@ -46,6 +47,14 @@
       "elrs": "ELRS"
     }
   },
+  "position_unverified_labels": {
+    "corridor_unmeasured": "Corridor, no measured speed",
+    "ekf_flow_disagree": "Flow disagrees",
+    "extnav_degraded": "External position degraded",
+    "extnav_lost": "External position lost",
+    "flow_disagrees": "Flow disagrees"
+  },
+  "position_unverified_labels_note": "keyed by the pilot's position_unverified.detail when it is one of these, else its reason; setup-strings.json pilot.position_unverified.<same key> carries the same text",
   "hold_reason_labels": {
     "blocked": "Blocked",
     "controller-lost": "Controller lost",
@@ -54,6 +63,7 @@
     "link-loss": "Link lost",
     "no-vantage": "No clear view",
     "obstacle-close": "Obstacle close",
+    "position-unverified": "Holding · position unverified",
     "obstacle-data-stale": "Holding: no fresh obstacle data"
   },
   "hold_reason_labels_note": "keyed by the exact hold_reason wire string the pilot emits (hyphenated); setup-strings.json pilot.hold_reason.<same key> carries the same text",

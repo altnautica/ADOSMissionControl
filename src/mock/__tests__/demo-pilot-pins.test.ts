@@ -24,6 +24,7 @@ import { chipFacts, chipSecondary, flightStateChip, type ChipView } from "@/lib/
 import { requestPilotAction, sendPilotInput } from "@/lib/input/pilot-stream";
 import { mockEngine } from "@/mock/engine";
 import { mockPilot } from "@/mock/mock-pilot";
+import { DEMO_POSITION_UNVERIFIED_PIN } from "@/mock/mock-pilot-wire";
 import { MockProtocol } from "@/mock/mock-protocol";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
@@ -204,6 +205,20 @@ describe("pinned GNSS-denied speed cap", () => {
     vi.advanceTimersByTime(100);
     expect(pilot().speedCap).toEqual({ reason: "gnss-denied", vHMps: 2 });
     expect(chip().secondary.map((l) => l.text)).toContain("GNSS-denied: 2 m/s max");
+  });
+});
+
+describe("pinned unverified position", () => {
+  it("reaches the pilot frame and turns the chip red, never a calm hold", () => {
+    handle()!.pin(DEMO_POSITION_UNVERIFIED_PIN);
+    vi.advanceTimersByTime(100);
+    expect(pilot().positionUnverified).toEqual({ reason: "flow_disagrees", detail: null, flowMps: 5.3, estimateMps: 0.3 });
+    expect(pilot().holdReason).toBe("position-unverified");
+    const v = chip();
+    expect(v.ruleId).toBe("position_unverified");
+    expect(v.text).toBe("Position unverified · Flow disagrees");
+    expect(v.secondary.map((l) => l.text)).toContain("Holding · position unverified");
+    expect(mockPilot.positionUnverified()).toEqual({ reason: "flow_disagrees", detail: null });
   });
 });
 

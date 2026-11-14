@@ -17,9 +17,16 @@
  * @license GPL-3.0-only
  */
 
-import { parseSpeedCap, parseStatusText, type FcStatusText, type SpeedCap } from "./pilot-fields";
+import {
+  parsePositionUnverified,
+  parseSpeedCap,
+  parseStatusText,
+  type FcStatusText,
+  type PositionUnverified,
+  type SpeedCap,
+} from "./pilot-fields";
 
-export type { FcStatusText, SpeedCap } from "./pilot-fields";
+export type { FcStatusText, PositionUnverified, SpeedCap } from "./pilot-fields";
 
 // ── small readers ─────────────────────────────────────────────────────────
 
@@ -174,6 +181,9 @@ export interface PilotState {
   speedCap: SpeedCap | null;
   /** The raw `sensors` block (parse with sensor-health); null when absent. */
   sensors: unknown;
+  /** The pilot does not trust the horizontal position (an older agent sends
+   *  none), or null. */
+  positionUnverified: PositionUnverified | null;
 }
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off", "stale", "unavailable"];
@@ -251,6 +261,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     setupAbort: str(p.setup_abort),
     speedCap: parseSpeedCap(p.speed_cap),
     sensors: p.sensors ?? null,
+    positionUnverified: parsePositionUnverified(p.position_unverified),
   };
 }
 

@@ -5,7 +5,8 @@
  *
  * - `follow.state` at 5 Hz from the scripted HUD cycle (`mock-hud-script`);
  * - `nav.state` at 2 Hz: external nav on the commanded EKF source set, with a
- *   degraded window while the subject is being searched for;
+ *   degraded window while the subject is being searched for, and degraded
+ *   with its reason while the demo pilot reports `position_unverified`;
  * - `pose` and a 360-ray `scan` at 10 Hz: the drone flying a slow loop through
  *   a small synthetic room (`mock-nav-world`), ray-cast against its walls and
  *   pillars;
@@ -25,7 +26,7 @@
 import { mockPilot } from "./mock-pilot";
 import { demoNavStreamBlockedAt } from "./demo-link";
 import { NAV_STATUS_POLL_MS, NAV_STREAM_FALLBACK_MS } from "@/lib/agent/nav-stream";
-import type { MapStatus, NavState, ReacquireMode } from "@/lib/hud/nav-types";
+import type { MapStatus, NavHealth, NavState, ReacquireMode } from "@/lib/hud/nav-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
@@ -35,6 +36,7 @@ import { getMockEkfSourceSet } from "./mock-ekf-source";
 import { extnavHealthAt, scriptFollow } from "./mock-hud-script";
 import { demoLoopAt, scanRanges, yawMatrix } from "./mock-nav-world";
 import { OccupancyReveal, type GreyPngEncoder } from "./mock-occupancy";
+import type { DemoPositionUnverified } from "./mock-pilot-wire";
 import { MockLayerStream } from "./mock-layers";
 
 const FOLLOW_MS = 200;
@@ -53,14 +55,28 @@ const NAV_MODE: Record<1 | 2 | 3, string> = {
   3: "gps",
 };
 
-/** The `nav.state` frame for `tSec` into the cycle. */
-export function demoNavState(tSec: number, activeSet: 1 | 2 | 3, minObstacleM: number | null): NavState {
-  const health = extnavHealthAt(tSec);
+/** The `nav.state` frame for `tSec` into the cycle. While the demo pilot
+ * reports `position_unverified`, vision-nav reports its pose degraded (lost
+ * for `extnav_lost`) with the reason: `ekf_flow_disagree` for a flow
+ * disagreement, else the pilot's detail. */
+export function demoNavState(
+  tSec: number,
+  activeSet: 1 | 2 | 3,
+  minObstacleM: number | null,
+  unverified: DemoPositionUnverified | null = null,
+): NavState {
+  const health: NavHealth = unverified
+    ? unverified.reason === "extnav_lost" ? "lost" : "degraded"
+    : extnavHealthAt(tSec);
+  const healthReason = unverified
+    ? unverified.reason === "flow_disagrees" ? "ekf_flow_disagree" : unverified.detail
+    : null;
   const odomRateHz = health === "good" ? 30 : 18;
   return {
     mode: NAV_MODE[activeSet],
     activeSet,
     extnavHealth: health,
+    healthReason,
     odomRateHz,
     lastResetCounter: Math.floor(tSec / 32),
     obstacleRateHz: 10,
@@ -215,7 +231,10 @@ export class MockNavStream {
     if (!this.droneId) return;
     useNavStreamStore
       .getState()
-      .setNav(this.droneId, demoNavState(this.cycleS(), getMockEkfSourceSet(), this.minObstacleM));
+      .setNav(
+        this.droneId,
+        demoNavState(this.cycleS(), getMockEkfSourceSet(), this.minObstacleM, mockPilot.positionUnverified()),
+      );
   }
 
   private tickPose(): void {

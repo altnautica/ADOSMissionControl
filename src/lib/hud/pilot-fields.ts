@@ -41,6 +41,25 @@ export function speedCapText(vHMps: number): string {
   return String(Math.round(vHMps * 10) / 10);
 }
 
+/** The pilot does not trust the horizontal position: `reason` is
+ *  `flow_disagrees`, `extnav_lost` or `extnav_degraded`; `detail` vision-nav's
+ *  own reason when it named one. */
+export interface PositionUnverified {
+  reason: string;
+  detail: string | null;
+  flowMps: number | null;
+  estimateMps: number | null;
+}
+
+/** `position_unverified` from the pilot frame, or null when absent (an older
+ *  agent) or malformed. */
+export function parsePositionUnverified(raw: unknown): PositionUnverified | null {
+  const o = obj(raw);
+  const reason = o ? str(o.reason) : null;
+  if (!o || reason === null) return null;
+  return { reason, detail: str(o.detail), flowMps: num(o.flow_mps), estimateMps: num(o.estimate_mps) };
+}
+
 /** One FC STATUSTEXT line; severity is MAVLink's (0 emergency … 4 warning). */
 export interface FcStatusText {
   severity: number;

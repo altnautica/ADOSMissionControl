@@ -49,6 +49,7 @@ const NAV: NavState = {
   mode: "external_nav",
   activeSet: 1,
   extnavHealth: "good",
+  healthReason: null,
   odomRateHz: 30,
   lastResetCounter: 0,
   obstacleRateHz: 10,
