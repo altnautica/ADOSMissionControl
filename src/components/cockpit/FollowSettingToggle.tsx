@@ -70,7 +70,7 @@ const SEGMENTED = {
   },
 } as const satisfies Partial<Record<FollowSettingKey, { label: string; options: readonly (readonly [string, string])[] }>>;
 
-export function FollowSettingToggle({
+function FollowSettingToggle({
   droneId,
   setting,
   echoed,
@@ -108,7 +108,7 @@ export function FollowSettingToggle({
 }
 
 /** The predictive search switch (`predictive_search`). */
-export function PredictiveSearchToggle({
+function PredictiveSearchToggle({
   droneId,
   echoed,
   className,
