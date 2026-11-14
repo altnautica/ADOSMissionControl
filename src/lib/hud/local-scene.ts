@@ -21,6 +21,7 @@ import {
   type TrailPoint,
 } from "./local-frame";
 import type { PilotState } from "./cockpit-frames";
+import { isRecoveryPhase, type FollowState, type SearchArea } from "./nav-types";
 
 /** The view recentres on the drone this long after the last pan. */
 export const RECENTRE_AFTER_MS = 10_000;
@@ -32,8 +33,49 @@ export interface LocalSceneTarget {
   /** m/s; the tick shows 1 s of travel. */
   velNorth: number | null;
   velEast: number | null;
-  /** Coasting / searching: dashed in the coast colour. */
+  /** Predicting / repositioning / searching: dashed in the coast colour. */
   dashed: boolean;
+  /** The search ellipse while recovering. */
+  searchArea?: SearchArea | null;
+  /** The pilot's vantage point while recovering. */
+  vantageNe?: readonly [number, number] | null;
+  /** The predicted subject path while recovering. */
+  predictedPath?: ReadonlyArray<readonly [number, number]> | null;
+}
+
+/** The follow target is drawn dashed while the lock is lost and the subject
+ * is sought. */
+export function followTargetDashed(phase: FollowState["phase"]): boolean {
+  return isRecoveryPhase(phase);
+}
+
+/** The follow target as the local map draws it, or null when the follow is
+ * idle, holds for the operator, or has no position. The caller drops a stale
+ * follow state first. */
+export function followSceneTarget(f: FollowState): LocalSceneTarget | null {
+  if (!f.targetNed || f.phase === "idle" || f.phase === "holding-await-operator") return null;
+  const recovering = followTargetDashed(f.phase);
+  return {
+    north: f.targetNed[0],
+    east: f.targetNed[1],
+    velNorth: f.targetVelNed?.[0] ?? null,
+    velEast: f.targetVelNed?.[1] ?? null,
+    dashed: recovering,
+    searchArea: recovering ? f.searchArea : null,
+    vantageNe: recovering ? f.vantageNe : null,
+    predictedPath: recovering ? f.predictedPathNe : null,
+  };
+}
+
+/** The search ellipse in screen pixels; `rotationRad` turns the x radius
+ * (the major axis) clockwise from screen right, as canvas `ellipse()` and
+ * SVG `rotate()` take it. */
+export interface LocalSceneSearchArea {
+  sx: number;
+  sy: number;
+  rxPx: number;
+  ryPx: number;
+  rotationRad: number;
 }
 
 export interface LocalSceneDrone {
@@ -96,7 +138,16 @@ export interface LocalScene {
   scan: Array<[number, number]>;
   origin: { sx: number; sy: number };
   plan: { points: Array<[number, number]>; goal: [number, number] | null; blocked: boolean } | null;
-  target: { sx: number; sy: number; tickX: number | null; tickY: number | null; dashed: boolean } | null;
+  target: {
+    sx: number;
+    sy: number;
+    tickX: number | null;
+    tickY: number | null;
+    dashed: boolean;
+    searchArea: LocalSceneSearchArea | null;
+    vantage: { sx: number; sy: number } | null;
+    predictedPath: Array<[number, number]>;
+  } | null;
   drone: { sx: number; sy: number; yawDeg: number } | null;
   scaleBar: { m: number; px: number };
 }
@@ -159,6 +210,19 @@ function sceneTiles(input: LocalSceneInput): LocalSceneTile[] {
   return out;
 }
 
+/** North-up screen: a bearing of 90° (east) is screen right, so the major
+ * axis turns `heading − 90°` clockwise from screen right. */
+function searchAreaPx(a: SearchArea, view: LocalView): LocalSceneSearchArea {
+  const { sx, sy } = mapToScreen(view, a.centerNe[0], a.centerNe[1]);
+  return {
+    sx,
+    sy,
+    rxPx: a.semiMajorM * view.pxPerM,
+    ryPx: a.semiMinorM * view.pxPerM,
+    rotationRad: ((a.headingDeg - 90) * Math.PI) / 180,
+  };
+}
+
 export function buildLocalScene(input: LocalSceneInput): LocalScene {
   const { view, width, height } = input;
   const gridStepM = scaleBarStep(view.pxPerM);
@@ -182,7 +246,16 @@ export function buildLocalScene(input: LocalSceneInput): LocalScene {
     if (t.velNorth !== null && t.velEast !== null) {
       [tickX, tickY] = project(t.north + t.velNorth, t.east + t.velEast);
     }
-    target = { sx, sy, tickX, tickY, dashed: t.dashed };
+    target = {
+      sx,
+      sy,
+      tickX,
+      tickY,
+      dashed: t.dashed,
+      searchArea: t.searchArea ? searchAreaPx(t.searchArea, view) : null,
+      vantage: t.vantageNe ? mapToScreen(view, t.vantageNe[0], t.vantageNe[1]) : null,
+      predictedPath: (t.predictedPath ?? []).map(([n, e]) => project(n, e)),
+    };
   }
 
   const plan: LocalScene["plan"] = input.plan

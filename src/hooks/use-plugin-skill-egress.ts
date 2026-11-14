@@ -42,21 +42,24 @@ import {
   usePluginSkillHostStore,
   type PluginSkillReportedState,
 } from "@/lib/skills/plugin-skill-host-store";
+import { hasSpecString, specString } from "@/lib/cockpit/spec-strings";
+import type { FollowPhase } from "@/lib/hud/nav-types";
 import { holdReasonWord } from "@/lib/vision/target-format";
 
 /** How often to poll each plugin's published state, in ms. */
 export const POLL_INTERVAL_MS = 750;
 
 /** Skill Bar badge per follow phase; empty = no badge. */
-const PHASE_BADGE = {
+const PHASE_BADGE: Readonly<Record<FollowPhase, string>> = {
   idle: "",
   acquiring: "ACQ",
   following: "",
-  coasting: "CST",
-  searching: "SRCH",
   holding: "HOLD",
-  lost: "!",
-} as const;
+  predicting: "PRED",
+  repositioning: "MOVE",
+  searching: "SRCH",
+  "holding-await-operator": "WAIT",
+};
 
 /** A mapped state plus the optional badge / reason the bar overlays. */
 interface MappedState {
@@ -70,10 +73,12 @@ interface MappedState {
  * Skill Bar reads. Honest by construction: a skill is "active" only when the
  * plugin reports it is actively engaged.
  *
- * A Follow-Me payload with a `phase` maps: `idle` -> idle; `following` ->
- * active; `acquiring` / `coasting` / `searching` / `holding` -> active with a
- * badge (`ACQ`, `CST`, `SRCH`, `HOLD`, the hold reason carried as `reason`);
- * `lost` -> active with `!`, or idle once `active` is false.
+ * A Follow-Me payload with a `phase` maps: `idle`, or any phase with
+ * `active: false` -> idle; `following` -> active; `acquiring` / `holding` /
+ * `predicting` / `repositioning` / `searching` / `holding-await-operator` ->
+ * active with a badge (`ACQ`, `HOLD`, `PRED`, `MOVE`, `SRCH`, `WAIT`; a hold
+ * carries its reason as `reason`, in the spec's words while it waits for the
+ * operator).
  *
  * An older Follow-Me payload (`{ active, lock_state, commanding }`, no
  * `phase`) maps:
@@ -108,14 +113,17 @@ export function mapReportedState(payload: unknown): MappedState {
   // present. Following steers with no badge; every other engaged phase is
   // active with a short badge naming it.
   if (typeof p.phase === "string" && Object.hasOwn(PHASE_BADGE, p.phase)) {
-    const phase = p.phase as keyof typeof PHASE_BADGE;
-    if (phase === "idle") return { state: "idle" };
-    if (phase === "lost" && p.active === false) return { state: "idle" };
+    const phase = p.phase as FollowPhase;
+    if (phase === "idle" || p.active === false) return { state: "idle" };
     const badge = PHASE_BADGE[phase];
+    const held = typeof p.hold_reason === "string" ? p.hold_reason : null;
+    // Holding for the operator names its reason in the spec's words.
     const reason =
-      phase === "holding"
-        ? holdReasonWord(typeof p.hold_reason === "string" ? p.hold_reason : null)
-        : null;
+      phase === "holding-await-operator" && held && hasSpecString(`follow.hold_reason.${held}`)
+        ? specString(`follow.hold_reason.${held}`)
+        : phase === "holding" || phase === "holding-await-operator"
+          ? holdReasonWord(held)
+          : null;
     return {
       state: "active",
       ...(badge ? { badge } : {}),

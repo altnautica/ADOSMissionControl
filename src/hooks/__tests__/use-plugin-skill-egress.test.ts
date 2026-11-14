@@ -123,21 +123,20 @@ describe("mapReportedState", () => {
       state: "active",
       badge: "ACQ",
     });
-    expect(mapReportedState({ active: true, phase: "coasting" })).toEqual({
-      state: "active",
-      badge: "CST",
-    });
-    expect(mapReportedState({ active: true, phase: "searching" })).toEqual({
-      state: "active",
-      badge: "SRCH",
-    });
+    for (const [phase, badge] of [
+      ["predicting", "PRED"],
+      ["repositioning", "MOVE"],
+      ["searching", "SRCH"],
+    ] as const) {
+      expect(mapReportedState({ active: true, phase })).toEqual({ state: "active", badge });
+    }
     // A phase wins over the older fields that would read as plain active.
     expect(
-      mapReportedState({ active: true, commanding: true, lock_state: "locked", phase: "coasting" }),
-    ).toEqual({ state: "active", badge: "CST" });
+      mapReportedState({ active: true, commanding: true, lock_state: "locked", phase: "predicting" }),
+    ).toEqual({ state: "active", badge: "PRED" });
   });
 
-  it("carries the hold reason and maps lost by the active flag", () => {
+  it("carries the hold reason, waits for the operator in the spec's words, and goes idle once inactive", () => {
     expect(
       mapReportedState({ active: true, phase: "holding", hold_reason: "HOLD_NO_RANGE" }),
     ).toEqual({ state: "active", badge: "HOLD", reason: "NO RANGE" });
@@ -145,11 +144,11 @@ describe("mapReportedState", () => {
       state: "active",
       badge: "HOLD",
     });
-    expect(mapReportedState({ active: true, phase: "lost" })).toEqual({
-      state: "active",
-      badge: "!",
-    });
-    expect(mapReportedState({ active: false, phase: "lost" })).toEqual({ state: "idle" });
+    expect(
+      mapReportedState({ active: true, phase: "holding-await-operator", hold_reason: "search-exhausted" }),
+    ).toEqual({ state: "active", badge: "WAIT", reason: "Search found no match" });
+    expect(mapReportedState({ active: false, phase: "holding-await-operator" })).toEqual({ state: "idle" });
+    expect(mapReportedState({ active: false, phase: "searching" })).toEqual({ state: "idle" });
   });
 
   it("falls back to the legacy mapping for an unknown phase", () => {

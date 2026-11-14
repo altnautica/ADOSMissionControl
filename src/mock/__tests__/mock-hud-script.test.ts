@@ -8,16 +8,22 @@
 
 import { describe, expect, it } from "vitest";
 
+import { followPrompt } from "@/lib/hud/follow-prompt";
+import { PHASES } from "@/lib/hud/nav-types";
 import {
   BACKGROUND_TRACK,
   HOLD_REASON_NO_RANGE,
   HUD_CYCLE_S,
   REACQUIRED_TRACK,
+  SEARCH_BUDGET_S,
   TARGET_TRACK,
+  applyFollowPin,
   entryEffect,
   extnavHealthAt,
   followPhaseAt,
   hudStateAt,
+  pinnedCycleS,
+  pinnedFollowPhase,
   scriptDetections,
   scriptFollow,
   type FollowContext,
@@ -42,10 +48,10 @@ describe("hudStateAt", () => {
       "tracked",
       "locked",
       "following",
-      "coasting",
+      "predicting",
       "searching",
       "reacquired",
-      "lost",
+      "awaiting",
     ]);
     expect(HUD_CYCLE_S).toBe(32);
     const loop = hudStateAt(HUD_CYCLE_S + 1.25);
@@ -74,7 +80,7 @@ describe("scriptDetections", () => {
     expect(target(12.5)).toMatchObject({ lockState: "locked" });
   });
 
-  it("drops track 12 while coasting and searching, then shows track 15", () => {
+  it("drops track 12 while predicting and searching, then shows track 15", () => {
     expect(target(17)).toBeUndefined();
     expect(target(21)).toBeUndefined();
     expect(scriptDetections(25).some((d) => d.trackId === REACQUIRED_TRACK)).toBe(true);
@@ -96,10 +102,10 @@ describe("followPhaseAt", () => {
     [11.5, "acquiring"],
     [12.5, "following"],
     [15.5, "holding"],
-    [17, "coasting"],
+    [17, "predicting"],
     [21, "searching"],
     [25, "following"],
-    [29, "lost"],
+    [29, "holding-await-operator"],
   ])("t=%s → %s", (t, phase) => {
     expect(followPhaseAt(t)).toBe(phase);
   });
@@ -134,29 +140,76 @@ describe("scriptFollow", () => {
     expect(hold).toMatchObject({ phase: "holding", holdReason: HOLD_REASON_NO_RANGE, rangeM: null, rangeCues: [] });
   });
 
-  it("moves a predicted box on the active camera and counts the coast down", () => {
+  it("moves a predicted box on the active camera and counts the search budget down", () => {
     const a = scriptFollow(16.5, CTX);
     const b = scriptFollow(18.5, CTX);
     expect(a.predictedBbox?.cameraId).toBe("cam-a");
     expect(a.predictedBbox).toMatchObject({ frameW: 640, frameH: 480 });
     expect(b.predictedBbox!.x).toBeGreaterThan(a.predictedBbox!.x);
-    expect(a.coastRemainingS).toBeCloseTo(3.5);
-    expect(b.coastRemainingS).toBeCloseTo(1.5);
+    expect(a.reacquireRemainingS).toBeCloseTo(SEARCH_BUDGET_S - 0.5);
+    expect(b.reacquireRemainingS).toBeCloseTo(SEARCH_BUDGET_S - 2.5);
+    expect(a).toMatchObject({ searchBudgetS: SEARCH_BUDGET_S, searchStep: null, vantageNe: null, occluder: null });
+    expect(a.searchArea?.centerNe).toEqual(a.targetNed);
+    expect(b.searchArea!.semiMajorM).toBeGreaterThan(a.searchArea!.semiMajorM);
+    expect(a.predictedPathNe).toHaveLength(4);
+    expect(a.predictedPathNe![0]).toEqual(a.targetNed);
   });
 
-  it("searches on-frame first, then off-frame to the side on baro AGL", () => {
+  it("searches on-frame first, then off-frame to the side on baro AGL, from the vantage point", () => {
     const ring = scriptFollow(21, CTX);
     expect(ring.phase).toBe("searching");
     expect(ring.predictedBbox).not.toBeNull();
+    expect(ring).toMatchObject({ searchStep: 0, vantageState: "arrived", occluder: { kind: "narrow" } });
+    expect(ring.vantageNe).not.toBeNull();
+    expect(ring.reacquireRemainingS).toBeCloseTo(SEARCH_BUDGET_S - 4 - 1);
     const off = scriptFollow(23, CTX);
     expect(off.predictedBbox).toBeNull();
     expect(off.bearingDeg).toBeCloseTo(162);
     expect(off.aglSource).toBe("baro");
+    expect(off.searchStep).toBe(2);
   });
 
-  it("follows the re-acquired track and reports lost without range", () => {
-    expect(scriptFollow(25, CTX)).toMatchObject({ phase: "following", trackId: REACQUIRED_TRACK });
-    expect(scriptFollow(29, CTX)).toMatchObject({ phase: "lost", trackId: REACQUIRED_TRACK, rangeM: null, bearingDeg: null });
+  it("follows the re-acquired track, then holds for the operator without range", () => {
+    expect(scriptFollow(25, CTX)).toMatchObject({ phase: "following", trackId: REACQUIRED_TRACK, searchArea: null });
+    const waiting = scriptFollow(29, CTX);
+    expect(waiting).toMatchObject({
+      active: true,
+      phase: "holding-await-operator",
+      trackId: REACQUIRED_TRACK,
+      holdReason: "search-exhausted",
+      holdNe: [1, 2],
+      rangeM: null,
+      bearingDeg: null,
+      targetNed: null,
+    });
+    expect(followPrompt(waiting)?.bodyKey).toBe("follow.prompt.await_body.search_exhausted");
+  });
+});
+
+describe("demo follow pins", () => {
+  it("holds every phase at a moment of the cycle that shows it", () => {
+    for (const phase of PHASES) {
+      const f = scriptFollow(pinnedCycleS(phase), CTX, phase);
+      expect(f.phase).toBe(phase);
+      if (phase !== "repositioning") expect(followPhaseAt(pinnedCycleS(phase))).toBe(phase);
+    }
+    expect(scriptFollow(pinnedCycleS("repositioning"), CTX, "repositioning")).toMatchObject({
+      vantageState: "enroute",
+      searchStep: null,
+    });
+  });
+
+  it("reads the pinned phase and lays agent fields over the scripted report", () => {
+    expect(pinnedFollowPhase(null)).toBeNull();
+    expect(pinnedFollowPhase({ hold_reason: "no-range" })).toBeNull();
+    expect(pinnedFollowPhase({ phase: "holding-await-operator" })).toBe("holding-await-operator");
+    const base = scriptFollow(pinnedCycleS("holding-await-operator"), CTX, "holding-await-operator");
+    const pinned = applyFollowPin(base, { phase: "holding-await-operator", hold_reason: "no-range", reacquire_mode: "strict", operator_resume_seq: 3 });
+    expect(pinned).toMatchObject({ holdReason: "no-range", reacquireMode: "strict", operatorResumeSeq: 3, trackId: base.trackId });
+    expect(followPrompt(pinned)?.actions).toEqual(["redesignate", "rth", "land", "stop"]);
+    // Every scripted field survives the round trip through the agent's wire.
+    const searching = scriptFollow(21, CTX);
+    expect(applyFollowPin(searching, {})).toEqual(searching);
   });
 });
 
@@ -167,10 +220,23 @@ describe("entryEffect", () => {
     expect(entryEffect("reacquired")).toEqual({
       release: false,
       designateTrack: REACQUIRED_TRACK,
-      event: { topic: "follow.reacquired", trackId: 15, similarity: 0.86, gapS: 1.8 },
+      event: {
+        topic: "follow.reacquired",
+        trackId: 15,
+        similarity: 0.86,
+        gapS: 1.8,
+        mahalanobis: 1.2,
+        phase: "searching",
+      },
     });
-    expect(entryEffect("lost").event).toMatchObject({ topic: "follow.lost", trackId: REACQUIRED_TRACK });
-    expect(entryEffect("coasting")).toEqual({ release: false, designateTrack: null, event: null });
+    expect(entryEffect("awaiting").event).toEqual({
+      topic: "follow.lost",
+      trackId: REACQUIRED_TRACK,
+      reason: "search_exhausted",
+      awaitingOperator: true,
+      holdNe: null,
+    });
+    expect(entryEffect("predicting")).toEqual({ release: false, designateTrack: null, event: null });
   });
 });
 

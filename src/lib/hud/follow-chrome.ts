@@ -16,10 +16,11 @@ export const PHASE_TONE: Readonly<Record<FollowPhase, PhaseTone>> = {
   idle: "muted",
   acquiring: "track",
   following: "track",
-  coasting: "coast",
-  searching: "coast",
   holding: "warn",
-  lost: "crit",
+  predicting: "coast",
+  repositioning: "coast",
+  searching: "coast",
+  "holding-await-operator": "crit",
 };
 
 /** Pipeline latency above this reads as a warning (ms). */

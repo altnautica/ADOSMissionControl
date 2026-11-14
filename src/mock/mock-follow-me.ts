@@ -109,11 +109,14 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
   switch (follow.phase) {
     case "idle":
       return held("no-lock", null, null);
-    // A lost lock is dropped: the operator designates again.
-    case "lost":
+    // The lock is lost and follow-me holds for the operator; the published
+    // tab names that a lost subject.
+    case "holding-await-operator":
       return held("lock-lost", "lost", null);
-    // Designated but not yet locked, or searching past the coast window.
+    // Designated but not yet locked, or seeking the subject from the vantage
+    // point.
     case "acquiring":
+    case "repositioning":
     case "searching":
       return held("lock-uncertain", "uncertain", target);
   }
@@ -125,7 +128,7 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
   if (!fcGuided) return held("fc-not-guided", "locked", target);
   // Holding: the subject is locked but no ground point resolves.
   if (follow.phase === "holding" || follow.rangeM === null) return held("no-ground-fix", "locked", target);
-  // Following, or coasting on the last commanded setpoint.
+  // Following, or predicting on the last commanded setpoint.
   return {
     active: true,
     lock_state: "locked",

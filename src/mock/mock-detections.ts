@@ -8,9 +8,11 @@
  * WebSocket client feeds, so the overlay code path is identical to production.
  *
  * The batches follow the scripted 32 s cycle in `mock-hud-script`: candidate
- * → tracked → locked → following → coasting → searching → re-acquired → lost,
- * 4 s each, over a couple of background boxes that keep the candidate and
- * tracked styles on screen. When a state begins the stream applies its
+ * → tracked → locked → following → predicting → searching → re-acquired →
+ * waiting for the operator, 4 s each (a demo follow pin holds one moment of
+ * it, `demoHudSeconds`), over a couple of background boxes that keep the
+ * candidate and tracked styles on screen. When a state begins the stream
+ * applies its
  * one-shot effects: it designates the followed track (and later its
  * re-acquired successor) in the selected-target store, pushes the
  * `follow.reacquired` / `follow.lost` events, and releases the designation
@@ -46,7 +48,7 @@ import {
   scriptDetections,
   type HudDemoState,
 } from "./mock-hud-script";
-import { demoActiveCameraId, mockNavStream } from "./mock-nav";
+import { demoActiveCameraId, demoHudSeconds, mockNavStream } from "./mock-nav";
 import { mockPilot } from "./mock-pilot";
 
 /** The demo drone whose agent reports its vision engine unreachable. */
@@ -111,7 +113,7 @@ class MockDetectionStream {
     const droneId = this.droneId;
     if (!droneId) return;
 
-    const tSec = (Date.now() - this.startMs) / 1000;
+    const tSec = demoHudSeconds((Date.now() - this.startMs) / 1000);
     const detections = scriptDetections(tSec);
 
     // Tag the batch with the currently-active video leg so the demo models a

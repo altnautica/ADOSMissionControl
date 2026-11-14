@@ -182,16 +182,32 @@ describe("WhatsLockedChip", () => {
     expect(screen.queryByText("Locked")).toBeNull();
   });
 
-  it("words coasting and holding phases with their detail", () => {
+  it("words the recovery phases with the search time left, and holding with its detail", () => {
     seedBatch(7, "locked");
     designateTrack7();
-    setFollow({ phase: "coasting", track_id: 7, coast_remaining_s: 1.43 });
-    const { unmount } = render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText(specString("lock.coasting", { s: "1.4" }))).toBeTruthy();
-    unmount();
+    for (const [phase, word] of [
+      ["predicting", "Predicting 10 s"],
+      ["repositioning", "Moving to look 10 s"],
+      ["searching", "Searching 10 s"],
+    ] as const) {
+      setFollow({ phase, track_id: 7, reacquire_remaining_s: 9.46, search_step: 1 });
+      const view = render(<WhatsLockedChip droneId={DRONE} />);
+      expect(screen.getByText(word)).toBeTruthy();
+      view.unmount();
+    }
     setFollow({ phase: "holding", track_id: 7, hold_reason: "HOLD_NO_RANGE" });
-    render(<WhatsLockedChip droneId={DRONE} />);
+    const { unmount } = render(<WhatsLockedChip droneId={DRONE} />);
     expect(screen.getByText(specString("lock.holding", { label: "No range" }))).toBeTruthy();
+    unmount();
+  });
+
+  it("reads Waiting for you in the critical colour while follow-me holds for the operator", () => {
+    seedBatch(7, "locked");
+    designateTrack7();
+    setFollow({ phase: "holding-await-operator", track_id: 7, hold_reason: "search-exhausted" });
+    render(<WhatsLockedChip droneId={DRONE} />);
+    const word = screen.getByText(specString("lock.awaiting"));
+    expect(word.getAttribute("style")).toContain("var(--hud-crit)");
   });
 
   it("ignores a stale follow state", () => {
@@ -208,7 +224,7 @@ describe("WhatsLockedChip", () => {
     act(() => {
       useNavStreamStore
         .getState()
-        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 7, similarity: 0.862, gapS: 1.8 });
+        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 7, similarity: 0.862, gapS: 1.8, mahalanobis: null, phase: null });
     });
     render(<WhatsLockedChip droneId={DRONE} />);
     expect(screen.getByText(specString("lock.reacquired", { sim: "0.86" }))).toBeTruthy();

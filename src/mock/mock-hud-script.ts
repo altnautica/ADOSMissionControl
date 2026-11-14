@@ -4,8 +4,15 @@
  * Eight states of 4 s each walk the designated subject through every target
  * state the cockpit draws:
  *
- *   candidate → tracked → locked → following → coasting → searching →
- *   re-acquired → lost → (loop)
+ *   candidate → tracked → locked → following → predicting → searching →
+ *   re-acquired → awaiting (holding for the operator) → (loop)
+ *
+ * The recovery (predicting, then searching from the vantage point) spends an
+ * 8 s search budget and carries the search area, the predicted path, the
+ * vantage point and what hides the subject; the search finds it again under a
+ * new track, and the next loss exhausts the search and holds for the
+ * operator. Moving to look (`repositioning`) is reachable through a demo pin
+ * (`pinnedCycleS`).
  *
  * Pure functions of the cycle clock: the detection batch, the follow-me
  * `follow.state` frame and the one-shot effects (designation, follow events)
@@ -14,13 +21,15 @@
  * @license GPL-3.0-only
  */
 
-import type {
-  FollowEvent,
-  FollowPhase,
-  FollowState,
-  NavHealth,
-  PredictedBbox,
-  ReacquireMode,
+import {
+  isRecoveryPhase,
+  parseFollowState,
+  type FollowEvent,
+  type FollowPhase,
+  type FollowState,
+  type NavHealth,
+  type PredictedBbox,
+  type ReacquireMode,
 } from "@/lib/hud/nav-types";
 import type { DetectionBox, VisionDetection } from "@/stores/vision-detections-store";
 
@@ -30,10 +39,10 @@ export const HUD_STATES = [
   "tracked",
   "locked",
   "following",
-  "coasting",
+  "predicting",
   "searching",
   "reacquired",
-  "lost",
+  "awaiting",
 ] as const;
 export type HudDemoState = (typeof HUD_STATES)[number];
 export const HUD_CYCLE_S = HUD_STATE_S * HUD_STATES.length;
@@ -54,8 +63,17 @@ export const HOLDING_FROM_S = 3;
 export const OFFFRAME_FROM_S = 2;
 
 export const HOLD_REASON_NO_RANGE = "HOLD_NO_RANGE";
+/** Why the demo follow holds for the operator: the search found nothing. */
+export const HOLD_REASON_SEARCH_EXHAUSTED = "search-exhausted";
 export const REACQUIRED_SIMILARITY = 0.86;
 export const REACQUIRED_GAP_S = 1.8;
+export const REACQUIRED_MAHALANOBIS = 1.2;
+
+/** The recovery's search budget (s): predicting and searching spend it. */
+export const SEARCH_BUDGET_S = 2 * HUD_STATE_S;
+/** Seconds per widening step while searching; three steps. */
+const SEARCH_STEP_S = 1.5;
+const SEARCH_STEPS = 3;
 
 /** Camera geometry used to turn a box into a bearing and depression. */
 const CAMERA_HFOV_DEG = 70;
@@ -63,7 +81,7 @@ const CAMERA_VFOV_DEG = 52;
 const CAMERA_TILT_DEG = 12;
 /** Bearing of the subject relative to the nose while it is off-frame. */
 const OFFFRAME_REL_DEG = 72;
-/** Predicted-box drift while coasting / searching (px/s). */
+/** Predicted-box drift while predicting / searching (px/s). */
 const PREDICT_DRIFT_PX_S = 22;
 
 export interface HudStateAt {
@@ -82,6 +100,31 @@ export function hudStateAt(tSec: number): HudStateAt {
   const inCycle = t - cycle * HUD_CYCLE_S;
   const index = Math.min(HUD_STATES.length - 1, Math.floor(inCycle / HUD_STATE_S));
   return { state: HUD_STATES[index], index, localS: inCycle - index * HUD_STATE_S, cycle };
+}
+
+/** A representative moment of the first cycle that shows `phase`, for a demo
+ * pin that holds the follow in one phase. `repositioning` has no state of its
+ * own: it is the searching state flown toward the vantage point. */
+export function pinnedCycleS(phase: FollowPhase): number {
+  const at = (state: HudDemoState, localS: number) => HUD_STATES.indexOf(state) * HUD_STATE_S + localS;
+  switch (phase) {
+    case "idle":
+      return at("tracked", 1.5);
+    case "acquiring":
+      return at("locked", 3.5);
+    case "following":
+      return at("following", 0.5);
+    case "holding":
+      return at("following", 3.5);
+    case "predicting":
+      return at("predicting", 1.5);
+    case "repositioning":
+      return at("searching", 0.5);
+    case "searching":
+      return at("searching", 1.5);
+    case "holding-await-operator":
+      return at("awaiting", 1.5);
+  }
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -170,9 +213,9 @@ export function scriptDetections(tSec: number): VisionDetection[] {
     case "reacquired":
       out.push(tracked(reacquiredBox(tSec), REACQUIRED_TRACK, 0.83));
       break;
-    case "coasting":
+    case "predicting":
     case "searching":
-    case "lost":
+    case "awaiting":
       break;
   }
   return out;
@@ -202,13 +245,23 @@ export function entryEffect(state: HudDemoState): HudEntryEffect {
           trackId: REACQUIRED_TRACK,
           similarity: REACQUIRED_SIMILARITY,
           gapS: REACQUIRED_GAP_S,
+          mahalanobis: REACQUIRED_MAHALANOBIS,
+          phase: "searching",
         },
       };
-    case "lost":
+    case "awaiting":
+      // The search ran out: follow-me holds for the operator and keeps the
+      // designation, so searching again seeks the same subject.
       return {
         release: false,
         designateTrack: null,
-        event: { topic: "follow.lost", trackId: REACQUIRED_TRACK, reason: "timeout" },
+        event: {
+          topic: "follow.lost",
+          trackId: REACQUIRED_TRACK,
+          reason: "search_exhausted",
+          awaitingOperator: true,
+          holdNe: null,
+        },
       };
     default:
       return { release: false, designateTrack: null, event: null };
@@ -226,14 +279,14 @@ export function followPhaseAt(tSec: number): FollowPhase {
       return at.localS >= ACQUIRING_FROM_S ? "acquiring" : "idle";
     case "following":
       return at.localS >= HOLDING_FROM_S ? "holding" : "following";
-    case "coasting":
-      return "coasting";
+    case "predicting":
+      return "predicting";
     case "searching":
       return "searching";
     case "reacquired":
       return "following";
-    case "lost":
-      return "lost";
+    case "awaiting":
+      return "holding-await-operator";
   }
 }
 
@@ -243,14 +296,14 @@ export function extnavHealthAt(tSec: number): NavHealth {
   return hudStateAt(tSec).state === "searching" ? "degraded" : "good";
 }
 
-/** The predicted box while coasting / searching on-frame, else null. */
+/** The predicted box while predicting / searching on-frame, else null. */
 export function predictedBoxAt(tSec: number): DetectionBox | null {
   const at = hudStateAt(tSec);
   const offFrame = at.state === "searching" && at.localS >= OFFFRAME_FROM_S;
-  if ((at.state !== "coasting" && at.state !== "searching") || offFrame) return null;
-  const coastStart = at.cycle * HUD_CYCLE_S + 4 * HUD_STATE_S;
-  const last = targetBox(coastStart);
-  const dt = tSec - coastStart;
+  if ((at.state !== "predicting" && at.state !== "searching") || offFrame) return null;
+  const lossStart = at.cycle * HUD_CYCLE_S + 4 * HUD_STATE_S;
+  const last = targetBox(lossStart);
+  const dt = tSec - lossStart;
   const shrink = 1 - 0.04 * dt;
   const w = last.width * shrink;
   const h = last.height * shrink;
@@ -274,10 +327,17 @@ function round(v: number, step: number): number {
   return Math.round(v / step) * step;
 }
 
-/** The `follow.state` frame at `tSec`. */
-export function scriptFollow(tSec: number, ctx: FollowContext): FollowState {
+function roundNe([n, e]: readonly [number, number]): [number, number] {
+  return [round(n, 0.01), round(e, 0.01)];
+}
+
+/**
+ * The `follow.state` frame at `tSec`. `phase` replaces the scripted phase (a
+ * demo pin holding `repositioning`, which the cycle flies only as searching);
+ * pass the matching {@link pinnedCycleS} as `tSec`.
+ */
+export function scriptFollow(tSec: number, ctx: FollowContext, phase: FollowPhase = followPhaseAt(tSec)): FollowState {
   const at = hudStateAt(tSec);
-  const phase = followPhaseAt(tSec);
   const base: FollowState = {
     active: phase !== "idle",
     phase,
@@ -290,7 +350,20 @@ export function scriptFollow(tSec: number, ctx: FollowContext): FollowState {
     aglM: null,
     aglSource: null,
     reacquireMode: ctx.reacquireMode,
-    coastRemainingS: null,
+    reacquireRemainingS: null,
+    searchBudgetS: null,
+    searchStep: null,
+    searchArea: null,
+    predictedPathNe: null,
+    vantageNe: null,
+    vantageState: null,
+    occluder: null,
+    holdNe: null,
+    uncertainMode: "follow",
+    predictiveSearch: true,
+    operatorResumeSeq: 0,
+    outpaced: false,
+    speedLimitMps: null,
     pipelineLatencyMs: null,
     holdReason: null,
     bearingDeg: null,
@@ -301,17 +374,26 @@ export function scriptFollow(tSec: number, ctx: FollowContext): FollowState {
   };
   if (phase === "idle") return base;
 
-  const reacq = at.state === "reacquired" || at.state === "lost";
+  const reacq = at.state === "reacquired" || at.state === "awaiting";
   const trackId = reacq ? REACQUIRED_TRACK : TARGET_TRACK;
   const latencyMs = Math.round(82 + 8 * Math.sin(1.7 * tSec));
   const aglM = round(2 + 0.15 * Math.sin(0.3 * tSec), 0.01);
-  if (phase === "lost") {
-    return { ...base, trackId, pipelineLatencyMs: latencyMs, aglM, aglSource: "rng" };
+  if (phase === "holding-await-operator") {
+    // Stopped at the latched hover point, waiting for the operator.
+    return {
+      ...base,
+      trackId,
+      pipelineLatencyMs: latencyMs,
+      aglM,
+      aglSource: "rng",
+      holdReason: HOLD_REASON_SEARCH_EXHAUSTED,
+      holdNe: roundNe(ctx.droneNed),
+    };
   }
 
+  const searching = at.state === "searching";
   const predicted = predictedBoxAt(tSec);
-  const box =
-    at.state === "reacquired" ? reacquiredBox(tSec) : predicted ?? (at.state === "searching" ? null : targetBox(tSec));
+  const box = at.state === "reacquired" ? reacquiredBox(tSec) : predicted ?? (searching ? null : targetBox(tSec));
   const rel = box
     ? ((box.x + box.width / 2) / FRAME_WIDTH - 0.5) * CAMERA_HFOV_DEG
     : OFFFRAME_REL_DEG;
@@ -320,9 +402,11 @@ export function scriptFollow(tSec: number, ctx: FollowContext): FollowState {
     : 14;
   const bearing = norm360(ctx.vehicleYawDeg + rel);
   const speed = round(1.3 + 0.2 * Math.sin(0.45 * tSec), 0.01);
-  const range = round(10 + 1.2 * Math.sin(0.3 * tSec) + (at.state === "searching" ? 1.5 : 0), 0.01);
+  const range = round(10 + 1.2 * Math.sin(0.3 * tSec) + (searching ? 1.5 : 0), 0.01);
   const brgRad = (bearing * Math.PI) / 180;
   const velRad = brgRad + Math.PI / 3;
+  const targetNed = roundNe([ctx.droneNed[0] + range * Math.cos(brgRad), ctx.droneNed[1] + range * Math.sin(brgRad)]);
+  const vel: [number, number] = [speed * Math.cos(velRad), speed * Math.sin(velRad)];
 
   let confidence = 0.88;
   let sigma = 0.35;
@@ -336,11 +420,11 @@ export function scriptFollow(tSec: number, ctx: FollowContext): FollowState {
     sigma = 0.8;
   } else if (phase === "following" && isUncertain(at)) {
     confidence = 0.61;
-  } else if (phase === "coasting") {
+  } else if (phase === "predicting") {
     confidence = round(0.88 * (1 - 0.15 * at.localS), 0.01);
     sigma = round(0.6 + 0.3 * at.localS, 0.01);
     rangeCues = [{ kind: "ground", rangeM: range, sigmaM: 1.1 }];
-  } else if (phase === "searching") {
+  } else if (phase === "searching" || phase === "repositioning") {
     confidence = 0.3;
     sigma = 2;
     rangeCues = [];
@@ -356,24 +440,116 @@ export function scriptFollow(tSec: number, ctx: FollowContext): FollowState {
 
   return {
     ...base,
+    ...(isRecoveryPhase(phase) ? recovery(phase, at, ctx, targetNed, vel) : {}),
     trackId,
     confidence,
     rangeM: holding ? null : range,
     rangeSigmaM: holding ? null : sigma,
     rangeCues: holding ? [] : rangeCues,
     targetSpeedMps: speed,
-    aglM: at.state === "searching" ? round(aglM + 0.3, 0.01) : aglM,
-    aglSource: at.state === "searching" ? "baro" : "rng",
-    coastRemainingS: phase === "coasting" ? round(Math.max(0, HUD_STATE_S - at.localS), 0.1) : null,
+    aglM: searching ? round(aglM + 0.3, 0.01) : aglM,
+    aglSource: searching ? "baro" : "rng",
     pipelineLatencyMs: latencyMs,
     holdReason: holding ? HOLD_REASON_NO_RANGE : null,
     bearingDeg: round(bearing, 0.1),
     depressionDeg: round(depression, 0.1),
-    targetNed: [
-      round(ctx.droneNed[0] + range * Math.cos(brgRad), 0.01),
-      round(ctx.droneNed[1] + range * Math.sin(brgRad), 0.01),
-    ],
-    targetVelNed: [round(speed * Math.cos(velRad), 0.01), round(speed * Math.sin(velRad), 0.01)],
+    targetNed,
+    targetVelNed: roundNe(vel),
     predictedBbox,
   };
+}
+
+/** The recovery fields while the subject is sought: the search budget left,
+ * the widening step, the search ellipse about the prediction (growing with
+ * the time lost), the predicted path (0.5 s apart), the vantage point a third
+ * of the way from the drone to the prediction and off to its side, and while
+ * searching a trunk-sized occluder between them. */
+function recovery(
+  phase: FollowPhase,
+  at: HudStateAt,
+  ctx: FollowContext,
+  targetNed: [number, number],
+  vel: [number, number],
+): Partial<FollowState> {
+  const lostS = at.state === "searching" ? HUD_STATE_S + at.localS : at.localS;
+  const headingDeg = round(norm360((Math.atan2(vel[1], vel[0]) * 180) / Math.PI), 0.1);
+  const semiMajorM = round(1.5 + 0.6 * lostS, 0.01);
+  const [dn, de] = [targetNed[0] - ctx.droneNed[0], targetNed[1] - ctx.droneNed[1]];
+  const len = Math.hypot(dn, de) || 1;
+  const vantage = roundNe([ctx.droneNed[0] + dn / 3 - (2 * de) / len, ctx.droneNed[1] + de / 3 + (2 * dn) / len]);
+  const fromVantage = phase === "repositioning" || phase === "searching";
+  return {
+    reacquireRemainingS: round(Math.max(0, SEARCH_BUDGET_S - lostS), 0.1),
+    searchBudgetS: SEARCH_BUDGET_S,
+    searchStep: phase === "searching" ? Math.min(SEARCH_STEPS - 1, Math.floor(at.localS / SEARCH_STEP_S)) : null,
+    searchArea: { centerNe: targetNed, semiMajorM, semiMinorM: round(semiMajorM * 0.6, 0.01), headingDeg },
+    predictedPathNe: [0, 1, 2, 3].map((k) => roundNe([targetNed[0] + 0.5 * k * vel[0], targetNed[1] + 0.5 * k * vel[1]])),
+    vantageNe: fromVantage ? vantage : null,
+    vantageState: phase === "repositioning" ? "enroute" : phase === "searching" ? "arrived" : null,
+    occluder: phase === "searching" ? { ne: roundNe([targetNed[0] - dn / (2 * len), targetNed[1] - de / (2 * len)]), kind: "narrow" } : null,
+  };
+}
+
+/** A follow state on the agent's wire (snake_case), so a demo pin can lay
+ * agent fields over it. */
+function followWire(f: FollowState): Record<string, unknown> {
+  return {
+    active: f.active,
+    phase: f.phase,
+    track_id: f.trackId,
+    confidence: f.confidence,
+    range_m: f.rangeM,
+    range_sigma_m: f.rangeSigmaM,
+    range_cues: f.rangeCues.map((c) => ({ kind: c.kind, range_m: c.rangeM, sigma_m: c.sigmaM })),
+    target_speed_mps: f.targetSpeedMps,
+    agl_m: f.aglM,
+    agl_source: f.aglSource,
+    reacquire_mode: f.reacquireMode,
+    reacquire_remaining_s: f.reacquireRemainingS,
+    search_budget_s: f.searchBudgetS,
+    search_step: f.searchStep,
+    search_area: f.searchArea && {
+      center_ne: f.searchArea.centerNe,
+      semi_major_m: f.searchArea.semiMajorM,
+      semi_minor_m: f.searchArea.semiMinorM,
+      heading_deg: f.searchArea.headingDeg,
+    },
+    predicted_path_ne: f.predictedPathNe,
+    vantage_ne: f.vantageNe,
+    vantage_state: f.vantageState,
+    occluder: f.occluder,
+    hold_ne: f.holdNe,
+    uncertain_mode: f.uncertainMode,
+    predictive_search: f.predictiveSearch,
+    operator_resume_seq: f.operatorResumeSeq,
+    outpaced: f.outpaced,
+    speed_limit_mps: f.speedLimitMps,
+    pipeline_latency_ms: f.pipelineLatencyMs,
+    hold_reason: f.holdReason,
+    bearing_deg: f.bearingDeg,
+    depression_deg: f.depressionDeg,
+    target_ned: f.targetNed,
+    target_vel_ned: f.targetVelNed,
+    predicted_bbox: f.predictedBbox && {
+      camera_id: f.predictedBbox.cameraId,
+      frame_w: f.predictedBbox.frameW,
+      frame_h: f.predictedBbox.frameH,
+      x: f.predictedBbox.x,
+      y: f.predictedBbox.y,
+      w: f.predictedBbox.w,
+      h: f.predictedBbox.h,
+    },
+  };
+}
+
+/** The phase a demo follow pin holds, or null when the pin names none. */
+export function pinnedFollowPhase(pin: Record<string, unknown> | null): FollowPhase | null {
+  if (!pin) return null;
+  return parseFollowState({ phase: pin.phase })?.phase ?? null;
+}
+
+/** `f` with a demo pin's agent fields (snake_case, as `follow.state` carries
+ * them) laid over it. */
+export function applyFollowPin(f: FollowState, pin: Record<string, unknown>): FollowState {
+  return parseFollowState({ ...followWire(f), ...pin }) ?? f;
 }

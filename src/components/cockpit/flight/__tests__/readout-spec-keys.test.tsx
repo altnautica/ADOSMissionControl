@@ -57,7 +57,7 @@ describe("cockpit readouts on spec keys", () => {
   it("words the follow range panel from follow.*", () => {
     useNavStreamStore
       .getState()
-      .setFollow(DRONE, followState({ aglSource: "baro", phase: "coasting" }));
+      .setFollow(DRONE, followState({ aglSource: "baro", phase: "predicting" }));
     renderWithIntl(
       <CockpitLayoutContext.Provider value={{ widthClass: "expanded", width: 1280, height: 720 }}>
         <FollowRangePanel droneId={DRONE} />
@@ -67,7 +67,7 @@ describe("cockpit readouts on spec keys", () => {
     expect(panel.getAttribute("aria-label")).toBe("<follow.range>");
     const text = panel.textContent ?? "";
     for (const key of [
-      "follow.phase.coasting",
+      "follow.phase.predicting",
     ]) {
       expect(text).toContain(`<${key}>`);
     }

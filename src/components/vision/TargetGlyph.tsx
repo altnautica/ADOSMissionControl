@@ -52,7 +52,7 @@ export function TargetGlyph({ layout: l, reducedMotion, focused = false }: Targe
   const { item, box } = l;
   const mods = item.modifiers;
   const style: CSSProperties & Record<"--tgt-font", string> = { "--tgt-font": `${l.fontPx}px` };
-  if (item.kind === "LOST" && item.lostProgress !== undefined && !reducedMotion) {
+  if (item.kind === "AWAIT_OPERATOR" && item.lostProgress !== undefined && !reducedMotion) {
     // The fade runs in CSS; a negative delay starts it at the elapsed share.
     style.animationDelay = `${-Math.round(item.lostProgress * LOST_FADE_MS)}ms`;
   }

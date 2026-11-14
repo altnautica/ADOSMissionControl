@@ -113,20 +113,20 @@ describe("TargetGlyph states", () => {
     expect(g.querySelector(".tgt-reticle")).not.toBeNull();
   });
 
-  it("COASTING: brackets at the predicted box with the coast tag", () => {
+  it("PREDICTING: brackets at the predicted box with the search time left", () => {
     const c = draw({
       follow: follow({
-        phase: "coasting",
+        phase: "predicting",
         track_id: 12,
-        coast_remaining_s: 1.43,
+        reacquire_remaining_s: 1.43,
         predicted_bbox: { camera_id: "main", frame_w: 1280, frame_h: 720, x: 600, y: 300, w: 40, h: 98 },
       }),
       followAgeMs: 100,
     });
-    const g = c.querySelector('[data-kind="COASTING"]')!;
+    const g = c.querySelector('[data-kind="PREDICTING"]')!;
     expect(g.getAttribute("data-box")).toBe("600.00,300.00,40.00,98.00");
     expect(g.querySelector(".tgt-brackets")).not.toBeNull();
-    expect(tags(g)).toEqual(["COAST 1.4 s"]);
+    expect(tags(g)).toEqual(["PREDICTING 1.4 s"]);
   });
 
   it("SEARCHING: ring with a sweep; static dashed ring under reduced motion", () => {
@@ -164,6 +164,17 @@ describe("TargetGlyph states", () => {
     expect(tags(g)).toEqual(["SEARCHING · 064°"]);
   });
 
+  it("SEARCHING_OFFFRAME while moving to look: the edge arrow names the move", () => {
+    const c = draw({
+      follow: follow({ phase: "repositioning", track_id: 12, bearing_deg: 64, predicted_bbox: null }),
+      followAgeMs: 100,
+      vehicleYawDeg: 10,
+      cameraYawOffsetDeg: 0,
+    });
+    const g = c.querySelector('[data-kind="SEARCHING_OFFFRAME"]')!;
+    expect(tags(g)).toEqual(["MOVING TO LOOK · 064°"]);
+  });
+
   it("SEARCHING_OFFFRAME is never drawn for a down-facing camera", () => {
     const c = draw({
       follow: follow({ phase: "searching", track_id: 12, bearing_deg: 64, predicted_bbox: null }),
@@ -174,19 +185,19 @@ describe("TargetGlyph states", () => {
     expect(c.querySelector('[data-kind="SEARCHING_OFFFRAME"]')).toBeNull();
   });
 
-  it("LOST: crit brackets at the last rect, fading by elapsed share", () => {
-    const event: FollowEvent = { topic: "follow.lost", trackId: 12, reason: "lock_lost" };
+  it("AWAIT_OPERATOR: crit brackets at the last rect, fading by elapsed share", () => {
+    const event: FollowEvent = { topic: "follow.lost", trackId: 12, reason: "search_exhausted", awaitingOperator: true, holdNe: null };
     const c = draw({
       event: { data: event, ageMs: 100 },
       lastFollowRect: { trackId: 12, rect: { x: 600, y: 200, w: 80, h: 200 }, frameW: 1280, frameH: 720, at: 10_000 - 450 },
     });
-    const g = c.querySelector('[data-kind="LOST"]') as HTMLElement;
-    expect(tags(g)).toEqual(["LOST"]);
+    const g = c.querySelector('[data-kind="AWAIT_OPERATOR"]') as HTMLElement;
+    expect(tags(g)).toEqual(["WAITING FOR YOU"]);
     expect(g.style.animationDelay).toBe("-450ms");
   });
 
   it("re-acquired: the new track's brackets snap", () => {
-    const event: FollowEvent = { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8 };
+    const event: FollowEvent = { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8, mahalanobis: null, phase: null };
     const c = draw({
       batch: batchOf(det({ trackId: 15, lockState: "locked" })),
       event: { data: event, ageMs: 100 },

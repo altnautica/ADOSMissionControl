@@ -14,7 +14,7 @@ describe("isFollowingMode", () => {
   const base = { ageMs: 100, installed: true, designated: false };
   it("is on for any reported phase other than idle", () => {
     expect(isFollowingMode({ ...base, phase: "following" })).toBe(true);
-    expect(isFollowingMode({ ...base, phase: "lost" })).toBe(true);
+    expect(isFollowingMode({ ...base, phase: "holding-await-operator" })).toBe(true);
     expect(isFollowingMode({ ...base, phase: "idle" })).toBe(false);
     expect(isFollowingMode({ ...base, phase: null })).toBe(false);
   });
@@ -28,7 +28,7 @@ describe("isFollowingMode", () => {
 
   it("steps aside once the last report is long gone", () => {
     expect(
-      isFollowingMode({ ...base, phase: "coasting", ageMs: FOLLOW_MODE_FORGET_MS + 1 }),
+      isFollowingMode({ ...base, phase: "predicting", ageMs: FOLLOW_MODE_FORGET_MS + 1 }),
     ).toBe(false);
   });
 });

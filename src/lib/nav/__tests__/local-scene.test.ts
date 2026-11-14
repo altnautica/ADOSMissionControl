@@ -80,7 +80,16 @@ describe("buildLocalScene", () => {
     expect(scene.origin).toEqual({ sx: 100, sy: 100 });
     expect(scene.drone).toEqual({ sx: 120, sy: 90, yawDeg: 45 });
     expect(scene.scan).toEqual([[150, 100]]);
-    expect(scene.target).toEqual({ sx: 100, sy: 80, tickX: 100, tickY: 70, dashed: true });
+    expect(scene.target).toEqual({
+      sx: 100,
+      sy: 80,
+      tickX: 100,
+      tickY: 70,
+      dashed: true,
+      searchArea: null,
+      vantage: null,
+      predictedPath: [],
+    });
   });
 
   it("splits the trail into runs and keeps the dim flag", () => {

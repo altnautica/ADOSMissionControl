@@ -9,7 +9,7 @@
     { "id": "obstacles", "label": "Obstacles", "default": true, "source": "obstacles", "lease": false, "z": 30, "kind": "obstacles", "groups": null },
     { "id": "targets", "label": "Targets", "default": true, "source": "vision detections", "lease": false, "z": 40, "kind": null, "groups": null },
     { "id": "ar_route", "label": "Route", "default": true, "source": "ar", "lease": false, "z": 50, "kind": "ar", "groups": ["wp", "leg", "home", "edge"] },
-    { "id": "ar_motion", "label": "Motion", "default": true, "source": "ar", "lease": false, "z": 60, "kind": "ar", "groups": ["fpv", "fpath", "fgoal", "orbit"] }
+    { "id": "ar_motion", "label": "Motion", "default": true, "source": "ar", "lease": false, "z": 60, "kind": "ar", "groups": ["fpv", "fpath", "fgoal", "orbit", "fsearch", "fvantage"] }
   ],
   "plugin_layer": {
     "id_pattern": "plugin:<plugin_id>:<overlay_id>",

@@ -9,6 +9,8 @@
  * bottom row owns the height above the ground, so the strip shows none.
  * Tapping the readout opens the full range panel as a flight-screen sheet
  * dropping from the strip; tapping again, Escape or a press outside closes it.
+ * While follow-me holds for the operator, the waiting prompt drops from the
+ * strip in the range sheet's place.
  *
  * @license GPL-3.0-only
  */
@@ -16,9 +18,11 @@
 import { useCallback, useRef } from "react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
+import { useFollowingMode } from "@/hooks/use-following-mode";
 
 import { FollowRail } from "../FollowRail";
 import { FollowRangePanel } from "../FollowRangePanel";
+import { FollowAwaitPrompt } from "./FollowAwaitPrompt";
 import { useFlightGrid } from "./flight-context";
 import { rectStyle } from "./flight-grid";
 import { FlightSheetPortal, useFlightSheet, useSheetDismiss } from "./flight-sheet";
@@ -34,6 +38,8 @@ export function FollowDock({ droneId }: { droneId: string }) {
   const rect = grid.zones.follow_strip;
   const [open, setOpen] = useFlightSheet(SHEET_ID);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const { follow, stale } = useFollowingMode(droneId);
+  const awaiting = !stale && follow?.phase === "holding-await-operator";
   const close = useCallback(() => setOpen(false), [setOpen]);
   useSheetDismiss(sheetRef, close, TRIGGER, open && !!rect);
   if (!rect) return null;
@@ -53,15 +59,19 @@ export function FollowDock({ droneId }: { droneId: string }) {
           <FollowRangePanel droneId={droneId} variant="line" />
         </button>
       </div>
-      {open && (
+      {(awaiting || open) && (
         <FlightSheetPortal>
           <div
             className="fs-follow-sheet-slot"
             style={{ position: "absolute", left: rect.x, width: rect.w, top: rect.y + rect.h + SHEET_GAP_PX }}
           >
-            <div ref={sheetRef} className="fs-sheet fs-follow-sheet" role="dialog" aria-label={rangeLabel} data-testid="follow-range-sheet">
-              <FollowRangePanel droneId={droneId} variant="detail" />
-            </div>
+            {awaiting ? (
+              <FollowAwaitPrompt droneId={droneId} />
+            ) : (
+              <div ref={sheetRef} className="fs-sheet fs-follow-sheet" role="dialog" aria-label={rangeLabel} data-testid="follow-range-sheet">
+                <FollowRangePanel droneId={droneId} variant="detail" />
+              </div>
+            )}
           </div>
         </FlightSheetPortal>
       )}

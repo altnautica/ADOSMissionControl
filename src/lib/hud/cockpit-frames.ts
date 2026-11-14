@@ -290,6 +290,10 @@ export type ArItem =
   | { t: "fpv"; k: string; x: number; y: number }
   | { t: "fpath"; k: string; state: AvoidState | null; pts: [number, number][] }
   | { t: "fgoal"; k: string; x: number; y: number }
+  /** The follow search ellipse as a ground ring (drawn closed). */
+  | { t: "fsearch"; k: string; pts: [number, number][] }
+  /** The pilot's vantage point on the ground while the follow searches. */
+  | { t: "fvantage"; k: string; x: number; y: number }
   | { t: "orbit"; k: string; dir: "cw" | "ccw"; cx: number; cy: number; pts: [number, number][] }
   | { t: "edge"; k: string; of: "wp" | "home"; seq: number | null; ang: number; distM: number | null };
 
@@ -334,7 +338,8 @@ function parseArItem(raw: unknown): ArItem | null {
       return { t: "home", k: k ?? "home", x, y, gx: num(o.gx), gy: num(o.gy), distM: num(o.dist_m) };
     }
     case "fpv":
-    case "fgoal": {
+    case "fgoal":
+    case "fvantage": {
       const x = num(o.x);
       const y = num(o.y);
       if (x === null || y === null) return null;
@@ -344,6 +349,11 @@ function parseArItem(raw: unknown): ArItem | null {
       const pts = pts2(o.pts);
       if (pts.length < 2) return null;
       return { t: "fpath", k: k ?? "fpath", state: oneOf(o.state, AVOID_STATES), pts };
+    }
+    case "fsearch": {
+      const pts = pts2(o.pts);
+      if (pts.length < 3) return null;
+      return { t: "fsearch", k: k ?? "fsearch", pts };
     }
     case "orbit": {
       const cx = num(o.cx);

@@ -11,8 +11,9 @@
  *
  * State word, first match wins:
  *  1. a stale feed → the stale reason ("Feed stale" / "Offload link lost");
- *  2. a fresh follow-me phase → Following, Acquiring, Coasting 1.4 s,
- *     Searching, Holding · No range, Lost;
+ *  2. a fresh follow-me phase → Following, Acquiring, Predicting 18 s,
+ *     Moving to look 14 s, Searching 9 s (the seconds left of the search
+ *     budget), Holding · No range, Waiting for you (in the critical colour);
  *  3. a `follow.reacquired` event within 4 s → "Re-acquired · 0.86";
  *  4. the tracker's lock words (Locked, Uncertain, Lost, Not in view, Waiting
  *     for feed).
@@ -64,18 +65,21 @@ function phaseWord(f: FollowState): string | null {
       return specString("lock.following");
     case "acquiring":
       return specString("lock.acquiring");
-    case "coasting":
-      return specString("lock.coasting", { s: (f.coastRemainingS ?? 0).toFixed(1) });
-    case "searching":
-      return specString("lock.searching");
+    case "predicting":
+    case "repositioning":
+    case "searching": {
+      const word = specString(`follow.phase.${f.phase}`);
+      const left = f.reacquireRemainingS;
+      return left !== null ? `${word} ${Math.max(0, Math.ceil(left))} s` : word;
+    }
     case "holding": {
       const reason = holdReasonWord(f.holdReason);
       return reason
         ? specString("lock.holding", { label: reason.charAt(0) + reason.slice(1).toLowerCase() })
         : specString("lock.holding_bare");
     }
-    case "lost":
-      return specString("nav_source.q.lost");
+    case "holding-await-operator":
+      return specString("lock.awaiting");
     default:
       return null;
   }
@@ -108,8 +112,8 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
       : undefined;
   const notInView = feed === "fresh" && !live;
 
-  const followWord =
-    follow && now - follow.receivedAt <= FOLLOW_STALE_MS ? phaseWord(follow.data) : null;
+  const fresh = follow && now - follow.receivedAt <= FOLLOW_STALE_MS ? follow.data : null;
+  const followWord = fresh ? phaseWord(fresh) : null;
   const reacquired =
     event && event.data.topic === "follow.reacquired" && now - event.receivedAt <= REACQUIRED_WORD_MS
       ? event.data
@@ -123,8 +127,9 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   else if (live) label = lockLabel(live.lockState);
   else label = feed === "fresh" ? specString("lock.not_in_view") : specString("target.waiting_for_feed");
 
-  const warnColor = stale && tier === "offload" ? "var(--hud-crit)" : "var(--hud-warn)";
-  const warn = stale || (notInView && !followWord);
+  const awaiting = !stale && fresh?.phase === "holding-await-operator";
+  const warnColor = (stale && tier === "offload") || awaiting ? "var(--hud-crit)" : "var(--hud-warn)";
+  const warn = stale || awaiting || (notInView && !followWord);
   const cls = classWord(here.classLabel).trim() || specString("lock.target_fallback");
   const who = here.trackId != null ? specString("lock.who", { label: cls, id: here.trackId }) : cls;
 

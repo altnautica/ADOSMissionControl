@@ -5,7 +5,8 @@
  * @description Gathers the local-frame layers for one drone with their
  * freshness rules applied: the SLAM trail and occupancy grid (dimmed when the
  * last poll is older than 5 s), the scan in the map frame (only while both
- * the scan and the pose are under 500 ms old), the follow target, the
+ * the scan and the pose are under 500 ms old), the follow target (with its
+ * search area, vantage point and predicted path while it is sought), the
  * pilot's planned path and goal (while its frame is fresh), and the drone
  * from the pose when fresh, else from LOCAL_POSITION_NED (`fcPos`).
  * Heading comes from ATTITUDE when fresh, else from the pose.
@@ -25,7 +26,13 @@ import {
   type TrailPoint,
 } from "@/lib/hud/local-frame";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
-import { localPlan, type LocalSceneDrone, type LocalScenePlan, type LocalSceneTarget } from "@/lib/hud/local-scene";
+import {
+  followSceneTarget,
+  localPlan,
+  type LocalSceneDrone,
+  type LocalScenePlan,
+  type LocalSceneTarget,
+} from "@/lib/hud/local-scene";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import {
@@ -86,16 +93,7 @@ export function useLocalFrameData(droneId: string): LocalFrameData {
   }
 
   const fs = follow ? freshData(follow, now, FOLLOW_STALE_MS) : null;
-  const target: LocalSceneTarget | null =
-    fs?.targetNed
-      ? {
-          north: fs.targetNed[0],
-          east: fs.targetNed[1],
-          velNorth: fs.targetVelNed?.[0] ?? null,
-          velEast: fs.targetVelNed?.[1] ?? null,
-          dashed: fs.phase === "coasting" || fs.phase === "searching",
-        }
-      : null;
+  const target: LocalSceneTarget | null = fs ? followSceneTarget(fs) : null;
 
   const polledAt = feed?.occupancyPolledAt ?? null;
   return {

@@ -24,10 +24,10 @@ export type TargetKind =
   | "ACQUIRING"
   | "FOLLOWING"
   | "HOLDING"
-  | "COASTING"
+  | "PREDICTING"
   | "SEARCHING"
   | "SEARCHING_OFFFRAME"
-  | "LOST"
+  | "AWAIT_OPERATOR"
   | "GT";
 
 /** Plate + text treatment of a tag. `*Filled` = solid plate, black text. */
@@ -82,7 +82,8 @@ export interface DrawItem {
   /** Relative bearing (deg, clockwise from the camera axis) for
    * SEARCHING_OFFFRAME. */
   relBearingDeg?: number;
-  /** Elapsed share of the 900 ms LOST fade, 0..1. */
+  /** Elapsed share of the 900 ms fade of the AWAIT_OPERATOR mark at the
+   * last followed rect, 0..1. */
   lostProgress?: number;
 }
 
@@ -107,8 +108,8 @@ export interface DesignatedRef {
   bbox: { x: number; y: number; width: number; height: number };
 }
 
-/** The last rect the followed track was drawn at, kept by the surface so a
- * LOST mark can fade at it. */
+/** The last rect the followed track was drawn at, kept by the surface so the
+ * AWAIT_OPERATOR mark can fade at it. */
 export interface LastFollowRect {
   trackId: number | null;
   rect: FrameRect;
@@ -164,8 +165,8 @@ const PRIORITY: Record<TargetKind, number> = {
   HOLDING: 0,
   ACQUIRING: 0,
   LOCKED: 1,
-  LOST: 1,
-  COASTING: 2,
+  AWAIT_OPERATOR: 1,
+  PREDICTING: 2,
   SEARCHING: 2,
   SEARCHING_OFFFRAME: 2,
   TRACKED: 3,
@@ -216,7 +217,8 @@ export function resolveTargets(input: ResolveInput): ResolvedTargets {
       : null;
   const lostEvent =
     event && event.data.topic === "follow.lost" && event.ageMs <= LOST_FADE_MS ? event.data : null;
-  const showLost = (fresh?.phase === "lost" || lostEvent !== null) && input.lastFollowRect != null;
+  const showLost =
+    (fresh?.phase === "holding-await-operator" || lostEvent !== null) && input.lastFollowRect != null;
   const lostTrack = showLost ? input.lastFollowRect!.trackId : null;
 
   const rangeTags = (f: FollowState | null): DrawTag[] => {
@@ -355,13 +357,13 @@ export function resolveTargets(input: ResolveInput): ResolvedTargets {
       const sy = frameH > 0 && p.frameH > 0 ? frameH / p.frameH : 1;
       return { x: p.x * sx, y: p.y * sy, w: p.w * sx, h: p.h * sy };
     };
-    if (fresh.phase === "coasting" && pb && pb.cameraId === cameraId) {
+    if (fresh.phase === "predicting" && pb && pb.cameraId === cameraId) {
       items.push({
-        kind: "COASTING",
-        key: `coast:${fresh.trackId ?? "?"}`,
+        kind: "PREDICTING",
+        key: `predict:${fresh.trackId ?? "?"}`,
         trackId: fresh.trackId,
         rect: scaleRect(pb),
-        topTag: { text: copy.coast((fresh.coastRemainingS ?? 0).toFixed(1)), tone: "coast" },
+        topTag: { text: copy.predicting((fresh.reacquireRemainingS ?? 0).toFixed(1)), tone: "coast" },
         bottomTags:
           fresh.rangeM !== null
             ? [{ text: copy.est(formatRange(fresh.rangeM).replace(/ m$/, "")), tone: "coast" }]
@@ -371,14 +373,15 @@ export function resolveTargets(input: ResolveInput): ResolvedTargets {
         feetTick: false,
         confidence: fresh.confidence ?? 0,
       });
-    } else if (fresh.phase === "searching") {
+    } else if (fresh.phase === "repositioning" || fresh.phase === "searching") {
+      const moving = fresh.phase === "repositioning";
       if (pb && pb.cameraId === cameraId) {
         items.push({
           kind: "SEARCHING",
           key: `search:${fresh.trackId ?? "?"}`,
           trackId: fresh.trackId,
           rect: scaleRect(pb),
-          topTag: { text: copy.searching(), tone: "coast" },
+          topTag: { text: moving ? copy.repositioning() : copy.searching(), tone: "coast" },
           bottomTags: [],
           modifiers: NO_MODS,
           reticle: false,
@@ -398,7 +401,7 @@ export function resolveTargets(input: ResolveInput): ResolvedTargets {
           key: `search-off:${fresh.trackId ?? "?"}`,
           trackId: fresh.trackId,
           rect: null,
-          topTag: { text: copy.searchingBearing(deg), tone: "coast" },
+          topTag: { text: moving ? copy.repositioningBearing(deg) : copy.searchingBearing(deg), tone: "coast" },
           bottomTags: [],
           modifiers: NO_MODS,
           reticle: false,
@@ -417,11 +420,11 @@ export function resolveTargets(input: ResolveInput): ResolvedTargets {
       const sx = frameW > 0 && last.frameW > 0 ? frameW / last.frameW : 1;
       const sy = frameH > 0 && last.frameH > 0 ? frameH / last.frameH : 1;
       items.push({
-        kind: "LOST",
-        key: `lost:${last.trackId ?? "?"}`,
+        kind: "AWAIT_OPERATOR",
+        key: `await:${last.trackId ?? "?"}`,
         trackId: last.trackId,
         rect: { x: last.rect.x * sx, y: last.rect.y * sy, w: last.rect.w * sx, h: last.rect.h * sy },
-        topTag: { text: copy.lost(), tone: "crit" },
+        topTag: { text: copy.awaiting(), tone: "crit" },
         bottomTags: [],
         modifiers: NO_MODS,
         reticle: false,

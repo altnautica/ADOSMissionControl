@@ -1,0 +1,48 @@
+[
+  {
+    "name": "following has no prompt",
+    "state": { "active": true, "phase": "following" },
+    "expect": null
+  },
+  {
+    "name": "searching has no prompt",
+    "state": { "active": true, "phase": "searching", "search_step": 1, "reacquire_remaining_s": 9.5 },
+    "expect": null
+  },
+  {
+    "name": "search exhausted",
+    "state": { "active": true, "phase": "holding-await-operator", "hold_reason": "search-exhausted", "reacquire_mode": "smart", "hold_ne": [3, 4] },
+    "expect": {
+      "titleKey": "follow.prompt.await_title",
+      "bodyKey": "follow.prompt.await_body.search_exhausted",
+      "actions": ["resume", "redesignate", "rth", "land", "stop"]
+    }
+  },
+  {
+    "name": "predictive search off",
+    "state": { "active": true, "phase": "holding-await-operator", "hold_reason": "predictive-search-off", "reacquire_mode": "smart", "predictive_search": false },
+    "expect": {
+      "titleKey": "follow.prompt.await_title",
+      "bodyKey": "follow.prompt.await_body.predictive_search_off",
+      "actions": ["resume", "redesignate", "rth", "land", "stop"]
+    }
+  },
+  {
+    "name": "strict loss has no resume",
+    "state": { "active": true, "phase": "holding-await-operator", "hold_reason": "awaiting-operator", "reacquire_mode": "strict" },
+    "expect": {
+      "titleKey": "follow.prompt.await_title",
+      "bodyKey": "follow.prompt.await_body.lock_lost",
+      "actions": ["redesignate", "rth", "land", "stop"]
+    }
+  },
+  {
+    "name": "nothing left to search from has no resume",
+    "state": { "active": true, "phase": "holding-await-operator", "hold_reason": "no-range", "reacquire_mode": "smart" },
+    "expect": {
+      "titleKey": "follow.prompt.await_title",
+      "bodyKey": "follow.prompt.await_body.no_range",
+      "actions": ["redesignate", "rth", "land", "stop"]
+    }
+  }
+]

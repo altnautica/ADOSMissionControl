@@ -167,11 +167,11 @@ describe("marks", () => {
     expect(s[0].t).toBeGreaterThanOrEqual(1000);
   });
 
-  it("adds the predicted feet point to the coasting ghost path", () => {
+  it("adds the predicted feet point to the predicting ghost path", () => {
     const follow = parseFollowState({
-      phase: "coasting",
+      phase: "predicting",
       track_id: 12,
-      coast_remaining_s: 1.43,
+      reacquire_remaining_s: 1.43,
       predicted_bbox: { camera_id: "main", frame_w: 1280, frame_h: 720, x: 600, y: 300, w: 40, h: 98 },
     })!;
     const resolved = resolve([], { follow, followAgeMs: 100 });
@@ -184,7 +184,7 @@ describe("marks", () => {
         { t: 100, x: 550, y: 400 },
       ],
     });
-    expect(coast.kind).toBe("COASTING");
+    expect(coast.kind).toBe("PREDICTING");
     expect(coast.ghost).toEqual([
       { x: 500, y: 400 },
       { x: 550, y: 400 },

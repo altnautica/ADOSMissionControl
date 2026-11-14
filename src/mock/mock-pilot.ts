@@ -156,14 +156,29 @@ export class MockPilot {
     this.publish();
   }
 
+  /** The pinned follow-me report (`pin({ follow: {...} })`), or null. */
+  followPin(): Json | null {
+    return this.pins.follow();
+  }
+
   /**
    * A plugin config write in the demo. Turning Follow-Me's `active` flag on
    * hands the armed pilot to the skill (owner `skill`), as an agent does;
-   * turning it off hands it back to the pilot.
+   * turning it off hands it back to the pilot and ends a pinned follow
+   * report. A pinned follow waiting for the operator answers
+   * `operator_resume_seq` by searching again.
    */
   pluginConfig(deviceId: string, pluginId: string, key: string, value: unknown): void {
     const own = this.droneId ? (deviceIdFromNodeId(this.droneId) ?? this.droneId) : null;
-    if (!own || deviceId !== own || pluginId !== FOLLOW_ME_PLUGIN_ID || key !== "active") return;
+    if (!own || deviceId !== own || pluginId !== FOLLOW_ME_PLUGIN_ID) return;
+    const pinned = this.pins.follow();
+    if (key === "operator_resume_seq") {
+      if (pinned?.phase === "holding-await-operator") {
+        this.pins.patch({ follow: { ...pinned, phase: "searching", hold_reason: null, operator_resume_seq: value } });
+      }
+      return;
+    }
+    if (key !== "active") return;
     const host = usePluginSkillHostStore.getState();
     if (value === true) {
       this.wire.owner = "skill";
@@ -172,6 +187,7 @@ export class MockPilot {
     } else {
       if (this.wire.owner === "skill") this.wire.owner = "pilot";
       this.wire.skill = null;
+      if (pinned) this.pins.drop("follow", "owner", "skill");
       host.pushPluginSkillState(own, "follow.state", { state: "idle" });
     }
     this.publish();
@@ -327,6 +343,8 @@ export class MockPilot {
     const due = this.stall.due(this.pins.over(this.wire), now);
     if (due) this.action(due, {});
     const seen = this.stall.view(this.pins.over(this.wire), now);
+    // The follow pin feeds the demo follow-me report, not the pilot.
+    delete seen.follow;
     // Outside `ados` the FC flies, and a surface repositions it directly.
     if (seen.control_mode !== "ados") seen.surface_ops = [];
     return seen;

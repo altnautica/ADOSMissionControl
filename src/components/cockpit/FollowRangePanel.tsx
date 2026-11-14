@@ -7,14 +7,17 @@
  * to the target, only when the skill measures it, and the phase. The line
  * carries no height above the ground: the bottom row owns that readout, so
  * neither does the full panel (range + interval bar, then geometry and the
- * cue/latency row at `expanded`/`tv`) opens as a sheet from the strip. A
- * `follow.state` older than 2 s blanks every value, dims the plate and reads
- * STALE.
+ * cue/latency row at `expanded`/`tv`) opens as a sheet from the strip. While
+ * the subject is sought (predicting, moving to look, searching) the recovery
+ * line follows the phase: seconds left of the search budget, the widening
+ * step, the vantage state and what hides the subject. A `follow.state` older
+ * than 2 s blanks every value, dims the plate and reads STALE.
  *
  * @license GPL-3.0-only
  */
 
 
+import { followRecoveryLine } from "@/lib/cockpit/follow-recovery";
 import { specString } from "@/lib/cockpit/spec-strings";
 import type { FollowState } from "@/lib/hud/nav-types";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
@@ -59,6 +62,7 @@ export function FollowRangePanel({
   const rangeText = range === null ? NO_DATA_GLYPH : formatRange(range);
   const dep = live?.depressionDeg ?? null;
   const brg = live?.bearingDeg ?? null;
+  const recovery = live ? followRecoveryLine(live) : null;
 
   if (variant === "line" || widthClass === "compact") {
     // A skill that measures the target's distance reports a range or range
@@ -71,6 +75,7 @@ export function FollowRangePanel({
           {measures && <span className="frp-range" data-testid="follow-range-value">{rangeText}</span>}
           {measures && sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
           <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
+          {recovery && <span className="frp-aux" data-testid="follow-recovery" style={{ color: "var(--hud-coast)" }}>{recovery}</span>}
         </div>
       </div>
     );
@@ -89,6 +94,11 @@ export function FollowRangePanel({
         <span className="frp-range">{rangeText}</span>
         <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
       </div>
+      {recovery && (
+        <div className="frp-row" data-row="recovery" data-testid="follow-recovery" style={{ color: "var(--hud-coast)" }}>
+          {recovery}
+        </div>
+      )}
       <div className="frp-row" data-row="interval">
         <span className="frp-track" aria-hidden="true">
           {bar && bar.lo !== null && bar.hi !== null && (

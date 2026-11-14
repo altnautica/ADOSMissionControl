@@ -11,9 +11,12 @@
  * - legs: active 6 px at 35 % plus a 2 px centre line in route colour; next
  *   2 px white; future 1.5 px dashed white fading 100→30 % (Full only);
  * - home a yellow "H" pad; fpv a winged 18 px circle; fpath cyan dashed with
- *   point dots (amber on detour, a red ✕ at the drone when blocked); orbit a
- *   cyan polyline with 3 direction chevrons; edge a 20 px arrow 16 px inside
- *   the rect with its distance.
+ *   point dots (amber on detour, a red ✕ at the drone when blocked); the
+ *   subject's predicted path (`fpath:predicted`) a thin cyan dash, never
+ *   recoloured by the avoid state; orbit a cyan polyline with 3 direction
+ *   chevrons; fsearch the follow search area as a closed dashed cyan ring at
+ *   40 % with a faint fill; fvantage a dashed cyan ring; edge a 20 px arrow
+ *   16 px inside the rect with its distance.
  *
  * Mission state (agent-computed) changes the route: active draws as above;
  * paused greys and dashes the legs and hollows the next gate; loaded is a
@@ -36,7 +39,8 @@ export type LayerLevel = "instruments" | "full" | "route" | "off";
 
 export interface ArLayoutOptions {
   level: LayerLevel;
-  /** `ar_route` (wp, leg, home, edge) and `ar_motion` (fpv, fpath, fgoal, orbit). */
+  /** `ar_route` (wp, leg, home, edge) and `ar_motion` (fpv, fpath, fgoal,
+   *  orbit, fsearch, fvantage). */
   groups: { route: boolean; motion: boolean };
   mission: MissionState | null;
   /** Pilot avoid state; overrides an fpath item's own state when set. */
@@ -50,6 +54,8 @@ const MARKER_SCALE_PX = 40;
 const FPV_PX = 18;
 const EDGE_ARROW_PX = 20;
 const EDGE_INSET_PX = 16;
+/** The `fpath` key the agent gives the subject's predicted path. */
+const PREDICTED_PATH_KEY = "fpath:predicted";
 
 function fmtEta(s: number): string {
   const t = Math.max(0, Math.round(s));
@@ -231,6 +237,17 @@ export function layoutAr(cam: ArCamera, rect: Rect, opts: ArLayoutOptions, out: 
       }
       case "fpath": {
         if (!opts.groups.motion) break;
+        if (it.k === PREDICTED_PATH_KEY) {
+          // The subject's predicted path: the vehicle's avoid state says
+          // nothing about it.
+          const op = out.push(it.k, "line");
+          op.color = LAYER_COLORS.follow;
+          op.alpha = 0.7;
+          op.width = 1.5;
+          op.dash = 3;
+          for (const [x, y] of it.pts) DrawOpBuffer.addPt(op, px(x), py(y));
+          break;
+        }
         const state = opts.avoid ?? it.state;
         // Stale obstacle data holds the vehicle, and with no obstacle sensor
         // the way is flown unchecked: both read in the warning colour.
@@ -251,6 +268,30 @@ export function layoutAr(cam: ArCamera, rect: Rect, opts: ArLayoutOptions, out: 
         }
         break;
       }
+      case "fsearch": {
+        if (!opts.groups.motion) break;
+        const op = out.push(it.k, "poly");
+        op.color = LAYER_COLORS.follow;
+        op.alpha = 0.4;
+        op.width = 2;
+        op.dash = 6;
+        op.closed = true;
+        op.fill = LAYER_COLORS.follow;
+        op.fillAlpha = 0.12;
+        for (const [x, y] of it.pts) DrawOpBuffer.addPt(op, px(x), py(y));
+        break;
+      }
+      case "fvantage": {
+        if (!opts.groups.motion) break;
+        const op = out.push(it.k, "circle");
+        op.x = px(it.x);
+        op.y = py(it.y);
+        op.r = 9;
+        op.color = LAYER_COLORS.follow;
+        op.width = 2;
+        op.dash = 4;
+        break;
+      }
       case "fgoal": {
         if (!opts.groups.motion) break;
         const op = out.push(it.k, "circle");
@@ -259,7 +300,7 @@ export function layoutAr(cam: ArCamera, rect: Rect, opts: ArLayoutOptions, out: 
         op.r = 7;
         // A blocked way reads blocked at the goal too: the pilot's avoid
         // state, else the state the agent gave this camera's path.
-        const path = opts.avoid ? null : cam.items.find((p) => p.t === "fpath");
+        const path = opts.avoid ? null : cam.items.find((p) => p.t === "fpath" && p.k !== PREDICTED_PATH_KEY);
         const state = opts.avoid ?? (path?.t === "fpath" ? path.state : null);
         op.color = state === "blocked" ? LAYER_COLORS.blocked : LAYER_COLORS.follow;
         op.width = 2;

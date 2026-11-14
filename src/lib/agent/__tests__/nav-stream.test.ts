@@ -18,7 +18,7 @@ describe("parseNavFrame", () => {
       kind: "follow",
       ts_ms: 1,
       data: {
-        phase: "coasting",
+        phase: "searching",
         track_id: 12,
         range_m: 10.2,
         range_sigma_m: 0.3,
@@ -27,11 +27,30 @@ describe("parseNavFrame", () => {
         reacquire_mode: "smart",
         target_ned: [3, 4],
         predicted_bbox: { camera_id: "main", frame_w: 640, frame_h: 480, x: 1, y: 2, w: 3, h: 4 },
+        reacquire_remaining_s: 9.5,
+        search_step: 1,
+        search_area: { center_ne: [3, 4], semi_major_m: 2, semi_minor_m: 1, heading_deg: 30 },
+        predicted_path_ne: [[3, 4], [3.5, 4.5]],
+        vantage_ne: [1, 1],
+        vantage_state: "arrived",
+        operator_resume_seq: 2,
       },
     });
     expect(follow?.kind).toBe("follow");
     if (follow?.kind !== "follow") throw new Error();
-    expect(follow.data.phase).toBe("coasting");
+    expect(follow.data.phase).toBe("searching");
+    expect(follow.data).toMatchObject({
+      reacquireRemainingS: 9.5,
+      searchStep: 1,
+      searchArea: { centerNe: [3, 4], semiMajorM: 2, semiMinorM: 1, headingDeg: 30 },
+      predictedPathNe: [
+        [3, 4],
+        [3.5, 4.5],
+      ],
+      vantageNe: [1, 1],
+      vantageState: "arrived",
+      operatorResumeSeq: 2,
+    });
     expect(follow.data.rangeCues).toEqual([{ kind: "lidar", rangeM: 10.1, sigmaM: 0.05 }]);
     expect(follow.data.targetNed).toEqual([3, 4]);
     expect(follow.data.predictedBbox?.cameraId).toBe("main");
@@ -49,11 +68,17 @@ describe("parseNavFrame", () => {
     ).toMatchObject({ kind: "map", data: { placement: "hybrid", upload: { state: "uploading", bytesDone: 5 } } });
     expect(
       parseNavFrame({ kind: "follow_event", topic: "follow.reacquired", data: { track_id: 15, similarity: 0.86, gap_s: 1.8 } }),
-    ).toEqual({ kind: "follow_event", data: { topic: "follow.reacquired", trackId: 15, similarity: 0.86, gapS: 1.8 } });
+    ).toEqual({
+      kind: "follow_event",
+      data: { topic: "follow.reacquired", trackId: 15, similarity: 0.86, gapS: 1.8, mahalanobis: null, phase: null },
+    });
     expect(parseNavFrame({ kind: "follow_event", topic: "follow.lost", data: { track_id: 12 } })).toEqual({
       kind: "follow_event",
-      data: { topic: "follow.lost", trackId: 12, reason: "lock_lost" },
+      data: { topic: "follow.lost", trackId: 12, reason: "lock_lost", awaitingOperator: false, holdNe: null },
     });
+    expect(
+      parseNavFrame({ kind: "follow_event", topic: "follow.stopped", data: { reason: "revoked" } }),
+    ).toEqual({ kind: "follow_event", data: { topic: "follow.stopped", reason: "revoked" } });
   });
 
   it("rejects keepalives, unknown kinds and malformed payloads", () => {
@@ -84,7 +109,7 @@ describe("ingest", () => {
   it("stores each frame and the trail", () => {
     ingestNavFrame(DRONE, { kind: "pose", data: parseNavPose({ R: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [0, 0, 0], health: "good" })! }, 10);
     ingestNavFrame(DRONE, { kind: "pose", data: parseNavPose({ R: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [1, 0, 0], health: "good" })! }, 20);
-    ingestNavFrame(DRONE, { kind: "follow_event", data: { topic: "follow.lost", trackId: 3, reason: "x" } }, 30);
+    ingestNavFrame(DRONE, { kind: "follow_event", data: { topic: "follow.lost", trackId: 3, reason: "x", awaitingOperator: false, holdNe: null } }, 30);
     const feed = useNavStreamStore.getState().byDrone[DRONE];
     expect(feed.trail).toHaveLength(2);
     expect(feed.pose?.receivedAt).toBe(20);

@@ -42,7 +42,7 @@ describe("CockpitAlerts re-acquired advisory", () => {
     act(() => {
       useNavStreamStore
         .getState()
-        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8 });
+        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8, mahalanobis: null, phase: null });
     });
     const el = advisory(container)!;
     expect(el.getAttribute("data-level")).toBe("advisory");
@@ -58,12 +58,12 @@ describe("CockpitAlerts re-acquired advisory", () => {
     act(() => {
       useNavStreamStore
         .getState()
-        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 15, similarity: 0.9, gapS: 1 }, Date.now() - 10_000);
+        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 15, similarity: 0.9, gapS: 1, mahalanobis: null, phase: null }, Date.now() - 10_000);
     });
     const { container } = renderAlerts();
     expect(advisory(container)).toBeNull();
     act(() => {
-      useNavStreamStore.getState().pushFollowEvent(DRONE, { topic: "follow.lost", trackId: 15, reason: "lock_lost" });
+      useNavStreamStore.getState().pushFollowEvent(DRONE, { topic: "follow.lost", trackId: 15, reason: "lock_lost", awaitingOperator: false, holdNe: null });
     });
     expect(advisory(container)).toBeNull();
   });

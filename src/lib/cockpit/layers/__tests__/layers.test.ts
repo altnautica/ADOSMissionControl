@@ -47,6 +47,9 @@ describe("nav-frame parsers on the golden fixtures", () => {
       "fpath",
       "fgoal",
       "orbit",
+      "fsearch",
+      "fvantage",
+      "fpath:predicted",
       "edge:home",
     ]);
     expect(f!.mission?.state).toBe("active");
@@ -134,7 +137,7 @@ describe("nav-stream routing", () => {
     expect(frame?.kind).toBe("ar");
     ingestNavFrame("d1", frame!, 1000);
     expect(frameVersion()).toBe(v0 + 1);
-    expect(getFrames("d1").ar?.frame.cameras.main.items).toHaveLength(10);
+    expect(getFrames("d1").ar?.frame.cameras.main.items).toHaveLength(13);
     expect(useNavStreamStore.getState().byDrone).toBe(before);
   });
 

@@ -7,11 +7,11 @@
  * state and its last event, the vehicle yaw and the video-lost flag, all aged
  * against one clock. The clock is the shared 1 Hz tick, advanced to the newest
  * input on arrival and woken at the next timed edge (re-acquired snap end,
- * LOST fade end) so short-lived states start and end on time.
+ * waiting-for-you fade end) so short-lived states start and end on time.
  *
- * With `remember`, the hook also keeps the followed box's last rect (the LOST
- * mark fades there) and its recent bottom-centre samples (the COASTING ghost
- * path).
+ * With `remember`, the hook also keeps the followed box's last rect (the
+ * waiting-for-you mark fades there) and its recent bottom-centre samples (the
+ * predicting ghost path).
  *
  * @license GPL-3.0-only
  */
@@ -54,7 +54,7 @@ export interface ResolvedTargetsInput {
   /** Mount yaw of this camera (0 front); null for a down-facing camera. */
   cameraYawOffsetDeg: number | null;
   pip?: boolean;
-  /** Keep the last followed rect and ghost samples (LOST, ghost path). */
+  /** Keep the last followed rect and ghost samples (waiting mark, ghost path). */
   remember?: boolean;
 }
 

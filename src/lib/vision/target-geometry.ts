@@ -2,7 +2,7 @@
  * @module vision/target-geometry
  * @description Screen geometry for the HUD target marks: frame-to-screen
  * mapping (letterbox or cover), hit areas, the centre reticle, feet tick,
- * search ring and sweep, the off-frame arrow, and the coasting ghost-path
+ * search ring and sweep, the off-frame arrow, and the predicting ghost-path
  * samples. Pure; tag placement and the per-item layout live in
  * `target-layout`.
  *

@@ -2,36 +2,16 @@
 
 import { describe, expect, it } from "vitest";
 
+import { followState } from "@/components/cockpit/__tests__/follow-fixtures";
 import type { FollowState } from "@/lib/hud/nav-types";
 import { haversineDistance } from "@/lib/geo/distance";
 
-import { followTargetGeo, nedToLatLon } from "../ned-geo";
+import { followTargetGeo, nedToLatLon, searchAreaRingNe } from "../ned-geo";
 
 const ORIGIN = { lat: 12.9716, lon: 77.5946 };
 
 function follow(over: Partial<FollowState>): FollowState {
-  return {
-    active: true,
-    phase: "following",
-    trackId: 12,
-    confidence: 0.9,
-    rangeM: 10,
-    rangeSigmaM: 0.3,
-    rangeCues: [],
-    targetSpeedMps: 1,
-    aglM: 5,
-    aglSource: "rng",
-    reacquireMode: "strict",
-    coastRemainingS: null,
-    pipelineLatencyMs: 80,
-    holdReason: null,
-    bearingDeg: 0,
-    depressionDeg: 20,
-    targetNed: null,
-    targetVelNed: null,
-    predictedBbox: null,
-    ...over,
-  };
+  return followState({ reacquireMode: "strict", bearingDeg: 0, depressionDeg: 20, ...over });
 }
 
 describe("nedToLatLon", () => {
@@ -74,11 +54,56 @@ describe("followTargetGeo (global minimap target)", () => {
     expect(geo?.tick).toEqual(nedToLatLon(ORIGIN, 12, 0));
   });
 
-  it("is dashed while coasting or searching and has no tick without a velocity", () => {
-    for (const phase of ["coasting", "searching"] as const) {
+  it("is dashed while the subject is sought and has no tick without a velocity", () => {
+    for (const phase of ["predicting", "repositioning", "searching"] as const) {
       const geo = followTargetGeo(follow({ phase, targetNed: [1, 1] }), ORIGIN);
       expect(geo?.dashed).toBe(true);
       expect(geo?.tick).toBeNull();
     }
+  });
+
+  it("carries the search ring, the predicted path and the vantage point only while sought", () => {
+    const recovery: Partial<FollowState> = {
+      targetNed: [10, 0],
+      searchArea: { centerNe: [10, 0], semiMajorM: 4, semiMinorM: 2, headingDeg: 90 },
+      predictedPathNe: [
+        [10, 0],
+        [10, 1],
+      ],
+      vantageNe: [3, -2],
+    };
+    const geo = followTargetGeo(follow({ ...recovery, phase: "searching" }), ORIGIN)!;
+    expect(geo.searchRing).toHaveLength(36);
+    expect(geo.searchRing![0]).toEqual(nedToLatLon(ORIGIN, 10, 4));
+    expect(geo.predictedPath).toEqual([nedToLatLon(ORIGIN, 10, 0), nedToLatLon(ORIGIN, 10, 1)]);
+    expect(geo.vantage).toEqual(nedToLatLon(ORIGIN, 3, -2));
+
+    const following = followTargetGeo(follow({ ...recovery, phase: "following" }), ORIGIN)!;
+    expect(following).toMatchObject({ searchRing: null, predictedPath: [], vantage: null });
+    expect(followTargetGeo(follow({ ...recovery, phase: "holding-await-operator" }), ORIGIN)).toBeNull();
+  });
+});
+
+describe("searchAreaRingNe", () => {
+  it("lays the major axis along the heading, clockwise from north", () => {
+    const close = (ring: Array<[number, number]>, want: Array<[number, number]>) =>
+      ring.forEach(([n, e], i) => {
+        expect(n).toBeCloseTo(want[i][0], 9);
+        expect(e).toBeCloseTo(want[i][1], 9);
+      });
+    const area = { centerNe: [1, 1] as [number, number], semiMajorM: 4, semiMinorM: 2 };
+    close(searchAreaRingNe({ ...area, headingDeg: 0 }, 4), [
+      [5, 1],
+      [1, 3],
+      [-3, 1],
+      [1, -1],
+    ]);
+    // Heading east: the major axis lies along east.
+    close(searchAreaRingNe({ ...area, headingDeg: 90 }, 4), [
+      [1, 5],
+      [-1, 1],
+      [1, -3],
+      [3, 1],
+    ]);
   });
 });

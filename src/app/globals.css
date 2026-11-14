@@ -950,6 +950,25 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-follow-sheet-slot { z-index: 35; display: flex; justify-content: center; pointer-events: none; }
 .ados-cockpit .fs-follow-sheet { position: static; transform: none; max-width: 100%; padding: 4px; pointer-events: auto; }
 .ados-cockpit .fs-follow-sheet .frp { position: static; transform: none; }
+/* The waiting-for-instructions prompt drops from the strip in the range sheet's place. */
+.ados-cockpit .fs-follow-prompt {
+  position: static; display: flex; flex-direction: column; gap: 8px; max-width: min(100%, 720px); padding: 10px;
+  border-color: var(--hud-crit); pointer-events: auto; outline: none;
+}
+.ados-cockpit .fs-follow-prompt:focus-visible { box-shadow: 0 0 0 2px var(--hud-crit); }
+.ados-cockpit .fs-follow-prompt-text { display: flex; flex-direction: column; gap: 2px; }
+.ados-cockpit .fs-follow-prompt-text b { color: var(--hud-crit); font-weight: 600; }
+.ados-cockpit .fs-follow-prompt-text span { color: var(--fs-text-dim); }
+.ados-cockpit .fs-follow-prompt-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ados-cockpit .fs-follow-prompt-actions button {
+  min-height: 48px; min-width: 96px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--fs-border); border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent);
+  color: var(--fs-text); font-weight: 600; cursor: pointer;
+}
+.ados-cockpit .fs-follow-prompt-actions button:hover { background: color-mix(in srgb, var(--fs-text) 12%, transparent); }
+.ados-cockpit .fs-follow-prompt-actions button:focus-visible { outline: 2px solid var(--fs-text); outline-offset: 2px; }
+.ados-cockpit .fs-follow-prompt-actions button.tone-crit { border-color: var(--hud-crit); color: var(--fs-text-crit); }
+.ados-cockpit .fs-follow-prompt-actions kbd { padding: 0 4px; border: 1px solid var(--fs-border); border-radius: 3px; font-family: var(--mono); font-size: 11px; color: var(--fs-text-dim); }
 .ados-cockpit .fs-video[data-zone="video"] [data-video-placeholder] { align-items: flex-start; padding-top: var(--fs-ph-top, 0px); }
 .ados-cockpit .fs-enable { padding: 10px; max-width: 240px; }
 
@@ -1058,9 +1077,9 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .tgt-layer .tgt-s { stroke: currentColor; stroke-width: var(--hud-target-stroke); }
 .tgt-layer .tgt[data-kind="TRACKED"] { color: var(--hud-primary); }
 .tgt-layer .tgt[data-kind="LOCKED"], .tgt-layer .tgt[data-kind="ACQUIRING"], .tgt-layer .tgt[data-kind="FOLLOWING"], .tgt-layer .tgt[data-kind="HOLDING"] { color: var(--hud-track); }
-.tgt-layer .tgt[data-kind="COASTING"], .tgt-layer .tgt[data-kind="SEARCHING"], .tgt-layer .tgt[data-kind="SEARCHING_OFFFRAME"] { color: var(--hud-coast); }
-.tgt-layer .tgt[data-kind="LOST"] { color: var(--hud-crit); animation: tgt-fade 900ms linear forwards; }
-.tgt-layer .tgt[data-kind="LOST"][data-reduced-motion] { animation: none; }
+.tgt-layer .tgt[data-kind="PREDICTING"], .tgt-layer .tgt[data-kind="SEARCHING"], .tgt-layer .tgt[data-kind="SEARCHING_OFFFRAME"] { color: var(--hud-coast); }
+.tgt-layer .tgt[data-kind="AWAIT_OPERATOR"] { color: var(--hud-crit); animation: tgt-fade 900ms linear forwards; }
+.tgt-layer .tgt[data-kind="AWAIT_OPERATOR"][data-reduced-motion] { animation: none; }
 .tgt-layer .tgt[data-kind="GT"] { color: var(--hud-gt); }
 /* Hairline (candidate, ground truth): 1 px with a 1 px outline. */
 .tgt-layer .tgt-hairline .tgt-o { stroke-width: calc(1px + 2 * var(--hud-target-outline)); }
@@ -1068,7 +1087,7 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .tgt-layer .tgt[data-kind="CANDIDATE"] .tgt-hairline { opacity: .7; }
 .tgt-layer .tgt[data-kind="GT"] .tgt-hairline path, .tgt-layer .tgt[data-kind="GT"] .tgt-hairline rect { stroke-dasharray: 1.5 3; stroke-linecap: round; }
 .tgt-layer .tgt[data-kind="GT"] .tgt-hairline .tgt-s { stroke-width: 1.5px; }
-.tgt-layer .tgt[data-kind="COASTING"] .tgt-brackets path { stroke-dasharray: 4 3; }
+.tgt-layer .tgt[data-kind="PREDICTING"] .tgt-brackets path { stroke-dasharray: 4 3; }
 .tgt-layer .tgt[data-uncertain] .tgt-brackets { opacity: .55; }
 /* Re-acquired: the new track's brackets settle from 1.15× to 1×. */
 .tgt-layer .tgt-snap { transform-box: fill-box; transform-origin: center; animation: tgt-snap 320ms ease-out both; }
@@ -1123,7 +1142,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 @keyframes tgt-snap { from { transform: scale(1.15); } to { transform: scale(1); } }
 @keyframes tgt-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .tgt-layer .tgt[data-kind="LOST"], .tgt-layer .tgt-snap, .tgt-layer .tgt-sweep { animation: none; }
+  .tgt-layer .tgt[data-kind="AWAIT_OPERATOR"], .tgt-layer .tgt-snap, .tgt-layer .tgt-sweep { animation: none; }
 }
 /* ══ end HUD target layer ══ */
 
@@ -1192,13 +1211,15 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 /* Compact minimap toggle, shown in place of the map on narrow cockpits. */
 .ados-cockpit .mmap-chip { display: none; }
 /* Follow target on the tile minimap: outlined diamond + 1 s velocity tick,
-   dashed in the coast colour while coasting or searching. */
+   dashed in the coast colour while the lock is lost and the subject is sought. */
 .ados-cockpit .mmap .mmap-tgt path { fill: none; }
 .ados-cockpit .mmap .mmap-tgt .halo { stroke: var(--hud-glass-strong); stroke-width: 3.5; }
 .ados-cockpit .mmap .mmap-tgt .mark { stroke: var(--hud-track); stroke-width: 1.5; }
 .ados-cockpit .mmap .mmap-tgt.coast .mark { stroke: var(--hud-coast); stroke-dasharray: 3 2; }
 .ados-cockpit .mmap .mmap-tgt-tick { stroke: var(--hud-track); }
 .ados-cockpit .mmap .mmap-tgt-tick.coast { stroke: var(--hud-coast); }
+.ados-cockpit .mmap .mmap-tgt-search { stroke: var(--hud-coast); fill: var(--hud-coast); }
+.ados-cockpit .mmap .mmap-tgt-predicted { stroke: var(--hud-coast); }
 
 /* local-frame map (cockpit minimap local mode and the node-detail Map tab);
    not cockpit-scoped, so it carries its own type rules. */

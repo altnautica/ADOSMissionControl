@@ -98,11 +98,11 @@ function kindColor(kind: string, s: TargetStyle): string {
     case "FOLLOWING":
     case "HOLDING":
       return s.track;
-    case "COASTING":
+    case "PREDICTING":
     case "SEARCHING":
     case "SEARCHING_OFFFRAME":
       return s.coast;
-    case "LOST":
+    case "AWAIT_OPERATOR":
       return s.crit;
     case "GT":
       return s.gt;
@@ -315,7 +315,7 @@ export function drawTargets(
     const mods = item.modifiers;
     const color = kindColor(item.kind, s);
     let alpha = opacity;
-    if (item.kind === "LOST" && item.lostProgress !== undefined && !scene.reducedMotion) {
+    if (item.kind === "AWAIT_OPERATOR" && item.lostProgress !== undefined && !scene.reducedMotion) {
       const p = item.lostProgress + (now - scene.at) / LOST_FADE_MS;
       alpha = opacity * Math.max(0, 1 - p);
       if (alpha > 0) animating = true;
@@ -367,7 +367,7 @@ export function drawTargets(
     if (p.brackets) {
       ctx.save();
       if (mods.uncertain) ctx.globalAlpha = alpha * 0.55;
-      if (item.kind === "COASTING") ctx.setLineDash(DASH_COAST);
+      if (item.kind === "PREDICTING") ctx.setLineDash(DASH_COAST);
       if (mods.reacquired && !scene.reducedMotion && box) {
         seen.add(l.key);
         let t0 = snapStart.get(l.key);

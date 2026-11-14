@@ -6,7 +6,12 @@
  * states the demo vehicle does not fly on its own reach the cockpit: an FC
  * failsafe (`fc_failsafe`, `failsafe_cause`), a tuning step (`owner:
  * "tuning"`, `setup_step`) and an aborted setup air run (`setup_abort`, a
- * `setup.blocker.aborted_<reason>` key).
+ * `setup.blocker.aborted_<reason>` key). One pin is not a pilot field: `follow`
+ * holds the demo follow-me report in one phase, with any `follow.state` fields
+ * (snake_case) laid over it, e.g. `pin({ armed: true, landed: false, owner:
+ * "skill", skill: { plugin_id: "com.altnautica.follow-me", skill_id:
+ * "follow-me", label: "Follow-Me" }, follow: { phase:
+ * "holding-await-operator", hold_reason: "search-exhausted" } })`.
  * @license GPL-3.0-only
  */
 
@@ -102,6 +107,22 @@ export class PilotPins {
   /** The wire state with the pins on top. */
   over(wire: Json): Json {
     return { ...wire, ...this.fields };
+  }
+
+  /** The pinned `follow` report, or null. */
+  follow(): Json | null {
+    const f = this.fields.follow;
+    return typeof f === "object" && f !== null && !Array.isArray(f) ? (f as Json) : null;
+  }
+
+  /** Lay `fields` over the current pins. */
+  patch(fields: Json): void {
+    this.fields = { ...this.fields, ...fields };
+  }
+
+  /** Drop the named pins. */
+  drop(...keys: string[]): void {
+    for (const k of keys) delete this.fields[k];
   }
 
   /** The FC flies a failsafe of its own (pinned, or on the wire). */

@@ -63,7 +63,7 @@ describe("FollowRangePanel", () => {
   it("shows all five rows at expanded with cues, latency and mode", () => {
     useNavStreamStore
       .getState()
-      .setFollow(DRONE, followState({ pipelineLatencyMs: 300, aglSource: "baro", phase: "coasting" }));
+      .setFollow(DRONE, followState({ pipelineLatencyMs: 300, aglSource: "baro", phase: "predicting" }));
     renderPanel("expanded");
     expect(rows()).toEqual(["range", "interval", "geometry", "cues"]);
     const geometry = document.querySelector("[data-row='geometry']")?.textContent ?? "";
@@ -85,7 +85,33 @@ describe("FollowRangePanel", () => {
     expect(screen.queryByText("BARO")).toBeNull();
     expect(document.body.textContent).not.toContain("AGL");
     expect(screen.getByText("Smart")).toBeTruthy();
-    expect(screen.getByText("Coasting").getAttribute("style")).toContain("--hud-coast");
+    expect(screen.getByText("Predicting").getAttribute("style")).toContain("--hud-coast");
+  });
+
+  it("shows the recovery line while the subject is sought, in the line and the sheet", () => {
+    useNavStreamStore.getState().setFollow(
+      DRONE,
+      followState({
+        phase: "searching",
+        reacquireRemainingS: 9.46,
+        searchStep: 1,
+        vantageState: "arrived",
+        occluder: { ne: [1, 2], kind: "wide" },
+      }),
+    );
+    const line = renderPanel("expanded", "line");
+    expect(screen.getByTestId("follow-recovery").textContent).toBe("10 s · step 2 · Arrived · Behind a wall or corner");
+    line.unmount();
+    renderPanel("expanded", "detail");
+    expect(rows()).toEqual(["range", "recovery", "interval", "geometry", "cues"]);
+    expect(screen.getByText("Searching").getAttribute("style")).toContain("--hud-coast");
+  });
+
+  it("reads Waiting for you in the critical colour while follow-me holds for the operator", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState({ phase: "holding-await-operator", holdReason: "search-exhausted" }));
+    renderPanel("expanded");
+    expect(screen.getByText("Waiting for you").getAttribute("style")).toContain("--hud-crit");
+    expect(screen.queryByTestId("follow-recovery")).toBeNull();
   });
 
   it("blanks every value and reads Stale when the report is older than 2 s", () => {

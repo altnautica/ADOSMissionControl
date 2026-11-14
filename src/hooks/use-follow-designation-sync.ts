@@ -4,9 +4,11 @@
  * @module use-follow-designation-sync
  * @description Mirrors follow-me's discrete events into the host designation.
  * `follow.reacquired` moves the designation to the re-acquired track (follow-me
- * has already designated it on the agent); `follow.lost` clears it. Each event
- * is applied once; an event already in the store when the hook mounts is not
- * replayed.
+ * has already designated it on the agent). A `follow.lost` that holds for the
+ * operator keeps it (searching again seeks the same subject; picking a target
+ * replaces it); any other `follow.lost`, and a `follow.stopped`, clear it.
+ * Each event is applied once; an event already in the store when the hook
+ * mounts is not replayed.
  *
  * @license GPL-3.0-only
  */
@@ -33,7 +35,8 @@ export function useFollowDesignationSync(droneId: string | null, fallbackCameraI
     const store = useSelectedTargetStore.getState();
     const prev = store.designated && store.designated.droneId === droneId ? store.designated : null;
 
-    if (event.data.topic === "follow.lost") {
+    if (event.data.topic === "follow.lost" || event.data.topic === "follow.stopped") {
+      if (event.data.topic === "follow.lost" && event.data.awaitingOperator) return;
       if (prev) store.release();
       return;
     }

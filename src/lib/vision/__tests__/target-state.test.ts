@@ -124,18 +124,35 @@ describe("resolveTargets — test vectors", () => {
     expect(r.items[0].reticle).toBe(true);
   });
 
-  it("T10 coasting at the predicted box", () => {
+  it("T10 predicting at the predicted box, with the search time left", () => {
     const f = follow({
-      phase: "coasting",
+      phase: "predicting",
       track_id: 12,
-      coast_remaining_s: 1.43,
+      reacquire_remaining_s: 18.43,
+      range_m: 9.6,
       predicted_bbox: { camera_id: "main", frame_w: 1280, frame_h: 720, x: 600, y: 300, w: 40, h: 98 },
     });
     const r = resolveTargets(input({ designated: designated12, follow: f, followAgeMs: 100 }));
     expect(r.items).toHaveLength(1);
-    expect(r.items[0].kind).toBe("COASTING");
+    expect(r.items[0].kind).toBe("PREDICTING");
     expect(r.items[0].rect).toEqual({ x: 600, y: 300, w: 40, h: 98 });
-    expect(r.items[0].topTag?.text).toBe("COAST 1.4 s");
+    expect(r.items[0].topTag).toEqual({ text: "PREDICTING 18.4 s", tone: "coast" });
+    expect(r.items[0].bottomTags.map((t) => t.tone)).toEqual(["coast"]);
+  });
+
+  it("T10 repositioning draws the ring on frame and the arrow off frame", () => {
+    const on = follow({
+      phase: "repositioning",
+      track_id: 12,
+      predicted_bbox: { camera_id: "main", frame_w: 1280, frame_h: 720, x: 600, y: 300, w: 40, h: 98 },
+    });
+    const r = resolveTargets(input({ follow: on, followAgeMs: 100 }));
+    expect(r.items[0].kind).toBe("SEARCHING");
+    expect(r.items[0].topTag?.text).toBe("MOVING TO LOOK");
+    const off = follow({ phase: "repositioning", track_id: 12, predicted_bbox: null, bearing_deg: 64 });
+    const o = resolveTargets(input({ follow: off, followAgeMs: 100, vehicleYawDeg: 10, cameraYawOffsetDeg: 0 }));
+    expect(o.items[0].kind).toBe("SEARCHING_OFFFRAME");
+    expect(o.items[0].topTag?.text).toBe("MOVING TO LOOK · 064°");
   });
 
   it("T11 searching off-frame", () => {
@@ -172,7 +189,7 @@ describe("resolveTargets — test vectors", () => {
   it("T12 re-acquired", () => {
     const r = resolveTargets(
       input(
-        { event: { data: { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8 }, ageMs: 100 } },
+        { event: { data: { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8, mahalanobis: 0.9, phase: "searching" }, ageMs: 100 } },
         [det({ trackId: 15 })],
       ),
     );
@@ -183,21 +200,21 @@ describe("resolveTargets — test vectors", () => {
     );
     const later = resolveTargets(
       input(
-        { event: { data: { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8 }, ageMs: 400 } },
+        { event: { data: { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8, mahalanobis: 0.9, phase: "searching" }, ageMs: 400 } },
         [det({ trackId: 15 })],
       ),
     );
     expect(later.items[0].modifiers.reacquired).toBe(false);
   });
 
-  it("T13 lost fades at the last rect and is removed after 900 ms", () => {
-    const f = follow({ phase: "lost", track_id: 12 });
+  it("T13 holding for the operator fades at the last rect and is removed after 900 ms", () => {
+    const f = follow({ phase: "holding-await-operator", track_id: 12, hold_reason: "awaiting-operator" });
     const last = { trackId: 12, rect: { x: 10, y: 20, w: 30, h: 40 }, frameW: 1280, frameH: 720, at: NOW - 300 };
     const r = resolveTargets(input({ designated: designated12, follow: f, followAgeMs: 100, lastFollowRect: last }));
     expect(r.items).toHaveLength(1);
-    expect(r.items[0].kind).toBe("LOST");
+    expect(r.items[0].kind).toBe("AWAIT_OPERATOR");
     expect(r.items[0].rect).toEqual(last.rect);
-    expect(r.items[0].topTag?.text).toBe("LOST");
+    expect(r.items[0].topTag).toEqual({ text: "WAITING FOR YOU", tone: "crit" });
     expect(r.items[0].lostProgress).toBeCloseTo(300 / 900);
     const gone = resolveTargets(
       input({ follow: f, followAgeMs: 100, lastFollowRect: { ...last, at: NOW - 1000 } }),
@@ -205,12 +222,11 @@ describe("resolveTargets — test vectors", () => {
     expect(gone.items).toHaveLength(0);
   });
 
-  it("T13 a follow.lost event alone also shows LOST", () => {
+  it("T13 a follow.lost event alone also shows the waiting mark", () => {
     const last = { trackId: 12, rect: { x: 10, y: 20, w: 30, h: 40 }, frameW: 1280, frameH: 720, at: NOW - 100 };
-    const r = resolveTargets(
-      input({ event: { data: { topic: "follow.lost", trackId: 12, reason: "lock_lost" }, ageMs: 100 }, lastFollowRect: last }),
-    );
-    expect(r.items.map((i) => i.kind)).toEqual(["LOST"]);
+    const lost = { topic: "follow.lost" as const, trackId: 12, reason: "lock_lost", awaitingOperator: true, holdNe: [3, 4] as [number, number] };
+    const r = resolveTargets(input({ event: { data: lost, ageMs: 100 }, lastFollowRect: last }));
+    expect(r.items.map((i) => i.kind)).toEqual(["AWAIT_OPERATOR"]);
   });
 
   it("T14 another camera's batch draws nothing", () => {

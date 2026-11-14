@@ -14,14 +14,27 @@
  * @license GPL-3.0-only
  */
 
+/** The follow phase. Once the lock is lost the follow is `predicting` (flying
+ * toward the predicted standoff), `repositioning` (flying to a vantage point
+ * the pilot chose), `searching` (sweeping from the vantage point, widening in
+ * steps), then `holding-await-operator` (stopped at a latched hover point,
+ * waiting for the operator). */
 export type FollowPhase =
   | "idle"
   | "acquiring"
   | "following"
-  | "coasting"
+  | "holding"
+  | "predicting"
+  | "repositioning"
   | "searching"
-  | "lost"
-  | "holding";
+  | "holding-await-operator";
+
+/** How the pilot's vantage point stands. */
+export type VantageState = "enroute" | "arrived" | "no-vantage";
+/** What hides the subject from the vantage: `narrow` (< 1.5 m wide: a trunk,
+ * a column) or `wide` (a wall, a corner). */
+export type OccluderKind = "narrow" | "wide";
+export type UncertainMode = "follow" | "hold";
 
 export type ReacquireMode = "strict" | "smart";
 export type AglSource = "rng" | "baro";
@@ -45,6 +58,20 @@ export interface PredictedBbox {
   h: number;
 }
 
+/** The search ellipse around the predicted subject position (map frame).
+ * `headingDeg` is the major axis as a bearing, clockwise from north. */
+export interface SearchArea {
+  centerNe: [number, number];
+  semiMajorM: number;
+  semiMinorM: number;
+  headingDeg: number;
+}
+
+export interface Occluder {
+  ne: [number, number];
+  kind: OccluderKind;
+}
+
 /** The follow-me `follow.state` payload. Absent fields are null. */
 export interface FollowState {
   active: boolean | null;
@@ -58,7 +85,26 @@ export interface FollowState {
   aglM: number | null;
   aglSource: AglSource | null;
   reacquireMode: ReacquireMode | null;
-  coastRemainingS: number | null;
+  /** Seconds left of the recovery's search budget. */
+  reacquireRemainingS: number | null;
+  searchBudgetS: number | null;
+  /** 0-based widening step while searching, else null. */
+  searchStep: number | null;
+  searchArea: SearchArea | null;
+  /** The predicted subject path while recovering (≤ 10 points, 0.5 s apart). */
+  predictedPathNe: Array<[number, number]> | null;
+  vantageNe: [number, number] | null;
+  vantageState: VantageState | null;
+  occluder: Occluder | null;
+  /** The latched hover point while holding for the operator. */
+  holdNe: [number, number] | null;
+  uncertainMode: UncertainMode | null;
+  predictiveSearch: boolean | null;
+  /** A surface writes `operatorResumeSeq + 1` to resume searching. */
+  operatorResumeSeq: number;
+  /** The subject has been faster than `speedLimitMps` for a while. */
+  outpaced: boolean;
+  speedLimitMps: number | null;
   pipelineLatencyMs: number | null;
   holdReason: string | null;
   bearingDeg: number | null;
@@ -69,8 +115,25 @@ export interface FollowState {
 }
 
 export type FollowEvent =
-  | { topic: "follow.reacquired"; trackId: number; similarity: number; gapS: number }
-  | { topic: "follow.lost"; trackId: number | null; reason: string };
+  | {
+      topic: "follow.reacquired";
+      trackId: number;
+      similarity: number;
+      gapS: number;
+      /** Position gate distance of the re-locked candidate, in sigmas. */
+      mahalanobis: number | null;
+      /** The phase the re-lock happened in. */
+      phase: FollowPhase | null;
+    }
+  | {
+      topic: "follow.lost";
+      trackId: number | null;
+      /** `lock_lost`, `search_exhausted` or `predictive_search_off`. */
+      reason: string;
+      awaitingOperator: boolean;
+      holdNe: [number, number] | null;
+    }
+  | { topic: "follow.stopped"; reason: string };
 
 /** The vision-nav `nav.state` payload. */
 export interface NavState {
@@ -177,17 +240,53 @@ function pair(v: unknown): [number, number] | null {
   return a === null || b === null ? null : [a, b];
 }
 
-const PHASES: readonly FollowPhase[] = [
+/** Every follow phase, in lifecycle order. */
+export const PHASES: readonly FollowPhase[] = [
   "idle",
   "acquiring",
   "following",
-  "coasting",
-  "searching",
-  "lost",
   "holding",
+  "predicting",
+  "repositioning",
+  "searching",
+  "holding-await-operator",
 ];
+/** The phases in which the lock is lost and the subject is being sought. */
+export const RECOVERY_PHASES: readonly FollowPhase[] = ["predicting", "repositioning", "searching"];
+
+export function isRecoveryPhase(phase: FollowPhase): boolean {
+  return RECOVERY_PHASES.includes(phase);
+}
+
 const HEALTH: readonly NavHealth[] = ["good", "degraded", "lost"];
 const CUE_KINDS: readonly RangeCueKind[] = ["ground", "box_height", "lidar"];
+
+function pairs(v: unknown): Array<[number, number]> | null {
+  if (!Array.isArray(v)) return null;
+  const out: Array<[number, number]> = [];
+  for (const p of v) {
+    const q = pair(p);
+    if (q) out.push(q);
+  }
+  return out.length > 0 ? out : null;
+}
+
+function searchArea(v: unknown): SearchArea | null {
+  if (!isRec(v)) return null;
+  const centerNe = pair(v.center_ne);
+  const semiMajorM = num(v.semi_major_m);
+  const semiMinorM = num(v.semi_minor_m);
+  const headingDeg = num(v.heading_deg);
+  if (centerNe === null || semiMajorM === null || semiMinorM === null || headingDeg === null) return null;
+  return { centerNe, semiMajorM, semiMinorM, headingDeg };
+}
+
+function occluder(v: unknown): Occluder | null {
+  if (!isRec(v)) return null;
+  const ne = pair(v.ne);
+  const kind = oneOf(v.kind, ["narrow", "wide"] as const);
+  return ne && kind ? { ne, kind } : null;
+}
 
 function predictedBbox(v: unknown): PredictedBbox | null {
   if (!isRec(v)) return null;
@@ -241,7 +340,20 @@ export function parseFollowState(raw: unknown): FollowState | null {
     aglM: num(raw.agl_m),
     aglSource: oneOf(raw.agl_source, ["rng", "baro"] as const),
     reacquireMode: oneOf(raw.reacquire_mode, ["strict", "smart"] as const),
-    coastRemainingS: num(raw.coast_remaining_s),
+    reacquireRemainingS: num(raw.reacquire_remaining_s),
+    searchBudgetS: num(raw.search_budget_s),
+    searchStep: int(raw.search_step),
+    searchArea: searchArea(raw.search_area),
+    predictedPathNe: pairs(raw.predicted_path_ne),
+    vantageNe: pair(raw.vantage_ne),
+    vantageState: oneOf(raw.vantage_state, ["enroute", "arrived", "no-vantage"] as const),
+    occluder: occluder(raw.occluder),
+    holdNe: pair(raw.hold_ne),
+    uncertainMode: oneOf(raw.uncertain_mode, ["follow", "hold"] as const),
+    predictiveSearch: typeof raw.predictive_search === "boolean" ? raw.predictive_search : null,
+    operatorResumeSeq: Math.max(0, int(raw.operator_resume_seq) ?? 0),
+    outpaced: raw.outpaced === true,
+    speedLimitMps: num(raw.speed_limit_mps),
     pipelineLatencyMs: num(raw.pipeline_latency_ms),
     holdReason: str(raw.hold_reason),
     bearingDeg: num(raw.bearing_deg),
@@ -252,7 +364,8 @@ export function parseFollowState(raw: unknown): FollowState | null {
   };
 }
 
-/** Parse a `follow.reacquired` / `follow.lost` event payload. */
+/** Parse a `follow.reacquired` / `follow.lost` / `follow.stopped` event
+ * payload. */
 export function parseFollowEvent(topic: unknown, raw: unknown): FollowEvent | null {
   if (!isRec(raw)) return null;
   if (topic === "follow.reacquired") {
@@ -263,10 +376,21 @@ export function parseFollowEvent(topic: unknown, raw: unknown): FollowEvent | nu
       trackId,
       similarity: num(raw.similarity) ?? 0,
       gapS: num(raw.gap_s) ?? 0,
+      mahalanobis: num(raw.mahalanobis),
+      phase: oneOf(raw.phase, PHASES),
     };
   }
   if (topic === "follow.lost") {
-    return { topic, trackId: int(raw.track_id), reason: str(raw.reason) ?? "lock_lost" };
+    return {
+      topic,
+      trackId: int(raw.track_id),
+      reason: str(raw.reason) ?? "lock_lost",
+      awaitingOperator: raw.awaiting_operator === true,
+      holdNe: pair(raw.hold_ne),
+    };
+  }
+  if (topic === "follow.stopped") {
+    return { topic, reason: str(raw.reason) ?? "revoked" };
   }
   return null;
 }

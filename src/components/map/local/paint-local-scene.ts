@@ -4,7 +4,9 @@
  * comes from the scene; this file only owns line widths, dash patterns and
  * the order of the layers. Colours are the resolved `--hud-*` values; the
  * pilot's planned path takes `tokens.json` `state.goto`, `state.blocked`
- * while the pilot reports blocked.
+ * while the pilot reports blocked. While the follow target is sought, its
+ * search ellipse (faint fill, dashed ring), the predicted path (fine dash)
+ * and the vantage point (a small diamond) draw in the coast colour under it.
  *
  * @license GPL-3.0-only
  */
@@ -39,6 +41,9 @@ const DIAMOND_HALF_PX = 5;
 const ARROW_PX = 7;
 const GOAL_RING_PX = 5;
 const PLAN_DASH: number[] = [5, 4];
+const SEARCH_DASH: number[] = [4, 3];
+const PREDICTED_DASH: number[] = [2, 3];
+const VANTAGE_HALF_PX = 4;
 
 /** The pilot's planned path, dashed, and a ring on its goal. */
 export function paintPlan(ctx: CanvasRenderingContext2D, plan: NonNullable<LocalScene["plan"]>, c: LocalSceneColours): void {
@@ -68,7 +73,51 @@ export function paintPlan(ctx: CanvasRenderingContext2D, plan: NonNullable<Local
   }
 }
 
+/** The follow recovery marks: the search ellipse, the predicted subject path
+ * and the vantage point, all in the coast colour. */
+export function paintRecovery(ctx: CanvasRenderingContext2D, t: NonNullable<LocalScene["target"]>, c: LocalSceneColours): void {
+  const a = t.searchArea;
+  if (a) {
+    ctx.beginPath();
+    ctx.ellipse(a.sx, a.sy, Math.max(0, a.rxPx), Math.max(0, a.ryPx), a.rotationRad, 0, Math.PI * 2);
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = c.coast;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash(SEARCH_DASH);
+    ctx.strokeStyle = c.coast;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  if (t.predictedPath.length >= 2) {
+    ctx.setLineDash(PREDICTED_DASH);
+    ctx.strokeStyle = c.coast;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(t.predictedPath[0][0], t.predictedPath[0][1]);
+    for (let i = 1; i < t.predictedPath.length; i++) ctx.lineTo(t.predictedPath[i][0], t.predictedPath[i][1]);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  if (t.vantage) {
+    const { sx, sy } = t.vantage;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - VANTAGE_HALF_PX);
+    ctx.lineTo(sx + VANTAGE_HALF_PX, sy);
+    ctx.lineTo(sx, sy + VANTAGE_HALF_PX);
+    ctx.lineTo(sx - VANTAGE_HALF_PX, sy);
+    ctx.closePath();
+    ctx.strokeStyle = c.glass;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.strokeStyle = c.coast;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
 function paintTarget(ctx: CanvasRenderingContext2D, t: NonNullable<LocalScene["target"]>, c: LocalSceneColours): void {
+  paintRecovery(ctx, t, c);
   const colour = t.dashed ? c.coast : c.track;
   ctx.setLineDash(t.dashed ? [3, 2] : []);
   if (t.tickX !== null && t.tickY !== null) {

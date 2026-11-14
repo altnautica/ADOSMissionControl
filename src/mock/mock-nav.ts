@@ -33,11 +33,22 @@ import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { getMockEkfSourceSet } from "./mock-ekf-source";
-import { extnavHealthAt, scriptFollow } from "./mock-hud-script";
+import { applyFollowPin, extnavHealthAt, pinnedCycleS, pinnedFollowPhase, scriptFollow } from "./mock-hud-script";
 import { demoLoopAt, scanRanges, yawMatrix } from "./mock-nav-world";
 import { OccupancyReveal, type GreyPngEncoder } from "./mock-occupancy";
 import type { DemoPositionUnverified } from "./mock-pilot-wire";
 import { MockLayerStream } from "./mock-layers";
+
+/**
+ * The HUD script's clock: `naturalS` into the cycle, or, while a demo pin
+ * holds the follow in one phase (`pin({ follow: { phase } })`), the moment of
+ * the cycle that shows that phase, so the detections, the follow report and
+ * the nav health tell the pinned state together.
+ */
+export function demoHudSeconds(naturalS: number): number {
+  const phase = pinnedFollowPhase(mockPilot.followPin());
+  return phase ? pinnedCycleS(phase) : naturalS;
+}
 
 const FOLLOW_MS = 200;
 const NAV_MS = 500;
@@ -216,15 +227,18 @@ export class MockNavStream {
     const mode = usePluginConfigCache.getState().values[pluginConfigKey(droneId, FOLLOW_ME_PLUGIN_ID)]
       ?.reacquire_mode;
     const reacquireMode: ReacquireMode = mode === "strict" ? "strict" : "smart";
-    useNavStreamStore.getState().setFollow(
-      droneId,
-      scriptFollow(this.cycleS(), {
-        cameraId: demoActiveCameraId(droneId),
-        vehicleYawDeg: yaw,
-        reacquireMode,
-        droneNed: [loop.x, loop.y],
-      }),
-    );
+    const pin = mockPilot.followPin();
+    const pinnedPhase = pinnedFollowPhase(pin);
+    const ctx = {
+      cameraId: demoActiveCameraId(droneId),
+      vehicleYawDeg: yaw,
+      reacquireMode,
+      droneNed: [loop.x, loop.y] as [number, number],
+    };
+    const follow = pinnedPhase
+      ? scriptFollow(pinnedCycleS(pinnedPhase), ctx, pinnedPhase)
+      : scriptFollow(this.cycleS(), ctx);
+    useNavStreamStore.getState().setFollow(droneId, pin ? applyFollowPin(follow, pin) : follow);
   }
 
   private tickNav(): void {
@@ -233,7 +247,12 @@ export class MockNavStream {
       .getState()
       .setNav(
         this.droneId,
-        demoNavState(this.cycleS(), getMockEkfSourceSet(), this.minObstacleM, mockPilot.positionUnverified()),
+        demoNavState(
+          demoHudSeconds(this.cycleS()),
+          getMockEkfSourceSet(),
+          this.minObstacleM,
+          mockPilot.positionUnverified(),
+        ),
       );
   }
 
@@ -245,7 +264,7 @@ export class MockNavStream {
     store.setPose(droneId, {
       R: yawMatrix(loop.yawRad),
       t: [loop.x, loop.y, loop.z],
-      health: extnavHealthAt(this.cycleS()),
+      health: extnavHealthAt(demoHudSeconds(this.cycleS())),
       frame: "map_ned",
       source: "slam",
     });
