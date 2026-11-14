@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mockDetectionStream } from "@/mock/mock-detections";
 import { mockPilot } from "@/mock/mock-pilot";
-import { REACQUIRED_TRACK, TARGET_TRACK } from "@/mock/mock-hud-script";
+import { REACQUIRED_MAHALANOBIS, REACQUIRED_TRACK, TARGET_TRACK } from "@/mock/mock-hud-script";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
@@ -114,11 +114,20 @@ describe("mock detection stream", () => {
     designated = useSelectedTargetStore.getState().designated;
     expect(designated?.trackId).toBe(REACQUIRED_TRACK);
     const event = useNavStreamStore.getState().byDrone["drone-1"]?.followEvent?.data;
-    expect(event).toEqual({ topic: "follow.reacquired", trackId: 15, similarity: 0.86, gapS: 1.8 });
+    expect(event).toEqual({
+      topic: "follow.reacquired",
+      trackId: 15,
+      similarity: 0.86,
+      gapS: 1.8,
+      mahalanobis: REACQUIRED_MAHALANOBIS,
+      phase: "searching",
+    });
 
-    vi.advanceTimersByTime(4_000); // 28.1 s: lost
+    vi.advanceTimersByTime(4_000); // 28.1 s: the search ran out, holding for the operator
     expect(useNavStreamStore.getState().byDrone["drone-1"]?.followEvent?.data.topic).toBe("follow.lost");
-    expect(useNavStreamStore.getState().byDrone["drone-1"]?.follow?.data.phase).toBe("lost");
+    expect(useNavStreamStore.getState().byDrone["drone-1"]?.follow?.data.phase).toBe("holding-await-operator");
+    // The wait keeps the designation, so searching again seeks the same subject.
+    expect(useSelectedTargetStore.getState().designated?.trackId).toBe(REACQUIRED_TRACK);
 
     vi.advanceTimersByTime(4_000); // 32.1 s: loop restarts
     expect(useSelectedTargetStore.getState().designated).toBeNull();
