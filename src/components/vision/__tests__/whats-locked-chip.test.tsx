@@ -210,6 +210,14 @@ describe("WhatsLockedChip", () => {
     expect(word.getAttribute("style")).toContain("var(--hud-crit)");
   });
 
+  it("names a follow-me hold reason by its spec label", () => {
+    seedBatch(7, "locked");
+    designateTrack7();
+    setFollow({ phase: "holding", track_id: 7, hold_reason: "camera-lost" });
+    render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText(specString("lock.holding", { label: specString("follow.hold_reason.camera-lost") }))).toBeTruthy();
+  });
+
   it("ignores a stale follow state", () => {
     seedBatch(7, "locked");
     designateTrack7();

@@ -26,6 +26,7 @@
 import { mockPilot } from "./mock-pilot";
 import { demoNavStreamBlockedAt } from "./demo-link";
 import { NAV_STATUS_POLL_MS, NAV_STREAM_FALLBACK_MS } from "@/lib/agent/nav-stream";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import type { MapStatus, NavHealth, NavState, ReacquireMode } from "@/lib/hud/nav-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
@@ -33,7 +34,15 @@ import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { getMockEkfSourceSet } from "./mock-ekf-source";
-import { applyFollowPin, extnavHealthAt, pinnedCycleS, pinnedFollowPhase, scriptFollow } from "./mock-hud-script";
+import {
+  applyFollowPin,
+  extnavHealthAt,
+  followPhaseAt,
+  pinnedCycleS,
+  pinnedFollowPhase,
+  scriptFollow,
+  type FollowContext,
+} from "./mock-hud-script";
 import { demoLoopAt, scanRanges, yawMatrix } from "./mock-nav-world";
 import { OccupancyReveal, type GreyPngEncoder } from "./mock-occupancy";
 import type { DemoPositionUnverified } from "./mock-pilot-wire";
@@ -140,6 +149,8 @@ export class MockNavStream {
   private occupancy: OccupancyReveal | null = null;
   private minObstacleM: number | null = null;
   private readonly layers = new MockLayerStream(demoActiveCameraId);
+  /** Where the current wait for the operator latched its hold, or null. */
+  private holdNe: [number, number] | null = null;
 
   constructor(private readonly encoder?: GreyPngEncoder) {}
 
@@ -224,16 +235,32 @@ export class MockNavStream {
     }
     const loop = demoLoopAt(Date.now() / 1000);
     const yaw = useTelemetryStore.getState().attitude.latest()?.yaw ?? (loop.yawRad * 180) / Math.PI;
-    const mode = usePluginConfigCache.getState().values[pluginConfigKey(droneId, FOLLOW_ME_PLUGIN_ID)]
-      ?.reacquire_mode;
-    const reacquireMode: ReacquireMode = mode === "strict" ? "strict" : "smart";
+    const values = usePluginConfigCache.getState().values;
+    // The cockpit's quick settings record under the node id, the plugin
+    // config writer's operator writes under the device id.
+    const cfg = values[pluginConfigKey(droneId, FOLLOW_ME_PLUGIN_ID)];
+    const deviceCfg = values[pluginConfigKey(deviceIdFromNodeId(droneId) ?? droneId, FOLLOW_ME_PLUGIN_ID)];
+    const reacquireMode: ReacquireMode = cfg?.reacquire_mode === "strict" ? "strict" : "smart";
+    // A search resumed from the scripted wait lasts until the cycle leaves it.
+    if (mockPilot.hasResumedSearch() && followPhaseAt(this.cycleS()) !== "holding-await-operator") {
+      mockPilot.endResumedSearch();
+    }
     const pin = mockPilot.followPin();
     const pinnedPhase = pinnedFollowPhase(pin);
-    const ctx = {
+    const phase = pinnedPhase ?? followPhaseAt(this.cycleS());
+    // The hold for the operator latches where it began.
+    const droneNed: [number, number] = [loop.x, loop.y];
+    if (phase !== "holding-await-operator") this.holdNe = null;
+    else this.holdNe ??= droneNed;
+    const ctx: FollowContext = {
       cameraId: demoActiveCameraId(droneId),
       vehicleYawDeg: yaw,
       reacquireMode,
-      droneNed: [loop.x, loop.y] as [number, number],
+      droneNed,
+      uncertainMode: cfg?.uncertain_mode === "hold" ? "hold" : "follow",
+      predictiveSearch: cfg?.predictive_search !== false,
+      holdNe: this.holdNe,
+      operatorResumeSeq: typeof deviceCfg?.operator_resume_seq === "number" ? deviceCfg.operator_resume_seq : 0,
     };
     const follow = pinnedPhase
       ? scriptFollow(pinnedCycleS(pinnedPhase), ctx, pinnedPhase)

@@ -45,7 +45,7 @@ export type FollowMeHoldReason =
   | "inactive"
   | "no-lock"
   | "lock-uncertain"
-  | "lock-lost"
+  | "awaiting-operator"
   | "pose-stale"
   | "fc-stale"
   | "fc-disarmed"
@@ -109,10 +109,9 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
   switch (follow.phase) {
     case "idle":
       return held("no-lock", null, null);
-    // The lock is lost and follow-me holds for the operator; the published
-    // tab names that a lost subject.
+    // The lock is lost and follow-me holds for the operator.
     case "holding-await-operator":
-      return held("lock-lost", "lost", null);
+      return held("awaiting-operator", "lost", null);
     // Designated but not yet locked, or seeking the subject from the vantage
     // point.
     case "acquiring":

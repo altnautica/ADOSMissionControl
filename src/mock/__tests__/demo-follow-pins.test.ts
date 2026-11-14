@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { sendFollowSetting } from "@/hooks/use-follow-setting";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import { followPrompt } from "@/lib/hud/follow-prompt";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
@@ -90,5 +90,50 @@ describe("demo follow pins", () => {
     await writePluginConfigValue({ droneId: device, pluginId: FOLLOW_ME_PLUGIN_ID, key: "active", value: false });
     vi.advanceTimersByTime(400);
     expect(follow()).toBeUndefined();
+  });
+
+  it("waits for the operator after a lost camera, through the console handle", () => {
+    window.__adosDemoPilot!.pin({ ...FOLLOWING, follow: { phase: "holding-await-operator", hold_reason: "camera-lost" } });
+    vi.advanceTimersByTime(400);
+    const f = follow()!;
+    expect(f).toMatchObject({ phase: "holding-await-operator", holdReason: "camera-lost" });
+    expect(f.holdNe).not.toBeNull();
+    expect(followPrompt(f)).toMatchObject({
+      bodyKey: "follow.prompt.await_body.camera_lost",
+      actions: ["redesignate", "rth", "land", "stop"],
+    });
+  });
+
+  it("searches again from the scripted wait, with no pin, until the cycle moves on", async () => {
+    window.__adosDemoPilot!.pin(FOLLOWING);
+    vi.advanceTimersByTime(29_000);
+    expect(follow()?.phase).toBe("holding-await-operator");
+    await writePluginConfigValue({ droneId: "demo", pluginId: FOLLOW_ME_PLUGIN_ID, key: "operator_resume_seq", value: 1 });
+    vi.advanceTimersByTime(400);
+    expect(follow()).toMatchObject({ phase: "searching", operatorResumeSeq: 1, holdReason: null });
+    // The next loop starts afresh.
+    vi.advanceTimersByTime(4_000);
+    expect(mockPilot.followPin()).toBeNull();
+    expect(follow()?.phase).toBe("idle");
+  });
+
+  it("latches the hold point for the whole wait", () => {
+    window.__adosDemoPilot!.pin(FOLLOWING);
+    vi.advanceTimersByTime(28_400);
+    const first = follow()!;
+    expect(first.phase).toBe("holding-await-operator");
+    vi.advanceTimersByTime(3_000);
+    expect(follow()!.phase).toBe("holding-await-operator");
+    expect(follow()!.holdNe).toEqual(first.holdNe);
+  });
+
+  it("echoes the cockpit's when-unsure and predictive search writes", async () => {
+    window.__adosDemoPilot!.pin(FOLLOWING);
+    vi.advanceTimersByTime(12_600);
+    expect(follow()).toMatchObject({ uncertainMode: "follow", predictiveSearch: true });
+    await sendFollowSetting(DRONE, "uncertain_mode", "hold");
+    await sendFollowSetting(DRONE, "predictive_search", false);
+    vi.advanceTimersByTime(400);
+    expect(follow()).toMatchObject({ uncertainMode: "hold", predictiveSearch: false });
   });
 });

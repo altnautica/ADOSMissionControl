@@ -26,7 +26,7 @@
 import { useEffect, useState } from "react";
 import { Crosshair, X } from "lucide-react";
 
-import { specString } from "@/lib/cockpit/spec-strings";
+import { hasSpecString, specString } from "@/lib/cockpit/spec-strings";
 import { useCameraDetectionBatch } from "@/hooks/use-detection-batch";
 import { useFollowStateEntry } from "@/hooks/use-nav-feed";
 import { useClockTick } from "@/lib/agent/freshness";
@@ -73,6 +73,10 @@ function phaseWord(f: FollowState): string | null {
       return left !== null ? `${word} ${Math.max(0, Math.ceil(left))} s` : word;
     }
     case "holding": {
+      // A follow-me hold reason reads its spec label ("Camera lost"); an
+      // agent `HOLD_*` code reads as its words.
+      const key = `follow.hold_reason.${f.holdReason}`;
+      if (f.holdReason && hasSpecString(key)) return specString("lock.holding", { label: specString(key) });
       const reason = holdReasonWord(f.holdReason);
       return reason
         ? specString("lock.holding", { label: reason.charAt(0) + reason.slice(1).toLowerCase() })

@@ -22,6 +22,7 @@ import { useClockTick } from "@/lib/agent/freshness";
 import { useFollowStateEntry } from "@/hooks/use-nav-feed";
 import { useHudCopy } from "@/hooks/use-hud-copy";
 import { isTimestampFresh } from "@/hooks/use-telemetry-freshness";
+import { isRecoveryPhase } from "@/lib/hud/nav-types";
 import { pushGhostSample, type GhostSample } from "@/lib/vision/target-geometry";
 import {
   LOST_FADE_MS,
@@ -118,8 +119,9 @@ export function useResolvedTargets(i: ResolvedTargetsInput): ResolvedTargetsResu
       ? { cameraId: designatedAll.cameraId, trackId: designatedAll.trackId, bbox: designatedAll.bbox }
       : null;
 
-  // Yaw only matters for the off-frame arrow; skip the store read otherwise.
-  const yaw = follow?.data.phase === "searching" && selected ? vehicleYawDeg() : null;
+  // Yaw only matters for the off-frame mark while the subject is sought
+  // (moving to look or searching); skip the store read otherwise.
+  const yaw = follow && isRecoveryPhase(follow.data.phase) && selected ? vehicleYawDeg() : null;
 
   const resolved = resolveTargets({
     batch: freshBatch

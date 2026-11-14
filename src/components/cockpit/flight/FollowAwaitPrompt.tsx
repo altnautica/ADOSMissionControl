@@ -7,13 +7,18 @@
  * under the follow strip names why and offers the actions the shared
  * `followPrompt` rule allows: search again, pick a target, return home, land,
  * stop following. Modal-free, so the video and the columns stay live. It
- * takes focus when it appears (unless a text field has it) and answers R, P,
- * H, L and X while focused. A stale follow report shows no prompt.
+ * never takes focus on its own: R, P, H, L and X answer only once the
+ * operator has put focus inside it (a click, Tab), so a key pressed anywhere
+ * else reaches its own binding untouched. Return home and land run the same
+ * bound built-ins as the left column (hold to confirm, fresh link, armed).
+ * Pick a target keeps the designation until the new pick replaces it, so
+ * the lock chip keeps reading "Waiting for you". A stale follow report shows
+ * no prompt.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 import { useToast } from "@/components/ui/toast";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
@@ -29,15 +34,6 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { followPrompt, type FollowPromptAction } from "@/lib/hud/follow-prompt";
 import { activateBound, buildSkillContext } from "@/lib/skills";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
-import { useSelectedTargetStore } from "@/stores/selected-target-store";
-
-function editableFocused(): boolean {
-  const el = document.activeElement;
-  return (
-    el instanceof HTMLElement &&
-    (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")
-  );
-}
 
 /** The live transports for a drone's prompt actions. */
 export function followActionDeps(droneId: string, seq: number, onPick: () => void): FollowActionDeps {
@@ -50,10 +46,7 @@ export function followActionDeps(droneId: string, seq: number, onPick: () => voi
         value,
       }),
     flight: (skillId) => activateBound(skillId, buildSkillContext(droneId)),
-    startPick: () => {
-      useSelectedTargetStore.getState().release();
-      onPick();
-    },
+    startPick: onPick,
     seq,
   };
 }
@@ -61,15 +54,9 @@ export function followActionDeps(droneId: string, seq: number, onPick: () => voi
 export function FollowAwaitPrompt({ droneId }: { droneId: string }) {
   const { follow, stale } = useFollowingMode(droneId);
   const { toast } = useToast();
-  const ref = useRef<HTMLDivElement>(null);
 
   const prompt = follow && !stale ? followPrompt(follow) : null;
   const seq = follow?.operatorResumeSeq ?? 0;
-  const shown = prompt !== null;
-
-  useEffect(() => {
-    if (shown && !editableFocused()) ref.current?.focus();
-  }, [shown]);
 
   if (!prompt) return null;
 
@@ -91,7 +78,6 @@ export function FollowAwaitPrompt({ droneId }: { droneId: string }) {
 
   return (
     <div
-      ref={ref}
       role="alert"
       aria-labelledby="follow-prompt-title"
       tabIndex={0}

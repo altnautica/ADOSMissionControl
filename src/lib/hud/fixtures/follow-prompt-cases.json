@@ -44,5 +44,14 @@
       "bodyKey": "follow.prompt.await_body.no_range",
       "actions": ["redesignate", "rth", "land", "stop"]
     }
+  },
+  {
+    "name": "the camera stopped while waiting: the prompt stays, no resume",
+    "state": { "active": true, "phase": "holding-await-operator", "hold_reason": "camera-lost", "reacquire_mode": "smart", "hold_ne": [3, 4] },
+    "expect": {
+      "titleKey": "follow.prompt.await_title",
+      "bodyKey": "follow.prompt.await_body.camera_lost",
+      "actions": ["redesignate", "rth", "land", "stop"]
+    }
   }
 ]

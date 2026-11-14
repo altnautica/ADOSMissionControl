@@ -100,6 +100,8 @@ export class MockPilot {
   private log: { at: number; frame: PilotOutboundFrame }[] = [];
   /** Pilot frames held back by the demo `freeze` handle. */
   private framesFrozen = false;
+  /** The follow pin is the search a resume started from the scripted wait. */
+  private resumedSearch = false;
 
   start(droneId: string): void {
     this.stop();
@@ -109,6 +111,7 @@ export class MockPilot {
     this.stall.reset();
     this.lastInputAt = 0;
     this.framesFrozen = false;
+    this.resumedSearch = false;
     const device = deviceIdFromNodeId(droneId) ?? droneId;
     const cfg = DEMO_DRONES.find((d) => d.id === device);
     this.driver.reset(cfg ? { lat: cfg.homeLat, lon: cfg.homeLon } : null);
@@ -153,6 +156,7 @@ export class MockPilot {
   pin(fields: Json): void {
     this.pins.set(fields);
     this.stall.pinned(fields, Date.now());
+    this.resumedSearch = false;
     this.publish();
   }
 
@@ -161,12 +165,26 @@ export class MockPilot {
     return this.pins.follow();
   }
 
+  /** Drop the search a resume started from the scripted wait, once the cycle
+   * has left that wait (the next loop or a new designation takes over). */
+  endResumedSearch(): void {
+    if (!this.resumedSearch) return;
+    this.resumedSearch = false;
+    this.pins.drop("follow");
+  }
+
+  /** Whether the follow pin is a resumed search from the scripted wait. */
+  hasResumedSearch(): boolean {
+    return this.resumedSearch;
+  }
+
   /**
    * A plugin config write in the demo. Turning Follow-Me's `active` flag on
    * hands the armed pilot to the skill (owner `skill`), as an agent does;
    * turning it off hands it back to the pilot and ends a pinned follow
-   * report. A pinned follow waiting for the operator answers
-   * `operator_resume_seq` by searching again.
+   * report. A follow waiting for the operator answers `operator_resume_seq`
+   * by searching again: a pinned wait turns its pin to searching; the
+   * scripted wait (no pin) searches until the cycle leaves its wait.
    */
   pluginConfig(deviceId: string, pluginId: string, key: string, value: unknown): void {
     const own = this.droneId ? (deviceIdFromNodeId(this.droneId) ?? this.droneId) : null;
@@ -175,6 +193,9 @@ export class MockPilot {
     if (key === "operator_resume_seq") {
       if (pinned?.phase === "holding-await-operator") {
         this.pins.patch({ follow: { ...pinned, phase: "searching", hold_reason: null, operator_resume_seq: value } });
+      } else if (!pinned) {
+        this.pins.patch({ follow: { phase: "searching", hold_reason: null, operator_resume_seq: value } });
+        this.resumedSearch = true;
       }
       return;
     }
@@ -188,6 +209,7 @@ export class MockPilot {
       if (this.wire.owner === "skill") this.wire.owner = "pilot";
       this.wire.skill = null;
       if (pinned) this.pins.drop("follow", "owner", "skill");
+      this.resumedSearch = false;
       host.pushPluginSkillState(own, "follow.state", { state: "idle" });
     }
     this.publish();

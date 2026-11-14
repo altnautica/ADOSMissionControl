@@ -36,6 +36,7 @@ import {
 } from "./band/cockpit-alert-rules";
 import { useHudCopy } from "@/hooks/use-hud-copy";
 import { reacquiredToast } from "@/lib/vision/target-format";
+import { isRecoveryPhase, type FollowState, type OccluderKind } from "@/lib/hud/nav-types";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { specString } from "@/lib/cockpit/spec-strings";
 
@@ -98,12 +99,34 @@ function useFcTexts(droneId: string) {
 /** How long the re-acquired advisory stays up. */
 export const REACQUIRED_ADVISORY_MS = 4000;
 
+interface RecoveryOccluder {
+  recovering: boolean;
+  kind: OccluderKind | null;
+}
+
+/** The occluder the current recovery last reported: set while the subject is
+ *  sought, reset when a new recovery starts or follow goes idle, kept through
+ *  the re-acquisition that ends the recovery. */
+function foldOccluder(prev: RecoveryOccluder, f: FollowState | null): RecoveryOccluder {
+  if (!f) return prev;
+  const recovering = isRecoveryPhase(f.phase);
+  let kind = recovering && !prev.recovering ? null : prev.kind;
+  if (recovering && f.occluder) kind = f.occluder.kind;
+  if (f.phase === "idle") kind = null;
+  return { recovering, kind };
+}
+
 /** The re-acquired advisory text while the latest `follow.reacquired` event
- * is under 4 s old; shown once per event, never re-raised. */
+ * is under 4 s old; shown once per event, never re-raised. It names what hid
+ * the subject when the recovery reported it. */
 function useReacquiredAdvisory(droneId: string): string | null {
   const event = useNavStreamStore((s) => s.byDrone[droneId]?.followEvent);
+  const follow = useNavStreamStore((s) => s.byDrone[droneId]?.follow?.data ?? null);
   const copy = useHudCopy();
   const [now, setNow] = useState(Date.now);
+  const [occluder, setOccluder] = useState<RecoveryOccluder>({ recovering: false, kind: null });
+  const latest = foldOccluder(occluder, follow);
+  if (latest.recovering !== occluder.recovering || latest.kind !== occluder.kind) setOccluder(latest);
   const until =
     event && event.data.topic === "follow.reacquired" ? event.receivedAt + REACQUIRED_ADVISORY_MS : 0;
   // Re-render when the advisory expires; until then the event's own arrival
@@ -115,7 +138,9 @@ function useReacquiredAdvisory(droneId: string): string | null {
   }, [until]);
   if (!event || event.data.topic !== "follow.reacquired") return null;
   const age = Math.max(now, event.receivedAt) - event.receivedAt;
-  return age < REACQUIRED_ADVISORY_MS ? reacquiredToast(event.data, copy) : null;
+  if (age >= REACQUIRED_ADVISORY_MS) return null;
+  const text = reacquiredToast(event.data, copy);
+  return latest.kind ? `${text} · ${specString(`follow.occluder.${latest.kind}`)}` : text;
 }
 
 /**

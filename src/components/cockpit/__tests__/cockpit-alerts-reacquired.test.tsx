@@ -13,6 +13,7 @@ import messages from "../../../../locales/en.json";
 import { CockpitAlerts, REACQUIRED_ADVISORY_MS } from "@/components/cockpit/CockpitAlerts";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { followState } from "./follow-fixtures";
 
 const DRONE = "node:d1";
 
@@ -52,6 +53,22 @@ describe("CockpitAlerts re-acquired advisory", () => {
       vi.advanceTimersByTime(REACQUIRED_ADVISORY_MS + 50);
     });
     expect(advisory(container)).toBeNull();
+  });
+
+  it("names what hid the subject during the recovery", () => {
+    const { container } = renderAlerts();
+    act(() => {
+      useNavStreamStore.getState().setFollow(DRONE, followState({ phase: "searching", occluder: { ne: [1, 2], kind: "narrow" } }));
+    });
+    act(() => {
+      useNavStreamStore.getState().setFollow(DRONE, followState({ phase: "following", trackId: 15 }));
+      useNavStreamStore
+        .getState()
+        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 15, similarity: 0.862, gapS: 1.8, mahalanobis: null, phase: null });
+    });
+    expect(advisory(container)!.textContent).toContain(
+      `${specString("follow.reacquired_toast", { id: 15, sim: "0.86", gap: "1.8" })} · ${specString("follow.occluder.narrow")}`,
+    );
   });
 
   it("does not raise an advisory for a lost event or an old event", () => {

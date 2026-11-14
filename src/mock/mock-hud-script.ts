@@ -7,12 +7,12 @@
  *   candidate → tracked → locked → following → predicting → searching →
  *   re-acquired → awaiting (holding for the operator) → (loop)
  *
- * The recovery (predicting, then searching from the vantage point) spends an
- * 8 s search budget and carries the search area, the predicted path, the
- * vantage point and what hides the subject; the search finds it again under a
- * new track, and the next loss exhausts the search and holds for the
- * operator. Moving to look (`repositioning`) is reachable through a demo pin
- * (`pinnedCycleS`).
+ * The recovery (predicting, then moving to look at the vantage point, then
+ * searching from it) spends an 8 s search budget and carries the search area,
+ * the predicted path, the vantage point and what hides the subject; the
+ * search finds it again under a new track, and the next loss exhausts the
+ * search and holds for the operator. The searching state opens with
+ * {@link REPOSITION_TO_S} of moving to look (`repositioning`).
  *
  * Pure functions of the cycle clock: the detection batch, the follow-me
  * `follow.state` frame and the one-shot effects (designation, follow events)
@@ -30,6 +30,7 @@ import {
   type NavHealth,
   type PredictedBbox,
   type ReacquireMode,
+  type UncertainMode,
 } from "@/lib/hud/nav-types";
 import type { DetectionBox, VisionDetection } from "@/stores/vision-detections-store";
 
@@ -61,6 +62,8 @@ export const UNCERTAIN_FROM_S = 1;
 export const UNCERTAIN_TO_S = 2;
 export const HOLDING_FROM_S = 3;
 export const OFFFRAME_FROM_S = 2;
+/** The searching state flies to the vantage point (`repositioning`) first. */
+export const REPOSITION_TO_S = 1;
 
 export const HOLD_REASON_NO_RANGE = "HOLD_NO_RANGE";
 /** Why the demo follow holds for the operator: the search found nothing. */
@@ -103,8 +106,7 @@ export function hudStateAt(tSec: number): HudStateAt {
 }
 
 /** A representative moment of the first cycle that shows `phase`, for a demo
- * pin that holds the follow in one phase. `repositioning` has no state of its
- * own: it is the searching state flown toward the vantage point. */
+ * pin that holds the follow in one phase. */
 export function pinnedCycleS(phase: FollowPhase): number {
   const at = (state: HudDemoState, localS: number) => HUD_STATES.indexOf(state) * HUD_STATE_S + localS;
   switch (phase) {
@@ -282,7 +284,7 @@ export function followPhaseAt(tSec: number): FollowPhase {
     case "predicting":
       return "predicting";
     case "searching":
-      return "searching";
+      return at.localS < REPOSITION_TO_S ? "repositioning" : "searching";
     case "reacquired":
       return "following";
     case "awaiting":
@@ -317,6 +319,14 @@ export interface FollowContext {
   reacquireMode: ReacquireMode;
   /** Drone position in the local map frame (north, east). */
   droneNed: [number, number];
+  /** The echoed when-unsure setting (default `follow`). */
+  uncertainMode?: UncertainMode;
+  /** The echoed predictive search switch (default on). */
+  predictiveSearch?: boolean;
+  /** Where the hold for the operator latched; the drone position when absent. */
+  holdNe?: [number, number] | null;
+  /** The echoed `operator_resume_seq` (default 0). */
+  operatorResumeSeq?: number;
 }
 
 function norm360(deg: number): number {
@@ -359,9 +369,9 @@ export function scriptFollow(tSec: number, ctx: FollowContext, phase: FollowPhas
     vantageState: null,
     occluder: null,
     holdNe: null,
-    uncertainMode: "follow",
-    predictiveSearch: true,
-    operatorResumeSeq: 0,
+    uncertainMode: ctx.uncertainMode ?? "follow",
+    predictiveSearch: ctx.predictiveSearch ?? true,
+    operatorResumeSeq: ctx.operatorResumeSeq ?? 0,
     outpaced: false,
     speedLimitMps: null,
     pipelineLatencyMs: null,
@@ -387,7 +397,7 @@ export function scriptFollow(tSec: number, ctx: FollowContext, phase: FollowPhas
       aglM,
       aglSource: "rng",
       holdReason: HOLD_REASON_SEARCH_EXHAUSTED,
-      holdNe: roundNe(ctx.droneNed),
+      holdNe: ctx.holdNe ?? roundNe(ctx.droneNed),
     };
   }
 

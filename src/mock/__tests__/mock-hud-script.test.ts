@@ -103,6 +103,7 @@ describe("followPhaseAt", () => {
     [12.5, "following"],
     [15.5, "holding"],
     [17, "predicting"],
+    [20.5, "repositioning"],
     [21, "searching"],
     [25, "following"],
     [29, "holding-await-operator"],
@@ -169,6 +170,24 @@ describe("scriptFollow", () => {
     expect(off.searchStep).toBe(2);
   });
 
+  it("moves to look from the vantage point before it searches", () => {
+    const moving = scriptFollow(20.5, CTX);
+    expect(moving).toMatchObject({ phase: "repositioning", vantageState: "enroute", searchStep: null });
+    expect(moving.vantageNe).not.toBeNull();
+  });
+
+  it("holds for the operator at the latched point, not the live drone position", () => {
+    expect(scriptFollow(29, { ...CTX, droneNed: [5, 6], holdNe: [1, 2] }).holdNe).toEqual([1, 2]);
+  });
+
+  it("echoes the when-unsure and predictive search settings and the resume count", () => {
+    expect(scriptFollow(12.5, { ...CTX, uncertainMode: "hold", predictiveSearch: false, operatorResumeSeq: 2 })).toMatchObject({
+      uncertainMode: "hold",
+      predictiveSearch: false,
+      operatorResumeSeq: 2,
+    });
+  });
+
   it("follows the re-acquired track, then holds for the operator without range", () => {
     expect(scriptFollow(25, CTX)).toMatchObject({ phase: "following", trackId: REACQUIRED_TRACK, searchArea: null });
     const waiting = scriptFollow(29, CTX);
@@ -191,7 +210,7 @@ describe("demo follow pins", () => {
     for (const phase of PHASES) {
       const f = scriptFollow(pinnedCycleS(phase), CTX, phase);
       expect(f.phase).toBe(phase);
-      if (phase !== "repositioning") expect(followPhaseAt(pinnedCycleS(phase))).toBe(phase);
+      expect(followPhaseAt(pinnedCycleS(phase))).toBe(phase);
     }
     expect(scriptFollow(pinnedCycleS("repositioning"), CTX, "repositioning")).toMatchObject({
       vantageState: "enroute",

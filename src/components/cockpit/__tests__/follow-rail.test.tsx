@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import type * as WriterModule from "@/lib/skills/plugin-config-writer";
@@ -33,7 +33,7 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { useSkillRegistry } from "@/lib/skills";
 import { FollowRail } from "@/components/cockpit/FollowRail";
 import { FOLLOW_SKILL_ID } from "@/hooks/use-following-mode";
-import { REACQUIRE_ECHO_TIMEOUT_MS, useReacquirePendingStore } from "@/hooks/use-reacquire-mode";
+import { FOLLOW_SETTING_ECHO_TIMEOUT_MS, useFollowSettingPendingStore } from "@/hooks/use-follow-setting";
 import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
@@ -62,7 +62,7 @@ describe("FollowRail", () => {
   beforeEach(() => {
     useNavStreamStore.getState().clear(DRONE);
     useSelectedTargetStore.setState({ designated: null });
-    useReacquirePendingStore.setState({ byDrone: {} });
+    useFollowSettingPendingStore.setState({ byKey: {} });
     useVideoStreamsStore.getState().clear();
     setSkills([FOLLOW_SKILL_ID, "pause", "rth", "land"]);
     mocks.activateBound.mockClear();
@@ -123,7 +123,7 @@ describe("FollowRail", () => {
     renderRail();
     fireEvent.click(screen.getByText("Strict"));
     await act(async () => {
-      vi.advanceTimersByTime(REACQUIRE_ECHO_TIMEOUT_MS + 10);
+      vi.advanceTimersByTime(FOLLOW_SETTING_ECHO_TIMEOUT_MS + 10);
     });
     expect(screen.getByText("Strict").getAttribute("data-pending")).toBeNull();
     expect(screen.getByText("Smart").getAttribute("aria-pressed")).toBe("true");
@@ -152,5 +152,58 @@ describe("FollowRail", () => {
     cleanup();
     renderRail(true);
     expect(screen.getByTestId("frail-rec")).toBeTruthy();
+  });
+
+  it("writes when unsure through the plugin config and settles on the echo", async () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState({ uncertainMode: "follow" }));
+    renderRail();
+    const group = screen.getByTestId("follow-setting-uncertain_mode");
+    expect(group.getAttribute("aria-label")).toBe(specString("follow.setting.uncertain_mode"));
+    const hold = within(group).getByText(specString("follow.phase.holding"));
+    expect(within(group).getByText(specString("follow.chip")).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(hold);
+    expect(mocks.write).toHaveBeenCalledWith({
+      droneId: "rail-test",
+      pluginId: "com.altnautica.follow-me",
+      key: "uncertain_mode",
+      value: "hold",
+    });
+    expect(hold.getAttribute("data-pending")).toBe("true");
+    expect(hold.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => {
+      useNavStreamStore.getState().setFollow(DRONE, followState({ uncertainMode: "hold" }));
+    });
+    expect(hold.getAttribute("data-pending")).toBeNull();
+    expect(hold.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("switches predictive search off through the plugin config, and reverts without an echo", async () => {
+    vi.useFakeTimers();
+    useNavStreamStore.getState().setFollow(DRONE, followState({ predictiveSearch: true }));
+    renderRail();
+    const sw = screen.getByTestId("follow-setting-predictive_search");
+    expect(sw.textContent).toBe(specString("follow.setting.predictive_search"));
+    expect(sw.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(sw);
+    expect(mocks.write).toHaveBeenCalledWith({
+      droneId: "rail-test",
+      pluginId: "com.altnautica.follow-me",
+      key: "predictive_search",
+      value: false,
+    });
+    expect(sw.getAttribute("aria-pressed")).toBe("false");
+    expect(sw.getAttribute("data-pending")).toBe("true");
+    await act(async () => {
+      vi.advanceTimersByTime(FOLLOW_SETTING_ECHO_TIMEOUT_MS + 10);
+    });
+    expect(sw.getAttribute("aria-pressed")).toBe("true");
+    expect(sw.getAttribute("data-pending")).toBeNull();
+    expect(mocks.toast).toHaveBeenCalledWith(
+      specString("flow.mode.result.failed", {
+        label: specString("follow.setting.predictive_search"),
+        reason: specString("setup.state.failed"),
+      }),
+      "warning",
+    );
   });
 });

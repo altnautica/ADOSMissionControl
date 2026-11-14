@@ -4,7 +4,8 @@
  * @module cockpit/FollowRail
  * @description The following-mode controls, one row in the follow strip under
  * the top bar: FOLLOW / TRACKING (the follow-me toggle skill), STRICT |
- * SMART, and FRONT ⇄ BELLY (two concurrent legs, one a belly camera). REC
+ * SMART re-acquire, FOLLOW | HOLD when unsure, the predictive search switch,
+ * and FRONT ⇄ BELLY (two concurrent legs, one a belly camera). REC
  * joins them only where the flight screen has no right column (portrait),
  * since the right column's shutter records everywhere else. Hold, return and
  * land are the left column's, never repeated here. The follow skill
@@ -28,7 +29,7 @@ import {
   useVideoStreamsStore,
   type StreamDescriptor,
 } from "@/stores/video-streams-store";
-import { ReacquireModeToggle } from "./ReacquireModeToggle";
+import { FollowSettingToggle, PredictiveSearchToggle } from "./FollowSettingToggle";
 
 interface RailButtonProps {
   icon: ReactNode;
@@ -89,7 +90,23 @@ export function FollowRail({ droneId, withRec = false }: { droneId: string; with
         />
       )}
       {installed && (
-        <ReacquireModeToggle droneId={droneId} echoed={follow?.reacquireMode ?? null} className="frail-seg" />
+        <FollowSettingToggle
+          droneId={droneId}
+          setting="reacquire_mode"
+          echoed={follow?.reacquireMode ?? null}
+          className="frail-seg"
+        />
+      )}
+      {installed && (
+        <FollowSettingToggle
+          droneId={droneId}
+          setting="uncertain_mode"
+          echoed={follow?.uncertainMode ?? null}
+          className="frail-seg"
+        />
+      )}
+      {installed && (
+        <PredictiveSearchToggle droneId={droneId} echoed={follow?.predictiveSearch ?? null} className="frail-seg" />
       )}
       {swap && (
         <RailButton

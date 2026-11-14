@@ -6,17 +6,19 @@
  * the shared rule (`hud/follow-prompt`); this module only runs the actions:
  *
  * - `resume` writes the next `operator_resume_seq` to the follow-me config;
- * - `redesignate` drops the designation, so the next box picked on the video
- *   designates afresh and follow-me re-locks on it;
- * - `rth` and `land` dispatch the built-ins (the pilot's `rth` / `land` while
- *   the pilot flies, as every other surface sends them);
+ * - `redesignate` arms a new pick: the designation stays until the box picked
+ *   next on the video replaces it, and follow-me re-locks on that one;
+ * - `rth` and `land` dispatch the bound built-ins, as the left column does
+ *   (hold to confirm, fresh link, armed; the pilot's `rth` / `land` while the
+ *   pilot flies);
  * - `stop` writes `active = false` to the follow-me config.
  *
- * Keys: R search again, P pick, H home, L land, X stop. They answer only while
- * the prompt has focus and only without a modifier: the built-ins own the
- * modified chords and a plugin may bind a bare letter globally, so the prompt
- * never takes a key from the window. The transports are injected, so every
- * route is unit-tested. Pure.
+ * Keys: R search again, P pick, H home, L land, X stop. The prompt never
+ * takes focus on its own; the keys answer only while the operator has put
+ * focus inside it, and only without a modifier. A key pressed with focus
+ * anywhere else never reaches the prompt, so a plugin's or a loadout's bare
+ * letter keeps working while the prompt is up. The transports are injected,
+ * so every route is unit-tested. Pure.
  *
  * @license GPL-3.0-only
  */

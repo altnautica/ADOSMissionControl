@@ -315,13 +315,17 @@ function rangeCues(v: unknown): RangeCue[] {
   return out;
 }
 
-/** Parse a `follow.state` payload. A payload with no recognisable phase maps
- * to `idle` when `active` is false, `following` when an older plugin reports
- * `active` + `commanding`, else null. */
+/** Parse a `follow.state` payload. Follow-me 0.4.9 and older report
+ * `coasting` (flying on the prediction of a lost lock) and `lost` (holding):
+ * they read as `predicting` and `holding`, never as a follow. A payload with
+ * no recognisable phase maps to `idle` when `active` is false, `following`
+ * when an older plugin reports `active` + `commanding`, else null. */
 export function parseFollowState(raw: unknown): FollowState | null {
   if (!isRec(raw)) return null;
   const active = typeof raw.active === "boolean" ? raw.active : null;
-  let phase = oneOf(raw.phase, PHASES);
+  let phase =
+    oneOf(raw.phase, PHASES) ??
+    (raw.phase === "coasting" ? "predicting" : raw.phase === "lost" ? "holding" : null);
   if (phase === null) {
     if (active === false) phase = "idle";
     else if (active === true && raw.commanding === true) phase = "following";

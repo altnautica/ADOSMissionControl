@@ -75,7 +75,7 @@ describe("demoFollowReadback", () => {
     [13.5, "lock-uncertain", "uncertain", TARGET_TRACK],
     [15.5, "no-ground-fix", "locked", TARGET_TRACK],
     [21, "lock-uncertain", "uncertain", TARGET_TRACK],
-    [29, "lock-lost", "lost", null],
+    [29, "awaiting-operator", "lost", null],
   ] as const)("t=%s holds with %s", (t, hold, lock, target) => {
     const r = demoFollowReadback({ follow: scriptFollow(t, CTX), pilot: flying, ...settings });
     expect(r).toMatchObject({ active: true, commanding: false, hold_reason: hold, lock_state: lock, target_id: target });
@@ -197,7 +197,7 @@ describe("DEMO_FOLLOW_ME_MODULE", () => {
       useNavStreamStore.getState().setFollow(droneId, scriptFollow(29, CTX));
     });
     expect(text("fm-lock-state")).toBe("Lost");
-    expect(text("fm-hold-reason")).toBe("Subject lost");
+    expect(text("fm-hold-reason")).toBe("Waiting for you");
     expect(text("fm-distance-setpoint")).toBe("—");
   });
 

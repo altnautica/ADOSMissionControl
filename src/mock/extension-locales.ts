@@ -80,7 +80,7 @@ const BUNDLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     "hold.inactive": "Follow is off",
     "hold.noLock": "No subject designated",
     "hold.lockUncertain": "Subject uncertain",
-    "hold.lockLost": "Subject lost",
+    "hold.awaitingOperator": "Waiting for you",
     "hold.poseStale": "Vehicle telemetry stopped",
     "hold.fcStale": "No flight controller heartbeat",
     "hold.fcDisarmed": "Flight controller disarmed",
