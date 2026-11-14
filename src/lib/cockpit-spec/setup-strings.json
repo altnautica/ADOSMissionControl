@@ -1310,6 +1310,8 @@
     "follow.tracking": "Tracking",
     "follow.cam_swap": "{from} ⇄ {to}",
     "follow.reacquire_not_applied": "Re-acquire mode not applied",
+    "follow.uncertain_mode_not_applied": "When-unsure setting not applied",
+    "follow.predictive_search_not_applied": "Predictive search not applied",
     "follow.reacquired_toast": "Re-acquired #{id} · {sim} · {gap} s gap",
     "hud.leg.front": "Front",
     "hud.leg.belly": "Belly",

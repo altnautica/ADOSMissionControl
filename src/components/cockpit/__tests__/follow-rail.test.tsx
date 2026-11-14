@@ -198,12 +198,6 @@ describe("FollowRail", () => {
     });
     expect(sw.getAttribute("aria-pressed")).toBe("true");
     expect(sw.getAttribute("data-pending")).toBeNull();
-    expect(mocks.toast).toHaveBeenCalledWith(
-      specString("flow.mode.result.failed", {
-        label: specString("follow.setting.predictive_search"),
-        reason: specString("setup.state.failed"),
-      }),
-      "warning",
-    );
+    expect(mocks.toast).toHaveBeenCalledWith(specString("follow.predictive_search_not_applied"), "warning");
   });
 });

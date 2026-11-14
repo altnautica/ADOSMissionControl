@@ -87,13 +87,10 @@ export async function sendFollowSetting(droneId: string, key: FollowSettingKey, 
   });
 }
 
-/** The warning raised when a write is not echoed. */
-function notAppliedText(key: FollowSettingKey): string {
+/** The warning raised when a write is not echoed, one spec string per setting. */
+export function notAppliedText(key: FollowSettingKey): string {
   if (key === "reacquire_mode") return specString("follow.reacquire_not_applied");
-  return specString("flow.mode.result.failed", {
-    label: specString(`follow.setting.${key}`),
-    reason: specString("setup.state.failed"),
-  });
+  return specString(`follow.${key}_not_applied`);
 }
 
 export interface FollowSettingControl<T extends SettingValue> {
