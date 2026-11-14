@@ -22,9 +22,9 @@
     { "id": "fc_other", "match": { "owner": "fc_mode" }, "text": "FC · {fc_mode_name_upper}", "color": "fc", "button": "take_control" }
   ],
   "fc_mode_classes": {
-    "$description": "Numeric custom_mode per firmware family; plane covers QuadPlane Q modes (QRTL 21, QLAND 20).",
-    "rtl": { "copter": [6, 21], "plane": [11, 21] },
-    "land": { "copter": [9], "plane": [20] }
+    "$description": "Numeric custom_mode per firmware family; plane covers QuadPlane Q modes (QRTL 21, QLAND 20); copter AUTO_RTL 27 returns and BRAKE 17 holds or lands, both FC-flown.",
+    "rtl": { "copter": [6, 21, 27], "plane": [11, 21] },
+    "land": { "copter": [9, 17], "plane": [20] }
   },
   "secondary": {
     "order": ["fc_failsafe", "speed_cap", "mission_paused_line", "hold_reason", "avoid_state", "control_mode"],
