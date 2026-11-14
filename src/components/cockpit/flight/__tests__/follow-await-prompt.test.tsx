@@ -177,4 +177,31 @@ describe("FollowAwaitPrompt", () => {
     expect(flights.mock.calls.map((c) => c[0])).toEqual(["rth"]);
     expect(writes.mock.calls[0][0]).toMatchObject({ key: "operator_resume_seq", value: 5 });
   });
+
+  it("keeps focus off a tapped button, and hands a keyboard-pressed one back to the prompt", async () => {
+    awaiting();
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    outside.focus();
+    try {
+      render(<FollowAwaitPrompt droneId={DRONE} />);
+      const pick = screen.getByRole("button", { name: /Pick a target/ });
+      // A tap: the mousedown that would focus the button is cancelled.
+      expect(fireEvent.mouseDown(pick)).toBe(false);
+      fireEvent.click(pick);
+      expect(document.activeElement).toBe(outside);
+      // A bare R after the tap is the window's, never Search again.
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "r" });
+      expect(writes).not.toHaveBeenCalled();
+
+      // Tab onto a button, then Enter or Space: focus goes back to the prompt.
+      const resume = screen.getByRole("button", { name: /Search again/ });
+      resume.focus();
+      fireEvent.click(resume);
+      expect(document.activeElement).toBe(screen.getByTestId("follow-await-prompt"));
+      await waitFor(() => expect(writes).toHaveBeenCalledOnce());
+    } finally {
+      outside.remove();
+    }
+  });
 });

@@ -8,8 +8,11 @@
  * `followPrompt` rule allows: search again, pick a target, return home, land,
  * stop following. Modal-free, so the video and the columns stay live. It
  * never takes focus on its own: R, P, H, L and X answer only once the
- * operator has put focus inside it (a click, Tab), so a key pressed anywhere
- * else reaches its own binding untouched. Return home and land run the same
+ * operator has put focus inside it (Tab, or a press on the prompt between
+ * its buttons), so a key pressed anywhere else reaches its own binding
+ * untouched. A tapped button never takes focus, and a button pressed from
+ * the keyboard hands it back to the prompt, so a later Space or bare key
+ * never presses that button again. Return home and land run the same
  * bound built-ins as the left column (hold to confirm, fresh link, armed).
  * Pick a target keeps the designation until the new pick replaces it, so
  * the lock chip keeps reading "Waiting for you". A stale follow report shows
@@ -18,7 +21,7 @@
  * @license GPL-3.0-only
  */
 
-import type { KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent } from "react";
 
 import { useToast } from "@/components/ui/toast";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
@@ -54,6 +57,7 @@ export function followActionDeps(droneId: string, seq: number, onPick: () => voi
 export function FollowAwaitPrompt({ droneId }: { droneId: string }) {
   const { follow, stale } = useFollowingMode(droneId);
   const { toast } = useToast();
+  const ref = useRef<HTMLDivElement>(null);
 
   const prompt = follow && !stale ? followPrompt(follow) : null;
   const seq = follow?.operatorResumeSeq ?? 0;
@@ -78,6 +82,7 @@ export function FollowAwaitPrompt({ droneId }: { droneId: string }) {
 
   return (
     <div
+      ref={ref}
       role="alert"
       aria-labelledby="follow-prompt-title"
       tabIndex={0}
@@ -95,7 +100,11 @@ export function FollowAwaitPrompt({ droneId }: { droneId: string }) {
           <button
             key={a}
             type="button"
-            onClick={() => run(a)}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              if (document.activeElement === e.currentTarget) ref.current?.focus();
+              run(a);
+            }}
             aria-keyshortcuts={FOLLOW_ACTION_KEYS[a].toUpperCase()}
             data-action={a}
             className={a === "stop" ? "tone-crit" : undefined}

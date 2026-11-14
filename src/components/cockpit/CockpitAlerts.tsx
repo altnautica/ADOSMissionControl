@@ -39,6 +39,8 @@ import { reacquiredToast } from "@/lib/vision/target-format";
 import { isRecoveryPhase, type FollowState, type OccluderKind } from "@/lib/hud/nav-types";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { specString } from "@/lib/cockpit/spec-strings";
+import { useFlightGrid } from "./flight/flight-context";
+import { useFollowPromptEdge } from "./flight/follow-prompt-edge";
 
 /** Alert titles from the spec (`alert.*`, the same ids as the shared pill
  *  rules). The FC's own lines, the pre-arm reason and the FC state carry
@@ -202,14 +204,22 @@ export function useCockpitAlertList(droneId: string): {
   return { alerts, label };
 }
 
+/** Space between the follow waiting prompt and the first banner below it. */
+const PROMPT_GAP_PX = 6;
+
 /**
  * Critical alerts as banners under the top bar, plus the short-lived
  * re-acquired advisory. Warnings and advisories live in the status pill's
- * list, so the centre stays clear unless something is critical.
+ * list, so the centre stays clear unless something is critical. While the
+ * follow waiting prompt shows, the stack starts below it, so a banner never
+ * covers the prompt's title.
  */
 export function CockpitAlerts({ droneId }: { droneId: string }) {
   const { alerts, label } = useCockpitAlertList(droneId);
   const reacquired = useReacquiredAdvisory(droneId);
+  const promptBottom = useFollowPromptEdge((s) => s.bottomPx);
+  // `--fs-top-y` is the centre's top edge.
+  const centreY = useFlightGrid().zones.center?.y ?? 60;
 
   const render = (list: CockpitAlert[]) =>
     list.map((a) => {
@@ -236,7 +246,10 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
   return (
     <div
       className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5"
-      style={{ top: "calc(var(--fs-top-y, 60px))", zIndex: 45 }}
+      style={{
+        top: promptBottom === null ? "var(--fs-top-y, 60px)" : Math.max(centreY, promptBottom + PROMPT_GAP_PX),
+        zIndex: 45,
+      }}
       data-testid="cockpit-alerts"
       data-zone="alert_stack"
     >
