@@ -941,15 +941,17 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 
 /* follow strip (under the top bar, between the columns) */
 .ados-cockpit .fs-follow { --rail-btn: 48px; position: absolute; z-index: 30; display: flex; align-items: center; gap: 8px; padding: 0 4px; }
-.ados-cockpit .fs-follow .reacq { padding: 0; }
-.ados-cockpit .fs-follow .reacq button { min-height: 48px; min-width: 48px; }
+.ados-cockpit .fs-follow .reacq, .ados-cockpit .fs-follow-settings .reacq { padding: 0; }
+.ados-cockpit .fs-follow .reacq button, .ados-cockpit .fs-follow-settings .reacq button { min-height: 48px; min-width: 48px; }
 .ados-cockpit .fs-follow-range { flex: 1 1 auto; min-width: 0; min-height: 48px; display: flex; align-items: center; justify-content: flex-end; overflow: hidden; container-type: inline-size; border: 0; background: transparent; color: inherit; cursor: pointer; }
 /* A narrow dock keeps the range and the phase; sigma, AGL and source give way first. */
 @container (max-width: 260px) { .ados-cockpit .fs-follow-range .frp-aux { display: none; } }
 @container (max-width: 130px) { .ados-cockpit .fs-follow-range .frp-phase { display: none; } }
-.ados-cockpit .fs-follow-sheet-slot { z-index: 35; display: flex; justify-content: center; pointer-events: none; }
+.ados-cockpit .fs-follow-sheet-slot { z-index: 35; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
 .ados-cockpit .fs-follow-sheet { position: static; transform: none; max-width: 100%; padding: 4px; pointer-events: auto; }
 .ados-cockpit .fs-follow-sheet .frp { position: static; transform: none; }
+/* The quick settings a narrow rail folds behind More. */
+.ados-cockpit .fs-follow-settings { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 8px; }
 /* The waiting-for-instructions prompt drops from the strip in the range sheet's place. */
 .ados-cockpit .fs-follow-prompt {
   position: static; display: flex; flex-direction: column; gap: 8px; max-width: min(100%, 720px); padding: 10px;
@@ -1420,6 +1422,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
   border: 1px solid var(--fs-border); border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent);
   color: var(--fs-text); cursor: pointer; transition: border-color .15s ease-out, background-color .15s ease-out;
 }
+.ados-cockpit .frail-btn.frail-icon-only { width: var(--rail-btn); padding: 0; justify-content: center; }
 .ados-cockpit .frail-btn:hover { background: color-mix(in srgb, var(--fs-text) 12%, transparent); }
 .ados-cockpit .frail-btn:focus-visible { outline: 2px solid var(--fs-text); outline-offset: 2px; }
 .ados-cockpit .frail-btn[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }

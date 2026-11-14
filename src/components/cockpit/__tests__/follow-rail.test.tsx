@@ -200,4 +200,42 @@ describe("FollowRail", () => {
     expect(sw.getAttribute("data-pending")).toBeNull();
     expect(mocks.toast).toHaveBeenCalledWith(specString("follow.predictive_search_not_applied"), "warning");
   });
+
+  it("hides predictive search while re-acquire is strict, at once on a pending STRICT", async () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState({ reacquireMode: "strict", predictiveSearch: true }));
+    renderRail();
+    expect(screen.queryByTestId("follow-setting-predictive_search")).toBeNull();
+    await act(async () => {
+      useNavStreamStore.getState().setFollow(DRONE, followState({ reacquireMode: "smart", predictiveSearch: true }));
+    });
+    expect(screen.getByTestId("follow-setting-predictive_search")).toBeTruthy();
+    fireEvent.click(screen.getByText("Strict"));
+    expect(screen.queryByTestId("follow-setting-predictive_search")).toBeNull();
+  });
+
+  it("on a portrait strip folds the settings behind More and keeps FOLLOW, the swap and REC", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState());
+    useVideoStreamsStore.getState().setStreams(DRONE, [
+      { id: "eo", index: 1, label: "eo", role: "eo", kind: "concurrent" },
+      { id: "belly", index: 2, label: "belly", role: "down", kind: "concurrent" },
+    ]);
+    const toggle = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <FollowRail droneId={DRONE} withRec stripW={374} onToggleSettings={toggle} />
+      </NextIntlClientProvider>,
+    );
+    for (const id of ["frail-follow", "frail-camswap", "frail-rec"]) {
+      // Icon only, named for assistive tech.
+      expect(screen.getByTestId(id).getAttribute("aria-label")).toBeTruthy();
+    }
+    expect(screen.getByTestId("frail-rec").getAttribute("aria-label")).toBe(specString("follow.rec"));
+    expect(screen.queryByTestId("follow-setting-reacquire_mode")).toBeNull();
+    expect(screen.queryByTestId("follow-setting-predictive_search")).toBeNull();
+    const more = screen.getByTestId("frail-more");
+    expect(more.getAttribute("aria-label")).toBe(specString("follow.more_controls"));
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(more);
+    expect(toggle).toHaveBeenCalledOnce();
+  });
 });
