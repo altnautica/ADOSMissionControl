@@ -6,6 +6,19 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+This release covers fourteen commits over 2026-11-13 and 2026-11-14, since
+0.64.0. Two threads run through it.
+
+The first is the cockpit telling the pilot what the drone will and will not
+do. The flight-state chip shows the speed cap the drone applies without
+GNSS, reads stale or missing obstacle data in the warning colour,
+and keeps a blocked go-to on the map and in AR. Resume and Take control are
+refused while the flight controller flies its own failsafe, and Copter
+BRAKE reads as the flight controller's mode rather than a landing.
+
+The second is a configuration fix: optical flow yaw is edited and checked in
+the units ArduPilot uses, on every path that writes it.
+
 ### Added
 
 - **Planned path on the local-frame map.** While a go-to or a skill flies and
@@ -13,6 +26,10 @@ the project follows [Semantic Versioning](https://semver.org/).
   planned path as a dashed line and a ring on its goal, in the go-to colour,
   or in the blocked colour while the pilot reports the way blocked. It
   matches the drone's own cockpit and the Android app.
+- **GNSS-denied speed cap on the flight-state chip.** When the drone caps its
+  horizontal speed because it flies without GNSS, the chip's second line reads
+  "GNSS-denied: 2.5 m/s max", rounded to one decimal, in the avoiding colour.
+  The demo pilot can show it.
 - **Stale or missing obstacle data.** When avoidance is on and the drone's
   lidar stops reporting, the pilot holds position and refuses motion until
   fresh scans arrive, and reports the `stale` avoid state with the hold reason
@@ -28,6 +45,16 @@ the project follows [Semantic Versioning](https://semver.org/).
   the macOS app only when the repository variable `MC_MACOS` is `true`, and
   publishes the Windows and Linux builds without it. When a release ships
   without macOS, its notes say so.
+
+- **Resume and Take control during a flight-controller failsafe.** While the
+  flight controller flies its own failsafe return or landing, Resume and Take
+  control are disabled with the failsafe text, as Pause already was: in the
+  skill list, on the flight-state chip button and in the Mode sheet. Until the
+  flight controller's mode has been heard, the chip shows it as unknown.
+
+- **Copter return and brake modes on the chip.** Copter AUTO_RTL reads as the
+  flight controller's return. Copter BRAKE, which holds position, reads as the
+  flight controller's mode with a Take control button instead of as a landing.
 
 ### Fixed
 
