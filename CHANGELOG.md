@@ -6,6 +6,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A vantage-goal hold reads "No clear view".** When the pilot holds a skill's
+  vantage goal because no reachable point sees the subject's predicted area, it
+  reports the hold reason `no-vantage`. The cockpit spec now gives that reason a
+  label, so the flight-state chip reads "No clear view" instead of the raw key.
+  A hold on stale scans still reads "Holding: no fresh obstacle data".
+
 ## [0.65.0] - 2026-11-14
 
 This release covers fourteen commits over 2026-11-13 and 2026-11-14, since

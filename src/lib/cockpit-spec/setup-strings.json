@@ -450,6 +450,7 @@
     "pilot.hold_reason.lease-busy": "Another skill has control",
     "pilot.hold_reason.lease-revoked": "Skill stopped",
     "pilot.hold_reason.link-loss": "Link lost",
+    "pilot.hold_reason.no-vantage": "No clear view",
     "pilot.hold_reason.obstacle-close": "Obstacle close",
     "pilot.hold_reason.obstacle-data-stale": "Holding: no fresh obstacle data",
     "pilot.link_loss_action.hold": "Hold",
