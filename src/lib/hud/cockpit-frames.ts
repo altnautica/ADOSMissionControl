@@ -11,10 +11,15 @@
  * Grids stay base64 strings here: the renderer decodes them into a reused
  * byte buffer (`decodeBase64Into`), so a frame costs no fresh allocation.
  *
- * Dependency-free on purpose: Mission Control copies this file byte for byte.
+ * Dependency-free on purpose apart from its sibling `pilot-fields.ts`:
+ * Mission Control copies both files byte for byte.
  *
  * @license GPL-3.0-only
  */
+
+import { parseSpeedCap, parseStatusText, type FcStatusText, type SpeedCap } from "./pilot-fields";
+
+export type { FcStatusText, SpeedCap } from "./pilot-fields";
 
 // ── small readers ─────────────────────────────────────────────────────────
 
@@ -165,41 +170,8 @@ export interface PilotState {
   speedCap: SpeedCap | null;
 }
 
-/** The pilot's horizontal speed cap: why, and the limit in m/s. */
-export interface SpeedCap {
-  reason: string;
-  vHMps: number;
-}
-
-/** One FC STATUSTEXT line; severity is MAVLink's (0 emergency … 4 warning). */
-export interface FcStatusText {
-  severity: number;
-  text: string;
-  ageMs: number;
-}
-
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off"];
 const SEQ_STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
-
-function parseSpeedCap(raw: unknown): SpeedCap | null {
-  const o = obj(raw);
-  const reason = o ? str(o.reason) : null;
-  const vHMps = o ? num(o.v_h_mps) : null;
-  return reason !== null && vHMps !== null ? { reason, vHMps } : null;
-}
-
-function parseStatusText(raw: unknown): FcStatusText[] {
-  if (!Array.isArray(raw)) return [];
-  const out: FcStatusText[] = [];
-  for (const r of raw.slice(0, 8)) {
-    const o = obj(r);
-    const text = o ? str(o.text) : null;
-    const severity = o ? num(o.severity) : null;
-    if (!o || text === null || severity === null) continue;
-    out.push({ severity, text, ageMs: num(o.age_ms) ?? 0 });
-  }
-  return out;
-}
 
 export function parsePilotState(raw: unknown): PilotState | null {
   const p = obj(raw);

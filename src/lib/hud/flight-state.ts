@@ -7,6 +7,7 @@
 import flightStateJson from "../cockpit-spec/flight-state.json";
 import tokensJson from "../cockpit-spec/tokens.json";
 import type { PilotState } from "./cockpit-frames";
+import { speedCapText } from "./pilot-fields";
 import { specText } from "./spec-text";
 import { fmtEta } from "./format";
 
@@ -210,7 +211,7 @@ export function chipSecondary(f: ChipFacts): ChipLine[] {
       out.push({ text: CHIP_SECONDARY.fc_failsafe.text, color: colorOf(CHIP_SECONDARY.fc_failsafe.color) });
     } else if (part === "speed_cap" && f.speedCapMps !== null) {
       const line = CHIP_SECONDARY.speed_cap;
-      out.push({ text: line.text.replace("{v}", f.speedCapMps.toFixed(0)), color: colorOf(line.color) });
+      out.push({ text: line.text.replace("{v}", speedCapText(f.speedCapMps)), color: colorOf(line.color) });
     } else if (part === "mission_paused_line" && matches(CHIP_SECONDARY.mission_paused_line.match, f)) {
       const line = CHIP_SECONDARY.mission_paused_line;
       out.push({ text: fill(line.text, f), color: colorOf(line.color) });

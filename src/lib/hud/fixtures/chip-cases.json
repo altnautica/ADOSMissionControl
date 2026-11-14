@@ -1208,6 +1208,50 @@
     }
   },
   {
+    "name": "skill_gnss_denied_fractional_speed_cap",
+    "input": {
+      "pilot": {
+        "owner": "skill",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "avoid_state": "clear",
+        "readiness": [],
+        "speed_cap": {
+          "reason": "gnss-denied",
+          "v_h_mps": 1.5
+        }
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": "Orbit 8 m",
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "skill",
+      "text": "Follow · Orbit 8 m",
+      "color": "skill",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "GNSS-denied: 1.5 m/s max",
+        "ADOS Pilot"
+      ]
+    }
+  },
+  {
     "name": "skill_without_detail",
     "input": {
       "pilot": {
