@@ -27,6 +27,10 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { resolveNodeId } from "@/stores/node-registry";
 import { useSettingsStore } from "@/stores/settings-store";
+import { refusalText } from "@/lib/hud/refusal";
+import { buildSkillContext } from "@/lib/skills";
+import { resumeSkill } from "@/lib/skills/builtins/resume";
+import { takeControlSkill } from "@/lib/skills/builtins/take-control";
 
 const ID = resolveNodeId("alpha-1");
 const OTHER = resolveNodeId("bravo-2");
@@ -149,6 +153,21 @@ describe("pinned FC failsafe", () => {
     vi.advanceTimersByTime(100);
     expect(pilot()).toMatchObject({ fcFailsafe: false, failsafeCause: null });
     expect((await requestPilotAction("take_control")).ok).toBe(true);
+  });
+
+  it("renders a frame with the FC mode unknown during a pinned failsafe, with Resume and Take control refused", () => {
+    handle()!.pin({ owner: "fc_mode", fc_mode: null, fc_mode_name: null, fc_failsafe: true, failsafe_cause: "fc" });
+    vi.advanceTimersByTime(100);
+    expect(pilot()).toMatchObject({ fcMode: null, fcModeName: null, fcFailsafe: true });
+    const view = chip();
+    expect(view.text).toContain("—");
+    expect(view.text).not.toMatch(/STABILIZE|AUTO|GUIDED/);
+    expect(view.secondary.map((s) => s.text)).toContain("Failsafe");
+    // The demo vehicle is the FC link (no drone is selected in this test).
+    const ctx = { ...buildSkillContext(ID), protocol: vehicle() as never, armState: "armed" as const };
+    const refused = { kind: "disabled", reason: refusalText("failsafe") };
+    expect(resumeSkill.getState(ctx)).toEqual(refused);
+    expect(takeControlSkill.getState(ctx)).toEqual(refused);
   });
 });
 

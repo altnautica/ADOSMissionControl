@@ -19,6 +19,7 @@ import {
   type PilotActionName,
 } from "@/lib/input/pilot-stream";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
+import { fcFailsafeActive } from "../flight-facts";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import type { CommandResult } from "@/lib/protocol/types";
 import type {
@@ -111,6 +112,17 @@ export const REASON = {
 export function disabledIfNoLink(ctx: SkillContext): SkillState | null {
   if (!ctx.protocol) return { kind: "disabled", reason: REASON.noFcLink };
   return null;
+}
+
+/** True while the FC flies a failsafe return or landing (`fcFailsafeActive`). */
+export function inFailsafe(ctx: SkillContext): boolean {
+  return fcFailsafeActive(ctx.droneId, ctx.flightMode, ctx.systemStatus);
+}
+
+/** Disabled with the failsafe refusal while the FC flies a failsafe: Pause,
+ *  Resume and Take control would each override its return or landing. */
+export function disabledInFailsafe(ctx: SkillContext): SkillState | null {
+  return inFailsafe(ctx) ? { kind: "disabled", reason: refusalText("failsafe") } : null;
 }
 
 /**

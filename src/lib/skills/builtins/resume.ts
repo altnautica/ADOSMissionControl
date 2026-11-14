@@ -1,7 +1,8 @@
 /**
  * Resume skill. On the ADOS pilot it resumes (a paused FC mission goes back to
  * AUTO). Without the pilot it continues a paused mission with
- * DO_PAUSE_CONTINUE. One-shot, armed-only, tap (shared spec).
+ * DO_PAUSE_CONTINUE. One-shot, armed-only, tap (shared spec). Refused while
+ * the FC flies a failsafe return or landing, as Pause is.
  *
  * @module skills/builtins/resume
  * @license GPL-3.0-only
@@ -9,7 +10,7 @@
 
 import type { Skill } from "../types";
 import { useMissionStateStore } from "@/lib/mission/mission-state";
-import { disabledIfNoLink, pilotActionResult, REASON, viaPilot } from "./_shared";
+import { disabledIfNoLink, disabledInFailsafe, pilotActionResult, REASON, viaPilot } from "./_shared";
 
 export const resumeSkill: Skill = {
   id: "resume",
@@ -26,6 +27,8 @@ export const resumeSkill: Skill = {
     if (ctx.armState === "disarmed") {
       return { kind: "disabled", reason: REASON.notArmed };
     }
+    const failsafe = disabledInFailsafe(ctx);
+    if (failsafe) return failsafe;
     if (!viaPilot(ctx) && ctx.missionState !== "paused") {
       return { kind: "disabled", reason: REASON.noPausedMission };
     }

@@ -2,6 +2,7 @@
  * Take control skill: the ADOS pilot takes the vehicle back from the flight
  * controller (owner `fc_mode` → `pilot`, behind the centred-sticks gate).
  * Only offered on the pilot route. One-shot, armed-only, tap (shared spec).
+ * Refused while the FC flies a failsafe return or landing, as Pause is.
  *
  * @module skills/builtins/take-control
  * @license GPL-3.0-only
@@ -9,7 +10,7 @@
 
 import { pilotStreamOpen } from "@/lib/input/pilot-stream";
 import type { Skill } from "../types";
-import { disabledIfNoLink, pilotActionResult, REASON } from "./_shared";
+import { disabledIfNoLink, disabledInFailsafe, pilotActionResult, REASON } from "./_shared";
 
 export const takeControlSkill: Skill = {
   id: "take_control",
@@ -26,7 +27,7 @@ export const takeControlSkill: Skill = {
     // handover from a traditional start.
     if (!pilotStreamOpen(ctx.droneId)) return { kind: "disabled", reason: REASON.noPilot };
     if (ctx.armState === "disarmed") return { kind: "disabled", reason: REASON.notArmed };
-    return { kind: "idle" };
+    return disabledInFailsafe(ctx) ?? { kind: "idle" };
   },
   activate: async () => pilotActionResult("take_control"),
 };

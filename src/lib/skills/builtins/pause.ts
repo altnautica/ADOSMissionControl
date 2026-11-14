@@ -12,9 +12,10 @@ import type { Skill, SkillContext } from "../types";
 import type { CommandResult } from "@/lib/protocol/types";
 import { useMissionStateStore } from "@/lib/mission/mission-state";
 import { refusalText } from "@/lib/hud/refusal";
-import { fcFailsafeActive } from "../flight-facts";
 import {
   disabledIfNoBlindLink,
+  disabledInFailsafe,
+  inFailsafe,
   lastResortPath,
   pilotActionResult,
   REASON,
@@ -37,7 +38,9 @@ export const pauseSkill: Skill = {
     if (ctx.armState === "disarmed") {
       return { kind: "disabled", reason: REASON.notArmed };
     }
-    if (inFailsafe(ctx)) return { kind: "disabled", reason: refusalText("failsafe") };
+    // A failsafe return or landing is never paused, on any route.
+    const failsafe = disabledInFailsafe(ctx);
+    if (failsafe) return failsafe;
     return withStaleLinkWarning(ctx, { kind: "idle" });
   },
   // Either branch's answer goes back to the dispatcher, which surfaces a
@@ -48,11 +51,6 @@ export const pauseSkill: Skill = {
     return fcPause(ctx);
   },
 };
-
-/** A failsafe return or landing is never paused, on any route. */
-function inFailsafe(ctx: SkillContext): boolean {
-  return fcFailsafeActive(ctx.droneId, ctx.flightMode, ctx.systemStatus);
-}
 
 /** The flight-controller brake: pause an active mission, else LOITER.
  *  Refused while the FC flies a failsafe: LOITER would cancel it. */

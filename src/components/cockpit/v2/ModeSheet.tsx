@@ -195,9 +195,13 @@ export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSh
                 </HoldButton>
               );
             })}
+            {/* Refused during an FC failsafe, as Pause is: change mode first. */}
             <HoldButton
               holdMs={SPEC_HOLD_MS.take_control}
               className={pill(false, pending === "take_control")}
+              disabled={pilot?.fcFailsafe === true}
+              title={pilot?.fcFailsafe === true ? refusalText("failsafe") : undefined}
+              data-testid="mode-take-control"
               onFire={() => act("take_control", specString("flow.take_control"))}
             >
               {specString("flow.mode.take_control")}

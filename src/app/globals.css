@@ -873,7 +873,8 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-col-row .fs-col-stack { flex-direction: row; width: 100%; justify-content: space-around; }
 .ados-cockpit .fs-col-target { width: var(--fs-target); height: var(--fs-target); min-height: 0; padding: 0; flex-direction: column; gap: 2px; font-size: var(--fs-label-px); border-radius: var(--fs-radius-sm); }
 .ados-cockpit .fs-col-row .fs-col-target { flex: 1; max-width: 120px; }
-.ados-cockpit .fs-col-target[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
+.ados-cockpit .fs-col-target[aria-disabled="true"],
+.ados-cockpit .fs-chip-action[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
 .ados-cockpit .fs-col-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.1; font-weight: 600; }
 .ados-cockpit .fs-col-btn { min-width: 48px; min-height: 48px; padding: 0; font-variant-numeric: tabular-nums; border-radius: var(--fs-radius-sm); }
 .ados-cockpit .fs-gimbal-pad { position: relative; flex-shrink: 0; border-radius: 50%; touch-action: none; background: var(--fs-bg); border: var(--fs-border-px) solid var(--fs-border); -webkit-backdrop-filter: blur(var(--fs-blur)); backdrop-filter: blur(var(--fs-blur)); }

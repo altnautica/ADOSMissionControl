@@ -86,4 +86,38 @@ describe("FlightStateChip button", () => {
     mount({ owner: "fc_mode", fc_mode: 6, fc_mode_name: "RTL", fc_failsafe: true });
     expect(screen.getByTestId("flight-state-chip").textContent).toContain(specString("chip.failsafe"));
   });
+
+  it("disables Resume during an FC failsafe with the failsafe reason", () => {
+    mount({ owner: "pilot", mission: { state: "paused", seq: 2, total: 5 }, fc_failsafe: true });
+    const action = screen.getByTestId("chip-action");
+    expect(action.getAttribute("data-action")).toBe("resume");
+    expect(action.getAttribute("aria-disabled")).toBe("true");
+    expect(action.getAttribute("title")).toBe(refusalText("failsafe"));
+  });
+
+  it("disables Take control during an FC failsafe, on the chip and in the Mode sheet", () => {
+    mount({ owner: "fc_mode", fc_mode: 5, fc_mode_name: "LOITER", fc_failsafe: true, failsafe_cause: "fc" });
+    const action = screen.getByTestId("chip-action");
+    expect(action.getAttribute("data-action")).toBe("take_control");
+    expect(action.getAttribute("aria-disabled")).toBe("true");
+    expect(action.getAttribute("title")).toBe(refusalText("failsafe"));
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    const take = screen.getByTestId("mode-take-control") as HTMLButtonElement;
+    expect(take.disabled).toBe(true);
+    expect(take.getAttribute("title")).toBe(refusalText("failsafe"));
+  });
+
+  it("leaves Take control enabled outside a failsafe", () => {
+    mount({ owner: "fc_mode", fc_mode: 5, fc_mode_name: "LOITER" });
+    expect(screen.getByTestId("chip-action").getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    expect((screen.getByTestId("mode-take-control") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("shows an unheard FC mode as unknown, never a mode it did not report", () => {
+    mount({ owner: "fc_mode", fc_mode: null, fc_mode_name: null, armed: null, landed: null });
+    const text = screen.getByTestId("flight-state-chip-text").textContent ?? "";
+    expect(text).toContain("—");
+    expect(text).not.toMatch(/STABILIZE|GUIDED/);
+  });
 });

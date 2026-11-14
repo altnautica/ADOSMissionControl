@@ -28,6 +28,7 @@ import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state
 import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
+import { refusalText } from "@/lib/hud/refusal";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { ModeSheet } from "./ModeSheet";
 import { useLaunchAbort } from "./LaunchSteps";
@@ -77,6 +78,12 @@ export function FlightStateChip({
   const viaGroundStation = groundStationLink ?? detectedLink;
   const [open, setOpen] = useFlightSheet("mode");
   const button = chip.button ? CHIP_BUTTON[chip.button] : undefined;
+  // Take control and Resume are refused during an FC failsafe, as Pause is:
+  // the button shows why, and a press still dispatches so the refusal toasts.
+  const refused =
+    pilot?.fcFailsafe === true && (chip.button === "take_control" || chip.button === "resume")
+      ? refusalText("failsafe")
+      : null;
   const setupLink =
     chip.button === "setup" &&
     (pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false);
@@ -141,6 +148,8 @@ export function FlightStateChip({
             type="button"
             data-testid="chip-action"
             data-action={chip.button ?? undefined}
+            aria-disabled={refused !== null || undefined}
+            title={refused ?? undefined}
             className="fs-btn fs-hit fs-chip-action"
             onClick={() => (button.run === "abort" ? void abortLaunch() : button.run(droneId))}
           >
