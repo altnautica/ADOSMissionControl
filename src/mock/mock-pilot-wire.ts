@@ -4,8 +4,9 @@
  * lays over it. The wire is the agent's `pilot` kind in snake_case; pins
  * (`window.__adosDemoPilot.pin`) override any field of it, which is how the
  * states the demo vehicle does not fly on its own reach the cockpit: an FC
- * failsafe (`fc_failsafe`, `failsafe_cause`) and a tuning step (`owner:
- * "tuning"`, `setup_step`).
+ * failsafe (`fc_failsafe`, `failsafe_cause`), a tuning step (`owner:
+ * "tuning"`, `setup_step`) and an aborted setup air run (`setup_abort`, a
+ * `setup.blocker.aborted_<reason>` key).
  * @license GPL-3.0-only
  */
 
@@ -53,6 +54,7 @@ export function demoPilotWire(over: Json = {}): Json {
     surface_ops: [],
     setup_step: null,
     failsafe_cause: null,
+    setup_abort: null,
     ...over,
   };
 }

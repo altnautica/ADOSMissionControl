@@ -1,0 +1,119 @@
+{
+  "v": 1,
+  "$description": "Navigation sensor health: the optical flow and downward range the flight controller reports, the scanning lidar, and the cameras. The pilot kind carries `sensors` {flow, range, lidar}; GET /api/v1/sensors carries `health` {flow, range, lidar, cameras}. Every surface classifies, labels and colours from this file. color names resolve through tokens.json state.*.",
+  "thresholds": {
+    "flow": {
+      "low_quality": 128,
+      "low_hold_ms": 1000,
+      "lost_ms": 1000,
+      "$note": "low = OPTICAL_FLOW quality below low_quality for low_hold_ms; lost = no OPTICAL_FLOW for lost_ms after one was seen; absent = never seen."
+    },
+    "range": {
+      "lost_ms": 1000,
+      "$note": "The downward (orientation 25) DISTANCE_SENSOR. out_of_range = current distance outside [min, max] of the same message; lost = none for lost_ms after one was seen."
+    },
+    "lidar": {
+      "min_hz": 8.0,
+      "max_hz": 12.0,
+      "lost_ms": 500,
+      "$note": "rate_hz is the scan arrival rate over the last 2 s. degraded = rate outside [min_hz, max_hz] or driver health warning/error; lost = no scan for lost_ms after one was seen, or the driver reports disconnected."
+    },
+    "camera": {
+      "stale_ms": 1000,
+      "lost_ms": 5000
+    },
+    "nav_imu": {
+      "min_hz": 40,
+      "stale_ms": 3000,
+      "$note": "plugin.world-engine.map_status imu_feed: the FC IMU feeding the lidar planar pose. ok = state ok and rate_hz >= min_hz; a map_status older than stale_ms after a non-null imu_feed is degraded with reason stalled."
+    },
+    "in_flight_flow_warn_ms": 2000
+  },
+  "states": {
+    "flow": {
+      "ok": { "text": "Flow {quality}", "color": "ready" },
+      "low": { "text": "Flow low {quality}", "color": "avoiding" },
+      "lost": { "text": "Flow lost", "color": "not_ready" },
+      "absent": { "text": "No flow", "color": "stale" }
+    },
+    "range": {
+      "ok": { "text": "Range {height_m} m", "color": "ready" },
+      "out_of_range": { "text": "Range out", "color": "avoiding" },
+      "lost": { "text": "Range lost", "color": "not_ready" },
+      "absent": { "text": "No range", "color": "stale" }
+    },
+    "lidar": {
+      "ok": { "text": "Lidar {rate_hz} Hz", "color": "ready" },
+      "degraded": { "text": "Lidar {rate_hz} Hz", "color": "avoiding" },
+      "lost": { "text": "Lidar lost", "color": "not_ready" },
+      "absent": { "text": "No lidar", "color": "stale" }
+    },
+    "camera": {
+      "live": { "text": "{id} {fps} fps", "color": "ready" },
+      "stale": { "text": "{id} stale", "color": "avoiding" },
+      "lost": { "text": "{id} lost", "color": "not_ready" }
+    }
+  },
+  "format": {
+    "quality": "integer 0-255",
+    "height_m": "one decimal",
+    "rate_hz": "one decimal",
+    "fps": "integer"
+  },
+  "warning": {
+    "flow_degraded": "Optical flow quality low: dark or featureless ground",
+    "flow_lost": "Optical flow lost"
+  },
+  "readiness": {
+    "flow": {
+      "ok": "Optical flow fresh",
+      "low": "Optical flow quality low: dark or featureless ground",
+      "lost": "Optical flow stopped",
+      "absent": "No optical flow from the flight controller"
+    },
+    "rangefinder": {
+      "ok": "Downward rangefinder available",
+      "absent": "No downward rangefinder: height reference is EKF altitude"
+    },
+    "lidar": {
+      "ok": "Lidar scanning",
+      "degraded": "Lidar scan rate or health out of range",
+      "lost": "Lidar stopped scanning",
+      "absent": "No lidar: obstacle avoidance unavailable"
+    },
+    "sensor_params": {
+      "ok": "Flow and rangefinder parameters match",
+      "unread": "Reading flow and rangefinder parameters",
+      "mismatch": "Flow and rangefinder parameters differ"
+    },
+    "nav_imu": {
+      "ok": "Flight controller IMU feeding the lidar pose",
+      "degraded": "Waiting for flight controller IMU"
+    },
+    "$note": "flow and sensor_params are shown when FLOW_TYPE is non-zero or OPTICAL_FLOW has been seen; lidar when a lidar has scanned or the capture service reports one, and otherwise as absent (warn) while obstacle avoidance is on; nav_imu while the latest map_status carries a non-null imu_feed. Severity: warn, except block in ADOS control mode when the EKF fuses flow (any EK3_SRCn_VELXY = 5) for flow lost/absent and for params with severity block; an expected lidar that is lost blocks in ADOS control mode whatever the avoid setting; nav_imu blocks in ADOS control mode. nav_imu is ok only for imu_feed state ok at rate_hz >= min_hz; every other state word (degraded, lost, unknown) reads degraded and appends ' ({reason}, {rate_hz} Hz)', rate one decimal, '--' for a null reason or rate."
+  },
+  "mount": {
+    "$note": "The declared flow and rangefinder mount, agent config pilot.fc_sensors: flow {pos_m [x,y,z] body FRD metres, orient_yaw_cdeg}, rangefinder {pos_m}. Published as GET /api/v1/sensors health.flow.mount {yaw_cdeg, pos_m} and health.range.mount {pos_m}, null when undeclared.",
+    "pos_tolerance_m": 0.01
+  },
+  "params": [
+    { "name": "FLOW_TYPE", "rule": { "eq": 5 }, "severity": "block", "reason": "MAVLink optical flow (MTF-01P on an FC serial port)" },
+    { "name": "RNGFND1_TYPE", "rule": { "eq": 10 }, "severity": "block", "reason": "MAVLink rangefinder" },
+    { "name": "RNGFND1_ORIENT", "rule": { "eq": 25 }, "severity": "block", "reason": "Rangefinder faces down" },
+    { "name": "FLOW_ORIENT_YAW", "rule": { "mount": "flow.yaw_cdeg", "else": { "multiple_of": 9000, "range": [-17999, 18000] } }, "severity": "block", "reason": "A wrong flow yaw inverts the velocity feedback" },
+    { "name": "FLOW_FXSCALER", "rule": { "range": [-800, 800] }, "severity": "warn", "reason": "Flow scaler within ArduPilot's range" },
+    { "name": "FLOW_FYSCALER", "rule": { "range": [-800, 800] }, "severity": "warn", "reason": "Flow scaler within ArduPilot's range" },
+    { "name": "FLOW_POS_X", "group": "FLOW_POS", "rule": { "mount": "flow.pos_m.0", "else": { "group_not_all_zero": true } }, "severity": "warn", "reason": "Flow lever arm from the CG" },
+    { "name": "FLOW_POS_Y", "group": "FLOW_POS", "rule": { "mount": "flow.pos_m.1", "else": { "group_not_all_zero": true } }, "severity": "warn", "reason": "Flow lever arm from the CG" },
+    { "name": "FLOW_POS_Z", "group": "FLOW_POS", "rule": { "mount": "flow.pos_m.2", "else": { "group_not_all_zero": true } }, "severity": "warn", "reason": "Flow lever arm from the CG" },
+    { "name": "RNGFND1_POS_X", "group": "RNGFND1_POS", "rule": { "mount": "rangefinder.pos_m.0", "else": { "group_not_all_zero": true } }, "severity": "warn", "reason": "Rangefinder lever arm from the CG" },
+    { "name": "RNGFND1_POS_Y", "group": "RNGFND1_POS", "rule": { "mount": "rangefinder.pos_m.1", "else": { "group_not_all_zero": true } }, "severity": "warn", "reason": "Rangefinder lever arm from the CG" },
+    { "name": "RNGFND1_POS_Z", "group": "RNGFND1_POS", "rule": { "mount": "rangefinder.pos_m.2", "else": { "group_not_all_zero": true } }, "severity": "warn", "reason": "Rangefinder lever arm from the CG" },
+    { "name": "EK3_FLOW_DELAY", "rule": { "range": [1, 250] }, "severity": "warn", "reason": "Flow sample delay in ms" },
+    { "name": "RNGFND1_MAX", "rule": { "max": 12 }, "severity": "warn", "reason": "MTF-01P range is 12 m at most (8 m in bright light)" },
+    { "name": "EK3_SRC_OPTIONS", "rule": { "eq": 0 }, "severity": "warn", "reason": "Flow sources not fused together" },
+    { "name": "PRX_IGN_GND", "rule": { "eq": 1 }, "when": { "PRX1_TYPE": { "ne": 0 }, "RNGFND1_ORIENT": { "eq": 25 } }, "severity": "warn", "reason": "Proximity ignores ground returns near the floor" },
+    { "name": "SERIALn_OPTIONS", "rule": { "no_forward_any_port": { "serial": { "protocol_param": "SERIAL{n}_PROTOCOL", "protocols": [1, 2], "options_param": "SERIAL{n}_OPTIONS", "mask": 1024 }, "mav": { "options_param": "MAV{n}_OPTIONS", "mask": 2 }, "n": [1, 9] } }, "severity": "warn", "reason": "The flow module's port must not forward MAVLink (SERIALn_OPTIONS 1024, or MAVn_OPTIONS 2 on 4.7 and later); the port is not known, so any port passes" }
+  ],
+  "params_note": "Rows apply only when FLOW_TYPE is non-zero or OPTICAL_FLOW has been seen (FLOW_TYPE itself, RNGFND1_TYPE and RNGFND1_ORIENT always apply then). A row whose parameter is absent from the FC table is skipped. mount rules compare against the declared mount (pos within pos_tolerance_m, yaw exact); without a declaration the else rule applies. group_not_all_zero fails only when every parameter of the group is 0, reported once per group. no_forward_any_port passes when for any n in [1, 9] SERIAL{n}_PROTOCOL is in protocols and SERIAL{n}_OPTIONS has mask set, or MAV{n}_OPTIONS has mask set."
+}

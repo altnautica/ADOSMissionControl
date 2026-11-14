@@ -108,5 +108,25 @@
   }
  ],
  "failsafe_cause": null,
- "setup_step": null
+ "setup_step": null,
+ "setup_abort": null,
+ "sensors": {
+  "flow": {
+   "state": "low",
+   "quality": 96,
+   "rate_hz": 20.0,
+   "age_ms": 40
+  },
+  "range": {
+   "state": "ok",
+   "height_m": 4.2,
+   "age_ms": 50
+  },
+  "lidar": {
+   "state": "degraded",
+   "rate_hz": 6.5,
+   "health": "warning",
+   "age_ms": 120
+  }
+ }
 }

@@ -16,6 +16,7 @@ import { pillAlertsFor, pillArmed, type PillAlert, type PillSources } from "../S
 import { pillSummary } from "@/lib/hud/status-pill";
 import { specString } from "@/lib/cockpit/spec-strings";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
+import { specText } from "@/lib/hud/spec-text";
 
 const warn: PillAlert = { id: "a", severity: "warning", text: "GPS: no 3D fix", source: "nav_source" };
 const crit: PillAlert = { id: "b", severity: "critical", text: "Battery critical", source: "battery" };
@@ -128,6 +129,14 @@ describe("status pill: pilot freshness, agent and controller", () => {
     expect(out[0]).toMatchObject({ id: "failsafe", severity: "critical" });
     expect(out[0].text).toContain(specString("pilot.banner.cause.rc_or_failsafe"));
     expect(texts({ pilot: fs, pilotAgeMs: 2500 })).toEqual([specString("alert.pilot_not_answering")]);
+  });
+
+  it("says why the setup air run aborted, from a fresh pilot only", () => {
+    const aborted = { ...flying, readiness: [], statustext: [], setupAbort: "setup.blocker.aborted_ground_contact" } as unknown as PilotState;
+    expect(pillAlertsFor(sources({ pilot: aborted }))).toEqual([
+      { id: "setup_abort", source: "pilot", severity: "warning", text: specText("setup.blocker.aborted_ground_contact") },
+    ]);
+    expect(texts({ pilot: aborted, pilotAgeMs: 2500 })).toEqual([specString("alert.pilot_not_answering")]);
   });
 });
 

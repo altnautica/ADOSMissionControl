@@ -836,6 +836,130 @@
     }
   },
   {
+    "name": "setup_abort_fresh_reads_its_text",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "setup_abort": "setup.blocker.aborted_fc_failsafe"
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Aborted: the flight controller's failsafe took over. Setup sent no further commands; the flight controller keeps control.",
+      "count": 1,
+      "ids": [
+        "setup_abort"
+      ]
+    }
+  },
+  {
+    "name": "setup_abort_sits_after_failsafe_before_readiness",
+    "input": {
+      "alerts": [],
+      "readiness": [
+        {
+          "id": "gps",
+          "ok": false,
+          "severity": "warn",
+          "msg": "GPS weak"
+        }
+      ],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "fc_failsafe": true,
+      "failsafe_cause": "fc",
+      "setup_abort": "setup.blocker.aborted_battery_warning"
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "3 warnings",
+      "count": 3,
+      "ids": [
+        "failsafe",
+        "setup_abort",
+        "pilot:gps"
+      ]
+    }
+  },
+  {
+    "name": "setup_abort_unknown_key_reads_as_itself",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "setup_abort": "setup.blocker.aborted_unlisted"
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "setup.blocker.aborted_unlisted",
+      "count": 1,
+      "ids": [
+        "setup_abort"
+      ]
+    }
+  },
+  {
+    "name": "setup_abort_on_stale_pilot_reads_not_answering",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 5000,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "setup_abort": "setup.blocker.aborted_fc_failsafe"
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Pilot not answering",
+      "count": 1,
+      "ids": [
+        "pilot_not_answering"
+      ]
+    }
+  },
+  {
+    "name": "setup_abort_null_is_quiet",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "setup_abort": null
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
     "name": "arm_unknown_hides_preflight_items",
     "input": {
       "alerts": [],

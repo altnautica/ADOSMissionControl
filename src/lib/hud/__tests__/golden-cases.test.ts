@@ -79,6 +79,7 @@ describe("pill cases", () => {
         preflightFailing: i.preflight_failing,
         fcFailsafe: (i as { fc_failsafe?: boolean }).fc_failsafe,
         failsafeCause: (i as { failsafe_cause?: string | null }).failsafe_cause,
+        setupAbort: (i as { setup_abort?: string | null }).setup_abort,
         armed: (i as { armed?: boolean | null }).armed,
         navSource: (i as { nav_source?: PillInputs["navSource"] }).nav_source,
       });

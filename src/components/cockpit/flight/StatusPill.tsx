@@ -135,6 +135,7 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
     controllerLost: fresh && controllerLost(s.pilot),
     navSource: s.navSource ?? null,
     ...pilotFailsafe(s.pilot),
+    setupAbort: s.pilot?.setupAbort ?? null,
   }).filter((a) => !(a.source === "fc_status_text" && surfaceTexts.has(a.text)));
   const listed = new Set<PillSource>([...s.surface, ...shared].map((a) => a.source));
   const failing = s.armed === false

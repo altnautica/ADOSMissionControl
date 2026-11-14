@@ -17,6 +17,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/environment/weather-provider", () => ({ getWeatherSnapshot: async () => undefined }));
 vi.mock("@/lib/geocoding/reverse", () => ({ reverseGeocode: async () => undefined }));
 
+import { pillAlertsFor } from "@/components/cockpit/flight/StatusPill";
+import { specText } from "@/lib/hud/spec-text";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { chipFacts, chipSecondary, flightStateChip, type ChipView } from "@/lib/hud/flight-state";
 import { requestPilotAction, sendPilotInput } from "@/lib/input/pilot-stream";
@@ -177,6 +179,22 @@ describe("pinned tuning step", () => {
     vi.advanceTimersByTime(100);
     expect(pilot()).toMatchObject({ owner: "tuning", setupStep: "rate_roll" });
     expect(chip()).toMatchObject({ ruleId: "tuning", text: "Tuning · Rate roll" });
+  });
+});
+
+describe("pinned setup abort", () => {
+  it("reaches the pilot frame and the status pill's abort item, and is null unpinned", () => {
+    expect(pilot().setupAbort).toBeNull();
+    handle()!.pin({ setup_abort: "setup.blocker.aborted_fc_failsafe" });
+    vi.advanceTimersByTime(100);
+    expect(pilot().setupAbort).toBe("setup.blocker.aborted_fc_failsafe");
+    const out = pillAlertsFor({ surface: [], pilot: pilot(), pilotAgeMs: 0, agentReachable: true, armed: true, preflight: null, storagePct: null });
+    expect(out.find((a) => a.id === "setup_abort")).toEqual({
+      id: "setup_abort",
+      source: "pilot",
+      severity: "warning",
+      text: specText("setup.blocker.aborted_fc_failsafe"),
+    });
   });
 });
 

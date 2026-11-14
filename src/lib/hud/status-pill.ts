@@ -190,6 +190,12 @@ export interface PillInputs {
   fcFailsafe?: boolean;
   /** Why (`failsafe_cause`: `fc`, `rc_or_failsafe`); null reads as `fc`. */
   failsafeCause?: string | null;
+  /** The fresh pilot state's `setup_abort`: the setup-strings key of the
+   *  air wizard's last abort that was not the operator's
+   *  (`setup.blocker.aborted_<reason>`). One warning `setup_abort` item
+   *  worded by that key (an unknown key reads as itself); ignored while the
+   *  pilot state is stale. */
+  setupAbort?: string | null;
   /** The arm state; null while unknown (the drone may be airborne): the
    *  pre-flight items are hidden. Omitted: not known to this surface. */
   armed?: boolean | null;
@@ -250,6 +256,9 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
     out.push({ id: "pilot_not_answering", source: "pilot", severity: "warning", text: specText("alert.pilot_not_answering") });
   } else if (i.fcFailsafe) {
     out.push({ id: "failsafe", source: "pilot", severity: "critical", text: failsafeText(i.failsafeCause) });
+  }
+  if (!pilotStale && i.setupAbort) {
+    out.push({ id: "setup_abort", source: "pilot", severity: "warning", text: specText(i.setupAbort) });
   }
   for (const r of pilotStale ? [] : i.readiness) {
     if (r.ok) continue;
