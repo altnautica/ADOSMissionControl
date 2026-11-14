@@ -111,9 +111,11 @@ export function mapReportedState(payload: unknown): MappedState {
 
   // Follow-Me phase (`follow.state.phase`): the authoritative verdict when
   // present. Following steers with no badge; every other engaged phase is
-  // active with a short badge naming it.
-  if (typeof p.phase === "string" && Object.hasOwn(PHASE_BADGE, p.phase)) {
-    const phase = p.phase as FollowPhase;
+  // active with a short badge naming it. An older follow-me's `coasting`
+  // reads as predicting and its `lost` as holding, as `parseFollowState` does.
+  const rawPhase = p.phase === "coasting" ? "predicting" : p.phase === "lost" ? "holding" : p.phase;
+  if (typeof rawPhase === "string" && Object.hasOwn(PHASE_BADGE, rawPhase)) {
+    const phase = rawPhase as FollowPhase;
     if (phase === "idle" || p.active === false) return { state: "idle" };
     const badge = PHASE_BADGE[phase];
     const held = typeof p.hold_reason === "string" ? p.hold_reason : null;

@@ -77,6 +77,11 @@ describe("mapReportedState", () => {
     expect(mapReportedState({ active: false })).toEqual({ state: "idle" });
   });
 
+  it("badges an older follow's coasting as predicting and its lost as holding", () => {
+    expect(mapReportedState({ active: true, phase: "coasting" })).toMatchObject({ state: "active", badge: "PRED" });
+    expect(mapReportedState({ active: true, phase: "lost" })).toMatchObject({ state: "active", badge: "HOLD" });
+  });
+
   it("maps a locked, commanding follow payload to active", () => {
     expect(
       mapReportedState({
