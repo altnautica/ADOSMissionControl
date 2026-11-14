@@ -94,6 +94,17 @@ describe("nav-frame parsers on the golden fixtures", () => {
     expect(p!.vehicleClass).toBe("multirotor");
   });
 
+  it("parses the stale avoid state and its hold reason", () => {
+    const p = parsePilotState({ ...pilotFixture, avoid_state: "stale", hold_reason: "obstacle-data-stale" })!;
+    expect(p.avoidState).toBe("stale");
+    expect(p.holdReason).toBe("obstacle-data-stale");
+    const ar = parseArFrame({
+      ...arFixture,
+      cameras: { main: { ...arFixture.cameras.main, items: [{ t: "fpath", k: "fpath", state: "stale", pts: [[0.5, 0.7], [0.45, 0.6]] }] } },
+    })!;
+    expect(ar.cameras.main.items[0]).toMatchObject({ t: "fpath", state: "stale" });
+  });
+
   it("parses the surface ops, height above ground and FC warnings", () => {
     const p = parsePilotState(pilotFixture)!;
     expect(p.surfaceOps).toEqual(["goto"]);

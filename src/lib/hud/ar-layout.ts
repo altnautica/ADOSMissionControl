@@ -232,7 +232,10 @@ export function layoutAr(cam: ArCamera, rect: Rect, opts: ArLayoutOptions, out: 
       case "fpath": {
         if (!opts.groups.motion) break;
         const state = opts.avoid ?? it.state;
-        const color = state === "detour" ? LAYER_COLORS.detour : state === "blocked" ? LAYER_COLORS.blocked : LAYER_COLORS.follow;
+        // Stale obstacle data holds the vehicle, and with no obstacle sensor
+        // the way is flown unchecked: both read in the warning colour.
+        const warn = state === "detour" || state === "stale" || state === "unavailable";
+        const color = warn ? LAYER_COLORS.detour : state === "blocked" ? LAYER_COLORS.blocked : LAYER_COLORS.follow;
         const op = out.push(it.k, "line");
         op.color = color;
         op.width = 2;

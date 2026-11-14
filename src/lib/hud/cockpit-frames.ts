@@ -104,7 +104,7 @@ export function parseMission(raw: unknown): MissionState | null {
 
 export const PILOT_OWNERS = ["idle", "pilot", "skill", "goto", "swarm", "mission_fc", "fc_mode", "tuning"] as const;
 export type PilotOwner = (typeof PILOT_OWNERS)[number];
-export type AvoidState = "clear" | "detour" | "blocked" | "off";
+export type AvoidState = "clear" | "detour" | "blocked" | "off" | "stale" | "unavailable";
 export type VehicleClass = "multirotor" | "fixedwing" | "vtol";
 
 export interface ReadinessItem {
@@ -170,7 +170,7 @@ export interface PilotState {
   speedCap: SpeedCap | null;
 }
 
-const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off"];
+const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off", "stale", "unavailable"];
 const SEQ_STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
 
 export function parsePilotState(raw: unknown): PilotState | null {

@@ -1,7 +1,7 @@
 /**
  * The AR motion goal ring keeps the blocked colour while the way is blocked,
  * as the path does: from the pilot's avoid state, else from the state the
- * agent gave the camera's path.
+ * agent gave the camera's path. Stale obstacle data draws the path amber.
  *
  * @license GPL-3.0-only
  */
@@ -18,11 +18,14 @@ const frame = parseArFrame(arFixture)!;
 const cam: ArCamera = frame.cameras.main;
 const rect = { x: 0, y: 0, w: 1280, h: 720 };
 
-function goalColour(avoid: ArLayoutOptions["avoid"], c: ArCamera = cam): string | null {
+function opColour(k: string, avoid: ArLayoutOptions["avoid"], c: ArCamera = cam): string | null {
   const buf = new DrawOpBuffer();
   layoutAr(c, rect, { level: "full", groups: { route: true, motion: true }, mission: frame.mission, avoid, showLoaded: true }, buf);
-  return buf.ops.slice(0, buf.n).find((o) => o.k === "fgoal")?.color ?? null;
+  return buf.ops.slice(0, buf.n).find((o) => o.k === k)?.color ?? null;
 }
+
+const goalColour = (avoid: ArLayoutOptions["avoid"], c: ArCamera = cam) => opColour("fgoal", avoid, c);
+const pathColour = (avoid: ArLayoutOptions["avoid"], c: ArCamera = cam) => opColour("fpath", avoid, c);
 
 describe("AR motion goal", () => {
   it("rings the goal in the blocked colour while the pilot reports blocked", () => {
@@ -37,5 +40,16 @@ describe("AR motion goal", () => {
     };
     expect(goalColour(null, blockedPath)).toBe(tokens.state.blocked);
     expect(goalColour(null)).not.toBe(tokens.state.blocked);
+  });
+
+  it("draws the path amber, a warning, while the pilot reports stale obstacle data", () => {
+    expect(pathColour("stale")).toBe(tokens.ar.detour);
+    expect(pathColour("clear")).toBe(tokens.ar.follow);
+    const stalePath: ArCamera = {
+      ...cam,
+      items: cam.items.map((i) => (i.t === "fpath" ? { ...i, state: "stale" as const } : i)),
+    };
+    expect(pathColour(null, stalePath)).toBe(tokens.ar.detour);
+    expect(goalColour("stale")).not.toBe(tokens.state.blocked);
   });
 });

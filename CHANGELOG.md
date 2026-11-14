@@ -13,6 +13,14 @@ the project follows [Semantic Versioning](https://semver.org/).
   planned path as a dashed line and a ring on its goal, in the go-to colour,
   or in the blocked colour while the pilot reports the way blocked. It
   matches the drone's own cockpit and the Android app.
+- **Stale or missing obstacle data.** When avoidance is on and the drone's
+  lidar stops reporting, the pilot holds position and refuses motion until
+  fresh scans arrive, and reports the `stale` avoid state with the hold reason
+  `obstacle-data-stale`: the flight-state chip reads "Holding: no fresh
+  obstacle data · Obstacle data stale" in the warning colour and the AR path
+  draws amber. A drone with no lidar reports `unavailable`, read as "No
+  obstacle sensor" in the warning colour; its sticks fly, Fly Here is refused
+  with its own reason, and the readiness list warns "Lidar".
 
 ### Changed
 

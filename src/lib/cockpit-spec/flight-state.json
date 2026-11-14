@@ -35,6 +35,8 @@
       "detour": { "text": "Avoiding", "color": "avoiding" },
       "blocked": { "text": "Blocked", "color": "blocked" },
       "off": { "text": "Avoidance off", "color": "blocked" },
+      "stale": { "text": "Obstacle data stale", "color": "avoiding" },
+      "unavailable": { "text": "No obstacle sensor", "color": "avoiding" },
       "clear": null
     },
     "hold_reason": { "text": "{hold_reason_label}", "color": "avoiding" },
@@ -50,7 +52,8 @@
     "lease-busy": "Another skill has control",
     "lease-revoked": "Skill stopped",
     "link-loss": "Link lost",
-    "obstacle-close": "Obstacle close"
+    "obstacle-close": "Obstacle close",
+    "obstacle-data-stale": "Holding: no fresh obstacle data"
   },
   "hold_reason_labels_note": "keyed by the exact hold_reason wire string the pilot emits (hyphenated); setup-strings.json pilot.hold_reason.<same key> carries the same text",
   "stale_after_ms": 2000,
