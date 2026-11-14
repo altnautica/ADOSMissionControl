@@ -130,18 +130,25 @@ describe("pinned FC failsafe", () => {
     expect(chipSecondary(facts)[0]?.text).toBe("Failsafe");
   });
 
-  it("refuses Pause and Fly Here with failsafe while it is set, and leaves the FC flying", async () => {
+  it("refuses Pause, Fly Here, Resume and Launch with failsafe while it is set, and leaves the FC flying", async () => {
     handle()!.pin({ fc_failsafe: true, failsafe_cause: "fc" });
     expect(await requestPilotAction("pause")).toEqual({ ok: false, err: "failsafe" });
     expect(await requestPilotAction("goto", { lat: 12.97, lon: 77.59, alt_m: 30 })).toEqual({ ok: false, err: "failsafe" });
+    expect(await requestPilotAction("resume")).toEqual({ ok: false, err: "failsafe" });
+    expect(await requestPilotAction("launch")).toEqual({ ok: false, err: "failsafe" });
     expect(vehicle().flight.mode).toBe("AUTO");
   });
 
-  it("clears when the operator takes control", async () => {
+  it("refuses Take Control until the operator changes the FC mode", async () => {
     handle()!.pin({ fc_failsafe: true, failsafe_cause: "fc" });
-    expect((await requestPilotAction("take_control")).ok).toBe(true);
+    expect(await requestPilotAction("take_control")).toEqual({ ok: false, err: "failsafe" });
+    vi.advanceTimersByTime(100);
+    expect(pilot()).toMatchObject({ fcFailsafe: true });
+    expect(vehicle().flight.mode).toBe("AUTO");
+    expect((await requestPilotAction("hand_to_fc")).ok).toBe(true);
+    vi.advanceTimersByTime(100);
     expect(pilot()).toMatchObject({ fcFailsafe: false, failsafeCause: null });
-    expect((await requestPilotAction("pause")).ok).toBe(true);
+    expect((await requestPilotAction("take_control")).ok).toBe(true);
   });
 });
 

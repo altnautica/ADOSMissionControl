@@ -23,6 +23,11 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The demo pilot refuses Take Control during an FC failsafe.** As on the
+  agent, Take Control, Resume, Takeoff and Launch return `failsafe` while the
+  flight controller flies its own failsafe return or landing; handing the
+  drone to an FC mode ends the failsafe, and Take Control works again.
+
 - **A blocked go-to stays on the map and in AR.** With agent 0.109.134 and
   later, a go-to the drone holds because a wall blocks the way keeps its goal
   and the straight way to it on the pilot frame, so the local-frame map draws

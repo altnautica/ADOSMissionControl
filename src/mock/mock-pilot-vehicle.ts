@@ -8,7 +8,7 @@
  * and Resume puts it back in AUTO, Fly Here (`goto`) takes the vehicle to a
  * point in GUIDED as owner `goto`, Kill stops the motors. Fly Here refuses in
  * the agent's order and with its codes: during an FC failsafe the operator
- * changes mode first.
+ * changes mode first, so Take Control, Resume, Takeoff and Launch refuse too.
  * @license GPL-3.0-only
  */
 
@@ -128,6 +128,7 @@ export class DemoVehicleDriver {
         return null;
       case "takeoff":
       case "launch": {
+        if (seen.fc_failsafe === true) return "failsafe";
         if (!f.armed) f.arm();
         const alt = typeof args.alt_m === "number" ? args.alt_m : TAKEOFF_ALT_M;
         if (!f.airborne) f.takeoff(alt);
@@ -136,6 +137,7 @@ export class DemoVehicleDriver {
       }
       case "take_control":
         if (!f.armed) return "disarmed";
+        if (seen.fc_failsafe === true) return "failsafe";
         f.setMode("GUIDED");
         wire.owner = "pilot";
         return null;
@@ -155,6 +157,7 @@ export class DemoVehicleDriver {
         return null;
       case "resume":
         if (!f.armed) return "disarmed";
+        if (seen.fc_failsafe === true) return "failsafe";
         if (this.held === null) return "nothing_paused";
         f.setMode("AUTO");
         return null;
@@ -209,6 +212,7 @@ export class DemoVehicleDriver {
       case "takeoff":
       case "launch":
       case "resume":
+        if (seen.fc_failsafe === true) return "failsafe";
         wire.owner = "pilot";
         wire.fc_mode = 4;
         wire.fc_mode_name = "GUIDED";

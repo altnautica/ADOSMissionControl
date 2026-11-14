@@ -65,8 +65,9 @@ const PILOT_MS = 100;
  * controller: the real pilot brakes with hold reason `controller-lost`. */
 const INPUT_STALE_MS = 300;
 
-/** Actions that are an operator's mode change: they end an FC failsafe. */
-const OPERATOR_MODE_CHANGE: Record<string, true> = { take_control: true, hand_to_fc: true };
+/** Actions that are an operator's mode change: they end an FC failsafe.
+ * Take Control is not one: it is refused while the failsafe flies. */
+const OPERATOR_MODE_CHANGE: Record<string, true> = { hand_to_fc: true };
 
 export class MockPilot {
   private droneId: string | null = null;
