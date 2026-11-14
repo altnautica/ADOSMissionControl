@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}. {param} అయినా ఫ్లైట్ కంట్రోలర్‌కు పంపబడుతుంది."
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "ప్రీసెట్‌లు",
+        "yawDegrees": "{deg}° (ధనాత్మకం: సెన్సార్ X అక్షం ముక్కుకు కుడివైపు)",
+        "yawCaution": "తప్పు విలువ ఫ్లో ఫీడ్‌బ్యాక్‌ను తిరగబడేలా చేసి వాహనం అదుపు తప్పి ఎగిరిపోవచ్చు.",
+        "yawNotNumber": "సెంటీడిగ్రీలలో సంఖ్యను నమోదు చేయండి",
+        "yawOutOfRange": "పరిధి దాటింది: ArduPilot {min} నుండి {max} సెంటీడిగ్రీలు అంగీకరిస్తుంది",
+        "yawNotStep": "{step} సెంటీడిగ్రీల గుణిజం కావాలి",
+        "yawLegacy": "{value} పాత 45° అడుగుల సెట్టింగ్‌లా కనిపిస్తోంది. ArduPilot దీన్ని {deg}° గా చదువుతుంది. {angle}° కోసం {cdeg} నమోదు చేయండి.",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW చెల్లదు: సేవ్ చేసే ముందు సరిచేయండి"
+      },
       "sensors": "సెన్సార్లు",
       "rangefinderOpticalFlowAirspeedBarometer": "రేంజ్‌ఫైండర్, ఆప్టికల్ ఫ్లో, ఎయిర్‌స్పీడ్, బారోమీటర్ కాన్ఫిగరేషన్",
       "rangefinder": "రేంజ్‌ఫైండర్",

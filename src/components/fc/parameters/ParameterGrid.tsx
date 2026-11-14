@@ -170,8 +170,8 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
               const meta = metadata?.get(param.name);
               const hasEnum = meta?.values && meta.values.size > 0;
               const hasBitmask = meta?.bitmask && meta.bitmask.size > 0;
-              const outOfRange = isModified && isValueOutOfRange(displayValue, meta);
-              const editOutOfRange = isEditing && !isNaN(parseFloat(editValue)) && isValueOutOfRange(parseFloat(editValue), meta);
+              const outOfRange = isModified && isValueOutOfRange(displayValue, meta, param.name);
+              const editOutOfRange = isEditing && !isNaN(parseFloat(editValue)) && isValueOutOfRange(parseFloat(editValue), meta, param.name);
               const hasDefault = meta?.defaultValue !== undefined;
               const differsFromDefault = hasDefault && displayValue !== meta!.defaultValue;
               const readOnly = isReadOnly(param.name, meta);

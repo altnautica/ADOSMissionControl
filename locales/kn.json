@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}. {param} ಆದರೂ ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ."
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "ಪ್ರೀಸೆಟ್‌ಗಳು",
+        "yawDegrees": "{deg}° (ಧನ: ಸೆನ್ಸರ್‌ನ X ಅಕ್ಷ ಮೂಗಿನ ಬಲಕ್ಕೆ)",
+        "yawCaution": "ತಪ್ಪು ಮೌಲ್ಯವು ಫ್ಲೋ ಫೀಡ್‌ಬ್ಯಾಕ್ ಅನ್ನು ತಿರುಗಿಸುತ್ತದೆ ಮತ್ತು ವಾಹನ ನಿಯಂತ್ರಣ ತಪ್ಪಿ ಹಾರಬಹುದು.",
+        "yawNotNumber": "ಸೆಂಟಿಡಿಗ್ರಿಯಲ್ಲಿ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
+        "yawOutOfRange": "ವ್ಯಾಪ್ತಿಯ ಹೊರಗೆ: ArduPilot {min} ರಿಂದ {max} ಸೆಂಟಿಡಿಗ್ರಿ ಸ್ವೀಕರಿಸುತ್ತದೆ",
+        "yawNotStep": "{step} ಸೆಂಟಿಡಿಗ್ರಿಯ ಗುಣಕವಾಗಿರಬೇಕು",
+        "yawLegacy": "{value} ಹಳೆಯ 45° ಹಂತದ ಸೆಟ್ಟಿಂಗ್‌ನಂತೆ ಕಾಣುತ್ತದೆ. ArduPilot ಇದನ್ನು {deg}° ಎಂದು ಓದುತ್ತದೆ. {angle}° ಗಾಗಿ {cdeg} ನಮೂದಿಸಿ.",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW ಅಮಾನ್ಯವಾಗಿದೆ: ಉಳಿಸುವ ಮೊದಲು ಸರಿಪಡಿಸಿ"
+      },
       "sensors": "ಸೆನ್ಸರ್‌ಗಳು",
       "rangefinderOpticalFlowAirspeedBarometer": "ರೇಂಜ್‌ಫೈಂಡರ್, ಆಪ್ಟಿಕಲ್ ಫ್ಲೋ, ಏರ್‌ಸ್ಪೀಡ್, ಬ್ಯಾರೋಮೀಟರ್ ಕಾನ್ಫಿಗರೇಶನ್",
       "rangefinder": "ರೇಂಜ್‌ಫೈಂಡರ್",

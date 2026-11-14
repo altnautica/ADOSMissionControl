@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}। {param} फिर भी फ़्लाइट कंट्रोलर को भेजा जाएगा।"
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "प्रीसेट",
+        "yawDegrees": "{deg}° (धनात्मक: सेंसर का X अक्ष नोज़ के दाईं ओर)",
+        "yawCaution": "गलत मान फ़्लो फ़ीडबैक को उलट देता है और वाहन अनियंत्रित उड़ सकता है।",
+        "yawNotNumber": "सेंटीडिग्री में संख्या दर्ज करें",
+        "yawOutOfRange": "सीमा से बाहर: ArduPilot {min} से {max} सेंटीडिग्री स्वीकार करता है",
+        "yawNotStep": "{step} सेंटीडिग्री का गुणज होना चाहिए",
+        "yawLegacy": "{value} पुरानी 45° चरण वाली सेटिंग जैसा लगता है, जिसे ArduPilot {deg}° पढ़ता है। {angle}° के लिए {cdeg} दर्ज करें।",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW अमान्य है: सहेजने से पहले ठीक करें"
+      },
       "sensors": "सेंसर",
       "rangefinderOpticalFlowAirspeedBarometer": "रेंजफ़ाइंडर, ऑप्टिकल फ़्लो, एयरस्पीड, बैरोमीटर कॉन्फ़िगरेशन",
       "rangefinder": "रेंजफ़ाइंडर",

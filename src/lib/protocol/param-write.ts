@@ -24,6 +24,7 @@ import { useArmedConfirmStore } from "@/stores/armed-confirm-store";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import type { CommandResult } from "@/lib/protocol/types";
+import { isParamValueRefused } from "@/lib/protocol/param-fixed-limits";
 
 /** The single protocol method a parameter write needs. */
 export interface ParamWriter {
@@ -73,6 +74,10 @@ export async function writeParamToFc(
   req: ParamWriteRequest,
 ): Promise<CommandResult> {
   const { writer, name, value, oldValue, panelId, rebootRequired } = req;
+  // A value outside a parameter's fixed limits never reaches the vehicle.
+  if (isParamValueRefused(name, value)) {
+    return { success: false, resultCode: -1, message: `${name} = ${value} is not a valid value` };
+  }
   const result = await writer.setParameter(name, value);
   if (!result.success) return result;
 

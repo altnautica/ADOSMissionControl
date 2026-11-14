@@ -8,8 +8,11 @@ import { AlertTriangle, Check, X, ShieldAlert } from "lucide-react";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { decodeBitmaskFlags, summarizeBitmask } from "@/lib/protocol/param-display";
 import { isCriticalParam } from "@/lib/protocol/critical-params";
+import { isParamValueRefused } from "@/lib/protocol/param-fixed-limits";
 
-export function isValueOutOfRange(value: number, meta: ParamMetadata | undefined): boolean {
+/** Outside the documented range, or outside the parameter's fixed limits. */
+export function isValueOutOfRange(value: number, meta: ParamMetadata | undefined, name: string): boolean {
+  if (isParamValueRefused(name, value)) return true;
   if (!meta?.range) return false;
   return value < meta.range.min || value > meta.range.max;
 }
@@ -47,7 +50,7 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
   const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
   // A value outside the parameter's documented range is refused, not
   // written after a warning colour.
-  const hasOutOfRange = changes.some((c) => isValueOutOfRange(c.newValue, metadata?.get(c.name)));
+  const hasOutOfRange = changes.some((c) => isValueOutOfRange(c.newValue, metadata?.get(c.name), c.name));
 
   // Reset checkbox when dialog opens/closes
   const handleCancel = () => {
@@ -93,7 +96,7 @@ export function WriteConfirmDialog({ open, onCancel, onConfirm, changes, metadat
               {changes.map(({ name, oldValue, newValue }) => {
                 const critical = isCriticalParam(name);
                 const meta = metadata?.get(name);
-                const outOfRange = isValueOutOfRange(newValue, meta);
+                const outOfRange = isValueOutOfRange(newValue, meta, name);
 
                 return (
                   <tr key={name} className="border-b border-border-default">

@@ -54,7 +54,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
   // for writing, the same rule the write confirmation enforces.
   const isSelectable = useCallback(
     (d: ParamDiff) =>
-      (d.status === "changed" || d.status === "added") && !isValueOutOfRange(d.fileValue, metadata.get(d.name)),
+      (d.status === "changed" || d.status === "added") && !isValueOutOfRange(d.fileValue, metadata.get(d.name), d.name),
     [metadata],
   );
 
@@ -300,7 +300,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
                         d.status === "changed" ? "text-status-warning" : "text-text-secondary"
                       )}>
                         {d.fileValue}
-                        {range && isValueOutOfRange(d.fileValue, metadata.get(d.name)) && (
+                        {range && isValueOutOfRange(d.fileValue, metadata.get(d.name), d.name) && (
                           <div className="text-[10px] font-sans text-status-error">
                             {tw("outOfRange", { min: range.min, max: range.max })}
                           </div>

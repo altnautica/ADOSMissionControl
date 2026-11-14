@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}. {param} tetap dikirim ke flight controller."
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "Preset",
+        "yawDegrees": "{deg}° (positif: sumbu X sensor di kanan hidung)",
+        "yawCaution": "Nilai yang salah membalik umpan balik flow dan dapat membuat wahana terbang lepas.",
+        "yawNotNumber": "Masukkan angka dalam centidegree",
+        "yawOutOfRange": "Di luar rentang: ArduPilot menerima {min} sampai {max} centidegree",
+        "yawNotStep": "Harus kelipatan {step} centidegree",
+        "yawLegacy": "{value} tampak seperti pengaturan lama per langkah 45°, yang dibaca ArduPilot sebagai {deg}°. Untuk {angle}°, masukkan {cdeg}.",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW tidak valid: perbaiki sebelum menyimpan"
+      },
       "sensors": "Sensor",
       "rangefinderOpticalFlowAirspeedBarometer": "Konfigurasi rangefinder, optical flow, kecepatan udara, barometer",
       "rangefinder": "Rangefinder",

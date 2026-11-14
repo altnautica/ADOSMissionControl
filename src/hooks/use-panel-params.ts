@@ -5,6 +5,7 @@ import { usePanelCacheStore } from "@/stores/panel-cache-store";
 import { useFcPanelActionsStore } from "@/stores/fc-panel-actions-store";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { confirmArmedParamWrite, writeParamToFc } from "@/lib/protocol/param-write";
+import { isParamValueRefused } from "@/lib/protocol/param-fixed-limits";
 import { useDroneStore } from "@/stores/drone-store";
 import { isFrameGeometryParam } from "@/components/fc/shared/frame-geometry-params";
 import { cachePanelToIDB, getCachedPanelFromIDB } from "@/lib/param-cache-idb";
@@ -295,6 +296,17 @@ export function usePanelParams(
       return true;
     };
     if (refuseGeometry()) return false;
+
+    // A value outside its parameter's fixed limits blocks the whole save, by
+    // the button or by Ctrl+S, so nothing in the batch is written.
+    const refused = Array.from(dirtyParams).filter((n) => {
+      const v = params.get(n);
+      return v !== undefined && isParamValueRefused(n, v);
+    });
+    if (refused.length > 0) {
+      onEvent?.({ type: "error", message: `Not saved, invalid value: ${refused.join(", ")}` });
+      return false;
+    }
 
     // Armed-write guard, shared with the raw Parameters grid so both surfaces
     // ask the same question in the same words.

@@ -31,6 +31,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Optical flow yaw in centidegrees.** Configure > Sensors edits
+  `FLOW_ORIENT_YAW` in centidegrees (-17999..18000 in steps of 10, presets 0,
+  ±9000 and 18000) and names the centidegree value an old 1..7 setting meant.
+  The Sensors panel (its Save button and Ctrl+S), the Parameters grid and
+  parameter file import all refuse a value off the 10 step or out of range,
+  with or without the vehicle's parameter documentation. The field used to
+  offer 0..7 in 45° steps, which ArduPilot reads as 0.01..0.07°.
+
 - **The demo pilot refuses Take Control during an FC failsafe.** As on the
   agent, Take Control, Resume, Takeoff and Launch return `failsafe` while the
   flight controller flies its own failsafe return or landing; handing the

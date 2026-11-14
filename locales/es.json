@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}. {param} se enviará igualmente a la controladora."
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "Valores rápidos",
+        "yawDegrees": "{deg}° (positivo: eje X del sensor a la derecha del morro)",
+        "yawCaution": "Un valor incorrecto invierte la realimentación del flujo y puede provocar una fuga del vehículo.",
+        "yawNotNumber": "Introduce un número en centigrados",
+        "yawOutOfRange": "Fuera de rango: ArduPilot acepta de {min} a {max} centigrados",
+        "yawNotStep": "Debe ser múltiplo de {step} centigrados",
+        "yawLegacy": "{value} parece el antiguo ajuste en pasos de 45°, que ArduPilot lee como {deg}°. Para {angle}°, introduce {cdeg}.",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW no es válido: corrígelo antes de guardar"
+      },
       "sensors": "Sensores",
       "rangefinderOpticalFlowAirspeedBarometer": "Configuración de telémetro, flujo óptico, velocidad aerodinámica y barómetro",
       "rangefinder": "Telémetro",

@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}. {param} wird trotzdem an den Flugcontroller gesendet."
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "Vorgaben",
+        "yawDegrees": "{deg}° (positiv: Sensor-X-Achse rechts der Nase)",
+        "yawCaution": "Ein falscher Wert kehrt die Flussrückführung um und kann zum Wegfliegen führen.",
+        "yawNotNumber": "Eine Zahl in Zentigrad eingeben",
+        "yawOutOfRange": "Außerhalb des Bereichs: ArduPilot akzeptiert {min} bis {max} Zentigrad",
+        "yawNotStep": "Muss ein Vielfaches von {step} Zentigrad sein",
+        "yawLegacy": "{value} sieht nach der alten 45°-Stufen-Einstellung aus, die ArduPilot als {deg}° liest. Für {angle}° {cdeg} eingeben.",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW ist ungültig: vor dem Speichern korrigieren"
+      },
       "sensors": "Sensoren",
       "rangefinderOpticalFlowAirspeedBarometer": "Konfiguration von Entfernungsmesser, optischem Fluss, Fluggeschwindigkeit und Barometer",
       "rangefinder": "Entfernungsmesser",

@@ -1,4 +1,5 @@
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
+import { isParamValueRefused } from "@/lib/protocol/param-fixed-limits";
 
 /**
  * Names treated as read-only when the metadata does not say. ArduPilot marks
@@ -44,8 +45,9 @@ export function getDangerousWarning(name: string, value: number): string | null 
   return null;
 }
 
-/** Check if a value is outside the parameter's defined range. */
-export function isValueOutOfRange(value: number, meta: ParamMetadata | undefined): boolean {
+/** Outside the documented range, or outside the parameter's fixed limits. */
+export function isValueOutOfRange(value: number, meta: ParamMetadata | undefined, name: string): boolean {
+  if (isParamValueRefused(name, value)) return true;
   if (!meta?.range) return false;
   return value < meta.range.min || value > meta.range.max;
 }

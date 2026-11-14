@@ -21,6 +21,8 @@ import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { RangefinderInstance } from "./RangefinderInstance";
+import { FlowOrientYawField } from "./FlowOrientYawField";
+import { validateFlowOrientYaw } from "@/lib/sensors/flow-orient-yaw";
 import {
   SENSOR_PARAMS, OPTIONAL_SENSOR_PARAMS, RNGFND_EXTRA_INSTANCES,
 } from "./sensor-constants";
@@ -29,6 +31,7 @@ import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
 export function SensorsPanel() {
   const tr = useTranslations("fcPanels.sensorsPanel");
+  const tf = useTranslations("fcPanels.sensorsPanel.flowSetup");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
@@ -69,6 +72,11 @@ export function SensorsPanel() {
   const notOnFirmware = (name: string) => (
     <p className="text-xs text-text-tertiary">{name} is not on this firmware.</p>
   );
+
+  // A FLOW_ORIENT_YAW edit outside -17999..18000 or off the 10 cdeg step is
+  // never written: a wrong flow yaw inverts the velocity feedback.
+  const yawEdit = dirtyParams.has("FLOW_ORIENT_YAW") ? params.get("FLOW_ORIENT_YAW") : undefined;
+  const yawBlocked = yawEdit !== undefined && !validateFlowOrientYaw(yawEdit).valid;
 
   // Additional ArduPilot rangefinder instances (2..A): show any that are
   // already configured (TYPE != 0), plus any the operator reveals via "Add".
@@ -207,7 +215,11 @@ export function SensorsPanel() {
                 <>
                   <Input label={lbl(`FLOW_FXSCALER — ${tr("xScaler")}`)} type="number" step="1" value={p("FLOW_FXSCALER")} onChange={(e) => set("FLOW_FXSCALER", e.target.value)} />
                   <Input label={lbl(`FLOW_FYSCALER — ${tr("yScaler")}`)} type="number" step="1" value={p("FLOW_FYSCALER")} onChange={(e) => set("FLOW_FYSCALER", e.target.value)} />
-                  <Input label={lbl(`FLOW_ORIENT_YAW — ${tr("yawOrientation")}`)} type="number" step="1" min="0" max="7" unit="cw45°" value={p("FLOW_ORIENT_YAW")} onChange={(e) => set("FLOW_ORIENT_YAW", e.target.value)} />
+                  <FlowOrientYawField
+                    label={lbl(`FLOW_ORIENT_YAW — ${tr("yawOrientation")}`)}
+                    value={params.get("FLOW_ORIENT_YAW")}
+                    onChange={(v) => setLocalValue("FLOW_ORIENT_YAW", v)}
+                  />
                 </>
               )}
             </div>
@@ -252,12 +264,14 @@ export function SensorsPanel() {
 
           {/* Save */}
           <PanelSaveBar
-            onSave={handleSave}
+            onSave={() => { if (!yawBlocked) void handleSave(); }}
             saving={saving}
-            saveDisabled={!hasDirty || !connected}
+            saveDisabled={!hasDirty || !connected || yawBlocked}
+            saveTitle={yawBlocked ? tf("yawSaveBlocked") : undefined}
             showFlash={hasRamWrites}
             onFlash={handleFlash}
             flashing={flashing}
+            hint={yawBlocked ? <span className="text-xs text-status-error">{tf("yawSaveBlocked")}</span> : undefined}
             showConnectHint={!connected}
             showUnsavedHint={hasDirty && connected}
           />

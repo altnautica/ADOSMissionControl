@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}。{param} 仍会发送到飞控。"
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "预设",
+        "yawDegrees": "{deg}°（正值：传感器 X 轴在机头右侧）",
+        "yawCaution": "数值错误会使光流反馈反向，可能导致飞机失控飞走。",
+        "yawNotNumber": "请输入以厘度为单位的数字",
+        "yawOutOfRange": "超出范围：ArduPilot 接受 {min} 到 {max} 厘度",
+        "yawNotStep": "必须是 {step} 厘度的整数倍",
+        "yawLegacy": "{value} 看起来是旧的 45° 步进设置。ArduPilot 会将其读作 {deg}°。如需 {angle}°，请输入 {cdeg}。",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW 无效：保存前请修正"
+      },
       "sensors": "传感器",
       "rangefinderOpticalFlowAirspeedBarometer": "测距仪、光流、空速计、气压计配置",
       "rangefinder": "测距仪",

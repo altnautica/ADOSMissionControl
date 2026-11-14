@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}. {param} તોય ફ્લાઇટ કંટ્રોલરને મોકલાશે."
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "પ્રીસેટ",
+        "yawDegrees": "{deg}° (ધન: સેન્સરનો X અક્ષ નાકની જમણી બાજુ)",
+        "yawCaution": "ખોટું મૂલ્ય ફ્લો ફીડબેકને ઊલટાવે છે અને વાહન બેકાબૂ ઊડી શકે છે.",
+        "yawNotNumber": "સેન્ટીડિગ્રીમાં સંખ્યા દાખલ કરો",
+        "yawOutOfRange": "શ્રેણી બહાર: ArduPilot {min} થી {max} સેન્ટીડિગ્રી સ્વીકારે છે",
+        "yawNotStep": "{step} સેન્ટીડિગ્રીનો ગુણાંક હોવો જોઈએ",
+        "yawLegacy": "{value} જૂના 45° પગલાંના સેટિંગ જેવું લાગે છે, જેને ArduPilot {deg}° તરીકે વાંચે છે. {angle}° માટે {cdeg} દાખલ કરો.",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW અમાન્ય છે: સાચવતા પહેલાં સુધારો"
+      },
       "sensors": "સેન્સર",
       "rangefinderOpticalFlowAirspeedBarometer": "રેન્જફાઇન્ડર, ઓપ્ટિકલ ફ્લો, એરસ્પીડ, બેરોમીટર રૂપરેખાંકન",
       "rangefinder": "રેન્જફાઇન્ડર",

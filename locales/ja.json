@@ -10713,6 +10713,16 @@
       "classStillSent": "{description}。{param} はそのままフライトコントローラーに送信されます。"
     },
     "sensorsPanel": {
+      "flowSetup": {
+        "yawPresets": "プリセット",
+        "yawDegrees": "{deg}°（正: センサーのX軸が機首の右側）",
+        "yawCaution": "値を誤るとフローのフィードバックが反転し、機体が暴走するおそれがあります。",
+        "yawNotNumber": "センチ度で数値を入力してください",
+        "yawOutOfRange": "範囲外: ArduPilot は {min} から {max} センチ度を受け付けます",
+        "yawNotStep": "{step} センチ度の倍数にしてください",
+        "yawLegacy": "{value} は旧来の 45° 刻みの設定に見えます。ArduPilot は {deg}° と解釈します。{angle}° にするには {cdeg} を入力してください。",
+        "yawSaveBlocked": "FLOW_ORIENT_YAW が無効です: 保存前に修正してください"
+      },
       "sensors": "センサー",
       "rangefinderOpticalFlowAirspeedBarometer": "距離センサー、オプティカルフロー、対気速度、気圧計の設定",
       "rangefinder": "レンジファインダー",
