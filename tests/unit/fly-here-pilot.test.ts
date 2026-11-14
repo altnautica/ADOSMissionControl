@@ -67,7 +67,7 @@ function ctx(): SkillContext {
 function pilotWith(surfaceOps: string[], owner = "pilot", controlMode = "ados", ageMs = 0): void {
   useNavStreamStore.getState().setPilot(
     DRONE,
-    { controlMode, surfaceOps, owner, armed: true, landed: false, fcFailsafe: false } as unknown as PilotState,
+    { controlMode, surfaceOps, owner, armed: true, landed: false, fcFailsafe: false, positionUnverified: null } as unknown as PilotState,
     Date.now() - ageMs,
   );
 }
@@ -205,7 +205,7 @@ describe("Fly Here sends the route offered at the press", () => {
     fcIn("RTL");
     useNavStreamStore.getState().setPilot(
       DRONE,
-      { controlMode: "ados", surfaceOps: ["goto"], armed: true, landed: false, fcFailsafe: true } as unknown as PilotState,
+      { controlMode: "ados", surfaceOps: ["goto"], armed: true, landed: false, fcFailsafe: true, positionUnverified: null } as unknown as PilotState,
       Date.now(),
     );
     await activate("fly-here", ctx(), { lat: 10, lon: 20, altitudeM: 30 });

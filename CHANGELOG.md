@@ -6,6 +6,10 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Cockpit: a position the drone cannot vouch for reads red. The flight-state chip shows "Position unverified · <reason>" (after the flight controller's RTH, Landing and Transition chips, with Take control while the flight controller flies its own mode), the reason read in words from the shared spec, a lost heading or IMU feed included. The hold reads "Holding · position unverified", and the nav-source chip turns crit with FLOW DISAGREES, CORRIDOR or UNVERIFIED. Fly here is not offered while the position is unverified, through the pilot or as a reposition in GUIDED, and the pilot's refusal and readiness item read "Position unverified (nav); fly manually or land" and "Position check (nav)". A stale pilot frame never keeps the nav chip crit. Demo: `__adosDemoPilot.pin` reaches the state.
+
 ### Fixed
 
 - **Opening a node's Flight tab no longer stalls the whole app while the

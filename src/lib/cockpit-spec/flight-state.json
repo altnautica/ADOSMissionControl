@@ -6,7 +6,10 @@
     { "id": "launching", "match": { "sequence_running": true }, "text": "Taking off · {step}", "color": "pilot", "button": "abort" },
     { "id": "idle_ready", "match": { "owner": "idle", "ready": true }, "text": "Ready", "color": "ready", "button": null },
     { "id": "idle_not_ready", "match": { "owner": "idle", "ready": false }, "text": "Not ready · {first_block_msg}", "color": "not_ready", "button": "setup_link_when_setup_needed" },
-    { "id": "position_unverified", "match": { "position_unverified": true }, "text": "Position unverified · {position_unverified_label}", "color": "blocked", "button": null },
+    { "id": "vtol_transition", "match": { "owner": "fc_mode", "vtol_transitioning": true }, "text": "Transition", "color": "rth", "button": null },
+    { "id": "fc_rth", "match": { "owner": "fc_mode", "fc_mode_class": "rtl" }, "text": "RTH · {home_dist_m} m", "color": "rth", "button": null },
+    { "id": "fc_land", "match": { "owner": "fc_mode", "fc_mode_class": "land" }, "text": "Landing", "color": "rth", "button": null },
+    { "id": "position_unverified", "match": { "position_unverified": true }, "text": "Position unverified · {position_unverified_label}", "color": "blocked", "button": null, "button_if": { "match": { "owner": "fc_mode" }, "button": "take_control" } },
     { "id": "pilot", "match": { "owner": "pilot" }, "text": "Pilot · {profile}", "color": "pilot", "button": null, "button_if": { "match": { "mission_state": "paused" }, "button": "resume" } },
     { "id": "skill", "match": { "owner": "skill" }, "text": "{skill_label} · {mode_detail}", "color": "skill", "button": null },
     { "id": "goto", "match": { "owner": "goto" }, "text": "Goto · {dist_m} m", "color": "goto", "button": null },
@@ -16,9 +19,6 @@
     { "id": "mission_active", "match": { "owner": "mission_fc", "mission_state": "active" }, "text": "Mission · WP {seq}/{total} · {eta}", "suffix_if_landing_seq": " · Landing", "color": "mission", "button": null },
     { "id": "mission_complete", "match": { "mission_state": "complete", "complete_age_lt_ms": 10000 }, "text": "Mission complete", "color": "mission", "button": null },
     { "id": "mission_fc", "match": { "owner": "mission_fc" }, "text": "Mission · WP {seq}/{total}", "color": "mission", "button": null },
-    { "id": "vtol_transition", "match": { "vtol_transitioning": true }, "text": "Transition", "color": "rth", "button": null },
-    { "id": "fc_rth", "match": { "owner": "fc_mode", "fc_mode_class": "rtl" }, "text": "RTH · {home_dist_m} m", "color": "rth", "button": null },
-    { "id": "fc_land", "match": { "owner": "fc_mode", "fc_mode_class": "land" }, "text": "Landing", "color": "rth", "button": null },
     { "id": "fc_other_ados_standby", "match": { "owner": "fc_mode", "control_mode": "ados" }, "text": "FC · {fc_mode_name_upper} · ADOS standing by", "color": "fc", "button": "take_control" },
     { "id": "fc_other", "match": { "owner": "fc_mode" }, "text": "FC · {fc_mode_name_upper}", "color": "fc", "button": "take_control" }
   ],
@@ -52,7 +52,12 @@
     "ekf_flow_disagree": "Flow disagrees",
     "extnav_degraded": "External position degraded",
     "extnav_lost": "External position lost",
-    "flow_disagrees": "Flow disagrees"
+    "extnav_stale": "No report from vision navigation",
+    "flow_disagrees": "Flow disagrees",
+    "heading_unconfirmed": "Heading unconfirmed",
+    "imu_feed_attitude_stand_in": "IMU feed: attitude stand-in",
+    "imu_feed_stalled": "IMU feed stalled",
+    "imu_feed_starved": "IMU feed starved"
   },
   "position_unverified_labels_note": "keyed by the pilot's position_unverified.detail when it is one of these, else its reason; setup-strings.json pilot.position_unverified.<same key> carries the same text",
   "hold_reason_labels": {

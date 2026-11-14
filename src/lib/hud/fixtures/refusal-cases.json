@@ -574,5 +574,14 @@
     "expected": {
       "text": "Refused: fc_refused_reason"
     }
+  },
+  {
+    "name": "position_unverified",
+    "input": {
+      "code": "position_unverified"
+    },
+    "expected": {
+      "text": "Position unverified (nav); fly manually or land"
+    }
   }
 ]

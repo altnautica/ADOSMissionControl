@@ -9,7 +9,11 @@
 //
 // FC route: otherwise, a flight controller in GUIDED, armed and flying takes
 // a reposition straight from the surface, unless a fresh pilot state reports
-// an FC failsafe (a reposition would fight the failsafe RTL or land).
+// an FC failsafe (a reposition would fight the failsafe RTL or land) or an
+// unverified position (the FC would fly to it on the same estimate).
+//
+// Neither route while a fresh pilot state reports the position unverified:
+// the pilot refuses a goto with `position_unverified`.
 //
 // Neither: `reason` says why, worded by `refusal.<reason>`, so a long-press
 // on the map can say it in a toast instead of opening a dialog. An unknown
@@ -31,7 +35,7 @@ export interface FlyHereFc {
   landed: boolean;
 }
 
-export type FlyHereReason = "failsafe" | "landed" | "pilot_stale" | "control_mode" | "not_guided" | "no_fc_link";
+export type FlyHereReason = "failsafe" | "position_unverified" | "landed" | "pilot_stale" | "control_mode" | "not_guided" | "no_fc_link";
 
 export interface FlyHereOffer {
   /** `pilot`: send the pilot's `goto`; `fc`: reposition the FC in GUIDED;
@@ -45,14 +49,16 @@ export interface FlyHereOffer {
  *  and the flight controller's own state, and why not. */
 export function flyHereOffered(p: PilotState | null, pilotAgeMs: number, fc?: FlyHereFc | null): FlyHereOffer {
   const fresh = pilotAgeMs < CHIP_STALE_AFTER_MS;
-  if (p !== null && fresh && p.controlMode === "ados" && gotoAdvertised(p) && p.armed === true && p.landed === false && !p.fcFailsafe) {
+  const unverified = p !== null && fresh && p.positionUnverified !== null;
+  if (p !== null && fresh && p.controlMode === "ados" && gotoAdvertised(p) && p.armed === true && p.landed === false && !p.fcFailsafe && !unverified) {
     return { route: "pilot" };
   }
   const failsafe = p !== null && fresh && p.fcFailsafe;
-  if (fc && !failsafe && fc.guided && fc.armed && !fc.landed) return { route: "fc" };
+  if (fc && !failsafe && !unverified && fc.guided && fc.armed && !fc.landed) return { route: "fc" };
   if (p !== null && !fresh) return { route: null, reason: "pilot_stale" };
   if (p !== null) {
     if (p.fcFailsafe) return { route: null, reason: "failsafe" };
+    if (p.positionUnverified !== null) return { route: null, reason: "position_unverified" };
     if (p.armed === false || p.landed === true) return { route: null, reason: "landed" };
     if (!fc && p.armed === null) return { route: null, reason: "no_fc_link" };
     if (!fc && gotoAdvertised(p) && p.controlMode !== "ados") return { route: null, reason: "control_mode" };
