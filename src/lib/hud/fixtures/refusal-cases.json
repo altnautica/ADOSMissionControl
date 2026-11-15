@@ -592,5 +592,32 @@
     "expected": {
       "text": "No stalled waypoint to skip"
     }
+  },
+  {
+    "name": "route_infeasible",
+    "input": {
+      "code": "route_infeasible"
+    },
+    "expected": {
+      "text": "Route too tight for the confined profile"
+    }
+  },
+  {
+    "name": "route_unchecked",
+    "input": {
+      "code": "route_unchecked"
+    },
+    "expected": {
+      "text": "Route not fully checked: a waypoint has no position, or the mission is too long"
+    }
+  },
+  {
+    "name": "no_prop_radius",
+    "input": {
+      "code": "no_prop_radius"
+    },
+    "expected": {
+      "text": "Set the propeller tip radius for the confined profile"
+    }
   }
 ]

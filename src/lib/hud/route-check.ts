@@ -15,7 +15,7 @@ const NO_DATA = "—";
 const DEFAULT_MARGIN_M = 1.5;
 /** The margin floor in an open place. */
 const OPEN_FLOOR_M = 0.5;
-/** A confined place keeps at least the prop-tip radius plus this. */
+/** A confined place keeps the prop-tip radius plus this. */
 const CONFINED_EXTRA_M = 0.1;
 
 /** Clearances and required distances: two decimals ("0.58"). */
@@ -65,11 +65,21 @@ export function routeCheckReport(rc: RouteCheck | null | undefined): RouteCheckR
           required_m: metres2(pinch?.requiredM ?? rc.requiredM),
         }
       : { required_m: metres2(rc.requiredM) };
+  // An unverified route that left items unchecked says which, before the
+  // generic "not seen yet".
+  const key =
+    rc.state !== "unverified"
+      ? rc.state
+      : rc.unchecked.length > 0
+        ? "unchecked"
+        : rc.truncated
+          ? "truncated"
+          : "unverified";
   return {
     state: rc.state,
     severity: SEVERITY[rc.state],
     title: specText("route_check.title"),
-    line: specText(`route_check.${rc.state}`, args),
+    line: specText(`route_check.${key}`, { ...args, items: rc.unchecked.join(", ") }),
     pinchAt: pinch ? specText("route_check.pinch_at", { n: metres1(pinch.ned[0]), e: metres1(pinch.ned[1]), h: metres1(-pinch.ned[2]) }) : null,
   };
 }
@@ -92,14 +102,14 @@ export function placeClassAction(cls: PlaceClass): string {
   return `place_class:${cls}`;
 }
 
-/** The obstacle margin the pilot flies with: the configured margin
- *  (`pilot.obstacle_margin_m`, null for the default) raised to the class
- *  floor. Null for a confined place without a prop-tip radius, which the
- *  pilot refuses to launch. */
+/** The obstacle margin the pilot flies with: in an open place the configured
+ *  margin (`pilot.obstacle_margin_m`, null for the default), at least 0.5 m;
+ *  in a confined one the prop-tip radius plus 0.1 m, whatever the configured
+ *  open margin. Null for a confined place without a prop-tip radius, which
+ *  the pilot refuses to launch. */
 export function effectiveMarginM(cls: PlaceClass, configuredM: number | null, propTipRadiusM: number | null): number | null {
-  const configured = configuredM ?? DEFAULT_MARGIN_M;
-  if (cls === "open") return Math.max(configured, OPEN_FLOOR_M);
-  return propTipRadiusM === null ? null : Math.max(configured, propTipRadiusM + CONFINED_EXTRA_M);
+  if (cls === "open") return Math.max(configuredM ?? DEFAULT_MARGIN_M, OPEN_FLOOR_M);
+  return propTipRadiusM === null ? null : propTipRadiusM + CONFINED_EXTRA_M;
 }
 
 /** The picker's explain line for a class with its effective margin (at most
