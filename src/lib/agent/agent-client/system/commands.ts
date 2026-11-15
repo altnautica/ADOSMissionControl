@@ -53,13 +53,24 @@ export interface AgentCommandOutcome {
 /**
  * Decode the agent's command response into an {@link AgentCommandOutcome}.
  * Pure and defensive: an envelope missing the acknowledgement block reads as
- * unacknowledged rather than as a success.
+ * unacknowledged rather than as a success. In `ados` control the agent hands
+ * a flight primitive to its pilot and answers with the pilot's verdict
+ * (`via: "pilot"`, `status` `ok` or `error` with the pilot's reason) instead
+ * of a flight-controller ack; that verdict is the command's answer.
  */
 export function decodeAgentCommandOutcome(body: unknown): AgentCommandOutcome {
-  const ack =
-    body && typeof body === "object"
-      ? (body as { ack?: unknown }).ack
-      : undefined;
+  const root = body && typeof body === "object" ? (body as { ack?: unknown; via?: unknown; status?: unknown; message?: unknown }) : undefined;
+  if (root?.via === "pilot") {
+    const accepted = root.status === "ok";
+    const reason = typeof root.message === "string" && root.message.length > 0 ? root.message : null;
+    return {
+      acknowledged: true,
+      accepted,
+      resultCode: null,
+      message: accepted ? "Accepted by the pilot" : (reason ?? "Refused by the pilot"),
+    };
+  }
+  const ack = root?.ack;
   if (!ack || typeof ack !== "object") {
     return {
       acknowledged: false,
