@@ -33,21 +33,22 @@
  * @license GPL-3.0-only
  */
 
-import type { CommandResult, UnifiedFlightMode } from "@/lib/protocol/types";
+import type { CommandResult } from "@/lib/protocol/types";
 import type { SkillProtocol } from "@/lib/skills";
-import { noteModeOnSuccess } from "@/lib/skills/flight-facts";
-import {
-  runCommand,
-  type AgentCommandName,
-} from "@/lib/agent/agent-client/system";
+import type { AgentCommandName } from "@/lib/agent/agent-client/system";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { resolveDirectFcProtocol } from "@/lib/nodes/direct-fc-protocol";
-import { relayProxyBaseUrl, resolveRelayReach } from "@/lib/nodes/relay-reach";
+import type { AgentModeFirmware } from "@/lib/agent/agent-mode-names";
 import {
-  agentModeName,
-  type AgentModeFirmware,
-} from "@/lib/agent/agent-mode-names";
-import { nodeIdForDevice } from "@/lib/agent/node-id";
+  NO_MAV_RESULT,
+  dispatchOverLan,
+  errorMessage,
+  failed,
+  makeDirectFcSink,
+  makeSink,
+  pageOriginIsHttps,
+} from "@/lib/nodes/command-lanes";
+import { resolveRelayedCommandReach } from "@/lib/nodes/relayed-command-reach";
 
 /** The node fields a sink needs. A fleet node entry satisfies this. */
 export interface CommandTargetNode {
@@ -189,87 +190,6 @@ export interface NodeCommandSinkOptions {
   agentFirmware?: AgentModeFirmware | null;
 }
 
-/**
- * The agent command each skill method maps to, or null when the agent's command
- * route has no equivalent. Every skill method maps to a real agent command:
- * `killSwitch` force-disarms, `pauseMission` / `resumeMission` hold and continue
- * an auto flight. A method left null here would be refused rather than
- * substituting a different command that silently did something else.
- */
-const AGENT_COMMAND_FOR: Record<keyof SkillProtocol, AgentCommandName | null> =
-  {
-    arm: "arm",
-    disarm: "disarm",
-    setFlightMode: "mode",
-    returnToLaunch: "rtl",
-    land: "land",
-    takeoff: "takeoff",
-    killSwitch: "killSwitch",
-    pauseMission: "pauseMission",
-    resumeMission: "resumeMission",
-  };
-
-/**
- * Result code used when no MAV_RESULT was ever produced — the command was
- * refused before reaching a vehicle, the transport failed, or the vehicle never
- * acknowledged. Matches how the MSP adapter reports a command it cannot carry.
- */
-const NO_MAV_RESULT = -1;
-
-function refused(method: keyof SkillProtocol): CommandResult {
-  return {
-    success: false,
-    resultCode: NO_MAV_RESULT,
-    message: `${method} has no equivalent on the agent command lane`,
-  };
-}
-
-function failed(message: string): CommandResult {
-  return { success: false, resultCode: NO_MAV_RESULT, message };
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** True when the page origin blocks a plain-HTTP request to a LAN agent. */
-function pageOriginIsHttps(): boolean {
-  return (
-    typeof window !== "undefined" && window.location.protocol === "https:"
-  );
-}
-
-/** Dispatch one agent command over the LAN and report the vehicle's answer.
- * `relay` marks the ground station's relay-proxy prefix, whose requests cross
- * the radio rather than the LAN. Nothing reads the flag on this path today
- * (`runCommand` pins its own 15 s deadline, which already clears the ground's
- * bound), but a request context that misdescribes its own transport is a bug
- * the moment anything branches on it. */
-async function dispatchOverLan(
-  agent: { agentUrl: string; apiKey: string; relay?: boolean },
-  cmd: AgentCommandName,
-  args: unknown[],
-): Promise<CommandResult> {
-  try {
-    const outcome = await runCommand(
-      {
-        baseUrl: agent.agentUrl,
-        apiKey: agent.apiKey,
-        relay: agent.relay ?? false,
-      },
-      cmd,
-      args,
-    );
-    return {
-      success: outcome.accepted,
-      resultCode: outcome.resultCode ?? NO_MAV_RESULT,
-      message: outcome.message,
-    };
-  } catch (error) {
-    return failed(errorMessage(error));
-  }
-}
-
 /** Queue one agent command on the cloud relay for later delivery. */
 async function dispatchOverCloud(
   enqueue: CloudCommandEnqueuer,
@@ -301,81 +221,6 @@ async function dispatchOverCloud(
   }
 }
 
-/** Build a sink over one dispatch function. */
-function makeSink(
-  transport: NodeCommandTransport,
-  reportsVehicleAck: boolean,
-  agentFirmware: AgentModeFirmware | null | undefined,
-  dispatch: (cmd: AgentCommandName, args: unknown[]) => Promise<CommandResult>,
-): NodeCommandSink {
-  const run = (
-    method: keyof SkillProtocol,
-    args: unknown[] = [],
-  ): Promise<CommandResult> => {
-    const cmd = AGENT_COMMAND_FOR[method];
-    if (!cmd) return Promise.resolve(refused(method));
-    return dispatch(cmd, args);
-  };
-
-  return {
-    transport,
-    reportsVehicleAck,
-    supports: (method) => AGENT_COMMAND_FOR[method] !== null,
-    arm: () => run("arm"),
-    disarm: () => run("disarm"),
-    setFlightMode: (mode: UnifiedFlightMode) => {
-      const name = agentFirmware ? agentModeName(agentFirmware, mode) : mode;
-      return name === null
-        ? Promise.resolve(
-            failed(`${mode} has no equivalent in the agent's mode table for this vehicle`),
-          )
-        : run("setFlightMode", [name]);
-    },
-    returnToLaunch: () => run("returnToLaunch"),
-    land: () => run("land"),
-    takeoff: (altitude: number) => run("takeoff", [altitude]),
-    // The confirmation lives at the dispatcher; the lane refuses to enqueue a
-    // flight termination it was not told was confirmed rather than trusting a
-    // caller that skipped the confirm.
-    killSwitch: (confirmed: boolean) =>
-      confirmed
-        ? run("killSwitch")
-        : Promise.resolve({
-            success: false,
-            resultCode: -1,
-            message: "Flight termination requires explicit confirmation",
-          }),
-    pauseMission: () => run("pauseMission"),
-    resumeMission: () => run("resumeMission"),
-  };
-}
-
-/**
- * Build a sink over a directly-connected FC's own live protocol. Unlike the
- * agent lanes, every command is a real protocol call the vehicle answers, so
- * `reportsVehicleAck` is true and every method is carried (the autonomous-nav
- * gate, handled upstream, decides which are offered — not the lane). The
- * protocol is used only through its command surface; a live `DroneProtocol`
- * satisfies that surface directly. An accepted mode, return or landing is
- * recorded for `droneId` (its drone-manager id) as this station's command.
- */
-function makeDirectFcSink(protocol: SkillProtocol, droneId: string): NodeCommandSink {
-  return {
-    transport: "direct-fc",
-    reportsVehicleAck: true,
-    supports: () => true,
-    arm: () => protocol.arm(),
-    disarm: () => protocol.disarm(),
-    setFlightMode: (mode: UnifiedFlightMode) => noteModeOnSuccess(droneId, mode, protocol.setFlightMode(mode)),
-    returnToLaunch: () => noteModeOnSuccess(droneId, "RTL", protocol.returnToLaunch()),
-    land: () => noteModeOnSuccess(droneId, "LAND", protocol.land()),
-    takeoff: (altitude: number) => protocol.takeoff(altitude),
-    killSwitch: (confirmed: boolean) => protocol.killSwitch(confirmed),
-    pauseMission: () => protocol.pauseMission(),
-    resumeMission: () => protocol.resumeMission(),
-  };
-}
-
 /**
  * Resolve how commands reach `node`, preferring the LAN transport because it
  * reports the vehicle's own acknowledgement. Returns the reason nothing could
@@ -397,68 +242,7 @@ export function resolveNodeCommandReach(
     return { sink: null, blockedReason: "direct-fc" };
   }
 
-  if (node.isRelayed) {
-    // A relayed-only node holds no LAN credentials and no cloud pairing row (it
-    // was never paired directly), so the radio is its reach — and the radio
-    // carries two lanes, tried in the order of what each can honestly report.
-    //
-    // First, `RelayedMavlinkBridge`'s live MAVLink session, opened in the
-    // background against the ground station's republish endpoint and keyed by
-    // this same `node:<deviceId>` id in the drone manager. That is the vehicle's
-    // own protocol speaking, so it keeps precedence over any HTTP lane, except
-    // for the return (below).
-    //
-    // Second, the ground station's relay-proxy route, which forwards an HTTP
-    // call to this drone's own agent over the aux radio lane and projects the
-    // drone's real status back. Same agent command route as the direct LAN
-    // lane, one radio hop further out, so it reports the vehicle's own ack.
-    const relayedId = nodeIdForDevice(node.deviceId);
-    const relay = resolveRelayReach({
-      agentDeviceId: null,
-      reachedVia: node.reachedVia,
-      droneDeviceId: node.deviceId,
-    });
-    // The ground station is reached at a plain-HTTP LAN address, so an HTTPS
-    // page origin blocks this lane as mixed content exactly as it blocks the
-    // direct LAN lane below — and for exactly the same reason, so it reports
-    // that cause. Falling through to "relay-only" here would tell the
-    // operator the ground station is unpaired when it is paired and reachable.
-    const relayBlocked = relay !== null && (options.originIsHttps ?? pageOriginIsHttps());
-    const relaySink =
-      relay && !relayBlocked
-        ? makeSink("relay-proxy", true, options.agentFirmware, (cmd, args) =>
-            dispatchOverLan(
-              {
-                agentUrl: relayProxyBaseUrl(relay),
-                apiKey: relay.apiKey,
-                relay: true,
-              },
-              cmd,
-              args,
-            ),
-          )
-        : null;
-    const liveFc = resolveDirectFcProtocol(relayedId);
-    if (liveFc) {
-      const sink = makeDirectFcSink(liveFc, relayedId);
-      if (!relaySink) return { sink };
-      // The return goes to the drone's agent while its route is up: in `ados`
-      // control the agent hands `rtl` to its pilot, which flies back along the
-      // flown path, where the flight controller's own RTL flies straight home.
-      return {
-        sink: {
-          ...sink,
-          returnToLaunch: () => noteModeOnSuccess(relayedId, "RTL", relaySink.returnToLaunch()),
-        },
-      };
-    }
-    if (relayBlocked) return { sink: null, blockedReason: "lan-blocked-by-https" };
-    if (relaySink) return { sink: relaySink };
-
-    // No lane at all: the radio is up, but this browser has not paired the
-    // ground station that owns its near end.
-    return { sink: null, blockedReason: "relay-only" };
-  }
+  if (node.isRelayed) return resolveRelayedCommandReach(node, options);
 
   const originIsHttps = options.originIsHttps ?? pageOriginIsHttps();
   const lanAgent = resolveLocalAgentForDrone(node.deviceId);
