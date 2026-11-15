@@ -54,6 +54,23 @@ describe("plan place class", () => {
     expect(useMissionStore.getState().placeClass).toBe("open");
   });
 
+  it("loads an unknown class from an imported or stored plan as open", () => {
+    const plan = {
+      id: "p3",
+      name: "Drift 5",
+      folderId: null,
+      waypoints: WPS,
+      metadata: {},
+      frame: "relative",
+      settings: { placeClass: "cave" },
+      createdAt: 1,
+      updatedAt: 1,
+    } as unknown as SavedPlan;
+    useMissionStore.getState().setPlaceClass("confined");
+    applyPlanToWorkspace(plan);
+    expect(useMissionStore.getState().placeClass).toBe("open");
+  });
+
   it("writes and reads a .plan's mission.placeClass", async () => {
     useMissionStore.getState().setPlaceClass("confined");
     exportQGCPlan(WPS, "drift", undefined, currentExportOptions());

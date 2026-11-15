@@ -15,7 +15,7 @@ import { useRallyStore } from "@/stores/rally-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { planWireSettings } from "@/stores/mission-transfer";
-import { capturePlanExtras, clearPlanWorkspace } from "@/lib/plan-workspace";
+import { capturePlanExtras, clearPlanWorkspace, planPlaceClass } from "@/lib/plan-workspace";
 import { missionWireWaypoints } from "@/lib/mission-upload";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 import { usePlanIdentitySeed } from "./use-plan-identity-seed";
@@ -131,7 +131,7 @@ export function usePlannerIO(deps: IODeps) {
           plannedHome: saved.settings.plannedHome ?? null,
           vehicleProfile: saved.settings.vehicle ?? null,
           transitAltM: saved.settings.transitAltM ?? null,
-          placeClass: saved.settings.placeClass ?? "open",
+          placeClass: planPlaceClass(saved.settings),
         });
       }
     })();

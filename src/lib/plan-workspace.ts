@@ -18,7 +18,15 @@ import { usePlannerStore } from "@/stores/planner-store";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 import { stampWaypointFrames } from "@/lib/mission/mission-frame";
 import { clearHistory } from "@/lib/planner-history";
-import type { PlanSettings, SavedPlan } from "@/lib/types";
+import { PLACE_CLASSES } from "@/lib/hud/cockpit-mission";
+import type { PlanPlaceClass, PlanSettings, SavedPlan } from "@/lib/types";
+
+/** A saved plan's place class. Anything but a known class (a hand-edited or
+ *  foreign file) loads as open, the default. */
+export function planPlaceClass(settings: PlanSettings | undefined): PlanPlaceClass {
+  const v: unknown = settings?.placeClass;
+  return PLACE_CLASSES.find((c) => c === v) ?? "open";
+}
 
 /**
  * Load a saved plan into the live workspace: set it active, load its waypoints,
@@ -37,7 +45,7 @@ export function applyPlanToWorkspace(plan: SavedPlan): void {
     plannedHome: plan.settings?.plannedHome ?? null,
     vehicleProfile: plan.settings?.vehicle ?? null,
     transitAltM: plan.settings?.transitAltM ?? null,
-    placeClass: plan.settings?.placeClass ?? "open",
+    placeClass: planPlaceClass(plan.settings),
   });
   lib.setSavedSnapshot(
     planSnapshotString(waypoints, {
