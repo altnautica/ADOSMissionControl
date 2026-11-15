@@ -87,6 +87,23 @@ function pts2(v: unknown, max = Infinity): [number, number][] {
 export const MISSION_STATES = ["none", "loaded", "active", "paused", "complete", "returning"] as const;
 export type MissionStateName = (typeof MISSION_STATES)[number];
 
+/** The mission item the FC flies now (`mission.target`). `ned` is the item
+ *  position in the FC's local NED frame, null for an item without one. */
+export interface MissionTarget {
+  seq: number;
+  cmd: number | null;
+  ned: [number, number, number] | null;
+  radiusM: number | null;
+}
+
+/** One skipped mission item (`mission.gaps[]`): a coverage gap to re-fly. */
+export interface MissionGap {
+  seq: number;
+  /** `stall_timeout` (skipped after the countdown) or `stall_operator`. */
+  reason: string | null;
+  atMs: number | null;
+}
+
 /** The agent-computed mission state. `seq`/`total` follow MISSION_CURRENT. */
 export interface MissionState {
   state: MissionStateName | null;
@@ -98,6 +115,28 @@ export interface MissionState {
   ageMs: number | null;
   landingSeq: boolean;
   uploadsSeen: number | null;
+  target: MissionTarget | null;
+  /** Items skipped this mission, oldest first; empty while none. */
+  gaps: MissionGap[];
+}
+
+function parseMissionTarget(raw: unknown): MissionTarget | null {
+  const t = obj(raw);
+  const seq = t ? num(t.seq) : null;
+  if (!t || seq === null) return null;
+  return { seq, cmd: num(t.cmd), ned: pt3(t.ned), radiusM: num(t.radius_m) };
+}
+
+function parseMissionGaps(raw: unknown): MissionGap[] {
+  if (!Array.isArray(raw)) return [];
+  const out: MissionGap[] = [];
+  for (const g of raw) {
+    const o = obj(g);
+    const seq = o ? num(o.seq) : null;
+    if (!o || seq === null) continue;
+    out.push({ seq, reason: str(o.reason), atMs: num(o.at_ms) });
+  }
+  return out;
 }
 
 /** Accepts the full `state.v5` object (`state`, `seq`, `total`, `landing_seq`)
@@ -115,6 +154,39 @@ export function parseMission(raw: unknown): MissionState | null {
     ageMs: num(m.age_ms),
     landingSeq: m.landing_seq === true,
     uploadsSeen: num(m.uploads_seen),
+    target: parseMissionTarget(m.target),
+    gaps: parseMissionGaps(m.gaps),
+  };
+}
+
+/** A mission or return that stopped making progress (`mission_stall`): the
+ *  vehicle holds and the operator chooses. Persistent while it lasts. */
+export interface MissionStall {
+  kind: "mission" | "return";
+  /** The stalled mission item; null for a return. */
+  seq: number | null;
+  /** The item's label as the plan shows it; null for a return. */
+  wpLabel: string | null;
+  /** Wall-clock epoch ms the stall was raised. */
+  sinceMs: number | null;
+  /** Seconds to the automatic action (the skip for a mission, the landing
+   *  for a return); null: no countdown, the vehicle holds for the operator. */
+  skipInS: number | null;
+  /** The no-progress window that raised it, seconds. */
+  windowS: number | null;
+}
+
+export function parseMissionStall(raw: unknown): MissionStall | null {
+  const s = obj(raw);
+  const kind = s ? oneOf(s.kind, ["mission", "return"] as const) : null;
+  if (!s || !kind) return null;
+  return {
+    kind,
+    seq: num(s.seq),
+    wpLabel: str(s.wp_label),
+    sinceMs: num(s.since_ms),
+    skipInS: num(s.skip_in_s),
+    windowS: num(s.window_s),
   };
 }
 
@@ -167,6 +239,8 @@ export interface PilotState {
   sequence: { step: "checks" | "arm" | "takeoff" | "after" | "done"; after: string | null; error: string | null } | null;
   banner: { textKey: string; args: Record<string, unknown>; untilMs: number | null } | null;
   rthCountdownS: number | null;
+  /** A mission or return that stopped making progress; null while none. */
+  missionStall: MissionStall | null;
   /** Pilot actions this agent accepts from a surface (e.g. `goto`). */
   surfaceOps: string[];
   /** Height above ground, from a fresh downward rangefinder or the EKF
@@ -262,6 +336,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
         ? { textKey: banner.text_key as string, args: obj(banner.args) ?? {}, untilMs: num(banner.until_ms) }
         : null,
     rthCountdownS: num(p.rth_countdown_s),
+    missionStall: parseMissionStall(p.mission_stall),
     surfaceOps: Array.isArray(p.surface_ops) ? p.surface_ops.filter((o): o is string => typeof o === "string") : [],
     aglM: num(p.agl_m),
     aglSource: oneOf(p.agl_source, ["rangefinder", "home"] as const),

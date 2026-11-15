@@ -14,15 +14,18 @@
 
 import { useMemo } from "react";
 import { CircleMarker, Polyline, Tooltip } from "react-leaflet";
-import { useMissionStore } from "@/stores/mission-store";
+import { planIndicesForSeqs, useMissionStore } from "@/stores/mission-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { gapSeqs } from "@/lib/hud/mission-stall";
 import { useDronePlanIdentity, useMissionMirror } from "@/lib/mission/mission-mirror";
 import { useCssVarColors } from "@/hooks/use-css-var-colors";
 
-/** Route in the accent, the waypoint being flown to in the warning hue.
+/** Route in the accent, the waypoint being flown to in the warning hue, a
+ * waypoint the drone skipped (`mission.gaps`) as an open ring in the error hue.
  * Leaflet writes colours into SVG attributes, which cannot hold var(). */
-const ROUTE_TOKENS = ["--alt-accent-primary", "--alt-status-warning"] as const;
+const ROUTE_TOKENS = ["--alt-accent-primary", "--alt-status-warning", "--alt-status-error"] as const;
 
 export function MissionRouteOverlay() {
   const waypoints = useMissionStore((s) => s.waypoints);
@@ -31,7 +34,7 @@ export function MissionRouteOverlay() {
   const mirrored = useDronePlanIdentity(droneId) === "differs";
   const mirror = useMissionMirror(droneId, mirrored);
   const { pilot } = usePilotState(droneId);
-  const [routeColor, activeColor] = useCssVarColors(ROUTE_TOKENS);
+  const [routeColor, activeColor, skippedColor] = useCssVarColors(ROUTE_TOKENS);
 
   // Waypoints with a position, keeping their mission index for the readout.
   const points = useMemo(() => {
@@ -48,6 +51,14 @@ export function MissionRouteOverlay() {
     ? (points.find((p) => p.seq === mirrorSeq)?.index ?? null)
     : localCurrent;
   const route = useMemo(() => points.map((p) => p.pos), [points]);
+  // The skipped items count in the FC's sequence: the mirror carries it, the
+  // local plan maps it the way MISSION_CURRENT is mapped.
+  const gapKey = gapSeqs(pilot?.mission).join(",");
+  const skipped = useMemo(() => {
+    const seqs = gapKey ? gapKey.split(",").map(Number) : [];
+    if (mirrored) return new Set(points.filter((p) => seqs.includes(p.seq)).map((p) => p.index));
+    return new Set(waypoints.length > 0 ? planIndicesForSeqs(droneId, seqs) : []);
+  }, [gapKey, mirrored, points, waypoints, droneId]);
 
   if (current === null || points.length === 0) return null;
   const active = points.find((p) => p.index === current);
@@ -62,7 +73,21 @@ export function MissionRouteOverlay() {
         />
       )}
       {points.map((p) =>
-        p.index === current ? null : (
+        p.index === current ? null : skipped.has(p.index) ? (
+          <CircleMarker
+            key={p.index}
+            center={p.pos}
+            radius={6}
+            interactive={false}
+            pathOptions={{ color: skippedColor, fillOpacity: 0, weight: 2 }}
+          >
+            <Tooltip direction="top" offset={[0, -6]}>
+              <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}>
+                WP {p.index + 1} · {specString("setup.state.skipped")}
+              </span>
+            </Tooltip>
+          </CircleMarker>
+        ) : (
           <CircleMarker
             key={p.index}
             center={p.pos}

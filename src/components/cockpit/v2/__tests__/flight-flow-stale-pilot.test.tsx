@@ -2,8 +2,9 @@
  * @license GPL-3.0-only
  *
  * The flight-flow overlays say what the pilot state says, so a stale pilot
- * frame hides them all: the countdowns, the centre-sticks ring, the handover
- * banner and "sticks with". Both countdowns use the critical severity colour.
+ * frame hides them all: the countdowns, the mission stall, the centre-sticks
+ * ring, the handover banner and "sticks with". Every countdown uses the
+ * critical severity colour.
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,6 +27,7 @@ const WIRE = {
   gate: { pending: true, progress: 0.3 },
   banner: { text_key: "flow.sticks_with", args: { label: "Tablet" } },
   input_session: { src: "other-surface", label: "Tablet", session: 3 },
+  mission_stall: { kind: "mission", seq: 3, wp_label: "3", since_ms: 1, skip_in_s: 30, window_s: 15 },
 };
 
 function mount(ageMs: number) {
@@ -36,7 +38,7 @@ function mount(ageMs: number) {
   return render(<FlightFlowOverlays droneId={DRONE} pilot={pilot} />);
 }
 
-const OVERLAYS = ["low-battery-rth", "link-loss-countdown", "gate-ring", "handover-banner", "sticks-with"];
+const OVERLAYS = ["low-battery-rth", "link-loss-countdown", "mission-stall", "gate-ring", "handover-banner", "sticks-with"];
 
 afterEach(() => {
   cleanup();
@@ -66,12 +68,17 @@ describe("flight-flow overlays and pilot freshness", () => {
     for (const id of OVERLAYS) expect(screen.queryByTestId(id), id).toBeNull();
   });
 
-  it("draws both countdowns in the critical severity colour", () => {
-    expect(layoutSpec.banners.severity).toEqual({ low_battery_rth: "critical", link_loss: "critical" });
+  it("draws every countdown in the critical severity colour", () => {
+    expect(layoutSpec.banners.severity).toEqual({
+      low_battery_rth: "critical",
+      link_loss: "critical",
+      mission_stalled: "critical",
+      return_blocked: "critical",
+    });
     mount(0);
     const critical = document.createElement("div");
     critical.style.background = tokens.chrome.severity_critical;
-    for (const id of ["low-battery-rth", "link-loss-countdown"]) {
+    for (const id of ["low-battery-rth", "link-loss-countdown", "mission-stall"]) {
       const banner = screen.getByTestId(id);
       expect(banner.getAttribute("data-severity"), id).toBe("critical");
       expect(banner.style.background, id).toBe(critical.style.background);

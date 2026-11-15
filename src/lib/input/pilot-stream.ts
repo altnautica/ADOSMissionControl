@@ -42,6 +42,7 @@ export type PilotActionName =
   | `control_mode:${"ados" | "fc_manual" | "elrs"}`
   | `avoid:${"brake" | "bypass" | "off"}`
   | "rth_cancel"
+  | "mission_skip"
   | "goto"
   | `vtol:${"fw" | "mc"}`;
 

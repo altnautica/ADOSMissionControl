@@ -13,7 +13,8 @@
  * failsafe, a tuning step, the GNSS-denied speed cap via
  * `pin({ speed_cap: { reason: "gnss-denied", v_h_mps: 2 } })`, a position
  * the optical flow disagrees with via `DEMO_POSITION_UNVERIFIED_PIN`, which
- * the demo vision-nav echoes as a degraded pose) through
+ * the demo vision-nav echoes as a degraded pose, a mission stall with its
+ * countdown, see mock-pilot-stall) through
  * `window.__adosDemoPilot` (see
  * mock-pilot-wire); each drone's session starts without the last one's pins.
  * @license GPL-3.0-only
@@ -44,6 +45,7 @@ import {
   type DemoPositionUnverified,
   type Json,
 } from "./mock-pilot-wire";
+import { DemoStall } from "./mock-pilot-stall";
 import { DemoVehicleDriver } from "./mock-pilot-vehicle";
 
 export { demoPilotWire } from "./mock-pilot-wire";
@@ -84,6 +86,7 @@ export class MockPilot {
   private wire: Json = this.freshWire();
   private pins = new PilotPins();
   private driver = new DemoVehicleDriver();
+  private stall = new DemoStall();
   private lastInputAt = 0;
   private log: { at: number; frame: PilotOutboundFrame }[] = [];
   /** Pilot frames held back by the demo `freeze` handle. */
@@ -94,6 +97,7 @@ export class MockPilot {
     this.droneId = droneId;
     this.wire = this.freshWire();
     this.pins.clear();
+    this.stall.reset();
     this.lastInputAt = 0;
     this.framesFrozen = false;
     const device = deviceIdFromNodeId(droneId) ?? droneId;
@@ -138,6 +142,7 @@ export class MockPilot {
   /** Pin fields over the live state (demo scenarios); `{}` clears. */
   pin(fields: Json): void {
     this.pins.set(fields);
+    this.stall.pinned(fields, Date.now());
     this.publish();
   }
 
@@ -260,6 +265,12 @@ export class MockPilot {
     }
     const vehicle = this.vehicle();
     const seen = this.pins.over(this.wire);
+    // Skip, return or land ends a mission stall; a skip with none is refused.
+    if (verb === "mission_skip" || verb === "rth" || verb === "land") {
+      const stalled = this.stall.resolve(seen, verb, Date.now());
+      if (stalled) this.pins.clearStall();
+      if (verb === "mission_skip") return stalled ? null : "nothing_stalled";
+    }
     const err = vehicle
       ? this.driver.act(vehicle, this.wire, seen, verb, args)
       : this.driver.wireOnly(this.wire, seen, verb, args);
@@ -288,7 +299,10 @@ export class MockPilot {
     this.wire.hold_reason = lost ? "controller-lost" : null;
     // The goal is the goto's own: any other owner flies none.
     if (this.wire.owner !== "goto") this.wire.goal_ned = null;
-    const seen = this.pins.over(this.wire);
+    // A stall whose countdown ran out: the pilot skips or lands on its own.
+    const due = this.stall.due(this.pins.over(this.wire), now);
+    if (due) this.action(due, {});
+    const seen = this.stall.view(this.pins.over(this.wire), now);
     // Outside `ados` the FC flies, and a surface repositions it directly.
     if (seen.control_mode !== "ados") seen.surface_ops = [];
     return seen;

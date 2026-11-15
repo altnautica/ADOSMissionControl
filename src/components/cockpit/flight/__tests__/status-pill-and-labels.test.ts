@@ -138,6 +138,18 @@ describe("status pill: pilot freshness, agent and controller", () => {
     ]);
     expect(texts({ pilot: aborted, pilotAgeMs: 2500 })).toEqual([specString("alert.pilot_not_answering")]);
   });
+
+  it("lists a mission stall as critical from a fresh pilot, reading the stall overlay's title", () => {
+    const missionStall = { kind: "mission", seq: 3, wpLabel: "3", sinceMs: 1, skipInS: 32.5, windowS: 15 };
+    const stalled = { ...flying, readiness: [], statustext: [], missionStall } as unknown as PilotState;
+    const out = pillAlertsFor(sources({ pilot: stalled }));
+    expect(out[0]).toMatchObject({
+      id: "mission_stall",
+      severity: "critical",
+      text: specString("flow.mission_stall.title", { wp: "3", window_s: 15, in_s: 33 }),
+    });
+    expect(texts({ pilot: stalled, pilotAgeMs: 2500 })).toEqual([specString("alert.pilot_not_answering")]);
+  });
 });
 
 describe("status pill: pre-flight checks", () => {

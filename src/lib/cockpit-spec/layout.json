@@ -198,8 +198,10 @@
   "banners": {
     "handover_ms": 3000,
     "low_battery_rth_countdown_s": 10,
-    "severity": { "low_battery_rth": "critical", "link_loss": "critical" },
-    "severity_note": "both countdowns end in an automatic manoeuvre; colours from tokens.json chrome.severity_<level>"
+    "mission_stall_skip_s": 45,
+    "return_blocked_land_s": 45,
+    "severity": { "low_battery_rth": "critical", "link_loss": "critical", "mission_stalled": "critical", "return_blocked": "critical" },
+    "severity_note": "every countdown ends in an automatic manoeuvre; colours from tokens.json chrome.severity_<level>"
   },
   "sheets": {
     "top_inset": "top_bar",

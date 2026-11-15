@@ -405,45 +405,55 @@ export function resolveNodeCommandReach(
     // First, `RelayedMavlinkBridge`'s live MAVLink session, opened in the
     // background against the ground station's republish endpoint and keyed by
     // this same `node:<deviceId>` id in the drone manager. That is the vehicle's
-    // own protocol speaking, so it keeps precedence over any HTTP lane.
-    const relayedId = nodeIdForDevice(node.deviceId);
-    const liveFc = resolveDirectFcProtocol(relayedId);
-    if (liveFc) {
-      return { sink: makeDirectFcSink(liveFc, relayedId) };
-    }
-
+    // own protocol speaking, so it keeps precedence over any HTTP lane, except
+    // for the return (below).
+    //
     // Second, the ground station's relay-proxy route, which forwards an HTTP
     // call to this drone's own agent over the aux radio lane and projects the
     // drone's real status back. Same agent command route as the direct LAN
     // lane, one radio hop further out, so it reports the vehicle's own ack.
+    const relayedId = nodeIdForDevice(node.deviceId);
     const relay = resolveRelayReach({
       agentDeviceId: null,
       reachedVia: node.reachedVia,
       droneDeviceId: node.deviceId,
     });
-    if (relay) {
-      // The ground station is reached at a plain-HTTP LAN address, so an HTTPS
-      // page origin blocks this lane as mixed content exactly as it blocks the
-      // direct LAN lane below — and for exactly the same reason, so it reports
-      // that cause. Falling through to "relay-only" here would tell the
-      // operator the ground station is unpaired when it is paired and reachable.
-      if (options.originIsHttps ?? pageOriginIsHttps()) {
-        return { sink: null, blockedReason: "lan-blocked-by-https" };
-      }
+    // The ground station is reached at a plain-HTTP LAN address, so an HTTPS
+    // page origin blocks this lane as mixed content exactly as it blocks the
+    // direct LAN lane below — and for exactly the same reason, so it reports
+    // that cause. Falling through to "relay-only" here would tell the
+    // operator the ground station is unpaired when it is paired and reachable.
+    const relayBlocked = relay !== null && (options.originIsHttps ?? pageOriginIsHttps());
+    const relaySink =
+      relay && !relayBlocked
+        ? makeSink("relay-proxy", true, options.agentFirmware, (cmd, args) =>
+            dispatchOverLan(
+              {
+                agentUrl: relayProxyBaseUrl(relay),
+                apiKey: relay.apiKey,
+                relay: true,
+              },
+              cmd,
+              args,
+            ),
+          )
+        : null;
+    const liveFc = resolveDirectFcProtocol(relayedId);
+    if (liveFc) {
+      const sink = makeDirectFcSink(liveFc, relayedId);
+      if (!relaySink) return { sink };
+      // The return goes to the drone's agent while its route is up: in `ados`
+      // control the agent hands `rtl` to its pilot, which flies back along the
+      // flown path, where the flight controller's own RTL flies straight home.
       return {
-        sink: makeSink("relay-proxy", true, options.agentFirmware, (cmd, args) =>
-          dispatchOverLan(
-            {
-              agentUrl: relayProxyBaseUrl(relay),
-              apiKey: relay.apiKey,
-              relay: true,
-            },
-            cmd,
-            args,
-          ),
-        ),
+        sink: {
+          ...sink,
+          returnToLaunch: () => noteModeOnSuccess(relayedId, "RTL", relaySink.returnToLaunch()),
+        },
       };
     }
+    if (relayBlocked) return { sink: null, blockedReason: "lan-blocked-by-https" };
+    if (relaySink) return { sink: relaySink };
 
     // No lane at all: the radio is up, but this browser has not paired the
     // ground station that owns its near end.

@@ -13,8 +13,33 @@
 
 import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { sticksRouteToPilot } from "@/lib/input/pilot-stream";
+import { resolveNodeCommandReach } from "@/lib/nodes/command-sink";
 import { nodeCanFly } from "@/lib/nodes/node-profile";
+import type { CommandResult } from "@/lib/protocol/types";
+import { pilotActionResult, pilotLive } from "@/lib/skills/builtins/_shared";
 import { noteModeOnSuccess } from "@/lib/skills/flight-facts";
+
+/**
+ * One drone's return. A drone this station flies through its ADOS pilot
+ * (`ados` control, a live pilot) gets the pilot's `rth`, which flies back
+ * along the flown path; a drone with an agent on the LAN gets the agent's
+ * `rtl` command, which the agent hands to its pilot in `ados` control. Only a
+ * drone with neither (a flight controller with no agent, or no agent lane in
+ * this browser) gets the flight controller's own RTL.
+ */
+export function returnOneToLaunch(
+  droneId: string,
+  protocol: { returnToLaunch(): Promise<CommandResult> },
+): Promise<CommandResult> {
+  if (sticksRouteToPilot(droneId) && pilotLive(droneId)) {
+    return pilotActionResult("rth", undefined, () => protocol.returnToLaunch());
+  }
+  const { sink } = resolveNodeCommandReach({ deviceId: deviceIdFromNodeId(droneId) ?? droneId });
+  if (sink?.transport === "lan") return sink.returnToLaunch();
+  return protocol.returnToLaunch();
+}
 
 export interface FleetCommandOutcome {
   /** Drones that acknowledged the command. */
@@ -56,7 +81,7 @@ export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
       const protocol = managed.get(drone.id)?.protocol;
       if (!protocol) throw new Error("no command link");
       // A recall the drone accepted is this station's return, not a failsafe.
-      return noteModeOnSuccess(drone.id, "RTL", protocol.returnToLaunch());
+      return noteModeOnSuccess(drone.id, "RTL", returnOneToLaunch(drone.id, protocol));
     }),
   );
   results.forEach((settled, i) => {

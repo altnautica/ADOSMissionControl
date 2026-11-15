@@ -1,0 +1,131 @@
+{
+ "owner": "pilot",
+ "owner_label": "PILOT",
+ "skill": null,
+ "vehicle_class": "multirotor",
+ "control_mode": "ados",
+ "profile": "normal",
+ "avoid": "brake",
+ "fc_mode": 4,
+ "fc_mode_name": "GUIDED",
+ "armed": true,
+ "landed": false,
+ "vtol_transitioning": false,
+ "input_src": "mc",
+ "input_age_ms": 40,
+ "hold_reason": "mission-stalled",
+ "avoid_state": "clear",
+ "min_clearance_m": 2.4,
+ "goal_ned": null,
+ "plan_ned": [],
+ "setpoint_ned": [
+  40.1,
+  -17.2,
+  -15.0
+ ],
+ "readiness": [
+  {
+   "id": "fc_profile",
+   "ok": true,
+   "severity": "block",
+   "msg": "FC failsafe parameters match the ADOS profile"
+  },
+  {
+   "id": "position",
+   "ok": true,
+   "severity": "block",
+   "msg": "Position estimate available"
+  },
+  {
+   "id": "agl",
+   "ok": false,
+   "severity": "warn",
+   "msg": "No downward rangefinder: height reference is EKF altitude"
+  }
+ ],
+ "link_loss_in_s": null,
+ "link_loss_action": "rth",
+ "mission": {
+  "state": "loaded",
+  "seq": 3,
+  "total": 6,
+  "item_reached": 2,
+  "id": null,
+  "source": "mission_state",
+  "age_ms": 120,
+  "landing_seq": false,
+  "target": {
+   "seq": 3,
+   "cmd": 16,
+   "ned": [
+    42.5,
+    -18.0,
+    -15.0
+   ]
+  },
+  "gaps": [
+   {
+    "seq": 2,
+    "reason": "stall_timeout",
+    "at_ms": 1793959950000
+   }
+  ]
+ },
+ "input_session": {
+  "src": "mc",
+  "session": 7,
+  "label": "Mission Control"
+ },
+ "gate": null,
+ "sequence": null,
+ "banner": {
+  "text_key": "pilot.banner.mission_stalled",
+  "args": {
+   "wp": "3",
+   "in_s": 45
+  },
+  "until_ms": 1793960003000
+ },
+ "rth_countdown_s": null,
+ "mission_stall": {
+  "kind": "mission",
+  "seq": 3,
+  "wp_label": "3",
+  "since_ms": 1793960000000,
+  "skip_in_s": 32.5,
+  "window_s": 15.0
+ },
+ "surface_ops": [
+  "goto"
+ ],
+ "agl_m": 4.2,
+ "agl_source": "rangefinder",
+ "statustext": [
+  {
+   "severity": 4,
+   "text": "PreArm: Compass not calibrated",
+   "age_ms": 1200
+  }
+ ],
+ "failsafe_cause": null,
+ "setup_step": null,
+ "sensors": {
+  "flow": {
+   "state": "low",
+   "quality": 96,
+   "rate_hz": 20.0,
+   "age_ms": 40
+  },
+  "range": {
+   "state": "ok",
+   "height_m": 4.2,
+   "age_ms": 50
+  },
+  "lidar": {
+   "state": "degraded",
+   "rate_hz": 6.5,
+   "health": "warning",
+   "age_ms": 120
+  }
+ }
+}

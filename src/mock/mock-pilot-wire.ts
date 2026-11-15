@@ -113,4 +113,12 @@ export class PilotPins {
     delete this.fields.fc_failsafe;
     delete this.fields.failsafe_cause;
   }
+
+  /** The pilot left a pinned mission stall (a skip, a return or a landing):
+   *  the stall, its hold reason and its banner go with it. */
+  clearStall(): void {
+    delete this.fields.mission_stall;
+    delete this.fields.hold_reason;
+    delete this.fields.banner;
+  }
 }

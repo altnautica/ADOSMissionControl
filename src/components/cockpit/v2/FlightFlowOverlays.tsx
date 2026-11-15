@@ -12,8 +12,11 @@
  *   - the low-battery return-home countdown with Cancel
  *     (`pilot.rth_countdown_s`) and the link-loss countdown
  *     (`pilot.link_loss_in_s`);
- *   - voice prompts for handovers, return home, low battery and mission
- *     state changes (Web Speech; Settings › Sound, default on).
+ *   - the mission stall (`pilot.mission_stall`): a mission or a return that
+ *     stopped making progress, held for the operator until its countdown ends,
+ *     with Skip waypoint / Return / Land here (a return: Land here only);
+ *   - voice prompts for handovers, return home, low battery, mission
+ *     state changes and stalls (Web Speech; Settings › Sound, default on).
  *
  * They stack in one top-centre column under the follow strip (or the top
  * bar), between the side columns (`flowColumn`): countdowns first, then the
@@ -41,7 +44,8 @@ import { FROZEN_BANNER_H, useVideoFrozen } from "@/components/cockpit/CockpitVid
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { flowColumn } from "@/components/cockpit/flight/flight-grid";
 import tokens from "@/lib/cockpit-spec/tokens.json";
-import type { PilotState } from "@/lib/hud/cockpit-frames";
+import type { MissionStall, PilotState } from "@/lib/hud/cockpit-frames";
+import { missionStallOverlay, missionStallVoiceKey } from "@/lib/hud/mission-stall";
 import { linkLossLine } from "@/lib/hud/link-loss";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
@@ -60,7 +64,10 @@ const STACK_GAP_PX = 8;
 const FRESH_TICK_MS = 500;
 
 type Severity = "ok" | "warning" | "critical";
-const SEVERITY = layoutSpec.banners.severity as Record<"low_battery_rth" | "link_loss", Severity>;
+const SEVERITY = layoutSpec.banners.severity as Record<
+  "low_battery_rth" | "link_loss" | "mission_stalled" | "return_blocked",
+  Severity
+>;
 
 /** A countdown banner's background: `tokens.json` `chrome.severity_<level>`
  *  for the banner's level in `layout.json` `banners.severity`. */
@@ -89,11 +96,23 @@ export function bannerText(banner: NonNullable<PilotState["banner"]>): string {
   return specString(banner.textKey, args);
 }
 
+/** What the voice prompts compare between two pilot states. */
+export interface VoiceState {
+  owner: string | null;
+  fcModeName: string | null;
+  mission: string | null;
+  rth: boolean;
+  missionStall?: MissionStall | null;
+  banner?: PilotState["banner"];
+}
+
 /** The voice line for a change of pilot state, or null. Exported for tests. */
-export function voiceLine(
-  prev: { owner: string | null; fcModeName: string | null; mission: string | null; rth: boolean },
-  next: { owner: string | null; fcModeName: string | null; mission: string | null; rth: boolean },
-): string | null {
+export function voiceLine(prev: VoiceState, next: VoiceState): string | null {
+  const stallKey = missionStallVoiceKey(
+    { missionStall: prev.missionStall ?? null, banner: prev.banner ?? null },
+    { missionStall: next.missionStall ?? null, banner: next.banner ?? null },
+  );
+  if (stallKey) return specString(stallKey);
   if (!prev.rth && next.rth) return specString("voice.low_battery");
   if (prev.mission !== next.mission) {
     if (next.mission === "active") return specString("voice.mission_active");
@@ -121,18 +140,22 @@ function speak(text: string): void {
 function useVoicePrompts(droneId: string, pilot: PilotState | null): void {
   const enabled = useCockpitPrefsStore((s) => s.voicePrompts);
   const mission = useMissionStatus(droneId)?.state ?? null;
-  const prev = useRef<{ owner: string | null; fcModeName: string | null; mission: string | null; rth: boolean } | null>(null);
+  const prev = useRef<VoiceState | null>(null);
   const owner = pilot?.owner ?? null;
   const fcModeName = pilot?.fcModeName ?? null;
   const rth = pilot?.rthCountdownS != null;
+  // Each pilot frame is a new object; the voice compares the stall and the
+  // banner by content, so a repeated frame says nothing.
+  const missionStall = pilot?.missionStall ?? null;
+  const banner = pilot?.banner ?? null;
   useEffect(() => {
-    const next = { owner, fcModeName, mission, rth };
+    const next = { owner, fcModeName, mission, rth, missionStall, banner };
     const before = prev.current;
     prev.current = next;
     if (!enabled || !before) return;
     const line = voiceLine(before, next);
     if (line) speak(line);
-  }, [enabled, owner, fcModeName, mission, rth]);
+  }, [enabled, owner, fcModeName, mission, rth, missionStall, banner]);
 }
 
 /** `hidden` (a stale pilot) keeps the banner's timing but draws nothing, so
@@ -213,12 +236,47 @@ function SticksWith({ pilot }: { pilot: PilotState | null }) {
   );
 }
 
+/** The mission stall: the spec's title (with the countdown to the automatic
+ *  skip or landing, or "Holding for you") and one button per pilot action. */
+function MissionStallBanner({ pilot }: { pilot: PilotState | null }) {
+  const view = missionStallOverlay(pilot?.missionStall);
+  if (!view) return null;
+  const banner = view.kind === "mission" ? "mission_stalled" : "return_blocked";
+  return (
+    <div
+      role="alert"
+      data-testid="mission-stall"
+      data-kind={view.kind}
+      data-severity={SEVERITY[banner]}
+      className="pointer-events-auto flex w-[min(720px,100%)] flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm font-semibold"
+      style={{ background: countdownColor(banner), color: COUNTDOWN_TEXT }}
+    >
+      <span data-testid="mission-stall-title">{view.title}</span>
+      <span className="flex gap-2">
+        {view.actions.map((b) => (
+          <button
+            key={b.action}
+            type="button"
+            data-testid={`mission-stall-${b.action}`}
+            onClick={() => void sendPilotAction(b.action)}
+            className="min-h-12 rounded bg-black/80 px-4 text-white"
+          >
+            {b.label}
+          </button>
+        ))}
+      </span>
+    </div>
+  );
+}
+
 function Countdowns({ pilot }: { pilot: PilotState | null }) {
   const rth = pilot?.rthCountdownS ?? null;
   const linkLoss = pilot?.linkLossInS ?? null;
-  if (rth === null && linkLoss === null) return null;
+  const stall = pilot?.missionStall ?? null;
+  if (rth === null && linkLoss === null && stall === null) return null;
   return (
     <div className="pointer-events-none flex w-full flex-col items-center gap-2">
+      <MissionStallBanner pilot={pilot} />
       {rth !== null && (
         <div
           role="alert"

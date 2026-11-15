@@ -3,8 +3,10 @@
   { "reason": "controller-lost", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
   { "reason": "lease-revoked", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
   { "reason": "link-loss", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
+  { "reason": "mission-stalled", "emitted_by": "crates/ados-pilot/src/core/control/stall.rs" },
   { "reason": "no-vantage", "emitted_by": "crates/ados-pilot/src/core/control/vantage_goal.rs" },
   { "reason": "obstacle-close", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
   { "reason": "obstacle-data-stale", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
-  { "reason": "position-unverified", "emitted_by": "crates/ados-pilot/src/core/position_check.rs" }
+  { "reason": "position-unverified", "emitted_by": "crates/ados-pilot/src/core/position_check.rs" },
+  { "reason": "return-blocked", "emitted_by": "crates/ados-pilot/src/core/control/stall.rs" }
 ]

@@ -134,6 +134,7 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
     agentReachable: s.agentReachable,
     controllerLost: fresh && controllerLost(s.pilot),
     navSource: s.navSource ?? null,
+    missionStall: s.pilot?.missionStall ?? null,
     ...pilotFailsafe(s.pilot),
     setupAbort: s.pilot?.setupAbort ?? null,
   }).filter((a) => !(a.source === "fc_status_text" && surfaceTexts.has(a.text)));

@@ -144,6 +144,8 @@ const mission = (m: Partial<MissionState>): MissionState => ({
   ageMs: 0,
   landingSeq: false,
   uploadsSeen: null,
+  target: null,
+  gaps: [],
   ...m,
 });
 

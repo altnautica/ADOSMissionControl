@@ -267,15 +267,8 @@ export const useMissionStore = create<MissionStoreState>()(
     ),
 
   applyMissionCurrent: (droneId, seq) => {
-    const state = get();
-    const { waypoints } = state;
-    const wire = planWireSettings(state);
-    const receipt = receiptFor("mission", droneId);
-    const matches =
-      receipt !== undefined && receipt.contentHash === missionContentHash(waypoints, wire);
-    const index = matches
-      ? missionSeqToWaypointIndex(waypoints, seq, receipt.homeSlot ?? false, wire)
-      : null;
+    const { waypoints } = get();
+    const index = planIndexForSeq(get(), droneId, seq);
     set({
       currentWaypoint: index,
       progress: index === null ? 0 : Math.round(((index + 1) / waypoints.length) * 100),
@@ -369,6 +362,27 @@ export const useMissionStore = create<MissionStoreState>()(
     }
   )
 );
+
+/** The open plan's waypoint index for an FC mission item, or null when the
+ *  drone does not hold this plan (no upload or download receipt matching it)
+ *  or the item maps onto no waypoint. */
+function planIndexForSeq(state: MissionStoreState, droneId: string, seq: number): number | null {
+  const wire = planWireSettings(state);
+  const receipt = receiptFor("mission", droneId);
+  if (receipt === undefined || receipt.contentHash !== missionContentHash(state.waypoints, wire)) return null;
+  return missionSeqToWaypointIndex(state.waypoints, seq, receipt.homeSlot ?? false, wire);
+}
+
+/** The open plan's waypoint indices for FC mission items (the skipped
+ *  waypoints a drone reports), leaving out any that map onto no waypoint. */
+export function planIndicesForSeqs(droneId: string | null, seqs: readonly number[]): number[] {
+  if (!droneId) return [];
+  const state = useMissionStore.getState();
+  return seqs.flatMap((seq) => {
+    const index = planIndexForSeq(state, droneId, seq);
+    return index === null ? [] : [index];
+  });
+}
 
 /** The persisted plan has loaded, or the load failed and the defaults stand. */
 export function missionHydrationSettled(): boolean {

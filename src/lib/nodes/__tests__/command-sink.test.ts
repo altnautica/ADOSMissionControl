@@ -315,6 +315,25 @@ describe("relayed command sink", () => {
     expect(runCommandMock).not.toHaveBeenCalled();
   });
 
+  it("sends the return to the drone's agent, not a flight-controller RTL, while both lanes are up", async () => {
+    // In `ados` control the agent hands `rtl` to its pilot, which returns
+    // along the flown path; the FC's own RTL would fly straight home.
+    pairGroundStation();
+    const protocol = fakeLiveProtocol();
+    directFcHolder.protocol = protocol;
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, { originIsHttps: false });
+    const result = await reach.sink!.returnToLaunch();
+
+    expect(protocol.returnToLaunch).not.toHaveBeenCalled();
+    expect(runCommandMock).toHaveBeenCalledWith(
+      { baseUrl: RELAY_BASE_URL, apiKey: "gs-key", relay: true },
+      "rtl",
+      [],
+    );
+    expect(result.success).toBe(true);
+  });
+
   it("names the HTTPS block, not a missing pairing, when the origin blocks the lane", () => {
     pairGroundStation();
 
