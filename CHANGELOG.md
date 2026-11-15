@@ -9,13 +9,19 @@ the project follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Cockpit: a position the drone cannot vouch for reads red. The flight-state chip shows "Position unverified · <reason>" (after the flight controller's RTH, Landing and Transition chips, with Take control while the flight controller flies its own mode), the reason read in words from the shared spec, a lost heading or IMU feed included. The hold reads "Holding · position unverified", and the nav-source chip turns crit with FLOW DISAGREES, CORRIDOR or UNVERIFIED. Fly here is not offered while the position is unverified, through the pilot or as a reposition in GUIDED, and the pilot's refusal and readiness item read "Position unverified (nav); fly manually or land" and "Position check (nav)". A stale pilot frame never keeps the nav chip crit. Demo: `__adosDemoPilot.pin` reaches the state.
+- Cockpit: a mission or return that stops making progress shows a stall card next to the countdowns, with Skip waypoint, Return and Land here (a blocked return offers Land here only) and the time left before the pilot acts on its own. The status pill lists the stall, the voice prompts speak it, and the Flight map marks the waypoints the drone skipped. Demo: `__adosDemoPilot` pins a stall, counts it down and answers the three actions.
+- Cockpit and planner: a confined-space place class. The Launch sheet and the planner pick Open or Confined space and show the margin each keeps (a confined place keeps the propeller-tip radius plus 0.1 m). A plan saves its class, in the plan library, the native file, a `.plan` and a share link; a plan with an unknown class loads as Open. The Launch sheet launches only once the pilot flies with the chosen class. A Confined chip on the top bar opens the route check: whether the route keeps the margin, the tight leg with its clearance and the clearance needed, the waypoints the check could not place, and the speed cap near walls. The send dialog shows the same report before a mission is flown. Demo: `__adosDemoPilot.confinedPins("feasible" | "unverified" | "infeasible")`.
 
 ### Changed
 
 - Internal only: the cockpit frame helpers are split into smaller modules under the size limit (no behaviour change).
 - Cockpit: the shared sensor-health spec carries the agent's new lidar map heading readiness item, "Lidar map heading not confirmed". The cockpit shows it as the drone sends it, with no other change.
+- Internal only: the cockpit mission parsers and the node command lanes move into their own modules under the size limit (no behaviour change).
+- Return all and a relayed drone's Return send the drone's own agent its return, which the pilot flies back along the flown path in ADOS control, instead of the flight controller's straight-home RTL. A drone seen only through a ground station's relay gets it through that ground station. When the relay does not answer (the ground station unreachable, its radio lane down, a timeout), the flight controller's RTL goes out over the live MAVLink session and the result says so; a refusal from the pilot is shown as it is.
 
 ### Fixed
+
+- **A return or landing the pilot accepted no longer reads as failed.** In ADOS control the agent answers a flight command with the pilot's verdict, which the GCS read as "no acknowledgement". An accepted verdict now reads as accepted, and a refusal shows the pilot's reason.
 
 - **Opening a node's Flight tab no longer stalls the whole app while the
   cockpit loads.** Node tab bodies load on first open, and none of them had a
