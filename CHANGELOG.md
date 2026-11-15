@@ -13,6 +13,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Internal only: the cockpit frame helpers are split into smaller modules under the size limit (no behaviour change).
+- Cockpit: the shared sensor-health spec carries the agent's new lidar map heading readiness item, "Lidar map heading not confirmed". The cockpit shows it as the drone sends it, with no other change.
 
 ### Fixed
 

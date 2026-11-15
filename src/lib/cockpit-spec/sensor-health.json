@@ -25,7 +25,7 @@
     "nav_imu": {
       "min_hz": 40,
       "stale_ms": 3000,
-      "$note": "plugin.world-engine.map_status imu_feed: the FC IMU feeding the lidar planar pose. ok = state ok and rate_hz >= min_hz; a map_status older than stale_ms after a non-null imu_feed is degraded with reason stalled."
+      "$note": "plugin.world-engine.map_status imu_feed: the FC IMU feeding the lidar planar pose. ok = state ok, or a heading reason (heading_unconfirmed, north_unknown: the lidar map's heading, sent only while the feed itself measures), and rate_hz >= min_hz; a map_status older than stale_ms after a non-null imu_feed is degraded with reason stalled."
     },
     "in_flight_flow_warn_ms": 2000
   },
@@ -90,7 +90,10 @@
       "ok": "Flight controller IMU feeding the lidar pose",
       "degraded": "Waiting for flight controller IMU"
     },
-    "$note": "flow and sensor_params are shown when FLOW_TYPE is non-zero or OPTICAL_FLOW has been seen; lidar when a lidar has scanned or the capture service reports one, and otherwise as absent (warn) while obstacle avoidance is on; nav_imu while the latest map_status carries a non-null imu_feed. Severity: warn, except block in ADOS control mode when the EKF fuses flow (any EK3_SRCn_VELXY = 5) for flow lost/absent and for params with severity block; an expected lidar that is lost blocks in ADOS control mode whatever the avoid setting; nav_imu blocks in ADOS control mode. nav_imu is ok only for imu_feed state ok at rate_hz >= min_hz; every other state word (degraded, lost, unknown) reads degraded and appends ' ({reason}, {rate_hz} Hz)', rate one decimal, '--' for a null reason or rate."
+    "nav_heading": {
+      "unconfirmed": "Lidar map heading not confirmed"
+    },
+    "$note": "flow and sensor_params are shown when FLOW_TYPE is non-zero or OPTICAL_FLOW has been seen; lidar when a lidar has scanned or the capture service reports one, and otherwise as absent (warn) while obstacle avoidance is on; nav_imu while the latest map_status carries a non-null imu_feed; nav_heading while that map_status is fresh and its imu_feed reason is a heading reason (heading_unconfirmed, north_unknown). Severity: warn, except block in ADOS control mode when the EKF fuses flow (any EK3_SRCn_VELXY = 5) for flow lost/absent and for params with severity block; an expected lidar that is lost blocks in ADOS control mode whatever the avoid setting; nav_imu and nav_heading block in ADOS control mode while vision-nav flies external navigation from the lidar pose (the last nav.state mode is external_nav), and warn otherwise. nav_imu is ok only for imu_feed state ok, or a heading reason, at rate_hz >= min_hz; every other state word (degraded, lost, unknown) reads degraded and appends ' ({reason}, {rate_hz} Hz)', rate one decimal, '--' for a null reason or rate and for a heading reason. nav_heading is never ok: it reads unconfirmed and appends ' ({reason})'."
   },
   "mount": {
     "$note": "The declared flow and rangefinder mount, agent config pilot.fc_sensors: flow {pos_m [x,y,z] body FRD metres, orient_yaw_cdeg}, rangefinder {pos_m}. Published as GET /api/v1/sensors health.flow.mount {yaw_cdeg, pos_m} and health.range.mount {pos_m}, null when undeclared.",
