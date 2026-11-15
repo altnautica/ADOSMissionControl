@@ -18,6 +18,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 import type * as AgentSystem from "@/lib/agent/agent-client/system";
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import type { SkillProtocol } from "@/lib/skills/skill-protocol";
 
 // LAN credentials resolve per device id and default to none, so the cloud cases
@@ -332,6 +333,54 @@ describe("relayed command sink", () => {
       [],
     );
     expect(result.success).toBe(true);
+  });
+
+  // The relay lane brought back no answer at all: the GCS cannot reach the
+  // ground station, the aux lane is down or closed, the ground's bound or this
+  // request's own deadline passed. The pilot never saw the return, so the live
+  // MAVLink session carries the flight controller's RTL instead.
+  it.each([
+    ["the ground station's HTTP is down", new TypeError("Failed to fetch")],
+    ["the relay times out", new AgentHttpError(504, '{"detail":"no response from the linked drone within the bound"}')],
+    ["the aux lane fails to send", new AgentHttpError(502, '{"detail":"aux egress failed to send request"}')],
+    ["the relay channel is closed", new AgentHttpError(503, '{"detail":"relay-proxy channel closed mid-call"}')],
+    ["the request deadline passes", new DOMException("The operation timed out.", "TimeoutError")],
+  ])("falls back to the flight controller's RTL when %s", async (_why, error) => {
+    pairGroundStation();
+    const protocol = fakeLiveProtocol();
+    directFcHolder.protocol = protocol;
+    runCommandMock.mockRejectedValueOnce(error);
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, { originIsHttps: false });
+    const result = await reach.sink!.returnToLaunch();
+
+    expect(runCommandMock).toHaveBeenCalledWith(
+      { baseUrl: RELAY_BASE_URL, apiKey: "gs-key", relay: true },
+      "rtl",
+      [],
+    );
+    expect(protocol.returnToLaunch).toHaveBeenCalledOnce();
+    expect(result.success).toBe(true);
+    expect(result.message).toContain("flight controller's RTL");
+    expect(result.message).toContain(error.message);
+  });
+
+  it("does not fall back when the pilot answers and refuses the return", async () => {
+    pairGroundStation();
+    const protocol = fakeLiveProtocol();
+    directFcHolder.protocol = protocol;
+    runCommandMock.mockResolvedValueOnce({
+      accepted: false,
+      resultCode: null,
+      message: "pilot refused rth: no_home",
+    } as never);
+
+    const reach = resolveNodeCommandReach(RELAYED_NODE, { originIsHttps: false });
+    const result = await reach.sink!.returnToLaunch();
+
+    expect(protocol.returnToLaunch).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("pilot refused rth: no_home");
   });
 
   it("names the HTTPS block, not a missing pairing, when the origin blocks the lane", () => {

@@ -74,17 +74,27 @@ export function pageOriginIsHttps(): boolean {
   );
 }
 
-/** Dispatch one agent command over the LAN and report the vehicle's answer.
- * `relay` marks the ground station's relay-proxy prefix, whose requests cross
- * the radio rather than the LAN. Nothing reads the flag on this path today
- * (`runCommand` pins its own 15 s deadline, which already clears the ground's
- * bound), but a request context that misdescribes its own transport is a bug
- * the moment anything branches on it. */
-export async function dispatchOverLan(
+/** What came back from one command on an agent's command route. `answered`
+ * is false when the route returned no command answer: the request failed or
+ * timed out, or the agent or a hop on the way answered with an HTTP error, so
+ * neither the pilot nor the flight controller answered; `result` then carries
+ * why. */
+export interface LanSendOutcome {
+  answered: boolean;
+  result: CommandResult;
+}
+
+/** Send one agent command over the LAN and report the vehicle's answer, or
+ * that none came back. `relay` marks the ground station's relay-proxy prefix,
+ * whose requests cross the radio rather than the LAN. Nothing reads the flag
+ * on this path today (`runCommand` pins its own 15 s deadline, which already
+ * clears the ground's bound), but a request context that misdescribes its own
+ * transport is a bug the moment anything branches on it. */
+export async function sendOverLan(
   agent: { agentUrl: string; apiKey: string; relay?: boolean },
   cmd: AgentCommandName,
   args: unknown[],
-): Promise<CommandResult> {
+): Promise<LanSendOutcome> {
   try {
     const outcome = await runCommand(
       {
@@ -96,13 +106,26 @@ export async function dispatchOverLan(
       args,
     );
     return {
-      success: outcome.accepted,
-      resultCode: outcome.resultCode ?? NO_MAV_RESULT,
-      message: outcome.message,
+      answered: true,
+      result: {
+        success: outcome.accepted,
+        resultCode: outcome.resultCode ?? NO_MAV_RESULT,
+        message: outcome.message,
+      },
     };
   } catch (error) {
-    return failed(errorMessage(error));
+    return { answered: false, result: failed(errorMessage(error)) };
   }
+}
+
+/** Dispatch one agent command over the LAN and report the vehicle's answer
+ * (see {@link sendOverLan}). */
+export async function dispatchOverLan(
+  agent: { agentUrl: string; apiKey: string; relay?: boolean },
+  cmd: AgentCommandName,
+  args: unknown[],
+): Promise<CommandResult> {
+  return (await sendOverLan(agent, cmd, args)).result;
 }
 
 /** Build a sink over one dispatch function. */
