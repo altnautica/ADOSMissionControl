@@ -17,7 +17,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
@@ -320,7 +320,16 @@ export function NodeDetailPanel({ droneId, onClose, fleetToggle }: NodeDetailPan
               message={t("surfaceError")}
               retryLabel={t("surfaceErrorRetry")}
             >
-              {renderActiveBody && <SurfaceBody render={renderActiveBody} />}
+              {/* Tab bodies are `next/dynamic` imports without a boundary of
+                  their own: without this one, opening a tab whose chunk is
+                  still loading suspends the whole app root, and every commit
+                  while it waits counts toward React's nested-update limit. The
+                  fallback fills the body, so nothing jumps when it resolves. */}
+              <Suspense
+                fallback={<div aria-busy="true" data-testid="surface-loading" className="flex-1 min-h-0" />}
+              >
+                {renderActiveBody && <SurfaceBody render={renderActiveBody} />}
+              </Suspense>
             </SurfaceErrorBoundary>
           </div>
         )}

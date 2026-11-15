@@ -8,6 +8,13 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Opening a node's Flight tab no longer stalls the whole app while the
+  cockpit loads.** Node tab bodies load on first open, and none of them had a
+  loading boundary of its own. Opening Flight on a cold load suspended the
+  entire page until the cockpit arrived, and on a slow load React could throw
+  "Maximum update depth exceeded". The tab body now shows an empty placeholder
+  while it loads, and the rest of the page keeps updating.
+
 - **A vantage-goal hold reads "No clear view".** When the pilot holds a skill's
   vantage goal because no reachable point sees the subject's predicted area, it
   reports the hold reason `no-vantage`. The cockpit spec now gives that reason a
