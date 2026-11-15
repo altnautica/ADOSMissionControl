@@ -9,8 +9,9 @@
  *     pending (`pilot.gate`);
  *   - "Sticks are with <surface>" with a Take over hold when another
  *     surface owns the stick session (`pilot.input_session`);
- *   - the low-battery return-home countdown with Cancel
- *     (`pilot.rth_countdown_s`) and the link-loss countdown
+ *   - the low-battery countdown with Cancel (`pilot.rth_countdown_s`;
+ *     landing when `pilot.low_battery_action` is `land`, else the return
+ *     home) and the link-loss countdown
  *     (`pilot.link_loss_in_s`);
  *   - the mission stall (`pilot.mission_stall`): a mission or a return that
  *     stopped making progress, held for the operator until its countdown ends,
@@ -289,7 +290,12 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
           style={{ background: countdownColor("low_battery_rth"), color: COUNTDOWN_TEXT }}
         >
           <span className="flex flex-col">
-            <span>{specString("flow.low_battery.title", { in_s: Math.ceil(rth) })}</span>
+            <span>
+              {specString(
+                pilot?.lowBatteryAction === "land" ? "flow.low_battery.title_land" : "flow.low_battery.title",
+                { in_s: Math.ceil(rth) },
+              )}
+            </span>
             <span data-testid="low-battery-cancel-warning" className="text-xs font-normal">
               {specString("flow.low_battery.cancel_warning")}
             </span>

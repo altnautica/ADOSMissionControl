@@ -51,6 +51,17 @@ describe("flight-flow countdowns", () => {
   });
 
   it.each([
+    ["land", "flow.low_battery.title_land"],
+    ["rth", "flow.low_battery.title"],
+    [null, "flow.low_battery.title"],
+  ] as const)("low-battery countdown with action %s reads %s", (action, key) => {
+    mount({ rth_countdown_s: 8.2, low_battery_action: action });
+    const title = specString(key, { in_s: 9 });
+    expect(title).not.toContain("{in_s}");
+    expect(screen.getByTestId("low-battery-rth").textContent).toContain(title);
+  });
+
+  it.each([
     ["low-battery-rth", "low_battery_rth", { rth_countdown_s: 9 }],
     ["link-loss-countdown", "link_loss", { link_loss_in_s: 4.2, link_loss_action: "rtl" }],
   ] as const)("%s words read at 4.5:1 or better on their fill", (testId, banner, over) => {

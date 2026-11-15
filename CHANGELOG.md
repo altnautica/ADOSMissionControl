@@ -21,6 +21,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A low-battery landing countdown says it will land.** When the pilot's low-battery action is to land, the countdown card read "Returning along the flown path". It now reads "Low battery: landing in N s", as the agent's own cockpit and TUI do.
+
 - **A return or landing the pilot accepted no longer reads as failed.** In ADOS control the agent answers a flight command with the pilot's verdict, which the GCS read as "no acknowledgement". An accepted verdict now reads as accepted, and a refusal shows the pilot's reason.
 
 - **Opening a node's Flight tab no longer stalls the whole app while the
