@@ -90,15 +90,22 @@ import { ControllerTourCard } from "@/components/cockpit/ControllerTourCard";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 
 // Sheets and editors are opened on demand; keep them out of the cockpit's
-// first load.
-const SkillBarEditor = dynamic(() =>
-  import("@/components/cockpit/SkillBarEditor").then((m) => m.SkillBarEditor),
+// first load. Each carries its own `loading` so its chunk suspends into a
+// boundary of its own: without one, opening a sheet the first time would
+// suspend into the node panel's tab-body boundary and blank the whole cockpit
+// (video and HUD) until the chunk arrived.
+const sheetLoading = { loading: () => null };
+const SkillBarEditor = dynamic(
+  () => import("@/components/cockpit/SkillBarEditor").then((m) => m.SkillBarEditor),
+  sheetLoading,
 );
-const CockpitQuickSettings = dynamic(() =>
-  import("@/components/cockpit/CockpitQuickSettings").then((m) => m.CockpitQuickSettings),
+const CockpitQuickSettings = dynamic(
+  () => import("@/components/cockpit/CockpitQuickSettings").then((m) => m.CockpitQuickSettings),
+  sheetLoading,
 );
-const CockpitCommandPalette = dynamic(() =>
-  import("@/components/cockpit/CockpitCommandPalette").then((m) => m.CockpitCommandPalette),
+const CockpitCommandPalette = dynamic(
+  () => import("@/components/cockpit/CockpitCommandPalette").then((m) => m.CockpitCommandPalette),
+  sheetLoading,
 );
 
 function enableSkillLayer(): void {

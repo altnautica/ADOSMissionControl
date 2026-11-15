@@ -1,26 +1,23 @@
 /**
  * @module node-detail/flight-tab-cold-load.test
  * @description A cold open of a drone's Flight tab. The cockpit body is a
- * `next/dynamic` import with no `loading`, which Next renders without a
- * Suspense boundary of its own. With nothing in the panel to catch it, the tab
- * click (a sync update) suspends the whole root until the chunk arrives, and
- * every telemetry-driven commit meanwhile counts toward React's nested-update
- * limit: a slow chunk ends in "Maximum update depth exceeded". The panel must
- * catch the suspension inside the tab body, show a fallback there, and then
- * show the cockpit.
+ * `next/dynamic` import with no `loading`, which the app-router dynamic
+ * renders without a Suspense boundary of its own. With nothing in the panel to
+ * catch it, the tab click (a sync update) suspends the whole root until the
+ * cockpit chunk arrives, and every telemetry-driven commit meanwhile counts
+ * toward React's nested-update limit: a slow chunk ends in "Maximum update
+ * depth exceeded". The panel must catch the suspension inside the tab body,
+ * show a fallback there, keep committing, and then show the cockpit.
  * @license GPL-3.0-only
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { render, cleanup, screen, fireEvent, act } from "@testing-library/react";
 
 // The cockpit chunk, held back until the test releases it.
 const chunk = vi.hoisted(() => {
-  let release!: () => void;
-  const ready = new Promise<void>((r) => {
-    release = r;
-  });
+  const { promise: ready, resolve: release } = Promise.withResolvers<void>();
   return { ready, release };
 });
 
@@ -67,15 +64,23 @@ vi.mock("@/lib/utils", async (orig) => ({
   isDemoMode: () => true,
 }));
 
-// The real cockpit pulls in video, map and HUD stacks; the subject here is
-// the lazy load path. A light body behind the real dynamic() suspends until
-// the test releases its "chunk", which stands in for a slow chunk download.
-vi.mock("@/components/cockpit/CockpitView", () => ({
-  CockpitView: ({ droneId }: { droneId: string }) => {
-    use(chunk.ready);
-    return <div>{`cockpit-${droneId}`}</div>;
-  },
+// What the app build resolves next/dynamic to: React.lazy, no boundary of its
+// own without `loading`.
+vi.mock("next/dynamic", async () =>
+  (await import("../../../../../tests/helpers/app-dynamic")).appDynamicModule(),
+);
+// The panel opens on Overview; a light body keeps the subject on Flight.
+vi.mock("@/components/command/overview/DroneOverview", () => ({
+  DroneOverview: () => <div>overview-body</div>,
 }));
+// The cockpit module itself is held, as a slow chunk download is. The real
+// cockpit pulls in video, map and HUD stacks; a light body stands in for it.
+vi.mock("@/components/cockpit/CockpitView", async () => {
+  await chunk.ready;
+  return {
+    CockpitView: ({ droneId }: { droneId: string }) => <div>{`cockpit-${droneId}`}</div>,
+  };
+});
 
 import { NodeDetailPanel } from "../NodeDetailPanel";
 import { setFixtureFleet } from "../../../../../tests/helpers/fleet-drones";
@@ -132,34 +137,25 @@ const depthErrors = () =>
   );
 
 describe("Flight tab cold load", () => {
-  it("keeps the lazy cockpit's suspension inside the tab body while telemetry ticks", async () => {
-    let ticked!: () => void;
-    const done = new Promise<void>((r) => {
-      ticked = r;
-    });
+  it("keeps the cockpit chunk's suspension inside the tab body while telemetry ticks", async () => {
+    const { promise: done, resolve: ticked } = Promise.withResolvers<void>();
     const { container } = render(
       <>
         <NodeDetailPanel droneId={DRONE} onClose={() => {}} />
         <Ticker ticks={80} onDone={ticked} />
       </>,
     );
-    // Let the dynamic() loader resolve its module so only the chunk is pending.
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
+    await screen.findByText("overview-body");
 
     fireEvent.click(container.querySelector("#drone-tab-cockpit")!);
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
-    // The click commits: Flight is selected with a fallback in its body
+    // The click commits: Flight is selected with a fallback in its body,
     // rather than the whole root waiting on the chunk.
+    const fallback = await screen.findByTestId("surface-loading");
+    expect(fallback.closest('[role="tabpanel"]')?.id).toBe("drone-tabpanel-cockpit");
+    expect(fallback.getAttribute("role")).toBe("status");
     expect(container.querySelector('[role="tab"][aria-selected="true"]')?.id).toBe(
       "drone-tab-cockpit",
     );
-    expect(
-      container.querySelector('[role="tabpanel"] [data-testid="surface-loading"]'),
-    ).not.toBeNull();
 
     // Telemetry keeps committing while the chunk is still on its way.
     const uncaught: unknown[] = [];
@@ -181,6 +177,7 @@ describe("Flight tab cold load", () => {
       chunk.release();
     });
     expect(await screen.findByText(`cockpit-${DRONE}`)).toBeTruthy();
+    expect(screen.queryByTestId("surface-loading")).toBeNull();
     expect(depthErrors()).toEqual([]);
     expect(uncaught).toEqual([]);
   });

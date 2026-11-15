@@ -74,6 +74,7 @@ interface NodeDetailPanelProps {
 export function NodeDetailPanel({ droneId, onClose, fleetToggle }: NodeDetailPanelProps) {
   const t = useTranslations("dronePanel");
   const tNode = useTranslations("nodeConsole");
+  const tLoad = useTranslations("droneDetail.droneConfigureTab");
   // The panel is deliberately not remounted per node (no `key` at the call
   // site: the Agent page's sub-page memory depends on the instance
   // surviving), so the tab is reseeded per node.
@@ -324,9 +325,21 @@ export function NodeDetailPanel({ droneId, onClose, fleetToggle }: NodeDetailPan
                   their own: without this one, opening a tab whose chunk is
                   still loading suspends the whole app root, and every commit
                   while it waits counts toward React's nested-update limit. The
-                  fallback fills the body, so nothing jumps when it resolves. */}
+                  fallback fills the body, so nothing jumps when it resolves;
+                  the cockpit's fills with its own media backdrop. */}
               <Suspense
-                fallback={<div aria-busy="true" data-testid="surface-loading" className="flex-1 min-h-0" />}
+                fallback={
+                  <div
+                    role="status"
+                    data-testid="surface-loading"
+                    className={cn(
+                      "flex-1 min-h-0 flex items-center justify-center",
+                      visibleTab === "cockpit" && "bg-media",
+                    )}
+                  >
+                    <span className="text-xs text-text-tertiary">{tLoad("loadingPanel")}</span>
+                  </div>
+                }
               >
                 {renderActiveBody && <SurfaceBody render={renderActiveBody} />}
               </Suspense>
