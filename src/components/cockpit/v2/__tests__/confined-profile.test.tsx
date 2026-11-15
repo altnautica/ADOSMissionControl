@@ -112,7 +112,7 @@ describe("Confined chip and route-check report", () => {
 
   it("reads the confined refusals through the refusal table", () => {
     expect(refusalText("route_infeasible")).toBe("Route too tight for the confined profile");
-    expect(refusalText("no_prop_radius")).toBe("Set the propeller tip radius for the confined profile");
+    expect(refusalText("no_prop_radius")).toBe("Set the vehicle's outer radius (props, guards or cage) for the confined profile");
     expect(refusalText("no_stall")).toBe("No stalled waypoint to skip");
   });
 });
