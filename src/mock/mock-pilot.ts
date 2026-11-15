@@ -276,16 +276,17 @@ export class MockPilot {
     const vehicle = this.vehicle();
     const seen = this.pins.over(this.wire);
     // The place class is the pilot's config: set while on the ground, and it
-    // replaces a pinned one.
+    // replaces a pinned one. Open drops the confined route check and cap.
     if (verb === "place_class") {
       const refused = placeClassRefusal(value, seen.armed === true);
       if (refused) return refused;
       this.wire.place_class = value;
       this.pins.drop("place_class");
+      if (value === "open") this.pins.clearConfined();
       return null;
     }
     if (verb === "launch") {
-      const refused = confinedLaunchRefusal(seen);
+      const refused = confinedLaunchRefusal(seen, args);
       if (refused) return refused;
     }
     // Skip, return or land ends a mission stall; a skip with none is refused.

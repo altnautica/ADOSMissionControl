@@ -127,4 +127,12 @@ export class PilotPins {
   drop(key: string): void {
     delete this.fields[key];
   }
+
+  /** The operator set the open class: the confined route check and the speed
+   *  cap near the clearance limit go with the confined class. */
+  clearConfined(): void {
+    delete this.fields.route_check;
+    const cap = this.fields.speed_cap;
+    if (typeof cap === "object" && cap !== null && (cap as Json).reason === "confined-near") delete this.fields.speed_cap;
+  }
 }

@@ -97,6 +97,37 @@ describe("demo confined profile", () => {
     });
   });
 
+  it("checks the route only for a launch into the mission, as the pilot does", async () => {
+    const demo = window.__adosDemoPilot!;
+    demo.pin(demo.confinedPins("infeasible"));
+    const hold = await requestPilotAction("launch", { after: "hold" });
+    expect(hold.err).not.toBe("route_infeasible");
+  });
+
+  it("refuses a confined launch into a mission with an unchecked waypoint", async () => {
+    const demo = window.__adosDemoPilot!;
+    const pins = demo.confinedPins("unverified");
+    demo.pin({ ...pins, route_check: { ...(pins.route_check as object), unchecked: [4] } });
+    vi.advanceTimersByTime(200);
+    expect(routeCheckReport(pilot().routeCheck)?.line).toContain("4");
+    await expect(requestPilotAction("launch", { after: "mission" })).resolves.toEqual({
+      ok: false,
+      err: "route_unchecked",
+    });
+  });
+
+  it("an operator's switch to open drops the confined route check and its speed cap", async () => {
+    const demo = window.__adosDemoPilot!;
+    demo.pin(demo.confinedPins("infeasible"));
+    vi.advanceTimersByTime(200);
+    expect(pilot().routeCheck?.state).toBe("infeasible");
+    await expect(requestPilotAction("place_class:open")).resolves.toEqual({ ok: true });
+    vi.advanceTimersByTime(200);
+    expect(pilot().placeClass).toBe("open");
+    expect(pilot().routeCheck).toBeNull();
+    expect(pilot().speedCap).toBeNull();
+  });
+
   it("an operator's class change replaces a pinned one", async () => {
     const demo = window.__adosDemoPilot!;
     demo.pin(demo.confinedPins("feasible"));

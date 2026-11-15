@@ -10,8 +10,10 @@
  *
  * `confinedPins` gives the confined class, the route check in that state over
  * a loaded six-waypoint mission and, unless the route is clear, the 0.5 m/s
- * `confined-near` speed cap. A confined launch with an infeasible route check
- * is refused `route_infeasible`, as the pilot refuses it.
+ * `confined-near` speed cap. A confined launch into the mission is refused
+ * `route_infeasible` while the route is too tight, and `route_unchecked`
+ * while it leaves a waypoint unchecked, as the pilot refuses it; switching
+ * to open drops the route check and the cap.
  * @license GPL-3.0-only
  */
 
@@ -56,9 +58,16 @@ export function placeClassRefusal(value: string | undefined, armed: boolean): st
   return armed ? "armed" : null;
 }
 
-/** A launch the confined pilot refuses: its route check found the route too tight. */
-export function confinedLaunchRefusal(seen: Json): string | null {
+/** A launch the confined pilot refuses, checked as the pilot checks it: only a
+ *  launch into the mission, refused while its route check found the route too
+ *  tight, or left a waypoint unchecked (no position, or a mission longer than
+ *  the check holds). */
+export function confinedLaunchRefusal(seen: Json, args: Json): string | null {
   const rc = seen.route_check;
-  const infeasible = typeof rc === "object" && rc !== null && (rc as Json).state === "infeasible";
-  return seen.place_class === "confined" && infeasible ? "route_infeasible" : null;
+  if (seen.place_class !== "confined" || args.after !== "mission") return null;
+  if (typeof rc !== "object" || rc === null) return null;
+  const check = rc as Json;
+  if (check.state === "infeasible") return "route_infeasible";
+  const unchecked = Array.isArray(check.unchecked) && check.unchecked.length > 0;
+  return unchecked || check.truncated === true ? "route_unchecked" : null;
 }
