@@ -25,6 +25,11 @@ the project follows [Semantic Versioning](https://semver.org/).
   cockpit's quick settings, command palette and skill-bar editor load the same
   way on first open, so opening one never blanks the video and HUD.
 
+- **The production build works again.** The cockpit's on-demand sheets passed
+  their loading option to `next/dynamic` through a shared constant, which the
+  production build rejects ("next/dynamic options must be an object literal").
+  Each sheet now passes it inline, with the same behaviour.
+
 - **A vantage-goal hold reads "No clear view".** When the pilot holds a skill's
   vantage goal because no reachable point sees the subject's predicted area, it
   reports the hold reason `no-vantage`. The cockpit spec now gives that reason a

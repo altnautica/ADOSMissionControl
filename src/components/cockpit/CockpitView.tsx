@@ -93,19 +93,19 @@ import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 // first load. Each carries its own `loading` so its chunk suspends into a
 // boundary of its own: without one, opening a sheet the first time would
 // suspend into the node panel's tab-body boundary and blank the whole cockpit
-// (video and HUD) until the chunk arrived.
-const sheetLoading = { loading: () => null };
+// (video and HUD) until the chunk arrived. The options stay inline object
+// literals: next/dynamic rejects any other form at build time.
 const SkillBarEditor = dynamic(
   () => import("@/components/cockpit/SkillBarEditor").then((m) => m.SkillBarEditor),
-  sheetLoading,
+  { loading: () => null },
 );
 const CockpitQuickSettings = dynamic(
   () => import("@/components/cockpit/CockpitQuickSettings").then((m) => m.CockpitQuickSettings),
-  sheetLoading,
+  { loading: () => null },
 );
 const CockpitCommandPalette = dynamic(
   () => import("@/components/cockpit/CockpitCommandPalette").then((m) => m.CockpitCommandPalette),
-  sheetLoading,
+  { loading: () => null },
 );
 
 function enableSkillLayer(): void {
