@@ -179,6 +179,9 @@ export interface RouteCheck {
   /** The mission is longer than the route the check holds: its end is not
    *  checked. */
   truncated: boolean;
+  /** The mission feed may not hold the FC's mission (not downloaded yet,
+   *  or out of step with the FC's count). */
+  stale: boolean;
 }
 
 function parseRoutePinch(raw: unknown): RoutePinch | null {
@@ -206,5 +209,6 @@ export function parseRouteCheck(raw: unknown): RouteCheck | null {
     unverifiedLegs: nums(r.unverified_legs),
     unchecked: nums(r.unchecked),
     truncated: r.truncated === true,
+    stale: r.stale === true,
   };
 }

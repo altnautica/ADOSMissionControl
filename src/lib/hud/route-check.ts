@@ -65,16 +65,18 @@ export function routeCheckReport(rc: RouteCheck | null | undefined): RouteCheckR
           required_m: metres2(pinch?.requiredM ?? rc.requiredM),
         }
       : { required_m: metres2(rc.requiredM) };
-  // An unverified route that left items unchecked says which, before the
-  // generic "not seen yet".
+  // An unverified route that was not fully checked says why (a feed not in
+  // step with the FC first), before the generic "not seen yet".
   const key =
     rc.state !== "unverified"
       ? rc.state
-      : rc.unchecked.length > 0
-        ? "unchecked"
-        : rc.truncated
-          ? "truncated"
-          : "unverified";
+      : rc.stale
+        ? "stale"
+        : rc.unchecked.length > 0
+          ? "unchecked"
+          : rc.truncated
+            ? "truncated"
+            : "unverified";
   return {
     state: rc.state,
     severity: SEVERITY[rc.state],

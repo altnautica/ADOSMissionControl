@@ -507,6 +507,7 @@
     "route_check.feasible": "Route clear · keeps {required_m} m",
     "route_check.infeasible": "Route too tight: leg {leg} has {clearance_m} m, needs {required_m} m",
     "route_check.pinch_at": "At N {n} m, E {e} m, height {h} m",
+    "route_check.stale": "Route not fully checked: the mission is not downloaded yet · slow near walls",
     "route_check.title": "Route check",
     "route_check.truncated": "Route not fully checked: the mission is too long · slow near walls",
     "route_check.unchecked": "Route not fully checked: no position for waypoint {items} · slow near walls",
