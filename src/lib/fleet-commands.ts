@@ -15,29 +15,43 @@ import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { sticksRouteToPilot } from "@/lib/input/pilot-stream";
-import { resolveNodeCommandReach } from "@/lib/nodes/command-sink";
+import { resolveNodeCommandReach, type CommandTargetNode } from "@/lib/nodes/command-sink";
 import { nodeCanFly } from "@/lib/nodes/node-profile";
 import type { CommandResult } from "@/lib/protocol/types";
+import type { FleetDrone } from "@/lib/types";
 import { pilotActionResult, pilotLive } from "@/lib/skills/builtins/_shared";
 import { noteModeOnSuccess } from "@/lib/skills/flight-facts";
+
+/** A fleet drone as a command target, with its relay facts: a drone that
+ *  names a ground node it is linked through and holds no agent identity of
+ *  its own (no LAN or cloud pairing) is seen only through that relay. */
+function commandTarget(drone: Pick<FleetDrone, "id" | "reachedVia" | "cloudDeviceId">): CommandTargetNode {
+  return {
+    deviceId: deviceIdFromNodeId(drone.id) ?? drone.id,
+    isRelayed: drone.reachedVia !== undefined && drone.cloudDeviceId === undefined,
+    reachedVia: drone.reachedVia,
+  };
+}
 
 /**
  * One drone's return. A drone this station flies through its ADOS pilot
  * (`ados` control, a live pilot) gets the pilot's `rth`, which flies back
- * along the flown path; a drone with an agent on the LAN gets the agent's
- * `rtl` command, which the agent hands to its pilot in `ados` control. Only a
- * drone with neither (a flight controller with no agent, or no agent lane in
- * this browser) gets the flight controller's own RTL.
+ * along the flown path; a drone with an agent on the LAN, or seen only
+ * through a ground station's relay, gets the agent's `rtl` command, which the
+ * agent hands to its pilot in `ados` control. Only a drone with neither (a
+ * flight controller with no agent, or no agent lane in this browser) gets the
+ * flight controller's own RTL.
  */
 export function returnOneToLaunch(
-  droneId: string,
+  drone: Pick<FleetDrone, "id" | "reachedVia" | "cloudDeviceId">,
   protocol: { returnToLaunch(): Promise<CommandResult> },
 ): Promise<CommandResult> {
-  if (sticksRouteToPilot(droneId) && pilotLive(droneId)) {
+  if (sticksRouteToPilot(drone.id) && pilotLive(drone.id)) {
     return pilotActionResult("rth", undefined, () => protocol.returnToLaunch());
   }
-  const { sink } = resolveNodeCommandReach({ deviceId: deviceIdFromNodeId(droneId) ?? droneId });
-  if (sink?.transport === "lan") return sink.returnToLaunch();
+  const node = commandTarget(drone);
+  const { sink } = resolveNodeCommandReach(node);
+  if (sink && (sink.transport === "lan" || node.isRelayed)) return sink.returnToLaunch();
   return protocol.returnToLaunch();
 }
 
@@ -81,7 +95,7 @@ export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
       const protocol = managed.get(drone.id)?.protocol;
       if (!protocol) throw new Error("no command link");
       // A recall the drone accepted is this station's return, not a failsafe.
-      return noteModeOnSuccess(drone.id, "RTL", returnOneToLaunch(drone.id, protocol));
+      return noteModeOnSuccess(drone.id, "RTL", returnOneToLaunch(drone, protocol));
     }),
   );
   results.forEach((settled, i) => {

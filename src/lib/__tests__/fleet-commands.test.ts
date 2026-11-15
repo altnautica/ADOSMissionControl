@@ -185,4 +185,21 @@ describe("the fleet recall's route per drone", () => {
     );
     expect(outcome.acknowledged).toEqual(["node:agent-1"]);
   });
+
+  it("a drone seen only through a ground station's relay gets its agent's rtl over the relay", async () => {
+    const fcRtl = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
+    lanAgents["ground-7"] = { agentUrl: "http://192.168.1.60:8080", apiKey: "gs" };
+    setFixtureFleet({ drones: [fleetDrone({ id: "node:drone-9", reachedVia: "node:ground-7", ...armed })] });
+    useDroneManager.setState({ drones: new Map([managed("node:drone-9", fcRtl)]) });
+
+    const outcome = await returnFleetToLaunch();
+
+    expect(fcRtl).not.toHaveBeenCalled();
+    expect(runCommandMock).toHaveBeenCalledWith(
+      { baseUrl: "http://192.168.1.60:8080/api/v1/ground-station/relay-proxy/drone-9", apiKey: "gs", relay: true },
+      "rtl",
+      [],
+    );
+    expect(outcome.acknowledged).toEqual(["node:drone-9"]);
+  });
 });
