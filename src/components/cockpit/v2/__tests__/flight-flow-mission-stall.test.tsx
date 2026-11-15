@@ -122,6 +122,7 @@ describe("mission stall voice and banners", () => {
 
   it.each([
     ["pilot.banner.mission_stalled", { wp: "3", in_s: 45 }, "No progress to waypoint 3 · Holding · Skipping in 45 s"],
+    ["pilot.banner.mission_stalled_hold", { wp: "3" }, "No progress to waypoint 3 · Holding for you"],
     ["pilot.banner.mission_wp_skipped", { wp: "3" }, "Waypoint 3 skipped · Coverage gap saved"],
     ["pilot.banner.return_blocked", { in_s: 45 }, "Return blocked · Holding · Landing in 45 s"],
     ["pilot.banner.return_land_fallback", {}, "Flown path unavailable · Landing here"],
