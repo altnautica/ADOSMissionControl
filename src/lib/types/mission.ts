@@ -35,7 +35,13 @@ export interface PlanSettings {
   vehicle?: PlanVehicleProfile;
   /** Height above home flown to and from the work area; absent = off. */
   transitAltM?: number;
+  /** The place the plan flies in: `confined` (mines, tunnels, rooms) is
+   *  stored; absent = `open`. Sent to the drone's pilot before launch. */
+  placeClass?: PlanPlaceClass;
 }
+
+/** The pilot's place class a plan is flown with (`pilot.place_class`). */
+export type PlanPlaceClass = "open" | "confined";
 
 export interface Waypoint {
   id: string;

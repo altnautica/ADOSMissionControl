@@ -18,6 +18,7 @@ import { setPilotSender, type PilotOutboundFrame } from "@/lib/input/pilot-strea
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import stallFrame from "@/lib/cockpit/layers/fixtures/pilot-frame-stall.json";
+import confinedFrame from "@/lib/cockpit/layers/fixtures/pilot-frame-confined.json";
 
 const DRONE = "stall-test";
 
@@ -128,5 +129,39 @@ describe("mission stall voice and banners", () => {
     ["pilot.banner.return_land_fallback", {}, "Flown path unavailable · Landing here"],
   ])("banner %s reads its spec text", (textKey, args, text) => {
     expect(bannerText({ textKey, args, untilMs: null })).toBe(text);
+  });
+});
+
+describe("stall banners behind the overlay", () => {
+  it("hides the stall's own banner while the overlay carries the countdown", () => {
+    mount(golden());
+    expect(screen.getByTestId("mission-stall")).toBeTruthy();
+    expect(screen.queryByTestId("handover-banner")).toBeNull();
+  });
+
+  it.each([
+    ["pilot.banner.mission_stalled_hold", { wp: "3" }],
+    ["pilot.banner.return_blocked", { in_s: 45 }],
+  ])("hides %s while a stall shows", (textKey, args) => {
+    mount(golden({ banner: { text_key: textKey, args, until_ms: 1 } }));
+    expect(screen.queryByTestId("handover-banner")).toBeNull();
+  });
+
+  it("shows the stall banner once no stall is up", () => {
+    mount(golden({ mission_stall: null }));
+    expect(screen.getByTestId("handover-banner").textContent).toBe(
+      "No progress to waypoint 3 · Holding · Skipping in 33 s",
+    );
+  });
+
+  it("keeps another banner (the confined route hold) beside the overlay", () => {
+    const raw = confinedFrame as Record<string, unknown>;
+    const pilot = parsePilotState(raw);
+    if (!pilot) throw new Error("golden confined frame did not parse");
+    mount(pilot);
+    expect(screen.getByTestId("mission-stall")).toBeTruthy();
+    expect(screen.getByTestId("handover-banner").textContent).toBe(
+      specString("pilot.banner.route_infeasible", { leg: "3→4", clearance_m: 0.52, required_m: 0.58 }),
+    );
   });
 });

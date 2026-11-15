@@ -14,7 +14,8 @@
  * `pin({ speed_cap: { reason: "gnss-denied", v_h_mps: 2 } })`, a position
  * the optical flow disagrees with via `DEMO_POSITION_UNVERIFIED_PIN`, which
  * the demo vision-nav echoes as a degraded pose, a mission stall with its
- * countdown, see mock-pilot-stall) through
+ * countdown, see mock-pilot-stall; the confined-place route check and its
+ * speed cap, see mock-pilot-confined) through
  * `window.__adosDemoPilot` (see
  * mock-pilot-wire); each drone's session starts without the last one's pins.
  * @license GPL-3.0-only
@@ -46,6 +47,12 @@ import {
   type Json,
 } from "./mock-pilot-wire";
 import { DemoStall } from "./mock-pilot-stall";
+import {
+  confinedLaunchRefusal,
+  demoConfinedPins,
+  placeClassRefusal,
+  type DemoRouteCheckState,
+} from "./mock-pilot-confined";
 import { DemoVehicleDriver } from "./mock-pilot-vehicle";
 
 export { demoPilotWire } from "./mock-pilot-wire";
@@ -61,6 +68,8 @@ export interface DemoPilotHandle {
   /** Stop (true) or resume (false) the pilot frames while the stream stays
    * open, so the last frame ages past the stale boundary. */
   freeze: (on: boolean) => void;
+  /** Pins for a confined flight with its route check in `state` (pass them to `pin`). */
+  confinedPins: (state: DemoRouteCheckState) => Json;
 }
 
 declare global {
@@ -117,6 +126,7 @@ export class MockPilot {
           this.framesFrozen = on;
           if (!on) this.publish();
         },
+        confinedPins: (state) => demoConfinedPins(state),
         // Demo scenarios: an active skill whose reports stop.
         skillState: (topic, state) => {
           if (!this.droneId) return;
@@ -265,11 +275,24 @@ export class MockPilot {
     }
     const vehicle = this.vehicle();
     const seen = this.pins.over(this.wire);
+    // The place class is the pilot's config: set while on the ground, and it
+    // replaces a pinned one.
+    if (verb === "place_class") {
+      const refused = placeClassRefusal(value, seen.armed === true);
+      if (refused) return refused;
+      this.wire.place_class = value;
+      this.pins.drop("place_class");
+      return null;
+    }
+    if (verb === "launch") {
+      const refused = confinedLaunchRefusal(seen);
+      if (refused) return refused;
+    }
     // Skip, return or land ends a mission stall; a skip with none is refused.
     if (verb === "mission_skip" || verb === "rth" || verb === "land") {
       const stalled = this.stall.resolve(seen, verb, Date.now());
       if (stalled) this.pins.clearStall();
-      if (verb === "mission_skip") return stalled ? null : "nothing_stalled";
+      if (verb === "mission_skip") return stalled ? null : "no_stall";
     }
     const err = vehicle
       ? this.driver.act(vehicle, this.wire, seen, verb, args)

@@ -224,7 +224,8 @@ function isValidPoi(raw: unknown): raw is PointOfInterest {
 const AUTOPILOTS: Record<string, true> = { ardupilot: true, px4: true };
 const VEHICLE_CLASSES: Record<string, true> = { copter: true, plane: true, vtol: true, rover: true };
 
-/** Plan settings with a finite home on the globe, a known profile and a positive transit altitude. */
+/** Plan settings with a finite home on the globe, a known profile, a positive
+ *  transit altitude and a known place class. */
 function isValidSettings(raw: unknown): raw is PlanSettings {
   if (!raw || typeof raw !== "object") return false;
   const s = raw as Record<string, unknown>;
@@ -241,6 +242,7 @@ function isValidSettings(raw: unknown): raw is PlanSettings {
   if (s.transitAltM !== undefined && !(isFiniteNumber(s.transitAltM) && (s.transitAltM as number) > 0)) {
     return false;
   }
+  if (s.placeClass !== undefined && s.placeClass !== "open" && s.placeClass !== "confined") return false;
   return true;
 }
 

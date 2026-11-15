@@ -44,7 +44,8 @@ export type PilotActionName =
   | "rth_cancel"
   | "mission_skip"
   | "goto"
-  | `vtol:${"fw" | "mc"}`;
+  | `vtol:${"fw" | "mc"}`
+  | `place_class:${"open" | "confined"}`;
 
 /** Server reply to an action, when the pilot sends one. */
 export interface PilotActionResult {

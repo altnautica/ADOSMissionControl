@@ -82,7 +82,7 @@
   "text_key": "pilot.banner.mission_stalled",
   "args": {
    "wp": "3",
-   "in_s": 45
+   "in_s": 33
   },
   "until_ms": 1793960003000
  },
@@ -109,6 +109,7 @@
  ],
  "failsafe_cause": null,
  "setup_step": null,
+ "setup_abort": null,
  "sensors": {
   "flow": {
    "state": "low",

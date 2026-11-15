@@ -416,11 +416,13 @@ export function currentExportOptions(settings?: PlanSettings): FlatExportOptions
   const mission = useMissionStore.getState();
   const home = settings ? settings.plannedHome : mission.plannedHome ?? undefined;
   const vehicle = settings ? settings.vehicle : mission.vehicleProfile ?? undefined;
+  const placeClass = settings ? settings.placeClass : mission.placeClass;
   return {
     defaultFrame,
     defaultSpeed,
     ...(vehicle ? { vehicle } : {}),
     ...(home ? { home } : {}),
+    ...(placeClass === "confined" ? { placeClass } : {}),
   };
 }
 

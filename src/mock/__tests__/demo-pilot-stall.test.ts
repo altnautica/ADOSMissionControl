@@ -15,6 +15,7 @@ vi.mock("@/lib/environment/weather-provider", () => ({ getWeatherSnapshot: async
 vi.mock("@/lib/geocoding/reverse", () => ({ reverseGeocode: async () => undefined }));
 
 import type { PilotState } from "@/lib/hud/cockpit-frames";
+import { refusalText } from "@/lib/hud/refusal";
 import { requestPilotAction } from "@/lib/input/pilot-stream";
 import { mockEngine } from "@/mock/engine";
 import { mockPilot } from "@/mock/mock-pilot";
@@ -121,7 +122,9 @@ describe("demo mission stall", () => {
     expect(vehicle().flight.airborne).toBe(false);
   });
 
-  it("refuses Skip waypoint with no stall up", async () => {
-    await expect(requestPilotAction("mission_skip")).resolves.toEqual({ ok: false, err: "nothing_stalled" });
+  it("refuses Skip waypoint with no stall up as no_stall, read through the refusal table", async () => {
+    const r = await requestPilotAction("mission_skip");
+    expect(r).toEqual({ ok: false, err: "no_stall" });
+    expect(refusalText(r.err)).toBe("No stalled waypoint to skip");
   });
 });

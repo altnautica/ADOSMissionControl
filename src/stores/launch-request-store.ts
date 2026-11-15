@@ -14,6 +14,7 @@
  */
 
 import { create } from "zustand";
+import type { PlanPlaceClass } from "@/lib/types";
 
 /** How long a request waits for the cockpit to take it (ms). */
 export const LAUNCH_REQUEST_TTL_MS = 5000;
@@ -22,6 +23,8 @@ export interface LaunchRequest {
   droneId: string;
   /** "mission": start the uploaded mission after take-off, with no point. */
   after?: "mission";
+  /** The place the planned mission flies in, set on the pilot before launch. */
+  placeClass?: PlanPlaceClass;
   /** The picked point, for a go-to request. */
   lat?: number;
   lon?: number;

@@ -21,6 +21,7 @@ import type {
   Waypoint,
   MissionState,
   PlannedHome,
+  PlanPlaceClass,
   PlanVehicleProfile,
 } from "@/lib/types";
 import type { DroneProtocol } from "@/lib/protocol/types";
@@ -102,6 +103,8 @@ export interface MissionStoreState {
   vehicleProfile: PlanVehicleProfile | null;
   /** Height above home flown to and from the work area; `null` = off. */
   transitAltM: number | null;
+  /** The place the plan flies in (`open`, or `confined`: mines, tunnels, rooms). */
+  placeClass: PlanPlaceClass;
 
   setMission: (mission: Mission | null) => void;
   setWaypoints: (waypoints: Waypoint[]) => void;
@@ -143,6 +146,8 @@ export interface MissionStoreState {
   setVehicleProfile: (profile: PlanVehicleProfile | null) => void;
   /** Set the transit altitude in metres above home; `null` or ≤ 0 turns it off (one undo step). */
   setTransitAlt: (altM: number | null) => void;
+  /** Set the place the plan flies in (one undo step). */
+  setPlaceClass: (placeClass: PlanPlaceClass) => void;
   /** Upload the current waypoints, with the plan's transit legs. `target`
    *  pins the destination drone; when omitted the operator's selected drone
    *  is used. A caller scoped to one drone MUST pass `target` — the selection
@@ -184,6 +189,7 @@ export const useMissionStore = create<MissionStoreState>()(
   plannedHome: null,
   vehicleProfile: null,
   transitAltM: null,
+  placeClass: "open",
 
   setMission: (activeMission) => set({
     activeMission,
@@ -317,6 +323,7 @@ export const useMissionStore = create<MissionStoreState>()(
         plannedHome: null,
         vehicleProfile: null,
         transitAltM: null,
+        placeClass: "open",
       }),
     );
   },
@@ -335,6 +342,8 @@ export const useMissionStore = create<MissionStoreState>()(
     withPlannerHistory(() =>
       set({ transitAltM: altM !== null && Number.isFinite(altM) && altM > 0 ? altM : null }),
     ),
+
+  setPlaceClass: (placeClass) => withPlannerHistory(() => set({ placeClass })),
 
   undo: () => undoHistory(),
 
@@ -413,6 +422,7 @@ interface MissionHistorySnapshot {
   plannedHome: PlannedHome | null;
   vehicleProfile: PlanVehicleProfile | null;
   transitAltM: number | null;
+  placeClass: PlanPlaceClass;
 }
 
 registerWaypointAdapter({
@@ -423,6 +433,7 @@ registerWaypointAdapter({
       plannedHome: s.plannedHome,
       vehicleProfile: s.vehicleProfile,
       transitAltM: s.transitAltM,
+      placeClass: s.placeClass,
     };
   },
   restore: (snap) => {
@@ -432,6 +443,7 @@ registerWaypointAdapter({
       plannedHome: s.plannedHome,
       vehicleProfile: s.vehicleProfile,
       transitAltM: s.transitAltM,
+      placeClass: s.placeClass,
     });
   },
 });

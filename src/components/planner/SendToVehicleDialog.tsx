@@ -39,6 +39,8 @@ import { usePreflightChecklistStore } from "@/stores/preflight-checklist-store";
 import { PREFLIGHT_ITEM_IDS, countCheckedPreflightItems } from "@/components/planner/preflight-items";
 import { flyThisMission } from "@/components/planner/fly-this-mission";
 import { useDescribeUploadFailure } from "@/components/planner/use-describe-upload-failure";
+import { RouteCheckReport } from "@/components/cockpit/v2/RouteCheckReport";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import type { Planner } from "@/app/plan/use-planner";
 
 type SendItem = "mission" | "geofence" | "rally";
@@ -98,6 +100,9 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
   // A plan written for one autopilot or vehicle class, sent to another.
   const planProfile = useMissionStore((s) => s.vehicleProfile);
   const targetProfile = useReportedVehicleProfile(targetId);
+  const planConfined = useMissionStore((s) => s.placeClass === "confined");
+  const targetPilot = usePilotState(targetId).pilot;
+  const targetRouteCheck = targetPilot?.placeClass === "confined" ? targetPilot.routeCheck : null;
   const profileMismatch = !!planProfile && !!targetProfile && !sameProfile(planProfile, targetProfile);
   const describeProfile = (profile: PlanVehicleProfile) =>
     `${t(`autopilot.${profile.autopilot}`)} ${t(`vehicleClass.${profile.vehicleClass}`)}`;
@@ -353,6 +358,13 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
                 );
               })}
             </ul>
+            {/* A confined plan: the drone's route check of the mission it
+                holds, before it is flown. */}
+            {planConfined && targetRouteCheck && (
+              <div className="rounded border border-border-default px-3 py-2" data-testid="send-route-check">
+                <RouteCheckReport routeCheck={targetRouteCheck} />
+              </div>
+            )}
           </>
         )}
         <div className="flex items-center gap-2 pt-3 border-t border-border-default text-xs text-text-secondary">

@@ -190,6 +190,64 @@ export function parseMissionStall(raw: unknown): MissionStall | null {
   };
 }
 
+// ── place class and route check (the confined-place profile) ───────────────────
+
+/** The operator's place class: `confined` flies tighter to walls, slower
+ *  near the limit, and checks the mission route before and during flight. */
+export const PLACE_CLASSES = ["open", "confined"] as const;
+export type PlaceClass = (typeof PLACE_CLASSES)[number];
+
+/** The tightest checked point of the route. */
+export interface RoutePinch {
+  /** The leg runs from mission item `fromSeq` to `toSeq`. */
+  fromSeq: number;
+  toSeq: number;
+  /** Local NED of the point, metres. */
+  ned: [number, number, number];
+  clearanceM: number;
+  requiredM: number;
+}
+
+/** The pilot's check of the loaded mission against its occupancy grid,
+ *  present only in the confined class with a mission loaded. */
+export interface RouteCheck {
+  state: "feasible" | "unverified" | "infeasible";
+  /** Clearance the route must keep: the margin plus the pose uncertainty. */
+  requiredM: number | null;
+  marginM: number | null;
+  /** Live pose uncertainty; null while unknown. */
+  sigmaM: number | null;
+  pinch: RoutePinch | null;
+  /** `to_seq` of the legs that cross cells not yet observed. */
+  unverifiedLegs: number[];
+}
+
+function parseRoutePinch(raw: unknown): RoutePinch | null {
+  const p = obj(raw);
+  if (!p) return null;
+  const fromSeq = num(p.from_seq);
+  const toSeq = num(p.to_seq);
+  const ned = pt3(p.ned);
+  const clearanceM = num(p.clearance_m);
+  const requiredM = num(p.required_m);
+  if (fromSeq === null || toSeq === null || !ned || clearanceM === null || requiredM === null) return null;
+  return { fromSeq, toSeq, ned, clearanceM, requiredM };
+}
+
+export function parseRouteCheck(raw: unknown): RouteCheck | null {
+  const r = obj(raw);
+  const state = r ? oneOf(r.state, ["feasible", "unverified", "infeasible"] as const) : null;
+  if (!r || !state) return null;
+  return {
+    state,
+    requiredM: num(r.required_m),
+    marginM: num(r.margin_m),
+    sigmaM: num(r.sigma_m),
+    pinch: parseRoutePinch(r.pinch),
+    unverifiedLegs: Array.isArray(r.unverified_legs) ? r.unverified_legs.filter((s): s is number => num(s) !== null) : [],
+  };
+}
+
 // ── pilot (nav kind `pilot` with the flow fields) ────────────────────────────────────
 
 export const PILOT_OWNERS = ["idle", "pilot", "skill", "goto", "swarm", "mission_fc", "fc_mode", "tuning"] as const;
@@ -261,9 +319,18 @@ export interface PilotState {
    *  wizard's last abort that was not the operator's while the engine still
    *  shows it, or null. */
   setupAbort: string | null;
+  /** The pilot's own low-battery action: `land` (it may fly without GNSS)
+   *  or `rth`, while its countdown runs (`rthCountdownS`) and after it
+   *  fired; null while none. */
+  lowBatteryAction: "land" | "rth" | null;
   /** A horizontal speed cap the pilot applies to every setpoint it flies
-   *  (`gnss-denied` while the EKF horizontal source is not GNSS), or null. */
+   *  (`gnss-denied` while the EKF horizontal source is not GNSS,
+   *  `confined-near` near the clearance limit in a confined place), or null. */
   speedCap: SpeedCap | null;
+  /** The operator's place class; `open` from an agent that omits it. */
+  placeClass: PlaceClass;
+  /** The route check, while confined with a mission loaded; else null. */
+  routeCheck: RouteCheck | null;
   /** The raw `sensors` block (parse with sensor-health); null when absent. */
   sensors: unknown;
   /** The pilot does not trust the horizontal position (an older agent sends
@@ -345,7 +412,10 @@ export function parsePilotState(raw: unknown): PilotState | null {
     fcFailsafe: p.fc_failsafe === true,
     failsafeCause: str(p.failsafe_cause),
     setupAbort: str(p.setup_abort),
+    lowBatteryAction: oneOf(p.low_battery_action, ["land", "rth"] as const),
     speedCap: parseSpeedCap(p.speed_cap),
+    placeClass: oneOf(p.place_class, PLACE_CLASSES) ?? "open",
+    routeCheck: parseRouteCheck(p.route_check),
     sensors: p.sensors ?? null,
     positionUnverified: parsePositionUnverified(p.position_unverified),
   };

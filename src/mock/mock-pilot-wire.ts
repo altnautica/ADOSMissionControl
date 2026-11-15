@@ -55,6 +55,7 @@ export function demoPilotWire(over: Json = {}): Json {
     setup_step: null,
     failsafe_cause: null,
     setup_abort: null,
+    place_class: "open",
     ...over,
   };
 }
@@ -120,5 +121,10 @@ export class PilotPins {
     delete this.fields.mission_stall;
     delete this.fields.hold_reason;
     delete this.fields.banner;
+  }
+
+  /** The pilot set `key` itself (an operator's action): its pin goes. */
+  drop(key: string): void {
+    delete this.fields[key];
   }
 }

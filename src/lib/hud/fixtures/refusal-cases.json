@@ -583,5 +583,14 @@
     "expected": {
       "text": "Position unverified (nav); fly manually or land"
     }
+  },
+  {
+    "name": "no_stall",
+    "input": {
+      "code": "no_stall"
+    },
+    "expected": {
+      "text": "No stalled waypoint to skip"
+    }
   }
 ]

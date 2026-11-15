@@ -37,6 +37,7 @@ export function applyPlanToWorkspace(plan: SavedPlan): void {
     plannedHome: plan.settings?.plannedHome ?? null,
     vehicleProfile: plan.settings?.vehicle ?? null,
     transitAltM: plan.settings?.transitAltM ?? null,
+    placeClass: plan.settings?.placeClass ?? "open",
   });
   lib.setSavedSnapshot(
     planSnapshotString(waypoints, {
@@ -141,11 +142,14 @@ export function capturePlanExtras(): PlanExtras {
 
 /** The mission store's plan settings, or `undefined` when none is set. */
 function capturePlanSettings(): PlanSettings | undefined {
-  const { plannedHome, vehicleProfile, transitAltM } = useMissionStore.getState();
-  if (plannedHome === null && vehicleProfile === null && transitAltM === null) return undefined;
+  const { plannedHome, vehicleProfile, transitAltM, placeClass } = useMissionStore.getState();
+  const confined = placeClass === "confined";
+  if (plannedHome === null && vehicleProfile === null && transitAltM === null && !confined) return undefined;
   return {
     ...(plannedHome ? { plannedHome: { ...plannedHome } } : {}),
     ...(vehicleProfile ? { vehicle: { ...vehicleProfile } } : {}),
     ...(transitAltM !== null ? { transitAltM } : {}),
+    // Open is the default and is not stored.
+    ...(confined ? { placeClass } : {}),
   };
 }

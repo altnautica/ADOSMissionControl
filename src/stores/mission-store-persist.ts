@@ -5,7 +5,7 @@
  * @license GPL-3.0-only
  */
 
-import type { AltitudeFrame, Mission, PlannedHome, PlanVehicleProfile, Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Mission, PlannedHome, PlanPlaceClass, PlanVehicleProfile, Waypoint } from "@/lib/types";
 import type { MissionStoreState } from "./mission-store";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
@@ -35,6 +35,7 @@ export interface PersistedMissionState {
   plannedHome: PlannedHome | null;
   vehicleProfile: PlanVehicleProfile | null;
   transitAltM: number | null;
+  placeClass: PlanPlaceClass;
 }
 
 /**
@@ -60,6 +61,7 @@ export function missionPartialize(
     plannedHome: state.plannedHome,
     vehicleProfile: state.vehicleProfile,
     transitAltM: state.transitAltM,
+    placeClass: state.placeClass,
   };
 }
 

@@ -197,6 +197,11 @@ export interface PillInputs {
    *  worded by that key (an unknown key reads as itself); ignored while the
    *  pilot state is stale. */
   setupAbort?: string | null;
+  /** The pilot's own low-battery action once it fired
+   *  (`low_battery_action` with no countdown running): `land` or `rth`,
+   *  one critical `low_battery` item. Ignored while the pilot state is
+   *  stale. */
+  lowBatteryAction?: string | null;
   /** The arm state; null while unknown (the drone may be airborne): the
    *  pre-flight items are hidden. Omitted: not known to this surface. */
   armed?: boolean | null;
@@ -209,9 +214,25 @@ export interface PillInputs {
   missionStall?: MissionStall | null;
 }
 
-/** The pill's failsafe inputs from a pilot state. */
-export function pilotFailsafe(p: Pick<PilotState, "fcFailsafe" | "failsafeCause"> | null): { fcFailsafe: boolean; failsafeCause: string | null } {
-  return { fcFailsafe: p?.fcFailsafe === true, failsafeCause: p?.failsafeCause ?? null };
+/** The pill's failsafe inputs from a pilot state: the FC's own failsafe,
+ *  and the pilot's low-battery action once its countdown has run out (the
+ *  countdown has its own banner). */
+export function pilotFailsafe(
+  p: Pick<PilotState, "fcFailsafe" | "failsafeCause" | "lowBatteryAction" | "rthCountdownS"> | null,
+): { fcFailsafe: boolean; failsafeCause: string | null; lowBatteryAction: string | null } {
+  return {
+    fcFailsafe: p?.fcFailsafe === true,
+    failsafeCause: p?.failsafeCause ?? null,
+    lowBatteryAction: p && p.rthCountdownS === null ? p.lowBatteryAction : null,
+  };
+}
+
+/** The low-battery item's text for `action` (`land`, `rth`); null for an
+ *  unknown action. The pilot announces the same line as a STATUSTEXT. */
+export function lowBatteryText(action: string | null | undefined): string | null {
+  if (action === "land") return specText("alert.low_battery_land");
+  if (action === "rth") return specText("alert.low_battery_rth");
+  return null;
 }
 
 /** `Failsafe: <cause>`, the cause worded by `pilot.banner.cause.*`; an
@@ -265,6 +286,10 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
   if (!pilotStale && i.setupAbort) {
     out.push({ id: "setup_abort", source: "pilot", severity: "warning", text: specText(i.setupAbort) });
   }
+  const lowBattery = pilotStale ? null : lowBatteryText(i.lowBatteryAction);
+  if (lowBattery) {
+    out.push({ id: "low_battery", source: "battery", severity: "critical", text: lowBattery });
+  }
   const stall = pilotStale ? null : missionStallOverlay(i.missionStall);
   if (stall) {
     out.push({ id: "mission_stall", source: "pilot", severity: stall.severity, text: stall.title });
@@ -297,8 +322,10 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
     out.push({ id: `fc:${text}`, source: "fc_prearm", severity: "warning", text });
   }
   // The FC repeats a warning while its condition lasts: one alert per text,
-  // at the worst severity it was sent with.
+  // at the worst severity it was sent with. The pilot's own low-battery
+  // announcement folds into its `low_battery` item.
   const fcAt = new Map<string, number>();
+  if (lowBattery) fcAt.set(lowBattery, out.findIndex((a) => a.id === "low_battery"));
   for (const s of pilotStale ? [] : (i.fcStatus ?? [])) {
     // PreArm/Arm lines already reach the pill through `prearm`.
     if (/^(PreArm|Arm):/.test(s.text)) continue;

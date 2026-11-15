@@ -10,12 +10,15 @@
  * Abort at any point pauses to a hold (or disarms on the ground). Launch arms
  * the aircraft, so it waits for the first-arm gate: until the pre-flight
  * checklist is passed for this drone the sheet shows its Pre-flight section
- * with what fails, and the hold stays disabled.
+ * with what fails, and the hold stays disabled. The place class (open, or a
+ * confined place) is the pilot's: a choice is sent as `place_class:<v>` and
+ * Launch waits until the pilot reports it; a confined route the pilot found
+ * too tight does not launch, and its route check shows here.
  *
  * @license GPL-3.0-only
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { liveLaunchRequest, useLaunchRequestStore } from "@/stores/launch-request-store";
 import { checklistReadyFor, useChecklistStore } from "@/stores/checklist-store";
 import { Rocket, X } from "lucide-react";
@@ -26,7 +29,10 @@ import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
 import { LaunchPreflight } from "@/components/cockpit/v2/LaunchPreflight";
 import { LaunchStepStrip, useLaunchAbort } from "@/components/cockpit/v2/LaunchSteps";
-import type { PilotState } from "@/lib/hud/cockpit-frames";
+import { PlaceClassPicker } from "@/components/cockpit/v2/PlaceClassPicker";
+import { RouteCheckReport } from "@/components/cockpit/v2/RouteCheckReport";
+import type { PilotState, PlaceClass } from "@/lib/hud/cockpit-frames";
+import { placeClassLabel } from "@/lib/hud/route-check";
 import { refusalText } from "@/lib/hud/refusal";
 import { launchLimits } from "@/lib/cockpit/launch-spec";
 import { specBuiltin } from "@/lib/cockpit/spec-builtins";
@@ -101,11 +107,15 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
     const req = liveLaunchRequest(useLaunchRequestStore.getState().pending, droneId);
     if (req?.after === "mission") {
       useLaunchRequestStore.getState().consume();
-      return { mission: true, picked: null };
+      return { mission: true, picked: null, placeClass: req.placeClass ?? null };
     }
-    if (req?.north === undefined || req.east === undefined) return { mission: false, picked: null };
+    if (req?.north === undefined || req.east === undefined) return { mission: false, picked: null, placeClass: null };
     useLaunchRequestStore.getState().consume();
-    return { mission: false, picked: [Math.round(req.north * 10) / 10, Math.round(req.east * 10) / 10] as [number, number] };
+    return {
+      mission: false,
+      picked: [Math.round(req.north * 10) / 10, Math.round(req.east * 10) / 10] as [number, number],
+      placeClass: null,
+    };
   });
   const picked = request.picked;
   const [after, setAfter] = useState<LaunchAfter>(request.mission ? "mission" : picked ? "goto" : "hold");
@@ -114,6 +124,12 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
   const [gotoNE, setGotoNE] = useState<[number | null, number | null]>(picked ?? [null, null]);
   const [whenDone, setWhenDone] = useState<LaunchWhenDone>("none");
   const [sent, setSent] = useState<string | null>(null);
+  // The place class: the plan's when the planner sent one or the operator's
+  // choice here; until then the pilot's own.
+  const [chosenClass, setChosenClass] = useState<PlaceClass | null>(request.placeClass);
+  const placeClass: PlaceClass = chosenClass ?? pilot?.placeClass ?? "open";
+  const [classRefused, setClassRefused] = useState<string | null>(null);
+  const classSentFor = useRef<PlaceClass | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useSheetDismiss(ref, onClose, "[data-sheet-trigger='launch']");
   // At the flight screen's root, right of the left column, below the top bar.
@@ -123,12 +139,38 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
   const gotoSet = gotoNE[0] !== null && gotoNE[1] !== null;
   // The first-arm gate, as on the flight controller's Arm and Take off.
   const preflightPassed = useChecklistStore((s) => checklistReadyFor(s, droneId));
-  const ready = preflightPassed && (after !== "skill" || skillId !== null) && (after !== "goto" || gotoSet);
   const running = pilot?.sequence != null && pilot.sequence.step !== "done";
+  // Start check: the pilot flies with the chosen place class, and a confined
+  // route the pilot found too tight does not launch.
+  const classAgrees = pilot?.placeClass === placeClass;
+  const routeBlocked = placeClass === "confined" && pilot?.routeCheck?.state === "infeasible";
+  const ready =
+    preflightPassed &&
+    classAgrees &&
+    !routeBlocked &&
+    (after !== "skill" || skillId !== null) &&
+    (after !== "goto" || gotoSet);
   const abortLaunch = useLaunchAbort();
 
+  // The pilot keeps the class (`pilot.place_class`): a choice is sent at once,
+  // and Launch waits until the pilot reports it.
+  const pilotClass = pilot?.placeClass ?? null;
+  useEffect(() => {
+    if (chosenClass === null || pilotClass === null || pilotClass === chosenClass) return;
+    if (classSentFor.current === chosenClass) return;
+    classSentFor.current = chosenClass;
+    void requestPilotAction(`place_class:${chosenClass}`).then((r) =>
+      setClassRefused(r.ok ? null : specString("flow.launch.refused", { reason: refusalText(r.err) })),
+    );
+  }, [pilotClass, chosenClass]);
+  const chooseClass = (cls: PlaceClass) => {
+    classSentFor.current = null;
+    setClassRefused(null);
+    setChosenClass(cls);
+  };
+
   const launch = () => {
-    if (!useChecklistStore.getState().isReadyToArm(droneId)) return;
+    if (!useChecklistStore.getState().isReadyToArm(droneId) || !classAgrees || routeBlocked) return;
     setSent(specString("flow.launch.sent"));
     void requestPilotAction(
       "launch",
@@ -171,6 +213,33 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
       </div>
 
       {!preflightPassed && !running && <LaunchPreflight droneId={droneId} />}
+
+      <PlaceClassPicker
+        value={placeClass}
+        onChange={chooseClass}
+        reportedMarginM={pilot?.routeCheck?.marginM ?? null}
+        disabled={running || pilot?.armed === true}
+      />
+      {pilot && !classAgrees && !classRefused && (
+        <p data-testid="place-class-pending" className="-mt-2 mb-3 text-[11px] text-status-warning">
+          {`${specString("flow.launch.place_class")}: ${placeClassLabel(pilot.placeClass)}`}
+        </p>
+      )}
+      {classRefused && (
+        <p data-testid="place-class-refused" className="-mt-2 mb-3 text-[11px] text-status-error">
+          {classRefused}
+        </p>
+      )}
+      {placeClass === "confined" && pilot?.routeCheck && (
+        <div className="mb-3 rounded bg-white/5 px-3 py-2">
+          <RouteCheckReport routeCheck={pilot.routeCheck} />
+          {routeBlocked && (
+            <p data-testid="launch-route-refusal" className="mt-1 text-[11px] text-status-error">
+              {refusalText("route_infeasible")}
+            </p>
+          )}
+        </div>
+      )}
 
       <label className="mb-3 block text-xs">
         <span className="mb-1 block text-text-secondary">{specString("flow.launch.alt_m")}</span>

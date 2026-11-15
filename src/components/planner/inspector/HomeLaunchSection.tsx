@@ -4,7 +4,9 @@
  * to and from the work area. The planned home row shows the coordinate in the
  * operator's format and the ground under it, with a one-shot "pick on map"
  * and, when the selected vehicle reports a different home at this site, a
- * button to adopt it. The transit altitude is optional: empty is off.
+ * button to adopt it. The transit altitude is optional: empty is off. The
+ * place the plan flies in (open, or a confined place such as a mine, tunnel
+ * or room) is saved with the plan and set on the drone's pilot before launch.
  * @license GPL-3.0-only
  */
 "use client";
@@ -22,6 +24,7 @@ import { useVehicleHomeOffer } from "@/hooks/use-vehicle-home-offer";
 import { formatCursorCoord } from "@/lib/planner/cursor-coord";
 import { formatAltitude } from "@/lib/units/format";
 import { cn } from "@/lib/utils";
+import { PlaceClassPicker } from "@/components/cockpit/v2/PlaceClassPicker";
 
 export function HomeLaunchSection() {
   const t = useTranslations("planner.inspector.home");
@@ -29,6 +32,8 @@ export function HomeLaunchSection() {
   const setPlannedHome = useMissionStore((s) => s.setPlannedHome);
   const transitAltM = useMissionStore((s) => s.transitAltM);
   const setTransitAlt = useMissionStore((s) => s.setTransitAlt);
+  const placeClass = useMissionStore((s) => s.placeClass);
+  const setPlaceClass = useMissionStore((s) => s.setPlaceClass);
   const homePickArmed = usePlannerStore((s) => s.homePickArmed);
   const setHomePickArmed = usePlannerStore((s) => s.setHomePickArmed);
   const coordFormat = useSettingsStore((s) => s.coordFormat);
@@ -88,6 +93,9 @@ export function HomeLaunchSection() {
           ariaLabel={t("transitAlt")} onCommit={setTransitAlt} onClear={() => setTransitAlt(null)} />
       </PropertyRow>
       <p className="mt-1 text-[11px] text-text-tertiary">{t("transitHint")}</p>
+      <div className="mt-3">
+        <PlaceClassPicker value={placeClass} onChange={setPlaceClass} />
+      </div>
     </PropertySection>
   );
 }

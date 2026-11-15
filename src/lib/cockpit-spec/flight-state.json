@@ -71,7 +71,8 @@
     "obstacle-close": "Obstacle close",
     "position-unverified": "Holding · position unverified",
     "obstacle-data-stale": "Holding: no fresh obstacle data",
-    "return-blocked": "Return blocked"
+    "return-blocked": "Return blocked",
+    "route-infeasible": "Route too tight"
   },
   "hold_reason_labels_note": "keyed by the exact hold_reason wire string the pilot emits (hyphenated); setup-strings.json pilot.hold_reason.<same key> carries the same text",
   "stale_after_ms": 2000,

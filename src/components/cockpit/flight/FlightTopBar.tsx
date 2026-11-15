@@ -36,6 +36,7 @@ import { FlightStateChip } from "../v2/FlightStateChip";
 import { LayerLevelButton } from "../layers/LayerLevelButton";
 import { NavSourceChip } from "../NavSourceChip";
 import { StatusPill } from "./StatusPill";
+import { ConfinedChip } from "./ConfinedChip";
 import { BatteryCell, LinkCell } from "./TopBarCells";
 import { ControllerCell } from "./ControllerCell";
 import { FlightMenu } from "./FlightMenu";
@@ -156,6 +157,8 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
         <div className="fs-bar-items">
           <FlightStateChip droneId={droneId} barWidth={bar.w} compact={compact} />
           <StatusPill droneId={droneId} />
+          {/* The confined-place profile: never moved off the bar. */}
+          <ConfinedChip droneId={droneId} />
           {/* The short reserve text once the bar is short of room. */}
           <BatteryCell droneId={droneId} short={compact || stage > 0} />
           {!hidden.has("link_icon") && <LinkCell droneId={droneId} detail={!hidden.has("link_text")} />}

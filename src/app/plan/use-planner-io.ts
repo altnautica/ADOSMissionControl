@@ -83,13 +83,14 @@ export function usePlannerIO(deps: IODeps) {
   const plannedHome = useMissionStore((s) => s.plannedHome);
   const vehicleProfile = useMissionStore((s) => s.vehicleProfile);
   const transitAltM = useMissionStore((s) => s.transitAltM);
+  const placeClass = useMissionStore((s) => s.placeClass);
 
   const extras = useMemo(
     () => capturePlanExtras(),
     [
       fenceEnabled, fenceType, fenceMaxAltitude, fenceMinAltitude, fenceBreachAction,
       fencePolygonPoints, fenceCircleCenter, fenceCircleRadius, fenceZones,
-      rallyPoints, poiPoints, plannedHome, vehicleProfile, transitAltM,
+      rallyPoints, poiPoints, plannedHome, vehicleProfile, transitAltM, placeClass,
     ],
   );
 
@@ -130,6 +131,7 @@ export function usePlannerIO(deps: IODeps) {
           plannedHome: saved.settings.plannedHome ?? null,
           vehicleProfile: saved.settings.vehicle ?? null,
           transitAltM: saved.settings.transitAltM ?? null,
+          placeClass: saved.settings.placeClass ?? "open",
         });
       }
     })();

@@ -58,6 +58,8 @@ export interface QGCPlanFile {
     plannedHomePosition?: number[];
     firmwareType?: number;
     vehicleType?: number;
+    /** The ADOS place class; `"confined"` when written, absent = open. */
+    placeClass?: string;
   };
   geoFence?: QGCGeoFence;
   rallyPoints?: QGCRallyPoints;

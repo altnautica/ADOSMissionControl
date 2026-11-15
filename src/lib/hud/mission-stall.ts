@@ -91,3 +91,17 @@ export function missionStallVoiceKey(prev: VoiceFields | null, next: VoiceFields
 export function gapSeqs(mission: Pick<MissionState, "gaps"> | null | undefined): number[] {
   return [...new Set((mission?.gaps ?? []).map((g) => g.seq))].sort((a, b) => a - b);
 }
+
+/** The pilot banners a shown stall overlay repeats: the overlay carries the
+ *  live countdown, so a surface hides these while it shows. */
+const SHADOWED_BANNERS: ReadonlySet<string> = new Set([
+  "pilot.banner.mission_stalled",
+  "pilot.banner.mission_stalled_hold",
+  "pilot.banner.return_blocked",
+]);
+
+/** Whether the banner `textKey` is hidden behind the stall overlay: true for
+ *  the stall's own banners while `missionStall` shows. */
+export function stallShadowsBanner(textKey: string | null | undefined, missionStall: MissionStall | null | undefined): boolean {
+  return !!missionStall && !!textKey && SHADOWED_BANNERS.has(textKey);
+}

@@ -27,6 +27,7 @@ import type {
   PlanVehicleProfile,
   PlannedHome,
   PlanSettings,
+  PlanPlaceClass,
 } from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
@@ -101,6 +102,9 @@ export interface FlatExportOptions {
    * in at 0 m, as QGC and Mission Planner do before they know the home.
    */
   home?: PlannedHome;
+  /** The place the plan flies in; `confined` is written into a `.plan` as
+   *  `mission.placeClass`, open (the default) is omitted. */
+  placeClass?: PlanPlaceClass;
 }
 
 /**
@@ -155,9 +159,18 @@ export interface ParsedWaypoints {
 }
 
 /** `settings` holding only the fields a file named, or undefined when it named none. */
-function fileSettings(plannedHome?: PlannedHome, vehicle?: PlanVehicleProfile): PlanSettings | undefined {
-  if (!plannedHome && !vehicle) return undefined;
-  return { ...(plannedHome ? { plannedHome } : {}), ...(vehicle ? { vehicle } : {}) };
+function fileSettings(
+  plannedHome?: PlannedHome,
+  vehicle?: PlanVehicleProfile,
+  placeClass?: PlanPlaceClass,
+): PlanSettings | undefined {
+  const confined = placeClass === "confined";
+  if (!plannedHome && !vehicle && !confined) return undefined;
+  return {
+    ...(plannedHome ? { plannedHome } : {}),
+    ...(vehicle ? { vehicle } : {}),
+    ...(confined ? { placeClass } : {}),
+  };
 }
 
 // ── .waypoints Export (ArduPilot / Mission Planner format) ───
@@ -345,6 +358,7 @@ export function exportQGCPlan(
       globalPlanAltitudeMode,
       items,
       plannedHomePosition: [homeItem.x / 1e7, homeItem.y / 1e7, homeItem.z],
+      ...(opts?.placeClass === "confined" ? { placeClass: "confined" } : {}),
       version: 2,
     },
     geoFence: geofenceToQGC(extras?.geofence),
@@ -389,7 +403,7 @@ export function parseQGCPlan(text: string): ParsedPlan {
       )
     : undefined;
   const vehicle = profileFromQGC(data.mission.firmwareType, data.mission.vehicleType);
-  const settings = fileSettings(plannedHome, vehicle);
+  const settings = fileSettings(plannedHome, vehicle, data.mission.placeClass === "confined" ? "confined" : undefined);
 
   // Collapse DO / CONDITION sibling items into their navigation waypoint's
   // actions, restoring each item's frame and every parameter slot.

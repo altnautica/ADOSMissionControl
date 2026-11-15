@@ -86,6 +86,7 @@ describe("pill cases", () => {
         setupAbort: (i as { setup_abort?: string | null }).setup_abort,
         armed: (i as { armed?: boolean | null }).armed,
         navSource: (i as { nav_source?: PillInputs["navSource"] }).nav_source,
+        lowBatteryAction: (i as { low_battery_action?: string | null }).low_battery_action,
       });
       const s = pillSummary(alerts, new Set());
       expect({ severity: s.severity, text: s.text, count: s.count, ids: alerts.map((a) => a.id) }).toEqual(c.expected);

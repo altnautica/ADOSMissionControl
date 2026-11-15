@@ -45,7 +45,7 @@ import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { flowColumn } from "@/components/cockpit/flight/flight-grid";
 import tokens from "@/lib/cockpit-spec/tokens.json";
 import type { MissionStall, PilotState } from "@/lib/hud/cockpit-frames";
-import { missionStallOverlay, missionStallVoiceKey } from "@/lib/hud/mission-stall";
+import { missionStallOverlay, missionStallVoiceKey, stallShadowsBanner } from "@/lib/hud/mission-stall";
 import { linkLossLine } from "@/lib/hud/link-loss";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
@@ -159,10 +159,13 @@ function useVoicePrompts(droneId: string, pilot: PilotState | null): void {
 }
 
 /** `hidden` (a stale pilot) keeps the banner's timing but draws nothing, so
- * a banner already shown is not replayed when frames return. */
+ * a banner already shown is not replayed when frames return. The stall's own
+ * banners (stalled, held, return blocked) stay behind the stall overlay,
+ * which carries the live countdown. */
 function HandoverBanner({ pilot, hidden }: { pilot: PilotState | null; hidden: boolean }) {
   const banner = pilot?.banner ?? null;
-  const text = banner ? bannerText(banner) : null;
+  const shadowed = stallShadowsBanner(banner?.textKey, pilot?.missionStall);
+  const text = banner && !shadowed ? bannerText(banner) : null;
   // Shown for the spec's handover time from when its text first appears.
   const [lastText, setLastText] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
@@ -175,7 +178,7 @@ function HandoverBanner({ pilot, hidden }: { pilot: PilotState | null; hidden: b
     const t = setTimeout(() => setVisible(false), HANDOVER_MS);
     return () => clearTimeout(t);
   }, [visible, lastText]);
-  if (hidden || !visible || !lastText) return null;
+  if (hidden || shadowed || !visible || !lastText) return null;
   return (
     <div role="status" aria-live="polite" data-testid="handover-banner" className="pointer-events-none flex w-full justify-center">
       <span className="glass-panel w-[min(640px,100%)] px-4 py-2 text-center text-sm font-semibold text-text-primary">
