@@ -53,8 +53,9 @@ export interface DroneNavFeed {
   pose?: Stamped<NavPose>;
   scan?: Stamped<NavScan>;
   map?: Stamped<MapStatus>;
-  /** ADOS Pilot state (`pilot` kind, 10 Hz). */
-  pilot?: Stamped<PilotState>;
+  /** ADOS Pilot state (`pilot` kind, 10 Hz), with the wire object it was
+   *  parsed from (`raw`, snake_case; the shared feedback rules read it). */
+  pilot?: Stamped<PilotState> & { raw?: unknown };
   trail: TrailPoint[];
   occupancy: OccupancyGrid;
   /** Browser clock (ms) of the last successful `map/live` poll, or null. */
@@ -74,7 +75,7 @@ interface NavStreamState {
   setPose: (droneId: string, data: NavPose, at?: number) => void;
   setScan: (droneId: string, data: NavScan, at?: number) => void;
   setMap: (droneId: string, data: MapStatus, at?: number) => void;
-  setPilot: (droneId: string, data: PilotState, at?: number) => void;
+  setPilot: (droneId: string, data: PilotState, at?: number, raw?: unknown) => void;
   mergeOccupancy: (droneId: string, live: OccupancyLive, at?: number) => void;
   setTransport: (droneId: string, transport: "stream" | "poll" | null) => void;
   clear: (droneId: string) => void;
@@ -108,8 +109,8 @@ export const useNavStreamStore = create<NavStreamState>()((set) => ({
     set((s) => patch(s, droneId, () => ({ scan: { data, receivedAt: at } }))),
   setMap: (droneId, data, at = Date.now()) =>
     set((s) => patch(s, droneId, () => ({ map: { data, receivedAt: at } }))),
-  setPilot: (droneId, data, at = Date.now()) =>
-    set((s) => patch(s, droneId, () => ({ pilot: { data, receivedAt: at } }))),
+  setPilot: (droneId, data, at = Date.now(), raw) =>
+    set((s) => patch(s, droneId, () => ({ pilot: { data, receivedAt: at, raw } }))),
   mergeOccupancy: (droneId, live, at = Date.now()) =>
     set((s) =>
       patch(s, droneId, (feed) => ({

@@ -55,7 +55,7 @@ export type NavFrame =
   | { kind: "follow"; data: FollowState }
   | { kind: "map"; data: MapStatus }
   | { kind: "follow_event"; data: FollowEvent }
-  | { kind: "pilot"; data: PilotState }
+  | { kind: "pilot"; data: PilotState; raw: unknown }
   | { kind: "obstacles"; data: ObstaclesFrame }
   | { kind: "ar"; data: ArFrame }
   | { kind: "depth"; data: DepthFrame }
@@ -93,7 +93,7 @@ export function parseNavFrame(raw: unknown): NavFrame | null {
     }
     case "pilot": {
       const data = parsePilotState(f.data);
-      return data ? { kind: "pilot", data } : null;
+      return data ? { kind: "pilot", data, raw: f.data } : null;
     }
     case "obstacles": {
       const data = parseObstaclesFrame(f.data);
@@ -141,7 +141,7 @@ export function ingestNavFrame(droneId: string, frame: NavFrame, at: number = Da
       s.pushFollowEvent(droneId, frame.data, at);
       break;
     case "pilot":
-      s.setPilot(droneId, frame.data, at);
+      s.setPilot(droneId, frame.data, at, frame.raw);
       break;
     case "obstacles":
     case "ar":

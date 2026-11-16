@@ -4,8 +4,8 @@
  *
  *   - rumble patterns (mode change, warning, critical, the hold ramp and the
  *     countdown) through the Gamepad `vibrationActuator`;
- *   - the lightbar colour for the flight state (disarmed green, pilot blue,
- *     skill cyan, mission magenta, RTH amber blink, low battery red pulse,
+ *   - the lightbar colour for the flight state (disarmed green, the sticks in
+ *     the speed profile's colour, skill cyan, mission magenta, RTH amber blink, low battery red pulse,
  *     failsafe red blink), written over WebHID to a DualShock 4. WebHID needs
  *     a secure origin (https, or the desktop app) and a one-time device grant
  *     from a user gesture (Settings › Controls › Lightbar).
@@ -66,21 +66,30 @@ export function rumbleHoldTick(pattern: string | null, progress: number): void {
 
 export type LightbarState = keyof typeof ds4.lightbar.states;
 
-/** The lightbar state for the pilot, by the spec's priority. */
+const PROFILE_STATES = ds4.lightbar.profile_states as Record<string, LightbarState | undefined>;
+
+/**
+ * The lightbar state for the pilot, by the spec's priority. While the
+ * operator's sticks own the vehicle the bar shows the speed profile
+ * (`lightbar.profile_states`); the other motion owners that are not a
+ * mission or a skill show the plain pilot colour.
+ */
 export function lightbarState(pilot: PilotState | null, opts: { lowBattery: boolean; linkLost: boolean }): LightbarState {
   const owner = pilot?.owner ?? null;
   const rth = !!pilot?.fcModeName && /RTL|QRTL/i.test(pilot.fcModeName);
   const failsafe = opts.linkLost || pilot?.holdReason === "controller-lost" || pilot?.linkLossInS != null;
-  const cand: Record<LightbarState, boolean> = {
+  const stickProfile = owner === "pilot" && pilot?.profile ? (PROFILE_STATES[pilot.profile] ?? null) : null;
+  const cand: Record<string, boolean> = {
     failsafe,
     low_battery: opts.lowBattery || pilot?.rthCountdownS != null,
     rth,
     mission: owner === "mission_fc",
     skill: owner === "skill",
-    pilot: owner === "pilot" || owner === "goto" || owner === "swarm",
+    pilot: owner === "pilot" || owner === "goto" || owner === "swarm" || owner === "tuning",
     armed_idle: pilot?.armed === true,
     disarmed: true,
   };
+  if (stickProfile) cand[stickProfile] = true;
   return (ds4.lightbar.priority as LightbarState[]).find((s) => cand[s]) ?? "disarmed";
 }
 

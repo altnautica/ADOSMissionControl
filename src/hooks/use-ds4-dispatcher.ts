@@ -31,6 +31,7 @@ import {
   type Ds4Binding,
 } from "@/lib/input/ds4-bindings";
 import { lightbarColour, lightbarState, rumble, rumbleHoldTick, setLightbar } from "@/lib/input/ds4-feedback";
+import { PilotFeedback } from "@/lib/input/pilot-feedback";
 import { sendPilotAction } from "@/lib/input/pilot-stream";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { GimbalRateDriver } from "@/lib/cockpit/gimbal-rate";
@@ -56,6 +57,8 @@ import {
 
 /** Engine tick for hold timing between button changes. */
 const TICK_MS = 50;
+/** How often the feedback checks whether the pilot state went stale. */
+const STALE_CHECK_MS = 250;
 const PROFILES = ["cine", "normal", "sport"] as const;
 const LOCKED: Record<string, true> = { pause: true, rth: true, rth_cancel: true, arm: true, kill: true };
 /** The controls the controller tour drives (focus and press). */
@@ -322,5 +325,28 @@ export function useDs4Dispatcher(droneId: string): void {
       void setLightbar(rgb);
     }, 100);
     return () => clearInterval(tick);
+  }, [droneId]);
+
+  // Rumble from pilot-state changes, by the shared feedback rules: each new
+  // pilot state against the last, and the pilot state going stale (the
+  // spec's stale age) as the surface losing it.
+  useEffect(() => {
+    const feedback = new PilotFeedback();
+    const unsub = useNavStreamStore.subscribe((s, prev) => {
+      const entry = s.byDrone[droneId]?.pilot;
+      if (!entry || entry === prev.byDrone[droneId]?.pilot || entry.raw == null) return;
+      const pattern = feedback.update(entry.raw);
+      if (pattern) rumble(pattern);
+    });
+    const tick = setInterval(() => {
+      const entry = useNavStreamStore.getState().byDrone[droneId]?.pilot;
+      if (entry && pilotFresh(entry.receivedAt, Date.now())) return;
+      const pattern = feedback.lost();
+      if (pattern) rumble(pattern);
+    }, STALE_CHECK_MS);
+    return () => {
+      unsub();
+      clearInterval(tick);
+    };
   }, [droneId]);
 }
