@@ -122,17 +122,21 @@ function Pad({
       onLostPointerCapture={end}
     >
       <span
-        aria-hidden="true"
-        data-testid={`on-screen-stick-${side}-deadzone`}
-        className="pointer-events-none absolute rounded-full border border-dashed border-white/40"
-        style={{ width: ring, height: ring, left: (PAD - ring) / 2, top: (PAD - ring) / 2 }}
-      />
-      <span
+        data-testid={`on-screen-stick-${side}-knob`}
         className="absolute h-12 w-12 rounded-full bg-white/70 shadow"
         style={{
+          zIndex: 1,
           left: PAD / 2 - 24 + knob[0] * (PAD / 2 - 24),
           top: PAD / 2 - 24 - knob[1] * (PAD / 2 - 24),
         }}
+      />
+      {/* Above the knob, dark on light with a light halo, so the deadzone
+          shows over the centred knob and over the dark pad alike. */}
+      <span
+        aria-hidden="true"
+        data-testid={`on-screen-stick-${side}-deadzone`}
+        className="pointer-events-none absolute rounded-full border border-dashed border-black/70 shadow-[0_0_0_1px_rgba(255,255,255,0.6)]"
+        style={{ zIndex: 2, width: ring, height: ring, left: (PAD - ring) / 2, top: (PAD - ring) / 2 }}
       />
     </div>
   );

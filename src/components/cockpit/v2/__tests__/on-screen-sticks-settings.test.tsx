@@ -83,6 +83,17 @@ describe("on-screen sticks · operator settings", () => {
     }
   });
 
+  it("draws the ring above the knob, so a centred knob never hides it", () => {
+    renderSticks();
+    for (const side of ["left", "right"]) {
+      const ring = screen.getByTestId(`on-screen-stick-${side}-deadzone`);
+      const knob = screen.getByTestId(`on-screen-stick-${side}-knob`);
+      // Later sibling with a higher stacking order paints on top.
+      expect(knob.compareDocumentPosition(ring) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(Number(ring.style.zIndex)).toBeGreaterThan(Number(knob.style.zIndex || 0));
+    }
+  });
+
   it("in Mode 1 the left pad up flies forward, and the pads say so", () => {
     useInputStore.setState({ txMode: 1 });
     renderSticks();
