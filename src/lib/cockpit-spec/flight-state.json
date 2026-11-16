@@ -10,7 +10,7 @@
     { "id": "fc_rth", "match": { "owner": "fc_mode", "fc_mode_class": "rtl" }, "text": "RTH · {home_dist_m} m", "color": "rth", "button": null },
     { "id": "fc_land", "match": { "owner": "fc_mode", "fc_mode_class": "land" }, "text": "Landing", "color": "rth", "button": null },
     { "id": "position_unverified", "match": { "position_unverified": true }, "text": "Position unverified · {position_unverified_label}", "color": "blocked", "button": null, "button_if": { "match": { "owner": "fc_mode" }, "button": "take_control" } },
-    { "id": "pilot", "match": { "owner": "pilot" }, "text": "Pilot · {profile} · {profile_limit}", "color": "pilot", "button": null, "button_if": { "match": { "mission_state": "paused" }, "button": "resume" } },
+    { "id": "pilot", "match": { "owner": "pilot" }, "text": "{profile} · {profile_limit}", "color": "pilot", "button": null, "button_if": { "match": { "mission_state": "paused" }, "button": "resume" } },
     { "id": "skill", "match": { "owner": "skill" }, "text": "{skill_label} · {mode_detail}", "color": "skill", "button": null },
     { "id": "goto", "match": { "owner": "goto" }, "text": "Goto · {dist_m} m", "color": "goto", "button": null },
     { "id": "swarm", "match": { "owner": "swarm" }, "text": "Swarm", "color": "swarm", "button": null },

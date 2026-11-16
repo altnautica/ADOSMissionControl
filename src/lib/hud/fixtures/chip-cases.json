@@ -889,7 +889,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Sport",
+      "text": "Sport",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -1021,7 +1021,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -4993,7 +4993,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5125,7 +5125,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5257,7 +5257,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5389,7 +5389,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5521,7 +5521,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5653,7 +5653,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5785,7 +5785,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -5917,7 +5917,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6049,7 +6049,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6181,7 +6181,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6313,7 +6313,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6444,7 +6444,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6575,7 +6575,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6706,7 +6706,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -6837,7 +6837,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -7767,7 +7767,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -7898,7 +7898,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": "resume",
@@ -8432,7 +8432,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Sport",
+      "text": "Sport",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -8564,7 +8564,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -8697,7 +8697,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal",
+      "text": "Normal",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -9605,7 +9605,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Sport",
+      "text": "Sport",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -10448,7 +10448,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Sport · 10 m/s",
+      "text": "Sport · 10 m/s",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -10599,7 +10599,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal · 7 m/s",
+      "text": "Normal · 7 m/s",
       "color": "pilot",
       "dim": false,
       "button": null,
