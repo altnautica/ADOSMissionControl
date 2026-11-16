@@ -18,6 +18,8 @@
  * speed cap, see mock-pilot-confined) through
  * `window.__adosDemoPilot` (see
  * mock-pilot-wire); each drone's session starts without the last one's pins.
+ * The no-RC declaration (`rc_receiver:absent|present`, its refusals and
+ * readiness rows) follows the real pilot, see mock-pilot-no-rc.
  * @license GPL-3.0-only
  */
 
@@ -54,6 +56,7 @@ import {
   type DemoRouteCheckState,
 } from "./mock-pilot-confined";
 import { DemoVehicleDriver } from "./mock-pilot-vehicle";
+import { noRcReadiness, noRcRefusal, rcReceiverRefusal } from "./mock-pilot-no-rc";
 
 export { demoPilotWire } from "./mock-pilot-wire";
 
@@ -239,6 +242,7 @@ export class MockPilot {
         this.wire.input_session = { src: frame.src, session: frame.session, label: "Mission Control" };
         break;
       case "hb":
+      case "bye":
         break;
       case "action": {
         const err = this.action(frame.name, frame.args ?? {});
@@ -261,6 +265,9 @@ export class MockPilot {
   /** Apply one action; the refusal code, or null when it was accepted. */
   private action(name: string, args: Json): string | null {
     const [verb, value] = name.split(":");
+    const seen = this.pins.over(this.wire);
+    const noRc = noRcRefusal(verb, value, seen);
+    if (noRc) return noRc;
     switch (verb) {
       case "profile":
         this.wire.profile = value;
@@ -274,7 +281,16 @@ export class MockPilot {
         return null;
     }
     const vehicle = this.vehicle();
-    const seen = this.pins.over(this.wire);
+    // The no-RC declaration is the pilot's config, set on the ground; the
+    // state carries it only while declared.
+    if (verb === "rc_receiver") {
+      const refused = rcReceiverRefusal(value, seen);
+      if (refused) return refused;
+      if (value === "absent") this.wire.rc_receiver = "absent";
+      else delete this.wire.rc_receiver;
+      this.pins.drop("rc_receiver");
+      return null;
+    }
     // The place class is the pilot's config: set while on the ground, and it
     // replaces a pinned one. Open drops the confined route check and cap.
     if (verb === "place_class") {
@@ -329,6 +345,7 @@ export class MockPilot {
     const seen = this.stall.view(this.pins.over(this.wire), now);
     // Outside `ados` the FC flies, and a surface repositions it directly.
     if (seen.control_mode !== "ados") seen.surface_ops = [];
+    if (seen.rc_receiver === "absent") seen.readiness = [...(seen.readiness as Json[]), ...noRcReadiness(seen)];
     return seen;
   }
 
