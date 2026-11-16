@@ -95,7 +95,7 @@ export function PatternCameraRows({
           </span>
         ) : undefined}>
         <Select ariaLabel={t("cameraProfile")} compact options={options}
-          value={editing === "new" ? NEW_CAMERA_VALUE : config._cameraName ?? ""} onChange={pick} />
+          value={editing === "new" ? NEW_CAMERA_VALUE : camera?.name ?? config._cameraName ?? ""} onChange={pick} />
       </PropertyRow>
 
       {editing !== null && (

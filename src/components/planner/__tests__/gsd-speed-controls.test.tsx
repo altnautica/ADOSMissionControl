@@ -21,8 +21,8 @@ import { GsdSpeedControls } from "@/components/planner/GsdSpeedControls";
 import { usePatternStore } from "@/stores/pattern-store";
 import { CAMERA_PROFILES } from "@/lib/patterns/gsd-calculator";
 
-// DJI Mavic 3: sensorWidth 17.3, focalLength 12.29, imageWidth 5280.
-const camera = CAMERA_PROFILES.find((c) => c.name === "DJI Mavic 3")!;
+// 4/3-type 21 MP · 12.3 mm: sensorWidth 17.3, focalLength 12.29, imageWidth 5280.
+const camera = CAMERA_PROFILES.find((c) => c.name === "4/3-type 21 MP · 12.3 mm")!;
 
 beforeEach(() => {
   usePatternStore.setState({ surveyConfig: {} });

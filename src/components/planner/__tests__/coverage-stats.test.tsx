@@ -22,7 +22,7 @@ import { usePatternStore } from "@/stores/pattern-store";
 import { CAMERA_PROFILES } from "@/lib/patterns/gsd-calculator";
 import type { PatternResult, PatternWaypoint } from "@/lib/patterns/types";
 
-const camera = CAMERA_PROFILES.find((c) => c.name === "DJI Mavic 3")!;
+const camera = CAMERA_PROFILES.find((c) => c.name === "4/3-type 21 MP · 12.3 mm")!;
 
 function wp(lat: number, lon: number): PatternWaypoint {
   return { lat, lon, alt: 50, speed: 5, command: "WAYPOINT" };

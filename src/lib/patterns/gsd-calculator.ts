@@ -24,15 +24,38 @@ export interface CameraProfile {
  */
 export type CameraOrientation = "landscape" | "portrait";
 
-/** Built-in camera profiles for common survey/mapping cameras. */
+/** Built-in camera profiles for common survey/mapping cameras, named by sensor format, resolution and focal length. */
 export const CAMERA_PROFILES: CameraProfile[] = [
-  { name: "GoPro Hero 12", sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 2.7, imageWidth: 5312, imageHeight: 3984 },
-  { name: "Sony A7R IV", sensorWidth: 35.7, sensorHeight: 23.8, focalLength: 35, imageWidth: 9504, imageHeight: 6336 },
-  { name: "DJI Mavic 3", sensorWidth: 17.3, sensorHeight: 13.0, focalLength: 12.29, imageWidth: 5280, imageHeight: 3956 },
-  { name: "DJI Mini 4 Pro", sensorWidth: 9.7, sensorHeight: 7.3, focalLength: 6.72, imageWidth: 4032, imageHeight: 3024 },
-  { name: "Ricoh GR III", sensorWidth: 23.5, sensorHeight: 15.6, focalLength: 18.3, imageWidth: 6000, imageHeight: 4000 },
+  { name: "1/2.3-type 21 MP · 2.7 mm", sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 2.7, imageWidth: 5312, imageHeight: 3984 },
+  { name: "Full-frame 60 MP · 35 mm", sensorWidth: 35.7, sensorHeight: 23.8, focalLength: 35, imageWidth: 9504, imageHeight: 6336 },
+  { name: "4/3-type 21 MP · 12.3 mm", sensorWidth: 17.3, sensorHeight: 13.0, focalLength: 12.29, imageWidth: 5280, imageHeight: 3956 },
+  { name: "1/1.3-type 12 MP · 6.7 mm", sensorWidth: 9.7, sensorHeight: 7.3, focalLength: 6.72, imageWidth: 4032, imageHeight: 3024 },
+  { name: "APS-C 24 MP · 18.3 mm", sensorWidth: 23.5, sensorHeight: 15.6, focalLength: 18.3, imageWidth: 6000, imageHeight: 4000 },
   { name: 'Generic 1/2.3"', sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 4.5, imageWidth: 4000, imageHeight: 3000 },
 ];
+
+/** 32-bit FNV-1a hash of a string, as 8 hex digits. */
+function fnv1a(s: string): string {
+  let h = 0x811c9dc5;
+  for (const ch of s) {
+    h ^= ch.codePointAt(0)!;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/**
+ * Saved plans store the camera by name. Built-ins were renamed, so a plan saved
+ * under a retired built-in name maps to the current one through the FNV-1a hash
+ * of that retired name (the retired names themselves are not kept in source).
+ */
+const RETIRED_NAME_HASHES: Readonly<Record<string, string>> = {
+  "4ca8cf51": "1/2.3-type 21 MP · 2.7 mm",
+  "3fcc441f": "Full-frame 60 MP · 35 mm",
+  "4d8f1e47": "4/3-type 21 MP · 12.3 mm",
+  "ec92eea2": "1/1.3-type 12 MP · 6.7 mm",
+  "2810edd6": "APS-C 24 MP · 18.3 mm",
+};
 
 /**
  * Compute Ground Sample Distance (GSD) in meters per pixel.
@@ -141,13 +164,19 @@ export function validateCameraProfile(camera: CameraProfile): CameraProfileProbl
   return problems;
 }
 
-/** Find a camera by name among the built-ins and the operator's custom cameras. */
+/**
+ * Find a camera by name among the built-ins and the operator's custom cameras.
+ * A retired built-in name resolves to its renamed built-in.
+ */
 export function findCamera(
   name: string | undefined,
   custom: readonly CameraProfile[] = [],
 ): CameraProfile | undefined {
   if (!name) return undefined;
-  return CAMERA_PROFILES.find((c) => c.name === name) ?? custom.find((c) => c.name === name);
+  const exact = CAMERA_PROFILES.find((c) => c.name === name) ?? custom.find((c) => c.name === name);
+  if (exact) return exact;
+  const renamed = RETIRED_NAME_HASHES[fnv1a(name)];
+  return renamed ? CAMERA_PROFILES.find((c) => c.name === renamed) : undefined;
 }
 
 /**
