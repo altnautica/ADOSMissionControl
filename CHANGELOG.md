@@ -19,6 +19,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The pilot stream keeps only the newest stick frame while its WebSocket still has unsent bytes, so a slow link flies the latest stick rather than a queue of old ones; a release drops a waiting stick frame.
+- Settings › Input: the expo slider reads "Stick expo (direct flight controller only)" and says the onboard pilot uses the speed profile's own curve.
 - Internal only: the cockpit frame helpers are split into smaller modules under the size limit (no behaviour change).
 - Cockpit: the shared sensor-health spec carries the agent's new lidar map heading readiness item, "Lidar map heading not confirmed". The cockpit shows it as the drone sends it, with no other change.
 - Internal only: the cockpit mission parsers and the node command lanes move into their own modules under the size limit (no behaviour change).
