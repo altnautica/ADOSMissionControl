@@ -138,6 +138,7 @@ describe("mission stall voice and banners", () => {
     ["pilot.banner.mission_stalled_hold", { wp: "3" }, "No progress to waypoint 3 · Holding for you"],
     ["pilot.banner.mission_stalled_return", { wp: "3", in_s: 45 }, "No progress to waypoint 3 · No operator · Returning home in 45 s"],
     ["pilot.banner.mission_stalled_returning", { wp: "3" }, "No operator answered · Returning home along the flown path (SmartRTL)"],
+    ["pilot.banner.mission_stalled_landing", { wp: "3" }, "No operator answered · Position unverified · Landing here"],
     ["pilot.banner.mission_wp_skipped", { wp: "3" }, "Waypoint 3 skipped · Coverage gap saved"],
     ["pilot.banner.return_blocked", { in_s: 45 }, "Return blocked · Holding · Landing in 45 s"],
     ["pilot.banner.return_land_fallback", {}, "Flown path unavailable · Landing here"],

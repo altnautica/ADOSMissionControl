@@ -455,6 +455,7 @@
     "pilot.banner.low_battery_smart_rtl": "Low battery: returning home along the flown path (SmartRTL)",
     "pilot.banner.mission_stalled": "No progress to waypoint {wp} · Holding · Skipping in {in_s} s",
     "pilot.banner.mission_stalled_hold": "No progress to waypoint {wp} · Holding for you",
+    "pilot.banner.mission_stalled_landing": "No operator answered · Position unverified · Landing here",
     "pilot.banner.mission_stalled_return": "No progress to waypoint {wp} · No operator · Returning home in {in_s} s",
     "pilot.banner.mission_stalled_returning": "No operator answered · Returning home along the flown path (SmartRTL)",
     "pilot.banner.mission_wp_skipped": "Waypoint {wp} skipped · Coverage gap saved",
