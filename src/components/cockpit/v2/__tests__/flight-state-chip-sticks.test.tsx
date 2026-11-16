@@ -8,6 +8,8 @@
  * room for them.
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 
@@ -105,5 +107,13 @@ describe("flight-state chip under the sticks", () => {
     expect(texts).toContain("V -0.5 m/s");
     // Everything else stays on the full face only.
     expect(full.length).toBeGreaterThan(texts.length);
+  });
+
+  it("lets the compact and portrait cockpits show the parts the compact face keeps", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const hiding = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(
+      ([, sel, body]) => /data-grid="(compact|portrait)"[^,]*\.fs-chip-sub/.test(sel) && /display:\s*none/.test(body),
+    );
+    expect(hiding.map(([, sel]) => sel.trim())).toEqual([]);
   });
 });
