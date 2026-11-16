@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { useInputStore } from "@/stores/input-store";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 const JoystickCalibrationWizard = dynamic(
   () => import("./JoystickCalibrationWizard").then((m) => ({ default: m.JoystickCalibrationWizard })),
@@ -225,7 +226,7 @@ export function ControllersSection() {
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-text-secondary">{t("expoCurve")}</label>
+              <label className="text-xs text-text-secondary">{specString("controls.expo_direct_only")}</label>
               <span className="text-[10px] font-mono text-text-tertiary tabular-nums">
                 {expo.toFixed(1)}
               </span>
@@ -243,6 +244,9 @@ export function ControllersSection() {
               <span>0.0</span>
               <span>1.0</span>
             </div>
+            <p data-testid="expo-route-hint" className="text-[10px] text-text-tertiary">
+              {specString("controls.expo_direct_only_summary")}
+            </p>
           </div>
         </div>
       </Card>

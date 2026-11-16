@@ -972,7 +972,6 @@
     "yaw": "Yaw",
     "tuning": "Ajuste fino",
     "deadzone": "Zona muerta",
-    "expoCurve": "Curva expo",
     "testMode": "Modo de prueba",
     "testModeUnavailable": "Modo de prueba de gamepad no disponible en demo",
     "manualControlLinkBlocked": "Los mandos no llegan a esta aeronave: {reason}. No se transmite nada.",
