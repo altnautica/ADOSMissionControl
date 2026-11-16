@@ -34,36 +34,57 @@ function sequenceWith(liftoff: Record<string, unknown>, error: string | null = n
   return p!.sequence;
 }
 
-describe("supervised lift-off on the launch strip", () => {
+describe("steady take-off on the launch strip", () => {
   it("parses sequence.liftoff", () => {
-    expect(sequenceWith({ phase: "level", text: "Levelling on the ground", trim: "learned", tilt_deg: 1.5 })?.liftoff).toEqual({
+    expect(
+      sequenceWith({ phase: "level", text: "Setting trim", detail: "Loading this airframe's learned balance", trim: "learned", tilt_deg: 1.5 })
+        ?.liftoff,
+    ).toEqual({
       phase: "level",
-      text: "Levelling on the ground",
+      text: "Setting trim",
+      detail: "Loading this airframe's learned balance",
       trim: "learned",
       tiltDeg: 1.5,
     });
+    expect(sequenceWith({ phase: "lift", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBe("");
   });
 
-  it("shows the lift-off's words while it runs", () => {
-    render(<LaunchStepStrip sequence={sequenceWith({ phase: "level", text: "Levelling on the ground", trim: "probe", tilt_deg: 0 })} />);
-    expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Levelling on the ground");
+  it("shows the status line, with its detail, while it runs", () => {
+    render(<LaunchStepStrip sequence={sequenceWith({ phase: "lift", text: "Lifting off", trim: "probe", tilt_deg: 0 })} />);
+    expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Lifting off");
+    cleanup();
+    render(
+      <LaunchStepStrip
+        sequence={sequenceWith({ phase: "climb", text: "Airborne", detail: "Climbing to 3 m", trim: "learned", tilt_deg: 0 })}
+      />,
+    );
+    expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Airborne. Climbing to 3 m");
   });
 
   it("shows the stop text in place of the error code once stopped", () => {
-    const text = "Stopped on the ground: nose-heavy by about 35 mm, move the battery back";
     render(
-      <LaunchStepStrip sequence={sequenceWith({ phase: "stopped", text, trim: "learned", tilt_deg: 6 }, "liftoff_tipping")} />,
+      <LaunchStepStrip
+        sequence={sequenceWith(
+          { phase: "stopped", text: "Take-off stopped", detail: "The drone started to tip. Motors off.", trim: "learned", tilt_deg: 6 },
+          "liftoff_tipping",
+        )}
+      />,
     );
-    expect(screen.getByTestId("launch-liftoff-text").textContent).toBe(text);
+    expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Take-off stopped. The drone started to tip. Motors off.");
     expect(screen.queryByText(/liftoff_tipping/)).toBeNull();
   });
 });
 
-describe("airframe balance readiness row", () => {
+describe("balance check readiness row", () => {
   const readiness = [
-    { id: "airframe_balance", ok: false, severity: "warn" as const, msg: "Rebalance: nose-heavy by about 20 mm (move the pack aft)" },
-    { id: "supervised_liftoff", ok: false, severity: "warn" as const, msg: "Level lift-off is off: the flight controller's own take-off runs" },
+    { id: "airframe_balance", ok: false, severity: "warn" as const, msg: "Balance: nose-heavy. Off by about 35 mm. Move the battery back." },
+    { id: "supervised_liftoff", ok: false, severity: "warn" as const, msg: "Standard take-off. Steady take-off is off." },
   ];
+
+  it("labels the rows Balance check and Steady take-off", () => {
+    expect(specString("readiness.item.airframe_balance")).toBe("Balance check");
+    expect(specString("readiness.item.supervised_liftoff")).toBe("Steady take-off");
+  });
 
   it("renders both rows with their text and sends airframe_reset from the balance row", () => {
     const frames: Array<{ op: string; name?: string; args?: unknown }> = [];

@@ -212,8 +212,11 @@ const LIFTOFF_PHASES = ["spool", "level", "probe", "lift", "climb", "done", "sto
 /** The pilot's supervised lift-off (`sequence.liftoff`). */
 export interface Liftoff {
   phase: (typeof LIFTOFF_PHASES)[number];
-  /** The phase in the operator's words; while stopped, why. */
+  /** The status line (`Spinning up`, `Take-off stopped`, ...). */
   text: string;
+  /** The longer line where a surface has room ("Climbing to 3 m", why it
+   *  stopped); empty when the pilot sends none. */
+  detail: string;
   /** `learned` (this airframe's trim from earlier flights) or `probe`. */
   trim: "learned" | "probe" | null;
   /** Tilt from the resting attitude, degrees. */
@@ -224,7 +227,13 @@ function parseLiftoff(raw: unknown): Liftoff | null {
   const o = obj(raw);
   const phase = o ? oneOf(o.phase, LIFTOFF_PHASES) : null;
   if (!o || !phase) return null;
-  return { phase, text: str(o.text) ?? "", trim: oneOf(o.trim, ["learned", "probe"] as const), tiltDeg: num(o.tilt_deg) };
+  return {
+    phase,
+    text: str(o.text) ?? "",
+    detail: str(o.detail) ?? "",
+    trim: oneOf(o.trim, ["learned", "probe"] as const),
+    tiltDeg: num(o.tilt_deg),
+  };
 }
 
 export function parsePilotState(raw: unknown): PilotState | null {
