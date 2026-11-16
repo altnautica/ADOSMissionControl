@@ -39,6 +39,13 @@ const UNCERTAIN_BELOW = 0.7;
  * rotor and 1.0 m of clearance. A lower setting is raised to it. */
 export const FOLLOW_MIN_HEIGHT_M = 3.4;
 
+/** The least follow distance on a camera's range alone (σ 0.5 m or more);
+ * the demo models no measured range. A shorter setting is flown at it. */
+export const FOLLOW_MIN_STANDOFF_M = 5;
+
+/** Why a shorter follow distance is flown farther, as the extension names it. */
+export type FollowMeStandoffReason = "camera-range" | "range-unknown" | "subject-standing" | "closing-in";
+
 /** Flight-controller modes that accept guided setpoints (ArduPilot GUIDED,
  * GUIDED_NOGPS; PX4 OFFBOARD). */
 const GUIDED_MODES: Record<string, true> = { GUIDED: true, GUIDED_NOGPS: true, OFFBOARD: true };
@@ -66,6 +73,12 @@ export interface FollowMeReadback {
   height_setpoint_m: number | null;
   /** True when the setpoint was raised to the head-height floor. */
   height_raised: boolean;
+  /** The shortest follow distance flown on the range the follow has. */
+  standoff_min_m: number | null;
+  /** True when the set distance was shorter and is held at the minimum. */
+  standoff_raised: boolean;
+  /** Why it is held there; null when it is not. */
+  standoff_reason: FollowMeStandoffReason | null;
   commanding: boolean;
   fc_armed: boolean;
   fc_guided: boolean;
@@ -105,6 +118,9 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
     distance_setpoint_m: null,
     height_setpoint_m: null,
     height_raised: false,
+    standoff_min_m: null,
+    standoff_raised: false,
+    standoff_reason: null,
     commanding: false,
     fc_armed: fcArmed,
     fc_guided: fcGuided,
@@ -135,14 +151,18 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
   // Holding: the subject is locked but no ground point resolves.
   if (follow.phase === "holding" || follow.rangeM === null) return held("no-ground-fix", "locked", target);
   // Following, or predicting on the last commanded setpoint.
+  const standoffRaised = distanceM < FOLLOW_MIN_STANDOFF_M;
   return {
     active: true,
     lock_state: "locked",
     target_id: target,
     range_m: follow.rangeM,
-    distance_setpoint_m: distanceM,
+    distance_setpoint_m: Math.max(distanceM, FOLLOW_MIN_STANDOFF_M),
     height_setpoint_m: Math.max(heightM, FOLLOW_MIN_HEIGHT_M),
     height_raised: heightM < FOLLOW_MIN_HEIGHT_M,
+    standoff_min_m: FOLLOW_MIN_STANDOFF_M,
+    standoff_raised: standoffRaised,
+    standoff_reason: standoffRaised ? "camera-range" : null,
     commanding: true,
     fc_armed: true,
     fc_guided: true,

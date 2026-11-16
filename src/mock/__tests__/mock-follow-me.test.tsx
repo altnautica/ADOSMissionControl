@@ -48,6 +48,9 @@ describe("demoFollowReadback", () => {
       distance_setpoint_m: null,
       height_setpoint_m: null,
       height_raised: false,
+      standoff_min_m: null,
+      standoff_raised: false,
+      standoff_reason: null,
       commanding: false,
       fc_armed: true,
       fc_guided: true,
@@ -67,7 +70,22 @@ describe("demoFollowReadback", () => {
       distance_setpoint_m: 8,
       height_setpoint_m: 4,
       height_raised: false,
+      standoff_min_m: 5,
+      standoff_raised: false,
+      standoff_reason: null,
       hold_reason: null,
+    });
+  });
+
+  it("flies a follow distance below the camera-only minimum at 5 m and says why", () => {
+    const follow = scriptFollow(12.5, CTX);
+    const r = demoFollowReadback({ follow, pilot: flying, distanceM: 3, heightM: 4 });
+    expect(r).toMatchObject({
+      commanding: true,
+      distance_setpoint_m: 5,
+      standoff_min_m: 5,
+      standoff_raised: true,
+      standoff_reason: "camera-range",
     });
   });
 
@@ -207,6 +225,15 @@ describe("DEMO_FOLLOW_ME_MODULE", () => {
     expect(text("fm-lock-state")).toBe("Lost");
     expect(text("fm-hold-reason")).toBe("Waiting for you");
     expect(text("fm-distance-setpoint")).toBe("—");
+  });
+
+  it("reads a raised follow distance with the standoff reason", async () => {
+    const store = useNavStreamStore.getState();
+    store.setPilot(droneId, pilot());
+    store.setFollow(droneId, scriptFollow(12.5, CTX));
+    usePluginConfigCache.getState().record("alpha-1", FOLLOW_ME_ID, "follow_distance_m", 3);
+    await mount();
+    expect(text("fm-distance-setpoint")).toBe("5.0 m · at least 5.0 m with camera-only range");
   });
 
   it("flags a stale flight controller heartbeat as a fault", async () => {

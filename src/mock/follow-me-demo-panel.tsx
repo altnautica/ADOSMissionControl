@@ -29,9 +29,25 @@ import {
   FOLLOW_ME_REFRESH_MS,
   type FollowMeHoldReason,
   type FollowMeLockState,
+  type FollowMeReadback,
+  type FollowMeStandoffReason,
 } from "./mock-follow-me";
 
-type Translate = (key: string) => string;
+type Translate = (key: string, params?: Record<string, string | number>) => string;
+
+const STANDOFF_REASON_KEYS: Record<FollowMeStandoffReason, string> = {
+  "camera-range": "metrics.standoffCameraRange",
+  "range-unknown": "metrics.standoffRangeUnknown",
+  "subject-standing": "metrics.standoffSubjectStanding",
+  "closing-in": "metrics.standoffClosingIn",
+};
+
+/** A distance flown farther than set, with why. */
+function withStandoffReason(value: string, r: FollowMeReadback, t: Translate): string {
+  if (!r.standoff_raised || r.standoff_min_m === null) return value;
+  const key = r.standoff_reason ? STANDOFF_REASON_KEYS[r.standoff_reason] : "metrics.standoffRaised";
+  return `${value} · ${t(key, { min: r.standoff_min_m.toFixed(1) })}`;
+}
 
 const manifest = demoReleaseManifest(FOLLOW_ME);
 const PARAM_DEFAULTS: Readonly<Record<string, string | number | boolean>> = Object.fromEntries(
@@ -123,9 +139,11 @@ function FollowMeDemoPanel({ host }: { host: InlineHostApi }) {
     };
   }, [droneId]);
 
-  const t: Translate = (key) => {
-    const out = host.ctx.i18n.t(key);
-    return out === key ? (BUNDLE[key] ?? key) : out;
+  const t: Translate = (key, params) => {
+    const out = host.ctx.i18n.t(key, params);
+    if (out !== key) return out;
+    const words = BUNDLE[key] ?? key;
+    return params ? words.replace(/\{(\w+)\}/g, (m, name: string) => String(params[name] ?? m)) : words;
   };
   const follow = freshData(feed?.follow, now, FOLLOW_STALE_MS);
   const readback = demoFollowReadback({
@@ -181,7 +199,7 @@ function FollowMeDemoPanel({ host }: { host: InlineHostApi }) {
         <Row name={t("metrics.guidedMode")} value={yesNo(readback.fc_guided)} testId="fm-fc-guided" />
         <Row name={t("metrics.targetId")} value={readback.target_id !== null ? `#${readback.target_id}` : "—"} testId="fm-target-id" />
         <Row name={t("metrics.range")} value={fmtMeters(readback.range_m)} testId="fm-range" />
-        <Row name={t("metrics.distanceSetpoint")} value={fmtMeters(readback.distance_setpoint_m)} testId="fm-distance-setpoint" />
+        <Row name={t("metrics.distanceSetpoint")} value={withStandoffReason(fmtMeters(readback.distance_setpoint_m), readback, t)} testId="fm-distance-setpoint" />
         <Row
           name={t("metrics.heightSetpoint")}
           value={readback.height_raised ? `${fmtMeters(readback.height_setpoint_m)} · ${t("metrics.heightRaised")}` : fmtMeters(readback.height_setpoint_m)}
