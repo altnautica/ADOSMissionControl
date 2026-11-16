@@ -20,6 +20,28 @@ export function radialDeadzone(x: number, y: number, dz: number): [number, numbe
   return [x * scaled, y * scaled];
 }
 
+/**
+ * The pilot route's axes, `[roll, pitch, thr, yaw]`, from the mapped raw
+ * sticks (pitch and thr already Y-inverted: up is positive): a radial
+ * deadzone per physical stick, no expo (the pilot shapes). Mode 2: left =
+ * throttle + yaw, right = pitch + roll. Mode 1 swaps the Y axes: left =
+ * pitch + yaw, right = throttle + roll.
+ */
+export function pilotAxes(
+  raw: { roll: number; pitch: number; thr: number; yaw: number },
+  deadzone: number,
+  txMode: TxMode,
+): [number, number, number, number] {
+  if (txMode === 1) {
+    const [yaw, pitch] = radialDeadzone(raw.yaw, raw.pitch, deadzone);
+    const [roll, thr] = radialDeadzone(raw.roll, raw.thr, deadzone);
+    return [roll, pitch, thr, yaw];
+  }
+  const [yaw, thr] = radialDeadzone(raw.yaw, raw.thr, deadzone);
+  const [roll, pitch] = radialDeadzone(raw.roll, raw.pitch, deadzone);
+  return [roll, pitch, thr, yaw];
+}
+
 export interface GamepadMapping {
   rollAxis: number;
   pitchAxis: number;

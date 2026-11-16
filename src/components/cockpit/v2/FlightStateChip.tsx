@@ -13,8 +13,9 @@
  * longer text ends in an ellipsis and the full text stays in its title and
  * accessible name. It is one line: a dot in the state colour, the state,
  * then the secondary facts dimmed after " · ", inside a 1 px outline in the
- * state colour. At the compact classes it shows its compact face, the state
- * text alone without the secondary facts.
+ * state colour. At the compact classes it shows its compact face: the state
+ * text with only the parts the sticks need (clearance, a late input, the
+ * horizontal and vertical speed).
  *
  * @module cockpit/v2/FlightStateChip
  * @license GPL-3.0-only
@@ -32,6 +33,7 @@ import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { refusalText } from "@/lib/hud/refusal";
+import { CHIP_COMPACT_PARTS } from "@/lib/hud/flight-state";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { ModeSheet } from "./ModeSheet";
 import { useLaunchAbort } from "./LaunchSteps";
@@ -103,7 +105,7 @@ export function FlightStateChip({
   // words after its secondary facts.
   const polled = useNavStreamStore((s) => s.byDrone[droneId]?.transport === "poll");
   const reducedRate = polled ? specString("nav.reduced_rate") : null;
-  const secondary = compact ? [] : chip.secondary;
+  const secondary = compact ? chip.secondary.filter((s) => CHIP_COMPACT_PARTS[s.id]) : chip.secondary;
   const fullText = [chip.text, ...chip.secondary.map((s) => s.text), ...(reducedRate ? [reducedRate] : [])].join(" · ");
   const maxWidth = barWidth !== undefined && barWidth > 0 ? Math.floor(barWidth * CHIP_MAX_FRAC) : undefined;
 

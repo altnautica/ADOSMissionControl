@@ -37,11 +37,11 @@ function pin(over: Record<string, unknown> = {}) {
 }
 
 /** Render the chip; its state text and its secondary parts. */
-function chip(grid: FlightGrid = WIDE) {
+function chip(grid: FlightGrid = WIDE, compact = false) {
   cleanup();
   renderWithIntl(
     <FlightGridContext.Provider value={grid}>
-      <FlightStateChip droneId={DRONE} barWidth={4000} />
+      <FlightStateChip droneId={DRONE} barWidth={4000} compact={compact} />
     </FlightGridContext.Provider>,
   );
   const text = screen.getByTestId("flight-state-chip-text").textContent ?? "";
@@ -90,5 +90,20 @@ describe("flight-state chip under the sticks", () => {
     expect(narrow).toContain("V -0.5 m/s");
     const wide = chip(WIDE).parts.map((p) => p.text);
     expect(wide.some((t) => /^[HV] /.test(t))).toBe(false);
+  });
+
+  it("keeps the stick facts on the compact face and drops the rest", () => {
+    pin({ stick: { input_age_ms: 240, input_seq: 11 }, min_clearance_m: 1.2, hold_reason: "pilot_hold" });
+    const vfr: VfrData = { timestamp: Date.now(), groundspeed: 4.2, alt: 10, climb: -0.5 };
+    useTelemetryStore.getState().pushVfr(vfr);
+    const full = chip(NARROW_ROW).parts.map((p) => p.text);
+    const compact = chip(NARROW_ROW, true).parts;
+    const texts = compact.map((p) => p.text);
+    expect(compact).toContainEqual({ text: specString("chip.stick.clearance", { m: "1.2" }), severity: "critical" });
+    expect(compact).toContainEqual({ text: specString("chip.stick.input_age", { ms: 240 }), severity: "warning" });
+    expect(texts.some((t) => /^H \+?4\.2 m\/s$/.test(t))).toBe(true);
+    expect(texts).toContain("V -0.5 m/s");
+    // Everything else stays on the full face only.
+    expect(full.length).toBeGreaterThan(texts.length);
   });
 });

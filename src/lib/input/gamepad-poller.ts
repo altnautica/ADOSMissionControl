@@ -36,7 +36,7 @@ import {
   buttonsToArray,
   getMappingForMode,
   manualControlButtonMask,
-  radialDeadzone,
+  pilotAxes,
 } from "./gamepad-axes";
 import { patchPadStatus, usePadStatusStore } from "./pad-status";
 import {
@@ -191,18 +191,8 @@ function startPolling(): void {
     const rawThrottle = -physical(mapping.throttleAxis);
     const rawYaw = physical(mapping.yawAxis);
 
-    // Pilot route: radial deadzone per physical stick, no expo (the pilot
-    // shapes). Mode 2: left = throttle + yaw, right = pitch + roll. Mode 1
-    // swaps the Y axes: left = pitch + yaw, right = throttle + roll.
-    if (txMode === 1) {
-      const [pYaw, pPitch] = radialDeadzone(rawYaw, rawPitch, deadzone);
-      const [pRoll, pThr] = radialDeadzone(rawRoll, rawThrottle, deadzone);
-      lastPilotAxes = [pRoll, pPitch, pThr, pYaw];
-    } else {
-      const [pYaw, pThr] = radialDeadzone(rawYaw, rawThrottle, deadzone);
-      const [pRoll, pPitch] = radialDeadzone(rawRoll, rawPitch, deadzone);
-      lastPilotAxes = [pRoll, pPitch, pThr, pYaw];
-    }
+    // Pilot route: radial deadzone per physical stick, then the stick mode.
+    lastPilotAxes = pilotAxes({ roll: rawRoll, pitch: rawPitch, thr: rawThrottle, yaw: rawYaw }, deadzone, txMode);
 
     // Apply deadzone + expo
     const axes: [number, number, number, number] = [

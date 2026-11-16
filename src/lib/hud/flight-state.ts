@@ -107,9 +107,16 @@ export interface ChipFacts {
 }
 
 export interface ChipLine {
+  /** The spec part this line comes from (`secondary.order`), e.g.
+   *  `clearance`, `input_age`, `h_speed`. */
+  id: string;
   text: string;
   color: string;
 }
+
+/** The secondary parts a compact chip face keeps: what the sticks need while
+ *  they fly from the screen. */
+export const CHIP_COMPACT_PARTS: Readonly<Record<string, true>> = { clearance: true, input_age: true, h_speed: true, v_speed: true };
 
 export interface ChipView {
   ruleId: string;
@@ -253,37 +260,38 @@ export function chipSecondary(f: ChipFacts): ChipLine[] {
   const out: ChipLine[] = [];
   for (const part of CHIP_SECONDARY.order) {
     if (part === "fc_failsafe" && f.fcFailsafe) {
-      out.push({ text: CHIP_SECONDARY.fc_failsafe.text, color: colorOf(CHIP_SECONDARY.fc_failsafe.color) });
+      out.push({ id: part, text: CHIP_SECONDARY.fc_failsafe.text, color: colorOf(CHIP_SECONDARY.fc_failsafe.color) });
     } else if (part === "clearance" && f.minClearanceM !== null && f.marginM !== null && f.marginM > 0) {
       const c = CHIP_SECONDARY.clearance;
       if (f.minClearanceM < c.near_factor * f.marginM) {
         out.push({
+          id: part,
           text: specText(c.text_key, { m: (Math.round(f.minClearanceM * 10) / 10).toFixed(1) }),
           color: colorOf(f.minClearanceM <= f.marginM ? c.inside_margin_color : c.near_color),
         });
       }
     } else if (part === "input_age" && f.stickInputAgeMs !== null && f.stickInputAgeMs > CHIP_SECONDARY.input_age.over_ms) {
       const a = CHIP_SECONDARY.input_age;
-      out.push({ text: specText(a.text_key, { ms: Math.round(f.stickInputAgeMs) }), color: colorOf(a.color) });
+      out.push({ id: part, text: specText(a.text_key, { ms: Math.round(f.stickInputAgeMs) }), color: colorOf(a.color) });
     } else if ((part === "h_speed" || part === "v_speed") && f.owner === CHIP_SECONDARY[part].owner) {
       const v = part === "h_speed" ? f.hSpeedMps : f.vSpeedMps;
-      if (v !== null) out.push({ text: specText(CHIP_SECONDARY[part].text_key, { v: fmtSigned1(v) }), color: colorOf(CHIP_SECONDARY[part].color) });
+      if (v !== null) out.push({ id: part, text: specText(CHIP_SECONDARY[part].text_key, { v: fmtSigned1(v) }), color: colorOf(CHIP_SECONDARY[part].color) });
     } else if (part === "speed_cap" && f.speedCapMps !== null) {
       // The reason's own spec line; the spec's default line for a reason it
       // does not name.
       const line = CHIP_SECONDARY.speed_cap;
       const own = f.speedCapReason === null ? null : speedCapLine({ reason: f.speedCapReason, vHMps: f.speedCapMps });
-      out.push({ text: own ?? line.text.replace("{v}", speedCapText(f.speedCapMps)), color: colorOf(line.color) });
+      out.push({ id: part, text: own ?? line.text.replace("{v}", speedCapText(f.speedCapMps)), color: colorOf(line.color) });
     } else if (part === "mission_paused_line" && matches(CHIP_SECONDARY.mission_paused_line.match, f)) {
       const line = CHIP_SECONDARY.mission_paused_line;
-      out.push({ text: fill(line.text, f), color: colorOf(line.color) });
+      out.push({ id: part, text: fill(line.text, f), color: colorOf(line.color) });
     } else if (part === "hold_reason" && f.holdReason) {
-      out.push({ text: holdReasonLabel(f.holdReason), color: colorOf(CHIP_SECONDARY.hold_reason.color) });
+      out.push({ id: part, text: holdReasonLabel(f.holdReason), color: colorOf(CHIP_SECONDARY.hold_reason.color) });
     } else if (part === "avoid_state" && f.avoidState) {
       const s = CHIP_SECONDARY.avoid_state[f.avoidState];
-      if (s) out.push({ text: s.text, color: colorOf(s.color) });
+      if (s) out.push({ id: part, text: s.text, color: colorOf(s.color) });
     } else if (part === "control_mode" && f.controlMode) {
-      out.push({ text: CHIP_SECONDARY.control_mode[f.controlMode] ?? wordLabel(f.controlMode), color: colorOf("fc") });
+      out.push({ id: part, text: CHIP_SECONDARY.control_mode[f.controlMode] ?? wordLabel(f.controlMode), color: colorOf("fc") });
     }
   }
   return out;

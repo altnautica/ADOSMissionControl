@@ -29,6 +29,10 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The compact and portrait cockpits show the sticks' facts in the flight-state chip.** The compact chip face dropped every secondary part, so the horizontal and vertical speed, a late stick input and the obstacle clearance showed nowhere where the on-screen sticks fly. The compact face now keeps those four parts and still drops the rest.
+
+- **The pad's pilot route is checked against the shared stick vectors.** The radial deadzone and the stick-mode swap the gamepad poller applies now live in one pure function, and every shared golden case runs through it in both stick modes.
+
 - **A low-battery landing countdown says it will land.** When the pilot's low-battery action is to land, the countdown card read "Returning along the flown path". It now reads "Low battery: landing in N s", as the agent's own cockpit and TUI do.
 
 - **A return or landing the pilot accepted no longer reads as failed.** In ADOS control the agent answers a flight command with the pilot's verdict, which the GCS read as "no acknowledgement". An accepted verdict now reads as accepted, and a refusal shows the pilot's reason.
