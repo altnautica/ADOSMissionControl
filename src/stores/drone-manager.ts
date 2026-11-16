@@ -25,6 +25,7 @@ import {
   resetSelectedFlightState,
 } from "./drone-selection-reset";
 import { useReconnectStore } from "./reconnect-store";
+import { confirmPilotLeave } from "@/lib/input/pilot-stream";
 
 export interface ManagedDrone {
   id: string;
@@ -427,6 +428,10 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
 
   selectDrone: (id) => {
     const previousId = get().selectedDroneId;
+    // Switching away closes the selected drone's pilot stream: with no RC
+    // while armed that ends in its link-loss action, so the operator may
+    // cancel the switch.
+    if (id !== previousId && !confirmPilotLeave()) return;
     set({ selectedDroneId: id });
 
     // Switching to a different drone: clear cross-drone singleton state so the
