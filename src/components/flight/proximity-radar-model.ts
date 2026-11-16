@@ -67,6 +67,11 @@ export interface RadarModel {
   sectors: RadarSectorView[];
   dots: Array<{ x: number; y: number }>;
   nearestM: number | null;
+  /**
+   * A live scan with no return in any bin and no other obstacle reading:
+   * the sensor is reporting but sees nothing, which is not the same as clear.
+   */
+  noReturns: boolean;
   band: RadarBand;
   rateHz: number | null;
 }
@@ -175,6 +180,9 @@ export function buildRadarModel(input: RadarModelInput): RadarModel {
     sectors,
     dots,
     nearestM,
+    // A recent scan means not stale; nearestM null means the scan, the
+    // sectors and the nav report all carry no distance.
+    noReturns: scanRecent !== null && nearestM === null,
     band: radarBand(nearestM),
     rateHz: nav?.obstacleRateHz ?? null,
   };

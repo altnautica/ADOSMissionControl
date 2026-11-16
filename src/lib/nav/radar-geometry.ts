@@ -19,6 +19,14 @@ export const RADAR_CAUTION_M = 5;
 export const RADAR_MAX_DOTS = 360;
 export const RADAR_MAX_DOTS_LOW_POWER = 120;
 
+/** A scan bin at or under this range returned nothing (the pilot's rule). */
+export const MIN_RETURN_M = 0.05;
+
+/** A range that returned a surface: finite and above [`MIN_RETURN_M`]. */
+export function isScanReturn(r: number): boolean {
+  return Number.isFinite(r) && r > MIN_RETURN_M;
+}
+
 /** Auto range: 3 m when the nearest return is under 1.5 m, 12 m when nothing
  * is within 6 m, else 6 m. */
 export function autoRadarScale(nearestM: number | null): RadarScale {
@@ -36,7 +44,7 @@ export function cycleRadarScale(s: RadarScaleSetting): RadarScaleSetting {
 }
 
 /**
- * Dial positions for every return in `(0, displayRange]`:
+ * Dial positions for every return ([`isScanReturn`]) within `displayRange`:
  * `x = cx + r(ρ)·sin θ`, `y = cy − r(ρ)·cos θ`, `r(ρ) = ρ / displayRange · R`,
  * θ clockwise from forward. Capped at `maxDots` by even decimation.
  */
@@ -51,7 +59,7 @@ export function radarScanDots(
   const all: Array<{ x: number; y: number }> = [];
   for (let i = 0; i < scan.ranges.length; i++) {
     const rho = scan.ranges[i];
-    if (!(rho > 0) || rho > displayRangeM) continue;
+    if (!isScanReturn(rho) || rho > displayRangeM) continue;
     const th = scan.angleStartRad + i * scan.angleIncrementRad;
     const r = (rho / displayRangeM) * radiusPx;
     all.push({ x: cx + r * Math.sin(th), y: cy - r * Math.cos(th) });
@@ -63,11 +71,11 @@ export function radarScanDots(
   return out;
 }
 
-/** Nearest scan return (m), or null when the scan has none. */
+/** Nearest scan return ([`isScanReturn`], m), or null when the scan has none. */
 export function nearestScanM(scan: NavScan | null): number | null {
   if (!scan) return null;
   let best: number | null = null;
-  for (const r of scan.ranges) if (r > 0 && (best === null || r < best)) best = r;
+  for (const r of scan.ranges) if (isScanReturn(r) && (best === null || r < best)) best = r;
   return best;
 }
 

@@ -50,9 +50,11 @@ describe("radar geometry", () => {
     expect(cycleRadarScale("auto")).toBe(3);
   });
 
-  it("nearest return", () => {
+  it("nearest return, a finite range above 5 cm", () => {
     expect(nearestScanM(scanWith({ 10: 4, 20: 2.5 }))).toBe(2.5);
     expect(nearestScanM(scanWith({}))).toBeNull();
+    expect(nearestScanM(scanWith({ 10: 0.03, 20: 0.05, 30: 1.2 }))).toBe(1.2);
+    expect(nearestScanM(scanWith({ 10: 0.03, 20: 0.05 }))).toBeNull();
     expect(nearestScanM(null)).toBeNull();
   });
 });

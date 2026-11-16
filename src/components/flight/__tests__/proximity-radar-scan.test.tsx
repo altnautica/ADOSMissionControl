@@ -111,12 +111,34 @@ describe("ProximityRadar companion view", () => {
     expect(container.textContent).toContain(specString("radar.header", { hz: 10 }));
   });
 
-  it("shows Scan — without a nav rate and Clear when nothing is near", () => {
+  it("shows Scan — without a nav rate and No returns in the warn tone for an empty scan", () => {
     useNavStreamStore.getState().setScan(DRONE, scanWith({}));
     const { container } = renderRadar(140);
     expect(container.textContent).toContain(specString("radar.scan_none"));
-    expect(container.textContent).toContain("Clear");
+    const label = container.querySelector(".rlabel") as HTMLElement;
+    expect(label.textContent).toBe(specString("radar.no_returns"));
+    expect(label.style.color).toBe("var(--hud-warn)");
+    expect(container.textContent).not.toContain(specString("skill.avoid.clear"));
     expect(container.textContent).toContain(specString("radar.scale_auto", { m: 12 }));
+  });
+
+  it("reads Clear when the scan has returns and nothing is near", () => {
+    useNavStreamStore.getState().setScan(DRONE, scanWith({ 90: 9 }));
+    const { container } = renderRadar(140);
+    const label = container.querySelector(".rlabel") as HTMLElement;
+    expect(label.textContent).toBe(
+      specString("cockpit.unit.m", { n: "9.0" }) + " " + specString("skill.avoid.clear"),
+    );
+    expect(label.style.color).toBe("var(--hud-good)");
+  });
+
+  it("an empty scan with a sector distance reads the sector distance", () => {
+    useTelemetryStore.getState().obstacle.push(obstacle({ 0: 300 }));
+    useNavStreamStore.getState().setScan(DRONE, scanWith({}));
+    const { container } = renderRadar(140);
+    expect(container.querySelector(".rlabel")?.textContent).toBe(
+      specString("cockpit.unit.m", { n: "3.0" }) + " " + specString("radar.caution"),
+    );
   });
 
   it("tapping the dial pins 3 → 6 → 12 → auto, and +/− step the range", () => {
@@ -198,5 +220,26 @@ describe("buildRadarModel", () => {
     // East with the nose east is straight ahead: the arc starts near the top.
     const y = Number(/^M \S+ (\S+)/.exec(m.sectors[0].arc ?? "")?.[1]);
     expect(y).toBeLessThan(60);
+  });
+
+  it("flags a fresh scan with no returns and no other reading", () => {
+    const now = 10_000;
+    const m = buildRadarModel({ ...base, now, scan: { data: scanWith({}), receivedAt: now } });
+    expect(m.stale).toBe(false);
+    expect(m.nearestM).toBeNull();
+    expect(m.noReturns).toBe(true);
+  });
+
+  it("does not flag no returns when any reading exists or the scan is stale", () => {
+    const now = 10_000;
+    const empty = { data: scanWith({}), receivedAt: now };
+    expect(buildRadarModel({ ...base, now, scan: { data: scanWith({ 5: 9 }), receivedAt: now } }).noReturns).toBe(false);
+    expect(
+      buildRadarModel({ ...base, now, scan: empty, nav: { data: { ...NAV, minObstacleM: 3 }, receivedAt: now } }).noReturns,
+    ).toBe(false);
+    expect(buildRadarModel({ ...base, now, scan: empty, obstacle: obstacle({ 0: 400 }, now) }).noReturns).toBe(false);
+    const stale = buildRadarModel({ ...base, now, scan: { data: scanWith({}), receivedAt: now - 3000 } });
+    expect(stale.stale).toBe(true);
+    expect(stale.noReturns).toBe(false);
   });
 });

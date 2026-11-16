@@ -76,12 +76,22 @@ export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
     setting === "auto"
       ? specString("radar.scale_auto", { m: model.displayM })
       : specString("radar.scale", { m: model.displayM });
+  // A live scan with no return anywhere is a sensor seeing nothing (blocked
+  // window, failed receiver, open sky), so it reads as a warning, not clear.
   const readout =
     model.nearestM === null
       ? model.stale
         ? "—"
-        : specString("skill.avoid.clear")
+        : model.noReturns
+          ? specString("radar.no_returns")
+          : specString("skill.avoid.clear")
       : `${specString("cockpit.unit.m", { n: model.nearestM.toFixed(1) })} ${model.band === "clear" ? specString("skill.avoid.clear") : specString(`radar.${model.band}`)}`;
+  const readoutColor =
+    model.nearestM === null && model.stale
+      ? "var(--hud-muted)"
+      : model.noReturns
+        ? TONE_VAR.warn
+        : BAND_VAR[model.band];
 
   return (
     <div
@@ -155,10 +165,7 @@ export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
         </text>
       </svg>
       <div className="rscale lbl">{scaleLabel}</div>
-      <div
-        className="rlabel lbl"
-        style={{ color: model.nearestM === null && model.stale ? "var(--hud-muted)" : BAND_VAR[model.band] }}
-      >
+      <div className="rlabel lbl" style={{ color: readoutColor }}>
         {readout}
       </div>
     </div>
