@@ -4,13 +4,15 @@
  * @module cockpit/v2/OnScreenSticks
  * @description Optional thumb sticks for flying the pilot without a
  * controller (Settings › Controls › On-screen sticks, default off). Two
- * 120 px pads sit at the bottom corners in the spec's width classes; Mode 2:
- * left pad throttle (up climbs, centre holds) and yaw, right pad forward and
- * right. They send the same pilot `input` frames as a gamepad at 50 Hz while
- * touched, and `release` when let go (a lost pointer capture included), when
- * the pads leave the screen mid-touch, or when the tab is hidden. While
- * shown they stand in for a controller in the pre-flight checklist
- * (`on-screen-sticks-shown`).
+ * 120 px pads sit at the bottom corners in the spec's width classes. They
+ * follow the operator's controller settings: the stick mode (Mode 2: left
+ * pad throttle and yaw, right pad forward and right; Mode 1: left pad
+ * forward and yaw, right pad throttle and right) and the radial deadzone,
+ * drawn as a ring on each pad. They send the same pilot `input` frames as a
+ * gamepad at 50 Hz while touched, and `release` when let go (a lost pointer
+ * capture included), when the pads leave the screen mid-touch, or when the
+ * tab is hidden. While shown they stand in for a controller in the
+ * pre-flight checklist (`on-screen-sticks-shown`).
  *
  * @license GPL-3.0-only
  */
@@ -19,7 +21,6 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
-import ds4Spec from "@/lib/cockpit-spec/ds4.json";
 import {
   PILOT_INPUT_PERIOD_MS,
   sendPilotInput,
@@ -31,19 +32,21 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { radialDeadzone } from "@/lib/input/gamepad-axes";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
+import { useInputStore, type TxMode } from "@/stores/input-store";
 import { useOnScreenSticksShown } from "@/lib/cockpit/on-screen-sticks-shown";
 
 const SPEC = layoutSpec.on_screen_sticks;
 const PAD = SPEC.pad_size;
 /** The width classes the pads show in (`layout.json` `on_screen_sticks.classes`). */
 export const STICK_CLASSES: readonly string[] = SPEC.classes;
-/** The stick deadzone (`ds4.json` `conditioning.radial_deadzone`). */
-export const STICK_DEADZONE: number = ds4Spec.conditioning.radial_deadzone;
 
 type Vec = [number, number];
 
-/** Pad pointer offset → stick vector in [-1, 1] (y up positive). */
-export function padVector(dx: number, dy: number, radius: number): Vec {
+/**
+ * Pad pointer offset → stick vector in [-1, 1] (y up positive), clamped to
+ * the pad's circle and conditioned with the radial deadzone `dz`.
+ */
+export function padVector(dx: number, dy: number, radius: number, dz: number): Vec {
   let x = dx / radius;
   let y = -dy / radius;
   const m = Math.hypot(x, y);
@@ -51,24 +54,35 @@ export function padVector(dx: number, dy: number, radius: number): Vec {
     x /= m;
     y /= m;
   }
-  return radialDeadzone(x, y, STICK_DEADZONE);
+  return radialDeadzone(x, y, dz);
 }
 
 /**
- * The pilot axes `[roll, pitch, thr, yaw]` for the two pads (Mode 2: left pad
- * yaw and throttle, right pad roll and pitch; a released pad is centred).
- * Signs as the pilot expects: pitch + forward, thr + climb, yaw + clockwise,
- * roll + right.
+ * The pilot axes `[roll, pitch, thr, yaw]` for the two pads in a stick mode
+ * (Mode 2: left pad yaw and throttle, right pad roll and pitch; Mode 1: left
+ * pad yaw and pitch, right pad roll and throttle; a released pad is
+ * centred). Signs as the pilot expects: pitch + forward, thr + climb, yaw +
+ * clockwise, roll + right.
  */
-export function onScreenAxes(left: Vec | null, right: Vec | null): [number, number, number, number] {
-  const [yaw, thr] = left ?? [0, 0];
-  const [roll, pitch] = right ?? [0, 0];
-  return [roll, pitch, thr, yaw];
+export function onScreenAxes(left: Vec | null, right: Vec | null, mode: TxMode): [number, number, number, number] {
+  const [yaw, leftY] = left ?? [0, 0];
+  const [roll, rightY] = right ?? [0, 0];
+  return mode === 1 ? [roll, leftY, rightY, yaw] : [roll, rightY, leftY, yaw];
 }
 
 type Side = "left" | "right";
 
-function Pad({ side, onMove }: { side: Side; onMove: (side: Side, v: Vec | null) => void }) {
+function Pad({
+  side,
+  mode,
+  deadzone,
+  onMove,
+}: {
+  side: Side;
+  mode: TxMode;
+  deadzone: number;
+  onMove: (side: Side, v: Vec | null) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [knob, setKnob] = useState<Vec>([0, 0]);
   // A pad leaving mid-touch (a controller connected) gets no pointer events
@@ -78,7 +92,7 @@ function Pad({ side, onMove }: { side: Side; onMove: (side: Side, v: Vec | null)
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const v = padVector(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2), r.width / 2);
+    const v = padVector(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2), r.width / 2, deadzone);
     setKnob(v);
     onMove(side, v);
   };
@@ -86,11 +100,12 @@ function Pad({ side, onMove }: { side: Side; onMove: (side: Side, v: Vec | null)
     setKnob([0, 0]);
     onMove(side, null);
   };
+  const ring = deadzone * PAD;
   return (
     <div
       ref={ref}
       role="slider"
-      aria-label={specString(side === "left" ? "cockpit.sticks.left_aria" : "cockpit.sticks.right_aria")}
+      aria-label={specString(`cockpit.sticks.${side}_aria${mode === 1 ? "_mode1" : ""}`)}
       aria-valuenow={Math.round(knob[1] * 100)}
       data-testid={`on-screen-stick-${side}`}
       className="relative touch-none select-none rounded-full border border-white/30 bg-black/35 backdrop-blur-sm"
@@ -107,6 +122,12 @@ function Pad({ side, onMove }: { side: Side; onMove: (side: Side, v: Vec | null)
       onLostPointerCapture={end}
     >
       <span
+        aria-hidden="true"
+        data-testid={`on-screen-stick-${side}-deadzone`}
+        className="pointer-events-none absolute rounded-full border border-dashed border-white/40"
+        style={{ width: ring, height: ring, left: (PAD - ring) / 2, top: (PAD - ring) / 2 }}
+      />
+      <span
         className="absolute h-12 w-12 rounded-full bg-white/70 shadow"
         style={{
           left: PAD / 2 - 24 + knob[0] * (PAD / 2 - 24),
@@ -122,10 +143,13 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
   const widthClass = useCockpitWidthClass();
   const routed = usePilotLinkStore((s) => s.connected && s.controlMode === "ados");
   const padConnected = usePadStatusStore((s) => s.connected);
+  const deadzone = useInputStore((s) => s.deadzone);
+  const mode = useInputStore((s) => s.txMode);
   const axes = useRef<Record<Side, Vec | null>>({ left: null, right: null });
   const [active, setActive] = useState(false);
 
-  // While a pad is held: 50 Hz frames; on lift or a hidden tab: release.
+  // While a pad is held: 50 Hz frames in the operator's stick mode; on lift
+  // or a hidden tab: release.
   useEffect(() => {
     if (!active) return;
     const tick = setInterval(() => {
@@ -133,7 +157,7 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
         sendPilotRelease();
         return;
       }
-      sendPilotInput(onScreenAxes(axes.current.left, axes.current.right), 0);
+      sendPilotInput(onScreenAxes(axes.current.left, axes.current.right, useInputStore.getState().txMode), 0);
     }, PILOT_INPUT_PERIOD_MS);
     return () => {
       clearInterval(tick);
@@ -156,10 +180,10 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
   return (
     <>
       <div className="pointer-events-auto absolute bottom-6 left-6 z-30">
-        <Pad side="left" onMove={move} />
+        <Pad side="left" mode={mode} deadzone={deadzone} onMove={move} />
       </div>
       <div className="pointer-events-auto absolute bottom-6 right-6 z-30">
-        <Pad side="right" onMove={move} />
+        <Pad side="right" mode={mode} deadzone={deadzone} onMove={move} />
       </div>
     </>
   );
