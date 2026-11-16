@@ -16,7 +16,8 @@
       "min_hz": 8.0,
       "max_hz": 12.0,
       "lost_ms": 500,
-      "$note": "rate_hz is the scan arrival rate over the last 2 s. degraded = rate outside [min_hz, max_hz] or driver health warning/error; lost = no scan for lost_ms after one was seen, or the driver reports disconnected."
+      "no_returns_ms": 1000,
+      "$note": "rate_hz is the scan arrival rate over the last 2 s. degraded = rate outside [min_hz, max_hz] or driver health warning/error; lost = no scan for lost_ms after one was seen, or the driver reports disconnected; no_returns = scans keep arriving but none for no_returns_ms carried a return (a range above 0.05 m): a blocked window, a failed receiver, a mount facing open sky, or nothing within range. A scan's arrival says the lidar is scanning, never that it sees anything."
     },
     "camera": {
       "stale_ms": 1000,
@@ -46,6 +47,7 @@
       "ok": { "text": "Lidar {rate_hz} Hz", "color": "ready" },
       "degraded": { "text": "Lidar {rate_hz} Hz", "color": "avoiding" },
       "lost": { "text": "Lidar lost", "color": "not_ready" },
+      "no_returns": { "text": "Lidar no returns", "color": "avoiding" },
       "absent": { "text": "No lidar", "color": "stale" }
     },
     "camera": {
@@ -79,6 +81,7 @@
       "ok": "Lidar scanning",
       "degraded": "Lidar scan rate or health out of range",
       "lost": "Lidar stopped scanning",
+      "no_returns": "Lidar sees nothing: its scans have no returns",
       "absent": "No lidar: obstacle avoidance unavailable"
     },
     "sensor_params": {
@@ -93,7 +96,7 @@
     "nav_heading": {
       "unconfirmed": "Lidar map heading not confirmed"
     },
-    "$note": "flow and sensor_params are shown when FLOW_TYPE is non-zero or OPTICAL_FLOW has been seen; lidar when a lidar has scanned or the capture service reports one, and otherwise as absent (warn) while obstacle avoidance is on; nav_imu while the latest map_status carries a non-null imu_feed; nav_heading while that map_status is fresh and its imu_feed reason is a heading reason (heading_unconfirmed, north_unknown). Severity: warn, except block in ADOS control mode when the EKF fuses flow (any EK3_SRCn_VELXY = 5) for flow lost/absent and for params with severity block; an expected lidar that is lost blocks in ADOS control mode whatever the avoid setting; nav_imu and nav_heading block in ADOS control mode while vision-nav flies external navigation from the lidar pose (the last nav.state mode is external_nav), and warn otherwise. nav_imu is ok only for imu_feed state ok, or a heading reason, at rate_hz >= min_hz; every other state word (degraded, lost, unknown) reads degraded and appends ' ({reason}, {rate_hz} Hz)', rate one decimal, '--' for a null reason or rate and for a heading reason. nav_heading is never ok: it reads unconfirmed and appends ' ({reason})'."
+    "$note": "flow and sensor_params are shown when FLOW_TYPE is non-zero or OPTICAL_FLOW has been seen; lidar when a lidar has scanned or the capture service reports one, and otherwise as absent (warn) while obstacle avoidance is on; nav_imu while the latest map_status carries a non-null imu_feed; nav_heading while that map_status is fresh and its imu_feed reason is a heading reason (heading_unconfirmed, north_unknown). Severity: warn, except block in ADOS control mode when the EKF fuses flow (any EK3_SRCn_VELXY = 5) for flow lost/absent and for params with severity block; an expected lidar that is lost blocks in ADOS control mode whatever the avoid setting; a lidar with no returns warns. Where an all-empty scan cannot be open air, in a confined place, or armed while the last surface seen this flight (not the floor, at least 2 m wide, in the same place over 3 scans in a row) must still be in the planar scan (moved less than its 12 m reach less the surface's range less 1 m, and the scan plane at the surface less than 0.5 m up or down: the height change plus the roll or pitch change, judged when the returns stopped, over the distance to it), the pilot does not take an empty scan as obstacle data: the last obstacles stay and, while avoidance is on, age to stale (avoid_state stale: it holds and flies no horizontal motion command; the vertical stick stays live while scans keep arriving); nav_imu and nav_heading block in ADOS control mode while vision-nav flies external navigation from the lidar pose (the last nav.state mode is external_nav), and warn otherwise. nav_imu is ok only for imu_feed state ok, or a heading reason, at rate_hz >= min_hz; every other state word (degraded, lost, unknown) reads degraded and appends ' ({reason}, {rate_hz} Hz)', rate one decimal, '--' for a null reason or rate and for a heading reason. nav_heading is never ok: it reads unconfirmed and appends ' ({reason})'."
   },
   "mount": {
     "$note": "The declared flow and rangefinder mount, agent config pilot.fc_sensors: flow {pos_m [x,y,z] body FRD metres, orient_yaw_cdeg}, rangefinder {pos_m}. Published as GET /api/v1/sensors health.flow.mount {yaw_cdeg, pos_m} and health.range.mount {pos_m}, null when undeclared.",

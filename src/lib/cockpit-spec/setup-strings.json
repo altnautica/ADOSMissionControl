@@ -1297,6 +1297,7 @@
     "nav_source.bad_set": "Choose a source set from 1 to 3",
     "radar.caution": "Caution",
     "radar.danger": "Danger",
+    "radar.no_returns": "No returns",
     "radar.header": "Lidar {hz} Hz",
     "radar.scan_none": "Scan —",
     "radar.scale": "{m} m",
