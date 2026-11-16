@@ -3,7 +3,8 @@
 // the operator), every surface shows one persistent critical overlay next to
 // its countdowns. A mission stall reads "No progress to waypoint {wp} for
 // {window_s} s · Skipping in {in_s} s" (or "· Holding for you" with no
-// countdown) with Skip waypoint, Return and Land here; a blocked return reads
+// countdown, or "· No operator · Returning home in {in_s} s" while a
+// confined operator wait counts down to SmartRTL) with Skip waypoint, Return and Land here; a blocked return reads
 // "Return blocked · Landing in {in_s} s" with Land here only (taking the
 // sticks is the other answer). Also the voice line for a newly appeared stall
 // or skip, and the skipped waypoints a plan view marks. Pure: imports only
@@ -47,12 +48,14 @@ export function missionStallActions(kind: MissionStall["kind"]): MissionStallAct
 export function missionStallOverlay(stall: MissionStall | null | undefined): MissionStallOverlay | null {
   if (!stall) return null;
   const inS = stall.skipInS === null ? null : Math.max(0, Math.ceil(stall.skipInS));
+  const returnInS = stall.returnInS === null ? null : Math.max(0, Math.ceil(stall.returnInS));
   let titleKey: string;
   let titleArgs: Record<string, string | number>;
   if (stall.kind === "mission") {
-    titleKey = inS === null ? "flow.mission_stall.title_hold" : "flow.mission_stall.title";
+    titleKey = inS !== null ? "flow.mission_stall.title" : returnInS !== null ? "flow.mission_stall.title_return" : "flow.mission_stall.title_hold";
     titleArgs = { wp: stall.wpLabel ?? (stall.seq !== null ? String(stall.seq) : "—"), window_s: stall.windowS === null ? "—" : Math.round(stall.windowS) };
     if (inS !== null) titleArgs.in_s = inS;
+    else if (returnInS !== null) titleArgs.in_s = returnInS;
   } else {
     titleKey = "flow.return_blocked.title";
     titleArgs = { in_s: inS ?? "—" };
@@ -97,6 +100,7 @@ export function gapSeqs(mission: Pick<MissionState, "gaps"> | null | undefined):
 const SHADOWED_BANNERS: ReadonlySet<string> = new Set([
   "pilot.banner.mission_stalled",
   "pilot.banner.mission_stalled_hold",
+  "pilot.banner.mission_stalled_return",
   "pilot.banner.return_blocked",
 ]);
 

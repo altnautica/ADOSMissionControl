@@ -87,6 +87,18 @@ describe("mission stall overlay", () => {
     );
   });
 
+  it("counts a confined operator wait down to the return home, keeping all three answers", () => {
+    mount(golden({ mission_stall: { kind: "mission", seq: 3, wp_label: "3", since_ms: 1, skip_in_s: null, return_in_s: 44.2, window_s: 15 } }));
+    const overlay = screen.getByTestId("mission-stall");
+    expect(screen.getByTestId("mission-stall-title").textContent).toBe(
+      "No progress to waypoint 3 for 15 s · No operator · Returning home in 45 s",
+    );
+    expect(overlay.getAttribute("data-severity")).toBe("critical");
+    expect(screen.getAllByRole("button").map((b) => b.getAttribute("data-testid"))).toEqual(
+      expect.arrayContaining(["mission-stall-mission_skip", "mission-stall-rth", "mission-stall-land"]),
+    );
+  });
+
   it("a blocked return offers Land here only, and sends land", () => {
     const sent = captureActions();
     mount(golden({ mission_stall: { kind: "return", seq: null, wp_label: null, since_ms: 1, skip_in_s: 12.2, window_s: 15 } }));
@@ -124,6 +136,8 @@ describe("mission stall voice and banners", () => {
   it.each([
     ["pilot.banner.mission_stalled", { wp: "3", in_s: 45 }, "No progress to waypoint 3 · Holding · Skipping in 45 s"],
     ["pilot.banner.mission_stalled_hold", { wp: "3" }, "No progress to waypoint 3 · Holding for you"],
+    ["pilot.banner.mission_stalled_return", { wp: "3", in_s: 45 }, "No progress to waypoint 3 · No operator · Returning home in 45 s"],
+    ["pilot.banner.mission_stalled_returning", { wp: "3" }, "No operator answered · Returning home along the flown path (SmartRTL)"],
     ["pilot.banner.mission_wp_skipped", { wp: "3" }, "Waypoint 3 skipped · Coverage gap saved"],
     ["pilot.banner.return_blocked", { in_s: 45 }, "Return blocked · Holding · Landing in 45 s"],
     ["pilot.banner.return_land_fallback", {}, "Flown path unavailable · Landing here"],
@@ -141,6 +155,7 @@ describe("stall banners behind the overlay", () => {
 
   it.each([
     ["pilot.banner.mission_stalled_hold", { wp: "3" }],
+    ["pilot.banner.mission_stalled_return", { wp: "3", in_s: 45 }],
     ["pilot.banner.return_blocked", { in_s: 45 }],
   ])("hides %s while a stall shows", (textKey, args) => {
     mount(golden({ banner: { text_key: textKey, args, until_ms: 1 } }));
@@ -151,6 +166,13 @@ describe("stall banners behind the overlay", () => {
     mount(golden({ mission_stall: null }));
     expect(screen.getByTestId("handover-banner").textContent).toBe(
       "No progress to waypoint 3 · Holding · Skipping in 33 s",
+    );
+  });
+
+  it("shows the returning banner once the countdown fires", () => {
+    mount(golden({ mission_stall: null, banner: { text_key: "pilot.banner.mission_stalled_returning", args: { wp: "3" }, until_ms: null } }));
+    expect(screen.getByTestId("handover-banner").textContent).toBe(
+      "No operator answered · Returning home along the flown path (SmartRTL)",
     );
   });
 

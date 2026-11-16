@@ -125,6 +125,10 @@ export interface MissionStall {
   /** Seconds to the automatic action (the skip for a mission, the landing
    *  for a return); null: no countdown, the vehicle holds for the operator. */
   skipInS: number | null;
+  /** Seconds until the vehicle flies SmartRTL home on its own: a mission
+   *  held for the operator in a confined place (no skip left, `skipInS`
+   *  null) that no operator has answered; null otherwise. */
+  returnInS: number | null;
   /** The no-progress window that raised it, seconds. */
   windowS: number | null;
 }
@@ -139,6 +143,7 @@ export function parseMissionStall(raw: unknown): MissionStall | null {
     wpLabel: str(s.wp_label),
     sinceMs: num(s.since_ms),
     skipInS: num(s.skip_in_s),
+    returnInS: num(s.return_in_s),
     windowS: num(s.window_s),
   };
 }

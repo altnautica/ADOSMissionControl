@@ -140,7 +140,7 @@ describe("status pill: pilot freshness, agent and controller", () => {
   });
 
   it("lists a mission stall as critical from a fresh pilot, reading the stall overlay's title", () => {
-    const missionStall = { kind: "mission", seq: 3, wpLabel: "3", sinceMs: 1, skipInS: 32.5, windowS: 15 };
+    const missionStall = { kind: "mission", seq: 3, wpLabel: "3", sinceMs: 1, skipInS: 32.5, returnInS: null, windowS: 15 };
     const stalled = { ...flying, readiness: [], statustext: [], missionStall } as unknown as PilotState;
     const out = pillAlertsFor(sources({ pilot: stalled }));
     expect(out[0]).toMatchObject({
