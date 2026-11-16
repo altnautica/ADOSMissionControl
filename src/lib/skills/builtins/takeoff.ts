@@ -13,7 +13,7 @@ import type { Skill, SkillActivateArgs } from "../types";
 import {
   pilotActionResult,
   specConfirm,
-  viaPilot,
+  launchViaPilot,
   disabledIfNoLink,
   disabledUnlessDisarmed,
 } from "./_shared";
@@ -66,9 +66,13 @@ export const takeoffSkill: Skill = {
   getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   activate: async (ctx, args) => {
     const altitudeM = takeoffAltitude(args);
-    // The pilot's own takeoff climbs to a fixed height; the launch sequence
-    // takes the altitude (checks, arm, take off, then hold there).
-    if (viaPilot(ctx)) return pilotActionResult("launch", { after: "hold", alt_m: altitudeM });
+    // With a pilot on the stream, in any control mode, the take-off is its
+    // launch: checks, arm, the supervised lift-off, then hold at the
+    // altitude. Arm and NAV_TAKEOFF go to the flight controller only
+    // without one.
+    if (launchViaPilot(ctx.droneId, ctx.protocol != null)) {
+      return pilotActionResult("launch", { after: "hold", alt_m: altitudeM });
+    }
     if (!ctx.protocol) return;
     // A refused arm ends the take-off: commanding a climb after the vehicle
     // declined to arm would dispatch blind, so the refusal is what goes back

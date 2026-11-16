@@ -44,6 +44,7 @@ export type PilotActionName =
   | "rth_cancel"
   | "mission_skip"
   | "goto"
+  | "airframe_reset"
   | `vtol:${"fw" | "mc"}`
   | `place_class:${"open" | "confined"}`;
 

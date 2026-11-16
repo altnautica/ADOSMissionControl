@@ -11,13 +11,50 @@
  * @license GPL-3.0-only
  */
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
 import tokens from "@/lib/cockpit-spec/tokens.json";
+import { refusalText } from "@/lib/hud/refusal";
 import type { PillAlert, PillSource } from "@/lib/hud/status-pill";
+import { requestPilotAction } from "@/lib/input/pilot-stream";
 import { useFlightGrid } from "./flight-context";
 import { FlightSheetPortal, sheetPlacement } from "./flight-sheet";
+
+/** The pill id of the pilot's `airframe_balance` readiness row. */
+const AIRFRAME_BALANCE_ID = "pilot:airframe_balance";
+
+/** "I rebalanced it" on the `airframe_balance` row: clears the connected
+ *  flight controller's learned airframe record (`airframe_reset`), so the
+ *  next lift-off finds the trim again. A refusal shows on the row. */
+function AirframeResetButton() {
+  const [refused, setRefused] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const reset = async () => {
+    setBusy(true);
+    const r = await requestPilotAction("airframe_reset", {});
+    setBusy(false);
+    setRefused(r.ok ? null : specString("readiness.airframe_balance.reset_refused", { reason: refusalText(r.err) }));
+  };
+  return (
+    <>
+      <button
+        type="button"
+        className="fs-hit min-h-[40px] rounded bg-white/10 px-3 text-xs font-semibold"
+        data-testid="airframe-reset"
+        disabled={busy}
+        onClick={() => void reset()}
+      >
+        {specString("readiness.airframe_balance.reset")}
+      </button>
+      {refused && (
+        <span className="fs-text-crit text-[11px]" data-testid="airframe-reset-refused">
+          {refused}
+        </span>
+      )}
+    </>
+  );
+}
 
 export const PILL_COLOR = { ok: "var(--fs-ok)", warning: "var(--fs-warn)", critical: "var(--fs-crit)" } as const;
 
@@ -78,6 +115,7 @@ export function StatusPillList({
                     {a.text}
                   </span>
                   <span className="fs-pill-src">{pillSourceLabel(a.source)}</span>
+                  {a.id === AIRFRAME_BALANCE_ID && <AirframeResetButton />}
                 </li>
               );
             })}
