@@ -74,7 +74,7 @@ describe("demo confined profile", () => {
 
   it.each([
     ["feasible", "Route clear · keeps 0.58 m", null],
-    ["unverified", "Route not seen yet · slow near walls", "confined-near"],
+    ["unverified", "Route checked in flight at each leg's height · slow near walls", "confined-near"],
     ["infeasible", "Route too tight: leg 3→4 has 0.52 m, needs 0.58 m", "confined-near"],
   ] as const)("pins a %s route check, with the cap near the limit", (state, line, cap) => {
     const demo = window.__adosDemoPilot!;

@@ -97,7 +97,7 @@ describe("Confined chip and route-check report", () => {
 
   it.each([
     ["feasible", "Route clear · keeps 0.58 m"],
-    ["unverified", "Route not seen yet · slow near walls"],
+    ["unverified", "Route checked in flight at each leg's height · slow near walls"],
   ])("reads a %s route check", (state, line) => {
     const rc = { ...confinedFrame.route_check, state };
     mountChip(golden({ route_check: rc }));
