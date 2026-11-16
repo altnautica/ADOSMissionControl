@@ -540,6 +540,7 @@
     "readiness.item.agl": "Height source",
     "readiness.item.battery_failsafe": "Battery failsafe",
     "readiness.item.controller": "Controller",
+    "readiness.item.extnav_settle": "External navigation settle",
     "readiness.item.fc_link": "Flight controller link",
     "readiness.item.fc_profile": "Flight controller failsafes",
     "readiness.item.firmware": "Flight controller firmware",
