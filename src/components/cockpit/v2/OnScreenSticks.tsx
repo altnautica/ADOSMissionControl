@@ -54,6 +54,18 @@ export function padVector(dx: number, dy: number, radius: number): Vec {
   return radialDeadzone(x, y, STICK_DEADZONE);
 }
 
+/**
+ * The pilot axes `[roll, pitch, thr, yaw]` for the two pads (Mode 2: left pad
+ * yaw and throttle, right pad roll and pitch; a released pad is centred).
+ * Signs as the pilot expects: pitch + forward, thr + climb, yaw + clockwise,
+ * roll + right.
+ */
+export function onScreenAxes(left: Vec | null, right: Vec | null): [number, number, number, number] {
+  const [yaw, thr] = left ?? [0, 0];
+  const [roll, pitch] = right ?? [0, 0];
+  return [roll, pitch, thr, yaw];
+}
+
 type Side = "left" | "right";
 
 function Pad({ side, onMove }: { side: Side; onMove: (side: Side, v: Vec | null) => void }) {
@@ -121,9 +133,7 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
         sendPilotRelease();
         return;
       }
-      const [yaw, thr] = axes.current.left ?? [0, 0];
-      const [roll, pitch] = axes.current.right ?? [0, 0];
-      sendPilotInput([roll, pitch, thr, yaw], 0);
+      sendPilotInput(onScreenAxes(axes.current.left, axes.current.right), 0);
     }, PILOT_INPUT_PERIOD_MS);
     return () => {
       clearInterval(tick);
