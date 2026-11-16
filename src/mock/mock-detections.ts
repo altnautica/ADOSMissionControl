@@ -36,6 +36,7 @@ import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import {
   useVisionDetectionsStore,
+  type DetectionBox,
   type VisionDetection,
 } from "@/stores/vision-detections-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
@@ -43,6 +44,8 @@ import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
   FRAME_HEIGHT,
   FRAME_WIDTH,
+  REACQUIRED_TRACK,
+  TARGET_TRACK,
   entryEffect,
   hudStateAt,
   scriptDetections,
@@ -121,15 +124,21 @@ class MockDetectionStream {
     // correlates boxes to the active leg id, so the boxes stay on the main view
     // as the operator switches legs (and never bleed onto another leg).
     const cameraId = demoActiveCameraId(droneId);
+    const frameId = this.frameId++;
+    // While the follow skill flies, the engine detects four frames of five
+    // only in a window around the subject (`cropWindow`); the store keeps
+    // the other boxes from the last whole frame.
+    const crop = mockPilot.followSkillActive() && frameId % 5 !== 0 ? cropAround(detections) : null;
     useVisionDetectionsStore.getState().setBatch(droneId, {
       modelId: "demo-yolov8n",
       cameraId,
-      frameId: this.frameId++,
+      frameId,
       // Like the agent (contract v3): a monotonic frame time, not wall time.
       tsMs: Math.round(performance.now()),
       frameWidth: FRAME_WIDTH,
       frameHeight: FRAME_HEIGHT,
-      detections,
+      detections: crop ? crop.detections : detections,
+      ...(crop ? { cropWindow: crop.window } : {}),
     });
 
     // A second camera shown in the PiP runs its own tracker: give it the
@@ -191,6 +200,31 @@ class MockDetectionStream {
     const sel = useSelectedTargetStore.getState();
     if (sel.designated?.droneId === droneId) sel.release();
   }
+}
+
+/**
+ * A crop-only batch around the followed subject (or the re-acquired one):
+ * a window twice its box, held in the frame, and the detections whose box
+ * centre lies in it. `null` when neither subject has a box this frame.
+ */
+function cropAround(
+  detections: VisionDetection[],
+): { window: DetectionBox; detections: VisionDetection[] } | null {
+  const subject = detections.find(
+    (d) => d.bbox && (d.trackId === TARGET_TRACK || d.trackId === REACQUIRED_TRACK),
+  )?.bbox;
+  if (!subject) return null;
+  const width = Math.min(FRAME_WIDTH, subject.width * 2);
+  const height = Math.min(FRAME_HEIGHT, subject.height * 2);
+  const x = Math.min(Math.max(0, subject.x - subject.width / 2), FRAME_WIDTH - width);
+  const y = Math.min(Math.max(0, subject.y - subject.height / 2), FRAME_HEIGHT - height);
+  const inside = detections.filter((d) => {
+    if (!d.bbox) return false;
+    const cx = d.bbox.x + d.bbox.width / 2;
+    const cy = d.bbox.y + d.bbox.height / 2;
+    return cx >= x && cx <= x + width && cy >= y && cy <= y + height;
+  });
+  return { window: { x, y, width, height }, detections: inside };
 }
 
 /** Singleton demo detection stream. */

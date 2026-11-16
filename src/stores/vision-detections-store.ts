@@ -27,6 +27,7 @@
 import { create } from "zustand";
 
 import { RingBuffer } from "@/lib/ring-buffer";
+import { holdOutsideCrop, type WholeFrame } from "@/lib/vision/crop-hold";
 
 /** Capacity of a drone's rolling receipt-timestamp window. Sized for a few
  * seconds of headroom even at a fast (~30 Hz) inference cadence, so the
@@ -153,6 +154,9 @@ export interface VisionDetection {
    * convention can evolve: local ENU metres `[x, y, z]` or geographic
    * `[lat, lon, alt]`. Absent when the source reports no world position. */
   worldPos?: [number, number, number];
+  /** Kept from the stream's last whole-frame batch: outside a crop-only
+   * batch's window, not re-detected this frame ({@link holdOutsideCrop}). */
+  held?: boolean;
 }
 
 /** A batch of detections for one frame. Carries the source frame
@@ -178,6 +182,12 @@ export interface VisionDetectionBatch {
    * socket backlog, a reconnect) is aged by when it was taken and is not
    * drawn as live. Never later than its actual receipt. */
   receivedAt: number;
+  /** The frame-pixel window a crop-only batch was detected in. Absent on a
+   * whole-frame batch, which is drawn as it is. */
+  cropWindow?: DetectionBox;
+  /** The stream's latest whole-frame boxes, held on crop-only batches. Set
+   * by the store. */
+  wholeFrame?: WholeFrame;
 }
 
 /** Key one detection STREAM by its model + camera. The engine broadcasts one
@@ -293,7 +303,7 @@ interface VisionDetectionsState {
    * stream already shows is dropped while that one is still fresh. */
   setBatch: (
     droneId: string,
-    batch: Omit<VisionDetectionBatch, "receivedAt">,
+    batch: Omit<VisionDetectionBatch, "receivedAt" | "wholeFrame">,
   ) => void;
   /** Record the agent's engine-availability report for a drone. `false`
    * drops the drone's batches (there is no live feed) and flags it; `true`
@@ -364,7 +374,12 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         }
         offsets.push(now - batch.tsMs);
         const offset = Math.min(...offsets.toArray());
-        const stamped: VisionDetectionBatch = { ...batch, receivedAt: batch.tsMs + offset };
+        const hold = holdOutsideCrop(current, batch);
+        const stamped: VisionDetectionBatch = {
+          ...batch,
+          ...hold,
+          receivedAt: batch.tsMs + offset,
+        };
         // Rolling receipt window for live throughput. Push in place on the
         // existing ring buffer; only take a new map ref when this drone's
         // window is created, so steady-state pushes cost nothing.

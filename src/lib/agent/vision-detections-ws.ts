@@ -82,6 +82,9 @@ export interface WireDetectionBatch {
   frame_width?: unknown;
   frame_height?: unknown;
   detections?: unknown;
+  /** The frame-pixel window a crop-only batch was detected in; absent on a
+   * whole-frame batch. */
+  crop_window?: unknown;
 }
 
 function num(v: unknown): number {
@@ -224,6 +227,14 @@ export function mapWireBatch(
     : [];
   const frameWidth = num(raw.frame_width) || DEFAULT_FRAME_WIDTH;
   const frameHeight = num(raw.frame_height) || DEFAULT_FRAME_HEIGHT;
+  const cw = raw.crop_window;
+  const cropWindow =
+    cw != null && typeof cw === "object"
+      ? (() => {
+          const r = cw as Record<string, unknown>;
+          return { x: num(r.x), y: num(r.y), width: num(r.width), height: num(r.height) };
+        })()
+      : undefined;
   return {
     modelId: str(raw.model_id),
     cameraId: str(raw.camera_id),
@@ -232,6 +243,7 @@ export function mapWireBatch(
     frameWidth,
     frameHeight,
     detections,
+    ...(cropWindow ? { cropWindow } : {}),
   };
 }
 
