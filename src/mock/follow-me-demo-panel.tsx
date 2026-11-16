@@ -182,7 +182,11 @@ function FollowMeDemoPanel({ host }: { host: InlineHostApi }) {
         <Row name={t("metrics.targetId")} value={readback.target_id !== null ? `#${readback.target_id}` : "—"} testId="fm-target-id" />
         <Row name={t("metrics.range")} value={fmtMeters(readback.range_m)} testId="fm-range" />
         <Row name={t("metrics.distanceSetpoint")} value={fmtMeters(readback.distance_setpoint_m)} testId="fm-distance-setpoint" />
-        <Row name={t("metrics.heightSetpoint")} value={fmtMeters(readback.height_setpoint_m)} testId="fm-height-setpoint" />
+        <Row
+          name={t("metrics.heightSetpoint")}
+          value={readback.height_raised ? `${fmtMeters(readback.height_setpoint_m)} · ${t("metrics.heightRaised")}` : fmtMeters(readback.height_setpoint_m)}
+          testId="fm-height-setpoint"
+        />
       </section>
     </div>
   );

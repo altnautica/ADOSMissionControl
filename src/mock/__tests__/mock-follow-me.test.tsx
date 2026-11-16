@@ -47,6 +47,7 @@ describe("demoFollowReadback", () => {
       range_m: null,
       distance_setpoint_m: null,
       height_setpoint_m: null,
+      height_raised: false,
       commanding: false,
       fc_armed: true,
       fc_guided: true,
@@ -65,8 +66,15 @@ describe("demoFollowReadback", () => {
       range_m: follow.rangeM,
       distance_setpoint_m: 8,
       height_setpoint_m: 4,
+      height_raised: false,
       hold_reason: null,
     });
+  });
+
+  it("raises a follow height below the head-height floor to 3.4 m and says so", () => {
+    const follow = scriptFollow(12.5, CTX);
+    const r = demoFollowReadback({ follow, pilot: flying, distanceM: 8, heightM: 1.5 });
+    expect(r).toMatchObject({ commanding: true, height_setpoint_m: 3.4, height_raised: true });
   });
 
   it.each([

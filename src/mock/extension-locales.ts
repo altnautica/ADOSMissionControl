@@ -71,6 +71,7 @@ const BUNDLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     "metrics.range": "Range to subject",
     "metrics.distanceSetpoint": "Distance setpoint",
     "metrics.heightSetpoint": "Height setpoint",
+    "metrics.heightRaised": "kept above head height for safety",
     "metrics.yes": "Yes",
     "metrics.no": "No",
     "lock.locked": "Locked",

@@ -189,9 +189,9 @@ gcs:
         binding: plugin.config
         schema:
           type: number
-          minimum: 0
+          minimum: 3.4
           maximum: 20
-          step: 0.5
+          step: 0.1
           default: 4
         ui:
           widget: range

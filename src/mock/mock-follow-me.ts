@@ -35,6 +35,10 @@ export const FOLLOW_ME_REFRESH_MS = 500;
 /** A tracked subject below this confidence is uncertain to the tracker. */
 const UNCERTAIN_BELOW = 0.7;
 
+/** The least follow height over a ground subject: a 2.0 m body, 0.4 m of
+ * rotor and 1.0 m of clearance. A lower setting is raised to it. */
+export const FOLLOW_MIN_HEIGHT_M = 3.4;
+
 /** Flight-controller modes that accept guided setpoints (ArduPilot GUIDED,
  * GUIDED_NOGPS; PX4 OFFBOARD). */
 const GUIDED_MODES: Record<string, true> = { GUIDED: true, GUIDED_NOGPS: true, OFFBOARD: true };
@@ -60,6 +64,8 @@ export interface FollowMeReadback {
   range_m: number | null;
   distance_setpoint_m: number | null;
   height_setpoint_m: number | null;
+  /** True when the setpoint was raised to the head-height floor. */
+  height_raised: boolean;
   commanding: boolean;
   fc_armed: boolean;
   fc_guided: boolean;
@@ -98,6 +104,7 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
     range_m: null,
     distance_setpoint_m: null,
     height_setpoint_m: null,
+    height_raised: false,
     commanding: false,
     fc_armed: fcArmed,
     fc_guided: fcGuided,
@@ -134,7 +141,8 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
     target_id: target,
     range_m: follow.rangeM,
     distance_setpoint_m: distanceM,
-    height_setpoint_m: heightM,
+    height_setpoint_m: Math.max(heightM, FOLLOW_MIN_HEIGHT_M),
+    height_raised: heightM < FOLLOW_MIN_HEIGHT_M,
     commanding: true,
     fc_armed: true,
     fc_guided: true,
