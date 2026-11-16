@@ -58,3 +58,37 @@ describe("StepCard: Meet ADOS Pilot", () => {
     expect(onAction).toHaveBeenCalledWith(intro, "use_ados", undefined);
   });
 });
+
+describe("StepCard: Meet ADOS Pilot with no RC receiver seen", () => {
+  // The engine saw no RC receiver (`rc_present: false`), so the no-RC choice
+  // leads, beside the two it always offers.
+  const noRc: SetupStep = {
+    ...intro,
+    args: { fallback_mode: "fc_manual", rc_present: false },
+    actions: [
+      { id: "use_ados", label_key: "setup.action.use_ados", style: "secondary", confirm: "none" },
+      { id: "keep_fc", label_key: "setup.action.keep_fc", style: "secondary", confirm: "none" },
+      { id: "use_ados_no_rc", label_key: "setup.action.use_ados_no_rc", style: "primary", confirm: "none" },
+    ],
+  };
+
+  it("offers use_ados_no_rc first, with its body line, and sends its id as use_ados is sent", () => {
+    const onAction = vi.fn();
+    render(<StepCard step={noRc} busy={false} error={null} onAction={onAction} />);
+    const buttons = screen.getAllByRole("button").map((b) => b.textContent);
+    expect(buttons).toEqual([
+      "Use ADOS Pilot with no RC transmitter",
+      setupText("setup.action.use_ados"),
+      setupText("setup.action.keep_fc"),
+    ]);
+    expect(screen.getByTestId("setup-ados-intro-no-rc").textContent).toBe(setupText("setup.ados_intro.body.no_rc"));
+    expect(screen.getByTestId("setup-ados-intro-no-rc").textContent).toMatch(/^With no RC transmitter you fly from the app\./);
+    fireEvent.click(screen.getByTestId("setup-action-use_ados_no_rc"));
+    expect(onAction).toHaveBeenCalledWith(noRc, "use_ados_no_rc", undefined);
+  });
+
+  it("shows no no-RC line when the choice is not offered", () => {
+    render(<StepCard step={intro} busy={false} error={null} onAction={() => {}} />);
+    expect(screen.queryByTestId("setup-ados-intro-no-rc")).toBeNull();
+  });
+});
