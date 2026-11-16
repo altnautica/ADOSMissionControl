@@ -70,3 +70,40 @@ describe("crop-only detection batches", () => {
     expect(ids()).toEqual([1]);
   });
 });
+
+/** A polled reply: a crop-only batch with the camera's newest whole frame. */
+function poll(tsMs: number, dets: Det[], full: { tsMs: number; dets: Det[]; modelId?: string }) {
+  ingestWireBatch("d1", {
+    model_id: "m",
+    camera_id: "c",
+    frame_id: tsMs,
+    ts_ms: tsMs,
+    detections: dets,
+    crop_window: CROP,
+    full_frame: {
+      model_id: full.modelId ?? "m",
+      camera_id: "c",
+      frame_id: full.tsMs,
+      ts_ms: full.tsMs,
+      detections: full.dets,
+    },
+  });
+}
+
+describe("polled crop-only replies", () => {
+  beforeEach(() => useVisionDetectionsStore.getState().clear());
+
+  it("hold the boxes of the whole frame the reply carries", () => {
+    // A relay poller never received the whole frame itself.
+    poll(1100, [det(1, 285, 180)], { tsMs: 1000, dets: [det(1, 280, 180), det(2, 20, 20), det(3, 500, 300)] });
+    expect(ids()).toEqual([1, 2, 3]);
+    // A newer whole frame in a later reply replaces the held boxes.
+    poll(1400, [det(1, 290, 180)], { tsMs: 1300, dets: [det(1, 288, 180), det(3, 505, 300)] });
+    expect(ids()).toEqual([1, 3]);
+  });
+
+  it("ignore a carried whole frame of another model", () => {
+    poll(1100, [det(1, 285, 180)], { tsMs: 1000, dets: [det(2, 20, 20)], modelId: "other" });
+    expect(ids()).toEqual([1]);
+  });
+});

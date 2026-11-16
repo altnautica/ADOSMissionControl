@@ -45,13 +45,15 @@ the project follows [Semantic Versioning](https://semver.org/).
   moves to look, searches, finds it again under a new track, and on the next
   loss holds and waits for the operator. Search again resumes the search, and
   the quick settings take effect in the demo.
-- **Steady boxes while following.** While follow-me flies, the agent's
-  vision engine detects most frames only in a window around the subject. The
-  video overlay keeps the boxes from the last whole frame that lie outside
-  that window until the next whole frame, or for one second, so other people
-  and objects no longer blink at the whole-frame rate. A batch from an older
-  agent, without the window, draws as before. The demo follow sends the same
-  windowed batches.
+- **Steady boxes while following.** While a target is designated, the
+  agent's vision engine detects most frames only in a window around the
+  subject. The video overlay keeps the boxes from the last whole frame that
+  lie outside that window until the next whole frame, or for one second, so
+  other people and objects no longer blink at the whole-frame rate; over a
+  ground station's relay the agent's reply carries that whole frame. Plugins
+  and the pipeline counts see only what each frame detected. A batch from an
+  older agent, without the window, draws as before. The demo follow sends the
+  same windowed batches.
 
 ### Changed
 

@@ -72,8 +72,9 @@ export function useVisionPipelines(droneId: string): VisionPipeline[] {
           key: streamKey(b.modelId, b.cameraId),
           modelId: b.modelId,
           cameraId: b.cameraId,
-          detectionCount: b.detections.length,
-          lockedCount: b.detections.filter((d) => d.lockState === "locked").length,
+          // Held boxes are an earlier whole frame's, not this batch's.
+          detectionCount: b.detections.filter((d) => !d.held).length,
+          lockedCount: b.detections.filter((d) => !d.held && d.lockState === "locked").length,
           active: ageMs <= DETECTION_STALE_MS,
           ageMs,
           frameId: b.frameId,

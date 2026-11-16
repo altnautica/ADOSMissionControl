@@ -159,6 +159,28 @@ describe("perception.subscribe", () => {
     expect(postEvent).toHaveBeenCalledTimes(1);
   });
 
+  it("leaves out the boxes held from an earlier whole frame", () => {
+    const postEvent = vi.fn();
+    const { handlers, dispose } = buildPerceptionHandlers(DEVICE);
+    handlers["perception.subscribe"]({}, makeCtx("perception.subscribe", postEvent));
+    const other = { ...BATCH.detections[0], bbox: { x: 600, y: 400, width: 3, height: 4 }, trackId: 6 };
+    useVisionDetectionsStore.getState().setBatch(DEVICE, {
+      ...BATCH,
+      detections: [...BATCH.detections, other],
+    });
+    useVisionDetectionsStore.getState().setBatch(DEVICE, {
+      ...BATCH,
+      frameId: 2,
+      tsMs: 100,
+      cropWindow: { x: 0, y: 0, width: 100, height: 100 },
+    });
+    // The store holds track 6 for the overlay; the plugin gets only track 5.
+    expect(useVisionDetectionsStore.getState().batches[DEVICE].detections).toHaveLength(2);
+    const p = postEvent.mock.calls[1][2] as { detections: { trackId: number }[] };
+    expect(p.detections.map((d) => d.trackId)).toEqual([5]);
+    dispose();
+  });
+
   it("throws when the plugin has no scoped drone", () => {
     const { handlers } = buildPerceptionHandlers(null);
     expect(() =>

@@ -30,6 +30,7 @@ import type {
   VisionDetection,
   VisionDetectionBatch,
 } from "@/stores/vision-detections-store";
+import type { WholeFrame } from "@/lib/vision/crop-hold";
 
 /** The agent's video pipeline normalizes frames to this default before the
  * engine runs inference. Detection coordinates are expressed in the normalized
@@ -85,6 +86,8 @@ export interface WireDetectionBatch {
   /** The frame-pixel window a crop-only batch was detected in; absent on a
    * whole-frame batch. */
   crop_window?: unknown;
+  /** On a polled crop-only reply: the camera's newest whole-frame batch. */
+  full_frame?: unknown;
 }
 
 function num(v: unknown): number {
@@ -183,8 +186,10 @@ export function detectionVersionNotice(version: number): string {
 
 /** Map one wire batch into the store for `droneId`. A batch at a wire
  * version this GCS does not speak is dropped and the node flagged, so the
- * operator sees "update" rather than an empty overlay. Returns whether a
- * batch was stored. */
+ * operator sees "update" rather than an empty overlay. A crop-only batch's
+ * `full_frame` (the agent's polled reply carries its stream's newest whole
+ * frame) seeds the boxes held outside the window. Returns whether a batch
+ * was stored. */
 export function ingestWireBatch(droneId: string, raw: WireDetectionBatch): boolean {
   const store = useVisionDetectionsStore.getState();
   if (typeof raw.v === "number" && raw.v !== SUPPORTED_DETECTION_VERSION) {
@@ -193,8 +198,22 @@ export function ingestWireBatch(droneId: string, raw: WireDetectionBatch): boole
   }
   const batch = mapWireBatch(raw);
   if (!batch) return false;
-  store.setBatch(droneId, batch);
+  store.setBatch(droneId, batch, batch.cropWindow ? fullFrameOf(raw, batch) : undefined);
   return true;
+}
+
+/** The whole frame a crop-only reply carries for the same stream, if any. */
+function fullFrameOf(
+  raw: WireDetectionBatch,
+  batch: Omit<VisionDetectionBatch, "receivedAt">,
+): WholeFrame | undefined {
+  const f = raw.full_frame;
+  if (f == null || typeof f !== "object" || Array.isArray(f)) return undefined;
+  const full = mapWireBatch(f as WireDetectionBatch);
+  if (!full || full.cropWindow || full.modelId !== batch.modelId || full.cameraId !== batch.cameraId) {
+    return undefined;
+  }
+  return { tsMs: full.tsMs, detections: full.detections };
 }
 
 /** Whether the agent's detection poll says the engine is reachable. The

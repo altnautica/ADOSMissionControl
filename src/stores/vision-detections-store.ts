@@ -300,10 +300,14 @@ interface VisionDetectionsState {
   setOutdatedDetectionVersion: (droneId: string, version: number) => void;
   /** Replace the latest batch for a drone (and its stream). `receivedAt` is
    * stamped here so callers do not have to. A batch taken before the one its
-   * stream already shows is dropped while that one is still fresh. */
+   * stream already shows is dropped while that one is still fresh.
+   * `fullFrame` is a whole-frame batch that came with a crop-only one (a
+   * polled reply's `full_frame`); its boxes are held like the stream's own
+   * ({@link holdOutsideCrop}). */
   setBatch: (
     droneId: string,
     batch: Omit<VisionDetectionBatch, "receivedAt" | "wholeFrame">,
+    fullFrame?: WholeFrame,
   ) => void;
   /** Record the agent's engine-availability report for a drone. `false`
    * drops the drone's batches (there is no live feed) and flags it; `true`
@@ -333,7 +337,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     connectionEpochs: {},
     visionUnavailable: {},
     outdatedDetectionVersion: {},
-    setBatch: (droneId, batch) =>
+    setBatch: (droneId, batch, fullFrame) =>
       set((state) => {
         const now = Date.now();
         const key = streamKey(batch.modelId, batch.cameraId);
@@ -374,7 +378,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         }
         offsets.push(now - batch.tsMs);
         const offset = Math.min(...offsets.toArray());
-        const hold = holdOutsideCrop(current, batch);
+        const hold = holdOutsideCrop(current, batch, fullFrame);
         const stamped: VisionDetectionBatch = {
           ...batch,
           ...hold,

@@ -40,16 +40,20 @@ function centreInside(b: DetectionBox, w: DetectionBox): boolean {
 /**
  * `next`'s detections with the held whole-frame boxes added (marked
  * `held`), and the whole frame the stream keeps, given the stream's
- * `previous` batch.
+ * `previous` batch. `seed` is a whole frame that came with `next` (a
+ * polled reply's `full_frame`, for a poller that misses most whole-frame
+ * batches); the newer of it and the stream's own is held.
  */
 export function holdOutsideCrop(
   previous: Frame | undefined,
   next: Frame,
+  seed?: WholeFrame,
 ): { detections: VisionDetection[]; wholeFrame?: WholeFrame } {
   if (!next.cropWindow) {
     return { detections: next.detections, wholeFrame: { tsMs: next.tsMs, detections: next.detections } };
   }
-  const whole = previous?.wholeFrame;
+  const own = previous?.wholeFrame;
+  const whole = seed && (!own || seed.tsMs > own.tsMs) ? seed : own;
   const age = whole ? next.tsMs - whole.tsMs : Infinity;
   if (!whole || age < 0 || age > CROP_HOLD_MS) {
     return { detections: next.detections, wholeFrame: whole };

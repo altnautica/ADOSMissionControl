@@ -67,7 +67,9 @@ interface SerializedPerceptionBatch {
 }
 
 /** Deep-copy a store batch into a plain object the iframe can never use to
- * reach a live store reference (mirrors `video-overlay-props.ts`). */
+ * reach a live store reference (mirrors `video-overlay-props.ts`). Boxes the
+ * overlay holds from an earlier whole frame (`held`) are left out: a plugin
+ * sees only what this frame detected. */
 function serializeBatch(
   batch: VisionDetectionBatch,
 ): SerializedPerceptionBatch {
@@ -79,7 +81,7 @@ function serializeBatch(
     frameWidth: batch.frameWidth,
     frameHeight: batch.frameHeight,
     receivedAt: batch.receivedAt,
-    detections: batch.detections.map((d) => ({
+    detections: batch.detections.filter((d) => !d.held).map((d) => ({
       // Omitted for a box-less percept (a mask/pose/depth-only reading).
       ...(d.bbox
         ? {
