@@ -499,6 +499,7 @@
     "pilot.banner.source.gcs": "GCS",
     "pilot.banner.source.rc": "RC switch",
     "pilot.banner.sticks_with": "Sticks are with {label}",
+    "pilot.command_limit.subject": "Keeping clear of the subject",
     "pilot.control_mode.ados": "ADOS Pilot",
     "pilot.control_mode.elrs": "ELRS",
     "pilot.control_mode.fc_manual": "FC Manual",
