@@ -17,17 +17,15 @@ import {
   REACQUIRED_TRACK,
   SEARCH_BUDGET_S,
   TARGET_TRACK,
-  applyFollowPin,
   entryEffect,
   extnavHealthAt,
   followPhaseAt,
   hudStateAt,
-  pinnedCycleS,
-  pinnedFollowPhase,
   scriptDetections,
   scriptFollow,
   type FollowContext,
 } from "@/mock/mock-hud-script";
+import { applyFollowPin, pinnedCycleS, pinnedFollowPhase } from "@/mock/mock-follow-pin";
 
 const CTX: FollowContext = {
   cameraId: "cam-a",

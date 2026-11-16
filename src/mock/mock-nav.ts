@@ -34,15 +34,8 @@ import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { getMockEkfSourceSet } from "./mock-ekf-source";
-import {
-  applyFollowPin,
-  extnavHealthAt,
-  followPhaseAt,
-  pinnedCycleS,
-  pinnedFollowPhase,
-  scriptFollow,
-  type FollowContext,
-} from "./mock-hud-script";
+import { applyFollowPin, pinnedCycleS, pinnedFollowPhase } from "./mock-follow-pin";
+import { extnavHealthAt, followPhaseAt, scriptFollow, type FollowContext } from "./mock-hud-script";
 import { demoLoopAt, scanRanges, yawMatrix } from "./mock-nav-world";
 import { OccupancyReveal, type GreyPngEncoder } from "./mock-occupancy";
 import type { DemoPositionUnverified } from "./mock-pilot-wire";

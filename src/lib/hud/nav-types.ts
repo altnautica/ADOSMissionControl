@@ -14,6 +14,8 @@
  * @license GPL-3.0-only
  */
 
+import { int, isRec, num, oneOf, pair, str } from "./nav-narrow";
+
 /** The follow phase. Once the lock is lost the follow is `predicting` (flying
  * toward the predicted standoff), `repositioning` (flying to a vantage point
  * the pilot chose), `searching` (sweeping from the vantage point, widening in
@@ -206,38 +208,6 @@ export interface OccupancyLive {
   resM: number | null;
   tileCells: number | null;
   tiles: OccupancyTileWire[];
-}
-
-// ── narrowing helpers ────────────────────────────────────────────────
-
-type Rec = Record<string, unknown>;
-
-function isRec(v: unknown): v is Rec {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-function num(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-
-function int(v: unknown): number | null {
-  const n = num(v);
-  return n === null ? null : Math.trunc(n);
-}
-
-function str(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null;
-}
-
-function oneOf<T extends string>(v: unknown, allowed: readonly T[]): T | null {
-  return typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : null;
-}
-
-function pair(v: unknown): [number, number] | null {
-  if (!Array.isArray(v) || v.length < 2) return null;
-  const a = num(v[0]);
-  const b = num(v[1]);
-  return a === null || b === null ? null : [a, b];
 }
 
 /** Every follow phase, in lifecycle order. */

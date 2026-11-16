@@ -120,7 +120,7 @@ export class PilotPins {
     this.fields = { ...this.fields, ...fields };
   }
 
-  /** Drop the named pins. */
+  /** Drop the named pins (the pilot or the operator set those fields itself). */
   drop(...keys: string[]): void {
     for (const k of keys) delete this.fields[k];
   }
@@ -142,11 +142,6 @@ export class PilotPins {
     delete this.fields.mission_stall;
     delete this.fields.hold_reason;
     delete this.fields.banner;
-  }
-
-  /** The pilot set `key` itself (an operator's action): its pin goes. */
-  drop(key: string): void {
-    delete this.fields[key];
   }
 
   /** The operator set the open class: the confined route check and the speed
