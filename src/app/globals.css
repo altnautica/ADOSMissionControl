@@ -908,6 +908,7 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-pill-text { display: none; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar :is(.fs-chip-wrap, .fs-chip, .fs-chip-text),
 .ados-cockpit .fs-bar[data-overflow="full"] :is(.fs-chip-wrap, .fs-chip, .fs-chip-text) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-chip-sub { flex-shrink: 100; }
 .ados-cockpit .fs-bar[data-overflow="full"] .fs-pill-wrap { flex-shrink: 100; }
 
 /* bottom-left card */
