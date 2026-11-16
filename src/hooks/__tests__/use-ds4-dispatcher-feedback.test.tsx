@@ -91,4 +91,19 @@ describe("pad feedback from the pilot state", () => {
     receive({ profile: "cine" });
     expect(spies.rumble.mock.calls).toEqual([["critical"]]);
   });
+
+  it("a stale frame delivered again (a fallback poll) does not re-fire the lost rumble", () => {
+    render(<Dispatcher />);
+    receive({});
+    const firstAt = Date.now();
+    act(() => vi.advanceTimersByTime(CHIP_STALE_AFTER_MS + 500));
+    expect(spies.rumble.mock.calls).toEqual([["critical"]]);
+    // The same old frame re-stored every poll, still stamped when it was first received.
+    for (let i = 0; i < 10; i++) {
+      const raw = { ...BASE };
+      act(() => useNavStreamStore.getState().setPilot(DRONE, parsePilotState(raw)!, firstAt, raw));
+      act(() => vi.advanceTimersByTime(500));
+    }
+    expect(spies.rumble.mock.calls).toEqual([["critical"]]);
+  });
 });

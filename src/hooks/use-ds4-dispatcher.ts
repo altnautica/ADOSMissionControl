@@ -329,12 +329,15 @@ export function useDs4Dispatcher(droneId: string): void {
 
   // Rumble from pilot-state changes, by the shared feedback rules: each new
   // pilot state against the last, and the pilot state going stale (the
-  // spec's stale age) as the surface losing it.
+  // spec's stale age) as the surface losing it. Only a fresh state counts as
+  // a state: one already stale when stored (an old frame delivered again)
+  // neither re-arms the lost rumble nor compares against the last.
   useEffect(() => {
     const feedback = new PilotFeedback();
     const unsub = useNavStreamStore.subscribe((s, prev) => {
       const entry = s.byDrone[droneId]?.pilot;
       if (!entry || entry === prev.byDrone[droneId]?.pilot || entry.raw == null) return;
+      if (!pilotFresh(entry.receivedAt, Date.now())) return;
       const pattern = feedback.update(entry.raw);
       if (pattern) rumble(pattern);
     });
