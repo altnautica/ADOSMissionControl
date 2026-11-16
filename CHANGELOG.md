@@ -51,6 +51,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 - Internal only: the cockpit frame helpers are split into smaller modules under the size limit (no behaviour change).
 - Cockpit: the shared sensor-health spec carries the agent's new lidar map heading readiness item, "Lidar map heading not confirmed". The cockpit shows it as the drone sends it, with no other change.
 - Internal only: the cockpit mission parsers and the node command lanes move into their own modules under the size limit (no behaviour change).
+- The plugin contract catalogue mirrors the agent's `pilot.v1` 4: a goal may
+  ask for a commanded velocity instead of a feed-forward.
 - Return all and a relayed drone's Return send the drone's own agent its return, which the pilot flies back along the flown path in ADOS control, instead of the flight controller's straight-home RTL. A drone seen only through a ground station's relay gets it through that ground station. When the relay does not answer (the ground station unreachable, its radio lane down, a timeout), the flight controller's RTL goes out over the live MAVLink session and the result says so; a refusal from the pilot is shown as it is.
 
 ### Fixed
