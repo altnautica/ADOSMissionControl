@@ -172,6 +172,11 @@ export function pillArmed(
 const PILL_TICK_MS = 500;
 
 export function usePillAlerts(droneId: string): PillAlert[] {
+  return usePillState(droneId).alerts;
+}
+
+/** The pill's alerts and the arm state it read them with. */
+function usePillState(droneId: string): { alerts: PillAlert[]; armed: boolean | null } {
   const { alerts, label } = useCockpitAlertList(droneId);
   const { pilot, receivedAt } = usePilotState(droneId);
   const fcArmState = useDroneStore((s) => s.armState);
@@ -198,24 +203,24 @@ export function usePillAlerts(droneId: string): PillAlert[] {
     text: label(a),
     source: ALERT_SOURCE[a.id],
   }));
-  return pillAlertsFor({
-    surface,
-    pilot,
-    pilotAgeMs: receivedAt !== null ? now - receivedAt : paired ? null : undefined,
-    agentReachable: focused ? failures < AGENT_UNREACHABLE_FAILURES : undefined,
-    armed: pillArmed(
+  const armed = pillArmed(pilot, receivedAt !== null && pilotFresh(0, now - receivedAt), fcArmState);
+  return {
+    alerts: pillAlertsFor({
+      surface,
       pilot,
-      receivedAt !== null && pilotFresh(0, now - receivedAt),
-      fcArmState,
-    ),
-    preflight,
-    storagePct: typeof disk === "number" ? disk : null,
-    navSource: nav,
-  });
+      pilotAgeMs: receivedAt !== null ? now - receivedAt : paired ? null : undefined,
+      agentReachable: focused ? failures < AGENT_UNREACHABLE_FAILURES : undefined,
+      armed,
+      preflight,
+      storagePct: typeof disk === "number" ? disk : null,
+      navSource: nav,
+    }),
+    armed,
+  };
 }
 
 export function StatusPill({ droneId }: { droneId: string }) {
-  const alerts = usePillAlerts(droneId);
+  const { alerts, armed } = usePillState(droneId);
   const [acked, setAcked] = useState<ReadonlySet<string>>(() => new Set());
   // The list is a flight-screen sheet: one at a time, and the tips see it.
   const [open, setOpen] = useFlightSheet("status");
@@ -286,7 +291,7 @@ export function StatusPill({ droneId }: { droneId: string }) {
         <span className="fs-dot" aria-hidden="true" data-testid="status-pill-dot" />
         <span className="fs-pill-text" title={summary.text}>{summary.text}</span>
       </button>
-      {open && <StatusPillList alerts={alerts} listRef={listRef} />}
+      {open && <StatusPillList alerts={alerts} listRef={listRef} armed={armed} />}
     </div>
   );
 }

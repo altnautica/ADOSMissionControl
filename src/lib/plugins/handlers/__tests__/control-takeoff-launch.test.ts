@@ -1,14 +1,18 @@
 /**
- * A plugin's `command.send takeoff` for a drone with a live pilot on the
- * stream goes out, once the operator approves it, as the pilot's
- * `launch {after: "hold", alt_m}`; without a pilot it stays NAV_TAKEOFF.
+ * A plugin's `command.send takeoff` for an armed drone with a live pilot on
+ * the stream goes out, once the operator approves it, as the pilot's
+ * `launch {after: "hold", alt_m}`; disarmed or without a pilot it stays
+ * NAV_TAKEOFF, so a plugin never arms the drone.
  *
  * @license GPL-3.0-only
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { sendCommand } = vi.hoisted(() => ({ sendCommand: vi.fn(async () => ({ success: true })) }));
+const { sendCommand, fc } = vi.hoisted(() => ({
+  sendCommand: vi.fn(async () => ({ success: true })),
+  fc: { armState: "armed" },
+}));
 vi.mock("@/stores/drone-manager", () => ({
   useDroneManager: {
     getState: () => ({ drones: new Map([["node:d1", { protocol: { sendCommand } }]]) }),
@@ -18,7 +22,7 @@ vi.mock("@/stores/node-registry", () => ({
   useNodeRegistryStore: {
     getState: () => ({
       getEntry: (id: string) =>
-        id === "node:d1" ? { fc: { armState: "disarmed" }, connection: { fcConnected: true } } : undefined,
+        id === "node:d1" ? { fc, connection: { fcConnected: true } } : undefined,
     }),
   },
 }));
@@ -44,6 +48,7 @@ describe("plugin take-off with a pilot", () => {
     sent = [];
     sendCommand.mockClear();
     resetCommandRateLimits();
+    fc.armState = "armed";
     setPluginConfirmHandler(async () => true);
   });
   afterEach(() => {
@@ -51,7 +56,7 @@ describe("plugin take-off with a pilot", () => {
     useNavStreamStore.setState({ byDrone: {} });
   });
 
-  it("sends the pilot's launch after the operator approves", async () => {
+  function withPilot() {
     setPilotSender(((f: { op: string; name: string; id: string; args?: Record<string, unknown> }) => {
       if (f.op !== "action") return true;
       sent.push({ name: f.name, args: f.args });
@@ -60,6 +65,19 @@ describe("plugin take-off with a pilot", () => {
     }) as never, "node:d1");
     usePilotLinkStore.getState().set({ controlMode: "fc_manual" });
     useNavStreamStore.setState({ byDrone: { "node:d1": { pilot: { data: null, receivedAt: Date.now() } } } as never });
+  }
+
+  it("never arms: a disarmed drone keeps NAV_TAKEOFF, which the FC refuses while disarmed", async () => {
+    withPilot();
+    fc.armState = "disarmed";
+    const res = await takeoff(12);
+    expect(res).toMatchObject({ ok: true });
+    expect(sent).toEqual([]);
+    expect(sendCommand).toHaveBeenCalledWith(22, [0, 0, 0, 0, 0, 0, 12]);
+  });
+
+  it("sends the pilot's launch for an armed drone after the operator approves", async () => {
+    withPilot();
     const res = await takeoff(12);
     expect(res).toMatchObject({ ok: true });
     expect(sent).toEqual([{ name: "launch", args: { after: "hold", alt_m: 12 } }]);

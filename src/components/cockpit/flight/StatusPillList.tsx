@@ -26,7 +26,8 @@ const AIRFRAME_BALANCE_ID = "pilot:airframe_balance";
 
 /** "I rebalanced it" on the `airframe_balance` row: clears the connected
  *  flight controller's learned airframe record (`airframe_reset`), so the
- *  next lift-off finds the trim again. A refusal shows on the row. */
+ *  next lift-off finds the trim again. A refusal shows on the row. Offered
+ *  only while the drone is known disarmed. */
 function AirframeResetButton() {
   const [refused, setRefused] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,7 +35,7 @@ function AirframeResetButton() {
     setBusy(true);
     const r = await requestPilotAction("airframe_reset", {});
     setBusy(false);
-    setRefused(r.ok ? null : specString("readiness.airframe_balance.reset_refused", { reason: refusalText(r.err) }));
+    setRefused(r.ok ? null : refusalText(r.err));
   };
   return (
     <>
@@ -74,9 +75,12 @@ export function pillSourceLabel(source: PillSource): string {
 export function StatusPillList({
   alerts,
   listRef,
+  armed,
 }: {
   alerts: readonly PillAlert[];
   listRef: RefObject<HTMLDivElement | null>;
+  /** The drone's arm state as the pill reads it; null when unknown. */
+  armed: boolean | null;
 }) {
   const grid = useFlightGrid();
   return (
@@ -115,7 +119,7 @@ export function StatusPillList({
                     {a.text}
                   </span>
                   <span className="fs-pill-src">{pillSourceLabel(a.source)}</span>
-                  {a.id === AIRFRAME_BALANCE_ID && <AirframeResetButton />}
+                  {a.id === AIRFRAME_BALANCE_ID && armed === false && <AirframeResetButton />}
                 </li>
               );
             })}

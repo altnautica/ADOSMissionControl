@@ -70,7 +70,7 @@ export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"]
         </span>
       ) : (
         <>
-          {liftoff && liftoff.phase !== "done" && liftoff.text && (
+          {liftoff && liftoff.phase !== "done" && liftoff.text && !sequence.error && (
             <span className="ml-2 text-[11px] text-text-secondary" data-testid="launch-liftoff-text">
               {liftoffLine(liftoff)}
             </span>

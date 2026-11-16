@@ -26,6 +26,7 @@ describe("status pill list glyphs", () => {
         <div className="ados-cockpit" data-testid="flight-screen">
           <StatusPillList
             listRef={{ current: null }}
+            armed={null}
             alerts={[
               { id: "a", source: PILL_SOURCES[0], severity: "critical", text: "Crit" },
               { id: "b", source: PILL_SOURCES[0], severity: "warning", text: "Warn" },

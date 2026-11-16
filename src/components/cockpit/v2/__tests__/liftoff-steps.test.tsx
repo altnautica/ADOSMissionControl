@@ -13,7 +13,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { pillAlerts } from "@/lib/hud/status-pill";
 import { specString } from "@/lib/cockpit/spec-strings";
-import { setPilotSender } from "@/lib/input/pilot-stream";
+import { handlePilotServerFrame, setPilotSender } from "@/lib/input/pilot-stream";
+import { refusalText } from "@/lib/hud/refusal";
 import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";
 import { LaunchStepStrip } from "../LaunchSteps";
 import { StatusPillList } from "../../flight/StatusPillList";
@@ -73,6 +74,15 @@ describe("steady take-off on the launch strip", () => {
     expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Take-off stopped. The drone started to tip. Motors off.");
     expect(screen.queryByText(/liftoff_tipping/)).toBeNull();
   });
+
+  it("drops the airborne line once the sequence carries an error", () => {
+    render(
+      <LaunchStepStrip
+        sequence={sequenceWith({ phase: "climb", text: "Airborne", detail: "Climbing to 3 m", trim: "learned", tilt_deg: 0 }, "no_fc")}
+      />,
+    );
+    expect(screen.queryByTestId("launch-liftoff-text")).toBeNull();
+  });
 });
 
 describe("balance check readiness row", () => {
@@ -96,7 +106,7 @@ describe("balance check readiness row", () => {
     renderWithIntl(
       <FlightGridContext.Provider value={flightGrid({ width: 1280, height: 800, widthClass: "expanded" })}>
         <div className="ados-cockpit" data-testid="flight-screen">
-          <StatusPillList listRef={{ current: null }} alerts={alerts} />
+          <StatusPillList listRef={{ current: null }} alerts={alerts} armed={false} />
         </div>
       </FlightGridContext.Provider>,
     );
@@ -107,5 +117,38 @@ describe("balance check readiness row", () => {
     expect(buttons[0].textContent).toBe(specString("readiness.airframe_balance.reset"));
     fireEvent.click(buttons[0]);
     expect(frames).toContainEqual(expect.objectContaining({ op: "action", name: "airframe_reset", args: {} }));
+  });
+
+  it("offers I rebalanced it only while the drone is known disarmed", () => {
+    const alerts = pillAlerts({ alerts: [], readiness, prearm: undefined, storagePct: null, pilotAgeMs: 0 });
+    for (const armed of [true, null] as const) {
+      renderWithIntl(
+        <FlightGridContext.Provider value={flightGrid({ width: 1280, height: 800, widthClass: "expanded" })}>
+          <div className="ados-cockpit" data-testid="flight-screen">
+            <StatusPillList listRef={{ current: null }} alerts={alerts} armed={armed} />
+          </div>
+        </FlightGridContext.Provider>,
+      );
+      expect(screen.getByText(readiness[0].msg)).toBeTruthy();
+      expect(screen.queryByTestId("airframe-reset")).toBeNull();
+      cleanup();
+    }
+  });
+
+  it("shows a refused reset with the refusal text", async () => {
+    setPilotSender(((f: { op: string; name: string; id: string }) => {
+      if (f.op === "action") queueMicrotask(() => handlePilotServerFrame("d1", { kind: "action_result", name: f.name, id: f.id, ok: false, err: "armed" }));
+      return true;
+    }) as never, "d1");
+    const alerts = pillAlerts({ alerts: [], readiness, prearm: undefined, storagePct: null, pilotAgeMs: 0 });
+    renderWithIntl(
+      <FlightGridContext.Provider value={flightGrid({ width: 1280, height: 800, widthClass: "expanded" })}>
+        <div className="ados-cockpit" data-testid="flight-screen">
+          <StatusPillList listRef={{ current: null }} alerts={alerts} armed={false} />
+        </div>
+      </FlightGridContext.Provider>,
+    );
+    fireEvent.click(screen.getByTestId("airframe-reset"));
+    expect((await screen.findByTestId("airframe-reset-refused")).textContent).toBe(refusalText("armed"));
   });
 });
