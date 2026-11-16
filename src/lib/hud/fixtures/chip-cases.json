@@ -10448,7 +10448,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Sport · 10 m/s max",
+      "text": "Pilot · Sport · 10 m/s",
       "color": "pilot",
       "dim": false,
       "button": null,
@@ -10599,7 +10599,7 @@
     },
     "expected": {
       "rule": "pilot",
-      "text": "Pilot · Normal · 7 m/s max",
+      "text": "Pilot · Normal · 7 m/s",
       "color": "pilot",
       "dim": false,
       "button": null,

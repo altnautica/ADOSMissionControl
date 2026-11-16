@@ -63,7 +63,7 @@
     "chip.no_pilot": "No pilot",
     "chip.taking_off": "Taking off · {step}",
     "chip.launch_step.takeoff": "Climb",
-    "chip.stick.limit": "{v} m/s max",
+    "chip.stick.limit": "{v} m/s",
     "chip.stick.h_speed": "H {v} m/s",
     "chip.stick.v_speed": "V {v} m/s",
     "chip.stick.input_age": "Input {ms} ms",
