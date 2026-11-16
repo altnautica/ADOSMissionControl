@@ -109,7 +109,8 @@
       "license": "Apache-2.0",
       "classes": ["person"],
       "variants": [
-        { "variant": "cpu_fp32_640", "input_size": "640x640", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_640.onnx", "size_bytes": 20344089, "sha256": "ec126ff2786d394e02730181e5a97ede16c173e0625b39cd18661d507e06da32", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_640.onnx" }
+        { "variant": "cpu_fp32_640", "input_size": "640x640", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_640.onnx", "size_bytes": 20344089, "sha256": "ec126ff2786d394e02730181e5a97ede16c173e0625b39cd18661d507e06da32", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_640.onnx" },
+        { "variant": "cpu_fp32_320", "input_size": "320x320", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_320.onnx", "size_bytes": 20292555, "sha256": "41f2e75b4c3be99aaf7af3d6f8d24475bac391be44e00b135117f942a0deb935", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_320.onnx" }
       ]
     },
     {
