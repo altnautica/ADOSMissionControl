@@ -149,6 +149,9 @@ export interface PilotState {
   /** What the pilot does when the countdown ends; null from an agent that
    *  does not report it. */
   linkLossAction: "rth" | "rtl" | "hold" | "loiter" | "land" | null;
+  /** The link-loss window in seconds; null from an agent that does not
+   *  report it. */
+  linkLossS: number | null;
   /** The FC is flying a VTOL transition (either direction). */
   vtolTransitioning: boolean;
   mission: MissionState | null;
@@ -189,6 +192,9 @@ export interface PilotState {
   speedCap: SpeedCap | null;
   /** The operator's place class; `open` from an agent that omits it. */
   placeClass: PlaceClass;
+  /** `absent` while the drone is declared to fly with no RC transmitter;
+   *  `present` from an agent that omits it. */
+  rcReceiver: "absent" | "present";
   /** The route check, while confined with a mission loaded; else null. */
   routeCheck: RouteCheck | null;
   /** The raw `sensors` block (parse with sensor-health); null when absent. */
@@ -253,6 +259,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     readiness,
     linkLossInS: num(p.link_loss_in_s),
     linkLossAction: oneOf(p.link_loss_action, ["rth", "rtl", "hold", "loiter", "land"] as const),
+    linkLossS: num(p.link_loss_s),
     vtolTransitioning: p.vtol_transitioning === true,
     mission: parseMission(p.mission),
     inputSession: is && str(is.src) !== null ? { src: is.src as string, label: str(is.label) ?? (is.src as string), session: num(is.session) } : null,
@@ -275,6 +282,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     lowBatteryAction: oneOf(p.low_battery_action, ["land", "rth"] as const),
     speedCap: parseSpeedCap(p.speed_cap),
     placeClass: oneOf(p.place_class, PLACE_CLASSES) ?? "open",
+    rcReceiver: p.rc_receiver === "absent" ? "absent" : "present",
     routeCheck: parseRouteCheck(p.route_check),
     sensors: p.sensors ?? null,
     positionUnverified: parsePositionUnverified(p.position_unverified),
