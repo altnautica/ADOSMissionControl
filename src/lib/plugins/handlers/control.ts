@@ -299,12 +299,15 @@ export function buildControlHandlers(
       ? useDroneManager.getState().drones.get(target.nodeId)?.protocol
       : undefined;
     const fcPath = !!protocol?.sendCommand;
+    // The operator arms first: a plugin's take-off for a drone not known
+    // armed is refused here, before the prompt, whatever route would carry
+    // it, since an agent can turn a take-off into a launch that arms.
+    if (target && command === "takeoff" && readTargetVehicle(target).armState !== "armed") {
+      return { ok: false, error: refusalText("disarmed") };
+    }
     // A take-off for an armed drone with a pilot on the stream is the pilot's
-    // launch (its supervised lift-off), not a raw NAV_TAKEOFF. The launch arms
-    // a disarmed drone, so a disarmed one keeps NAV_TAKEOFF, which the flight
-    // controller refuses: the operator arms first.
-    const pilotLaunch = (t: NonNullable<typeof target>) =>
-      command === "takeoff" && readTargetVehicle(t).armState === "armed" && launchViaPilot(t.nodeId, fcPath);
+    // launch (its supervised lift-off), not a raw NAV_TAKEOFF.
+    const pilotLaunch = (t: NonNullable<typeof target>) => command === "takeoff" && launchViaPilot(t.nodeId, fcPath);
     if (!target || (!fcPath && !pilotLaunch(target))) {
       return { ok: false, error: "command.send not supported" };
     }

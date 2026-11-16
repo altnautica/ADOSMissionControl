@@ -1,8 +1,9 @@
 /**
  * A plugin's `command.send takeoff` for an armed drone with a live pilot on
  * the stream goes out, once the operator approves it, as the pilot's
- * `launch {after: "hold", alt_m}`; disarmed or without a pilot it stays
- * NAV_TAKEOFF, so a plugin never arms the drone.
+ * `launch {after: "hold", alt_m}`; without a pilot it stays NAV_TAKEOFF.
+ * A take-off while the drone is not known armed is refused before the
+ * prompt on every route, so a plugin never arms the drone.
  *
  * @license GPL-3.0-only
  */
@@ -28,6 +29,7 @@ vi.mock("@/stores/node-registry", () => ({
 }));
 
 import { buildControlHandlers } from "../control";
+import { refusalText } from "@/lib/hud/refusal";
 import { resetCommandRateLimits } from "../command-rate";
 import type { BridgeHandlerContext } from "@/lib/plugins/bridge";
 import { setPluginConfirmHandler } from "@/lib/plugins/confirm";
@@ -67,13 +69,25 @@ describe("plugin take-off with a pilot", () => {
     useNavStreamStore.setState({ byDrone: { "node:d1": { pilot: { data: null, receivedAt: Date.now() } } } as never });
   }
 
-  it("never arms: a disarmed drone keeps NAV_TAKEOFF, which the FC refuses while disarmed", async () => {
-    withPilot();
-    fc.armState = "disarmed";
-    const res = await takeoff(12);
-    expect(res).toMatchObject({ ok: true });
-    expect(sent).toEqual([]);
-    expect(sendCommand).toHaveBeenCalledWith(22, [0, 0, 0, 0, 0, 0, 12]);
+  it("refuses a take-off while the drone is not known armed, before the prompt, on any route", async () => {
+    for (const armState of ["disarmed", "unknown"]) {
+      for (const pilot of [true, false]) {
+        if (pilot) withPilot();
+        fc.armState = armState;
+        let prompted = false;
+        setPluginConfirmHandler(async () => {
+          prompted = true;
+          return true;
+        });
+        const res = await takeoff(12);
+        expect(res).toEqual({ ok: false, error: refusalText("disarmed") });
+        expect(prompted).toBe(false);
+        expect(sent).toEqual([]);
+        expect(sendCommand).not.toHaveBeenCalled();
+        setPilotSender(null);
+        useNavStreamStore.setState({ byDrone: {} });
+      }
+    }
   });
 
   it("sends the pilot's launch for an armed drone after the operator approves", async () => {
