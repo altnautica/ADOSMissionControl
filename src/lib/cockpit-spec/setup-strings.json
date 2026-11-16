@@ -551,6 +551,7 @@
     "radar.no_heading": "no heading",
     "radar.range_change": "Radar range {r}; change range",
     "radar.title": "Radar",
+    "readiness.battery_failsafe.capacity_unset": "Battery capacity not set: set BATT_CAPACITY so the low and critical reserve count the charge used",
     "readiness.battery_failsafe.confined_rtl": "May fly without GNSS: a battery RTL climbs to the RTL altitude, into the roof indoors; set low = Land, critical = Land",
     "readiness.battery_failsafe.critical_none": "Critical battery does nothing: set critical = Land",
     "readiness.battery_failsafe.differs": "Battery failsafe not set for ADOS: set low = SmartRTL or Land, critical = Land",
