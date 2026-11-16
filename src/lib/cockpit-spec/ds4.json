@@ -256,13 +256,14 @@
       "new_value": "the field is not null and differs from the previous state's",
       "entered": "the field is one of `values` and differs from the previous state's",
       "appeared": "the field is not null and was null in the previous state",
+      "replaced": "the field is not null now and was not null in the previous state, and differs from it at one of `keys` (dotted paths inside the field; the whole value without `keys`)",
       "new_item": "the array at `field` holds an item matching every key of `where` whose `key` value no matching item of the previous state had",
       "state_lost": "the surface's pilot state went stale or its link to the drone dropped (the surface's own staleness timer); no field"
     },
     "mode_change": [
       { "id": "profile_changed", "field": "profile", "on": "changed", "rumble": "mode_change" },
       { "id": "owner_changed", "field": "owner", "on": "changed", "rumble": "mode_change" },
-      { "id": "takeover", "field": "input_session.session", "on": "new_value", "rumble": "mode_change" },
+      { "id": "takeover", "field": "input_session", "on": "replaced", "keys": ["src", "session"], "rumble": "mode_change" },
       { "id": "skill_changed", "field": "skill.skill_id", "on": "changed", "rumble": "mode_change" },
       { "id": "control_mode_changed", "field": "control_mode", "on": "changed", "rumble": "mode_change" }
     ],

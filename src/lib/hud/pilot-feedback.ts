@@ -17,7 +17,7 @@ import ds4 from "../cockpit-spec/ds4.json";
 
 export type FeedbackClass = "critical" | "warning" | "mode_change";
 
-type Trigger = "changed" | "new_value" | "entered" | "appeared" | "new_item" | "state_lost";
+type Trigger = "changed" | "new_value" | "entered" | "appeared" | "replaced" | "new_item" | "state_lost";
 
 interface FeedbackRule {
   id: string;
@@ -26,6 +26,7 @@ interface FeedbackRule {
   values?: unknown[];
   where?: Record<string, unknown>;
   key?: string;
+  keys?: string[];
   armed_only?: boolean;
   rumble: string;
 }
@@ -70,6 +71,8 @@ function fires(rule: FeedbackRule, prev: unknown | null, next: unknown | null): 
       return !same(a, b) && (rule.values ?? []).some((v) => same(v, b));
     case "appeared":
       return a === null && b !== null;
+    case "replaced":
+      return a !== null && b !== null && (rule.keys ?? [""]).some((k) => !same(k ? at(a, k) : a, k ? at(b, k) : b));
     case "new_item": {
       const before = matchingKeys(rule, a);
       return matchingKeys(rule, b).some((k) => !before.some((p) => same(p, k)));

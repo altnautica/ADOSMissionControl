@@ -67,6 +67,14 @@ describe("pilot feedback rules", () => {
     expect(feedbackFor(next({ hold_reason: "geofence" }), next({ hold_reason: "geofence" }))).toBeNull();
   });
 
+  it("a takeover is another source or session replacing one; sticks resuming, stopping or relabelled are not", () => {
+    const session = (s: unknown) => next({ input_session: s });
+    expect(feedbackFor(session({ src: "mc", label: "A", session: 11 }), session({ src: "mc", label: "A", session: 12 }))).toBe("mode_change");
+    expect(feedbackFor(session(null), session({ src: "mc", label: "A", session: 11 }))).toBeNull();
+    expect(feedbackFor(session({ src: "mc", label: "A", session: 11 }), session(null))).toBeNull();
+    expect(feedbackFor(session({ src: "mc", label: "A", session: 11 }), session({ src: "mc", label: "B", session: 11 }))).toBeNull();
+  });
+
   it("each class names a rumble pattern of the spec", () => {
     expect(ds4.feedback.order).toEqual(["critical", "warning", "mode_change"]);
     for (const cls of ds4.feedback.order) expect(Object.keys(ds4.rumble)).toContain(cls);
