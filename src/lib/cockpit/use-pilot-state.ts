@@ -41,8 +41,11 @@ export const NO_PILOT_CHIP: ChipView = {
   secondary: [],
 };
 
-/** The flight-state chip for a drone, re-evaluated as the pilot kind ages. */
-export function useFlightStateChip(droneId: string | null | undefined): ChipView {
+/** The flight-state chip for a drone, re-evaluated as the pilot kind ages.
+ *  With `speeds` the chip carries the vehicle's horizontal and vertical
+ *  speed (VFR_HUD) while the sticks fly; without, the surface shows them
+ *  elsewhere. */
+export function useFlightStateChip(droneId: string | null | undefined, opts: { speeds: boolean }): ChipView {
   const { pilot, receivedAt } = usePilotState(droneId);
   const [now, setNow] = useState(() => Date.now());
   const complete = pilot?.mission?.state === "complete";
@@ -65,6 +68,7 @@ export function useFlightStateChip(droneId: string | null | undefined): ChipView
   const home = tel.homePosition.latest() ?? null;
   const homeDistM = chipHomeDistance(droneId, now, home, pos ?? null);
   const ar = droneId ? getFrames(droneId).ar : null;
+  const vfr = opts.speeds ? freshOnly(tel.vfr.latest(), now) : null;
 
   return flightStateChip(
     chipInputs(pilot, now, receivedAt, {
@@ -74,6 +78,7 @@ export function useFlightStateChip(droneId: string | null | undefined): ChipView
       arAgeMs: ar ? now - ar.receivedAt : 0,
       modeDetail: pilot.ownerLabel ?? null,
       completeAgeMs: completeAt === null ? null : now - completeAt,
+      speed: vfr ? { hMps: vfr.groundspeed ?? null, vMps: vfr.climb } : null,
     }),
   );
 }

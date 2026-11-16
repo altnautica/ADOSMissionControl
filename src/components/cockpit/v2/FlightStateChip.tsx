@@ -24,6 +24,9 @@ import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import Link from "next/link";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import tokens from "@/lib/cockpit-spec/tokens.json";
+import { SEVERITY_VAR, useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { bottomRowLabels } from "@/components/cockpit/flight/flight-grid";
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
@@ -46,6 +49,12 @@ if (typeof SPEC_CHIP_MAX_FRAC !== "number") throw new Error("layout.json: top_ba
 /** The largest share of the top bar's width the chip may take (spec
  *  `top_bar.chip.max_frac`). */
 const CHIP_MAX_FRAC: number = SPEC_CHIP_MAX_FRAC;
+
+/** Secondary-part colours that read as a severity (`tokens.json` chrome). */
+const SEVERITY_OF_COLOR: Record<string, "warning" | "critical" | undefined> = {
+  [tokens.chrome.severity_warning.toUpperCase()]: "warning",
+  [tokens.chrome.severity_critical.toUpperCase()]: "critical",
+};
 
 /** The chip's button: its spec text key and what it does. Abort is the
  *  launch Abort every launch surface shares ({@link useLaunchAbort}). */
@@ -71,7 +80,10 @@ export function FlightStateChip({
   /** Compact face: the state text only. */
   compact?: boolean;
 }) {
-  const chip = useFlightStateChip(droneId);
+  // The bottom row shows the speeds when it has room for all five readouts;
+  // otherwise the chip carries them.
+  const grid = useFlightGrid();
+  const chip = useFlightStateChip(droneId, { speeds: bottomRowLabels(grid) !== "full" });
   const abortLaunch = useLaunchAbort();
   const { pilot } = usePilotState(droneId);
   const detectedLink = useGroundStationLink(droneId);
@@ -132,9 +144,23 @@ export function FlightStateChip({
           </span>
           {secondary.length > 0 && (
             // The secondary facts and the control mode follow on the same
-            // line, dimmed, and truncate before the state does.
+            // line, dimmed, and truncate before the state does. A fact in a
+            // warning or critical colour (a near obstacle, a late stick
+            // input) keeps that colour.
             <span className="fs-chip-sub" data-testid="flight-state-chip-sub" aria-hidden="true">
-              {` · ${secondary.map((s) => s.text).join(" · ")}`}
+              {secondary.map((s, i) => {
+                const severity = SEVERITY_OF_COLOR[s.color.toUpperCase()];
+                return (
+                  <span
+                    key={i}
+                    data-testid="flight-state-chip-part"
+                    data-severity={severity}
+                    style={severity ? { color: SEVERITY_VAR[severity] } : undefined}
+                  >
+                    {` · ${s.text}`}
+                  </span>
+                );
+              })}
             </span>
           )}
           {reducedRate && !compact && (
