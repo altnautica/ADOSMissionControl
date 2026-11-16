@@ -10,7 +10,7 @@ import type { PilotState } from "./cockpit-frames";
 import { speedCapText } from "./pilot-fields";
 import { speedCapLine } from "./route-check";
 import { specText } from "./spec-text";
-import { fmtEta } from "./format";
+import { fmtEta, fmtSigned1 } from "./format";
 
 export interface ChipRule {
   id: string;
@@ -30,6 +30,11 @@ export const CHIP_STALE_AFTER_MS: number = flightStateJson.stale_after_ms;
 const FC_MODE_CLASSES = flightStateJson.fc_mode_classes as unknown as Record<"rtl" | "land", Record<"copter" | "plane", number[]>>;
 const HOLD_REASON_LABELS: Readonly<Record<string, string>> = flightStateJson.hold_reason_labels;
 const POSITION_UNVERIFIED_LABELS: Readonly<Record<string, string>> = flightStateJson.position_unverified_labels;
+interface ChipTextPart {
+  text_key: string;
+  color: string;
+}
+
 const CHIP_SECONDARY = flightStateJson.secondary as {
   order: string[];
   fc_failsafe: { text: string; color: string };
@@ -38,6 +43,11 @@ const CHIP_SECONDARY = flightStateJson.secondary as {
   avoid_state: Record<string, { text: string; color: string } | null>;
   hold_reason: { text: string; color: string };
   control_mode: Record<string, string>;
+  profile_limit: { text_key: string };
+  clearance: { text_key: string; near_factor: number; near_color: string; inside_margin_color: string };
+  input_age: ChipTextPart & { over_ms: number };
+  h_speed: ChipTextPart & { owner: string };
+  v_speed: ChipTextPart & { owner: string };
 };
 const PROFILE_SHEET: { values: string[]; labels: string[] } = flightStateJson.mode_sheet.profile;
 const STATE_COLORS: Readonly<Record<string, string>> = tokensJson.state as Record<string, string>;
@@ -80,6 +90,18 @@ export interface ChipFacts {
   positionUnverified: string | null;
   /** Why the cap (`gnss-denied`, `confined-near`), or null with none. */
   speedCapReason: string | null;
+  /** The horizontal limit the sticks fly at (m/s), or null without limits. */
+  profileLimitMps: number | null;
+  /** The vehicle's horizontal and vertical (+ up) speed in m/s, or null
+   *  when the surface passes none. */
+  hSpeedMps: number | null;
+  vSpeedMps: number | null;
+  /** Age of the stick frame the pilot flew last (ms), null while the
+   *  sticks do not fly. */
+  stickInputAgeMs: number | null;
+  /** The nearest obstacle (m) and the margin the pilot keeps (m), or null. */
+  minClearanceM: number | null;
+  marginM: number | null;
   /** Age of the pilot state in ms. */
   ageMs: number;
 }
@@ -199,6 +221,7 @@ function fill(template: string, f: ChipFacts): string {
     eta: fmtEta(f.etaS),
     fc_mode_name_upper: (f.fcModeName ?? "—").toUpperCase(),
     step: launchStepName(f.launchStep),
+    profile_limit: f.profileLimitMps === null ? "" : specText(CHIP_SECONDARY.profile_limit.text_key, { v: speedCapText(f.profileLimitMps) }),
     position_unverified_label:
       f.positionUnverified === null
         ? ""
@@ -222,14 +245,29 @@ function holdReasonLabel(reason: string): string {
   return HOLD_REASON_LABELS[reason] ?? reason.replace(/[-_]/g, " ");
 }
 
-/** The secondary line, in the spec's order: FC failsafe, the pilot's speed
- *  cap, a mission the pilot holds paused, hold reason, avoidance state,
- *  control mode. */
+/** The secondary line, in the spec's order: FC failsafe, the obstacle
+ *  clearance, a late stick input, the pilot's speed cap, a mission the pilot
+ *  holds paused, hold reason, avoidance state, control mode, then the
+ *  horizontal and vertical speed while the sticks fly. */
 export function chipSecondary(f: ChipFacts): ChipLine[] {
   const out: ChipLine[] = [];
   for (const part of CHIP_SECONDARY.order) {
     if (part === "fc_failsafe" && f.fcFailsafe) {
       out.push({ text: CHIP_SECONDARY.fc_failsafe.text, color: colorOf(CHIP_SECONDARY.fc_failsafe.color) });
+    } else if (part === "clearance" && f.minClearanceM !== null && f.marginM !== null && f.marginM > 0) {
+      const c = CHIP_SECONDARY.clearance;
+      if (f.minClearanceM < c.near_factor * f.marginM) {
+        out.push({
+          text: specText(c.text_key, { m: (Math.round(f.minClearanceM * 10) / 10).toFixed(1) }),
+          color: colorOf(f.minClearanceM <= f.marginM ? c.inside_margin_color : c.near_color),
+        });
+      }
+    } else if (part === "input_age" && f.stickInputAgeMs !== null && f.stickInputAgeMs > CHIP_SECONDARY.input_age.over_ms) {
+      const a = CHIP_SECONDARY.input_age;
+      out.push({ text: specText(a.text_key, { ms: Math.round(f.stickInputAgeMs) }), color: colorOf(a.color) });
+    } else if ((part === "h_speed" || part === "v_speed") && f.owner === CHIP_SECONDARY[part].owner) {
+      const v = part === "h_speed" ? f.hSpeedMps : f.vSpeedMps;
+      if (v !== null) out.push({ text: specText(CHIP_SECONDARY[part].text_key, { v: fmtSigned1(v) }), color: colorOf(CHIP_SECONDARY[part].color) });
     } else if (part === "speed_cap" && f.speedCapMps !== null) {
       // The reason's own spec line; the spec's default line for a reason it
       // does not name.
@@ -307,6 +345,7 @@ export function chipFacts(
     completeAgeMs: number | null;
     distM?: number | null;
     etaS?: number | null;
+    speed?: { hMps: number | null; vMps: number | null } | null;
   },
 ): ChipFacts {
   const block = firstBlock(p);
@@ -339,6 +378,12 @@ export function chipFacts(
     speedCapMps: p.speedCap?.vHMps ?? null,
     positionUnverified: positionUnverifiedKey(p.positionUnverified),
     speedCapReason: p.speedCap?.reason ?? null,
+    profileLimitMps: p.profileLimits?.vHMps ?? null,
+    hSpeedMps: extra.speed?.hMps ?? null,
+    vSpeedMps: extra.speed?.vMps ?? null,
+    stickInputAgeMs: p.stick?.inputAgeMs ?? null,
+    minClearanceM: p.minClearanceM,
+    marginM: p.profileLimits && p.profileLimits.marginM > 0 ? p.profileLimits.marginM : (p.routeCheck?.marginM ?? null),
     ageMs,
   };
 }

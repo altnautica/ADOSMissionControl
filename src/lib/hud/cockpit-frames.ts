@@ -21,11 +21,15 @@
 
 import {
   parsePositionUnverified,
+  parseProfileLimits,
   parseSpeedCap,
   parseStatusText,
+  parseStickCommand,
   type FcStatusText,
   type PositionUnverified,
+  type ProfileLimits,
   type SpeedCap,
+  type StickCommand,
 } from "./pilot-fields";
 import {
   PLACE_CLASSES,
@@ -38,7 +42,7 @@ import {
   type RouteCheck,
 } from "./cockpit-mission";
 
-export type { FcStatusText, PositionUnverified, SpeedCap } from "./pilot-fields";
+export type { FcStatusText, PositionUnverified, ProfileLimits, SpeedCap, StickCommand } from "./pilot-fields";
 export {
   decodeBase64Into,
   decodeGridCode,
@@ -196,6 +200,11 @@ export interface PilotState {
   /** The pilot does not trust the horizontal position (an older agent sends
    *  none), or null. */
   positionUnverified: PositionUnverified | null;
+  /** The limits the operator's sticks fly at now, or null (an older agent). */
+  profileLimits: ProfileLimits | null;
+  /** The operator's sticks on the latest stick tick, while they own the
+   *  vehicle; else null. */
+  stick: StickCommand | null;
 }
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off", "stale", "unavailable"];
@@ -278,6 +287,8 @@ export function parsePilotState(raw: unknown): PilotState | null {
     routeCheck: parseRouteCheck(p.route_check),
     sensors: p.sensors ?? null,
     positionUnverified: parsePositionUnverified(p.position_unverified),
+    profileLimits: parseProfileLimits(p.profile_limits),
+    stick: parseStickCommand(p.stick),
   };
 }
 

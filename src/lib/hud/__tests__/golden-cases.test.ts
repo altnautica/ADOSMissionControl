@@ -53,6 +53,7 @@ describe("chip cases", () => {
           arAgeMs: 0,
           modeDetail: i.mode_detail,
           completeAgeMs: i.complete_age_ms,
+          speed: null,
         }),
       );
       expect({

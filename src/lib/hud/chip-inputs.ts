@@ -84,6 +84,10 @@ export interface ChipContext {
   modeDetail: string | null;
   /** Ms since the mission turned `complete`, or null. */
   completeAgeMs: number | null;
+  /** The vehicle's horizontal and vertical (+ up) speed in m/s for the
+   *  chip's speed parts while the sticks fly; null on a surface that shows
+   *  them elsewhere. */
+  speed: { hMps: number | null; vMps: number | null } | null;
 }
 
 /** The chip facts for one pilot state received at `pilotAtMs`, read at
@@ -95,5 +99,6 @@ export function chipInputs(pilot: PilotState, nowMs: number, pilotAtMs: number, 
     completeAgeMs: ctx.completeAgeMs,
     distM: goalDistanceM(ctx.localPos, pilot.goalNed),
     etaS: nextWaypointEtaS(ctx.arFrame, ctx.arAgeMs),
+    speed: ctx.speed,
   });
 }

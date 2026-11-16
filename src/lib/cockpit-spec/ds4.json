@@ -220,11 +220,20 @@
     "default": "D-pad reticle: D-pad moves it, Cross selects, Circle cancels"
   },
   "lightbar": {
-    "priority": ["failsafe", "low_battery", "rth", "mission", "skill", "pilot", "armed_idle", "disarmed"],
+    "priority": ["failsafe", "low_battery", "rth", "mission", "skill", "pilot_cine", "pilot_normal", "pilot_sport", "pilot", "armed_idle", "disarmed"],
+    "profile_states": {
+      "$description": "While pilot.owner is `pilot` (the operator's sticks own the vehicle) the bar shows the state of pilot.profile; every other motion owner that is not a mission or a skill (goto, swarm, tuning) shows `pilot`.",
+      "cine": "pilot_cine",
+      "normal": "pilot_normal",
+      "sport": "pilot_sport"
+    },
     "states": {
       "disarmed": { "color": "#00C853", "pattern": "solid", "hz": null },
       "armed_idle": { "color": "#FFFFFF", "pattern": "solid", "hz": null },
       "pilot": { "color": "#2979FF", "pattern": "solid", "hz": null },
+      "pilot_cine": { "color": "#64FFDA", "pattern": "solid", "hz": null },
+      "pilot_normal": { "color": "#2979FF", "pattern": "solid", "hz": null },
+      "pilot_sport": { "color": "#FF6D00", "pattern": "solid", "hz": null },
       "skill": { "color": "#22D3EE", "pattern": "solid", "hz": null },
       "mission": { "color": "#FF3EC8", "pattern": "solid", "hz": null },
       "rth": { "color": "#F59E0B", "pattern": "blink", "hz": 1 },
@@ -238,5 +247,38 @@
     "critical": { "pulses_ms": [300, 300, 300], "gap_ms": 200, "strong": 1.0, "weak": 1.0 },
     "ramp": { "from": 0.1, "to": 1.0, "over": "hold_ms", "tick_ms": 100 },
     "countdown": { "pulse_ms": 80, "every_ms": 500, "over": "hold_ms" }
+  },
+  "feedback": {
+    "$description": "Controller rumble from pilot-state changes, the same on every surface. Each pilot state is compared with the previous one the surface saw; the first state seen, and the first after `state_lost`, earns nothing. Of the rules that fire on one update only the strongest class plays (`order`, strongest first), once, with the `rumble` pattern of that class. `field` is a dotted path into the snake_case pilot state; a missing field reads as null. A rule with `armed_only` fires only while pilot.armed is not false (unknown counts as armed).",
+    "order": ["critical", "warning", "mode_change"],
+    "triggers": {
+      "changed": "the field's value differs from the previous state's (null counts as a value)",
+      "new_value": "the field is not null and differs from the previous state's",
+      "entered": "the field is one of `values` and differs from the previous state's",
+      "appeared": "the field is not null and was null in the previous state",
+      "new_item": "the array at `field` holds an item matching every key of `where` whose `key` value no matching item of the previous state had",
+      "state_lost": "the surface's pilot state went stale or its link to the drone dropped (the surface's own staleness timer); no field"
+    },
+    "mode_change": [
+      { "id": "profile_changed", "field": "profile", "on": "changed", "rumble": "mode_change" },
+      { "id": "owner_changed", "field": "owner", "on": "changed", "rumble": "mode_change" },
+      { "id": "takeover", "field": "input_session.session", "on": "new_value", "rumble": "mode_change" },
+      { "id": "skill_changed", "field": "skill.skill_id", "on": "changed", "rumble": "mode_change" },
+      { "id": "control_mode_changed", "field": "control_mode", "on": "changed", "rumble": "mode_change" }
+    ],
+    "warning": [
+      { "id": "avoiding", "field": "avoid_state", "on": "entered", "values": ["detour", "blocked"], "rumble": "warning" },
+      { "id": "hold_reason", "field": "hold_reason", "on": "new_value", "rumble": "warning" },
+      { "id": "speed_cap", "field": "speed_cap.reason", "on": "new_value", "rumble": "warning" },
+      { "id": "readiness_warn", "field": "readiness", "on": "new_item", "where": { "ok": false, "severity": "warn" }, "key": "id", "rumble": "warning" }
+    ],
+    "critical": [
+      { "id": "controller_lost", "field": "hold_reason", "on": "entered", "values": ["controller-lost"], "rumble": "critical" },
+      { "id": "link_loss", "field": "link_loss_in_s", "on": "appeared", "rumble": "critical" },
+      { "id": "failsafe", "field": "fc_failsafe", "on": "entered", "values": [true], "rumble": "critical" },
+      { "id": "low_battery", "field": "rth_countdown_s", "on": "appeared", "rumble": "critical" },
+      { "id": "readiness_block", "field": "readiness", "on": "new_item", "where": { "ok": false, "severity": "block" }, "key": "id", "armed_only": true, "rumble": "critical" },
+      { "id": "state_lost", "on": "state_lost", "rumble": "critical" }
+    ]
   }
 }
