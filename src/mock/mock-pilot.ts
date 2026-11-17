@@ -242,8 +242,9 @@ export class MockPilot {
   publishPolled(): void {
     const droneId = this.droneId;
     if (!droneId || demoTelemetryFrozen()) return;
-    const parsed = parsePilotState(this.snapshot());
-    if (parsed) useNavStreamStore.getState().setPilot(droneId, parsed);
+    const raw = this.snapshot();
+    const parsed = parsePilotState(raw);
+    if (parsed) useNavStreamStore.getState().setPilot(droneId, parsed, Date.now(), raw);
   }
 
   private freshWire(): Json {
@@ -398,7 +399,7 @@ export class MockPilot {
     // demo nav feed's fallback poll delivers it instead (publishPolled).
     if (demoNavStreamBlockedAt() !== null) return;
     const parsed = parsePilotState(data);
-    if (parsed) useNavStreamStore.getState().setPilot(droneId, parsed);
+    if (parsed) useNavStreamStore.getState().setPilot(droneId, parsed, Date.now(), data);
   }
 }
 

@@ -814,7 +814,6 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-layer-cycle { border-radius: var(--fs-radius-sm) 0 0 var(--fs-radius-sm); }
 .ados-cockpit .fs-layer-caret { border-radius: 0 var(--fs-radius-sm) var(--fs-radius-sm) 0; padding: 0 6px; }
 .ados-cockpit[data-grid="compact"] .fs-bar, .ados-cockpit[data-grid="portrait"] .fs-bar { gap: 6px; }
-.ados-cockpit[data-grid="compact"] .fs-chip-sub, .ados-cockpit[data-grid="portrait"] .fs-chip-sub { display: none; }
 .ados-cockpit[data-grid="portrait"] .fs-stop > span, .ados-cockpit[data-grid="compact"] .fs-stop .fs-ico { display: none; }
 /* the navigation-source chip keeps its own popover; flatten its band styling here */
 .ados-cockpit .fs-bar .navchip, .ados-cockpit .fs-menu .navchip { height: auto; padding: 0; border: 0; }
@@ -909,6 +908,7 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-pill-text { display: none; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar :is(.fs-chip-wrap, .fs-chip, .fs-chip-text),
 .ados-cockpit .fs-bar[data-overflow="full"] :is(.fs-chip-wrap, .fs-chip, .fs-chip-text) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-chip-sub { flex-shrink: 100; }
 .ados-cockpit .fs-bar[data-overflow="full"] .fs-pill-wrap { flex-shrink: 100; }
 
 /* bottom-left card */

@@ -972,7 +972,6 @@
     "yaw": "Yaw",
     "tuning": "Tuning",
     "deadzone": "Deadzone",
-    "expoCurve": "Expo Curve",
     "testMode": "Test Mode",
     "testModeUnavailable": "Gamepad test mode not available in demo",
     "manualControlLinkBlocked": "Sticks will not reach this aircraft: {reason}. Nothing is being transmitted.",

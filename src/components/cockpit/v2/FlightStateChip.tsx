@@ -13,8 +13,9 @@
  * longer text ends in an ellipsis and the full text stays in its title and
  * accessible name. It is one line: a dot in the state colour, the state,
  * then the secondary facts dimmed after " · ", inside a 1 px outline in the
- * state colour. At the compact classes it shows its compact face, the state
- * text alone without the secondary facts.
+ * state colour. At the compact classes it shows its compact face: the state
+ * text with only the parts the sticks need (clearance, a late input, the
+ * horizontal and vertical speed).
  *
  * @module cockpit/v2/FlightStateChip
  * @license GPL-3.0-only
@@ -24,11 +25,15 @@ import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import Link from "next/link";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import tokens from "@/lib/cockpit-spec/tokens.json";
+import { SEVERITY_VAR, useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { bottomRowLabels } from "@/components/cockpit/flight/flight-grid";
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { refusalText } from "@/lib/hud/refusal";
+import { CHIP_COMPACT_PARTS } from "@/lib/hud/flight-state";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { ModeSheet } from "./ModeSheet";
 import { useLaunchAbort } from "./LaunchSteps";
@@ -46,6 +51,12 @@ if (typeof SPEC_CHIP_MAX_FRAC !== "number") throw new Error("layout.json: top_ba
 /** The largest share of the top bar's width the chip may take (spec
  *  `top_bar.chip.max_frac`). */
 const CHIP_MAX_FRAC: number = SPEC_CHIP_MAX_FRAC;
+
+/** Secondary-part colours that read as a severity (`tokens.json` chrome). */
+const SEVERITY_OF_COLOR: Record<string, "warning" | "critical" | undefined> = {
+  [tokens.chrome.severity_warning.toUpperCase()]: "warning",
+  [tokens.chrome.severity_critical.toUpperCase()]: "critical",
+};
 
 /** The chip's button: its spec text key and what it does. Abort is the
  *  launch Abort every launch surface shares ({@link useLaunchAbort}). */
@@ -71,7 +82,10 @@ export function FlightStateChip({
   /** Compact face: the state text only. */
   compact?: boolean;
 }) {
-  const chip = useFlightStateChip(droneId);
+  // The bottom row shows the speeds when it has room for all five readouts;
+  // otherwise the chip carries them.
+  const grid = useFlightGrid();
+  const chip = useFlightStateChip(droneId, { speeds: bottomRowLabels(grid) !== "full" });
   const abortLaunch = useLaunchAbort();
   const { pilot } = usePilotState(droneId);
   const detectedLink = useGroundStationLink(droneId);
@@ -91,7 +105,7 @@ export function FlightStateChip({
   // words after its secondary facts.
   const polled = useNavStreamStore((s) => s.byDrone[droneId]?.transport === "poll");
   const reducedRate = polled ? specString("nav.reduced_rate") : null;
-  const secondary = compact ? [] : chip.secondary;
+  const secondary = compact ? chip.secondary.filter((s) => CHIP_COMPACT_PARTS[s.id]) : chip.secondary;
   const fullText = [chip.text, ...chip.secondary.map((s) => s.text), ...(reducedRate ? [reducedRate] : [])].join(" · ");
   const maxWidth = barWidth !== undefined && barWidth > 0 ? Math.floor(barWidth * CHIP_MAX_FRAC) : undefined;
 
@@ -132,9 +146,23 @@ export function FlightStateChip({
           </span>
           {secondary.length > 0 && (
             // The secondary facts and the control mode follow on the same
-            // line, dimmed, and truncate before the state does.
+            // line, dimmed, and truncate before the state does. A fact in a
+            // warning or critical colour (a near obstacle, a late stick
+            // input) keeps that colour.
             <span className="fs-chip-sub" data-testid="flight-state-chip-sub" aria-hidden="true">
-              {` · ${secondary.map((s) => s.text).join(" · ")}`}
+              {secondary.map((s, i) => {
+                const severity = SEVERITY_OF_COLOR[s.color.toUpperCase()];
+                return (
+                  <span
+                    key={i}
+                    data-testid="flight-state-chip-part"
+                    data-severity={severity}
+                    style={severity ? { color: SEVERITY_VAR[severity] } : undefined}
+                  >
+                    {` · ${s.text}`}
+                  </span>
+                );
+              })}
             </span>
           )}
           {reducedRate && !compact && (
