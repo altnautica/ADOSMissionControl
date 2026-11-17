@@ -39,7 +39,8 @@ export function noRcReadiness(seen: Json): Json[] {
   const s = typeof seen.link_loss_s === "number" ? seen.link_loss_s : DEMO_LINK_LOSS_S;
   const hold = action === "hold" || action === "loiter";
   return [
-    { id: "rc_receiver", ok: true, severity: "warn", msg: `No RC: Pause, Land and Return in the app; link loss → ${action} after ${s} s` },
+    { id: "rc_receiver", ok: true, severity: "warn", msg: `No controller: stop it from this phone: Pause, Land or Return. If the link drops for ${s} s it ${action === "land" ? "lands" : "returns"}.` },
+    { id: "rc_seen", ok: true, severity: "block", msg: "No controller detected" },
     {
       id: "link_loss_posture",
       ok: !hold && s <= 15,

@@ -77,12 +77,12 @@ describe("StepCard: Meet ADOS Pilot with no RC receiver seen", () => {
     render(<StepCard step={noRc} busy={false} error={null} onAction={onAction} />);
     const buttons = screen.getAllByRole("button").map((b) => b.textContent);
     expect(buttons).toEqual([
-      "Use ADOS Pilot with no RC transmitter",
+      "Use ADOS Pilot with no controller",
       setupText("setup.action.use_ados"),
       setupText("setup.action.keep_fc"),
     ]);
     expect(screen.getByTestId("setup-ados-intro-no-rc").textContent).toBe(setupText("setup.ados_intro.body.no_rc"));
-    expect(screen.getByTestId("setup-ados-intro-no-rc").textContent).toMatch(/^With no RC transmitter you fly from the app\./);
+    expect(screen.getByTestId("setup-ados-intro-no-rc").textContent).toMatch(/^This drone flies without an RC transmitter\./);
     fireEvent.click(screen.getByTestId("setup-action-use_ados_no_rc"));
     expect(onAction).toHaveBeenCalledWith(noRc, "use_ados_no_rc", undefined);
   });
