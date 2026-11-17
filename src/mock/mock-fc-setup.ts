@@ -20,6 +20,8 @@ type Json = Record<string, unknown>;
 
 const ACCEL_POSES = ["accel_level", "accel_left", "accel_right", "accel_nose_down", "accel_nose_up", "accel_back"];
 const MOTORS = 4;
+/** The demo FC has an RC receiver bound (the intro's `rc_present`). */
+const DEMO_RC_PRESENT = true;
 
 interface DemoState {
   deviceId: string;
@@ -167,7 +169,16 @@ function enter(e: DemoState, wizard: "ground" | "air", step: string): void {
       Object.assign(s, { state: "waiting_user", actions: [action("apply")] });
       break;
     case "ados_intro":
-      Object.assign(s, { state: "waiting_user", actions: [action("use_ados"), action("keep_fc", "secondary")] });
+      // The engine leads with the no-RC choice when it saw no RC receiver.
+      Object.assign(s, {
+        state: "waiting_user",
+        args: { fallback_mode: "fc_manual", rc_present: DEMO_RC_PRESENT },
+        actions: [
+          action("use_ados", DEMO_RC_PRESENT ? "primary" : "secondary"),
+          action("use_ados_no_rc", DEMO_RC_PRESENT ? "secondary" : "primary"),
+          action("keep_fc", "secondary"),
+        ],
+      });
       break;
     case "autotune":
       Object.assign(s, {
@@ -299,6 +310,9 @@ function doAction(e: DemoState, wizard: "ground" | "air", step: string, id: stri
     case "ados_intro:use_ados":
     case "ados_intro:keep_fc":
       finish(e, wizard, step, { control_mode: id === "use_ados" ? "ados" : "fc_manual" });
+      break;
+    case "ados_intro:use_ados_no_rc":
+      finish(e, wizard, step, { control_mode: "ados", rc_receiver: "absent" });
       break;
     case "autotune:start":
       Object.assign(s, { state: "running", progress: 0, actions: [action("abort", "danger", "hold")] });

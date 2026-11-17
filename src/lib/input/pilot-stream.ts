@@ -6,6 +6,12 @@
  * the sticks stop, flight `action`s and the stick-session handover, and it
  * receives the pilot's state. Frames are the `pilot.v1` request objects,
  * JSON-encoded. The pairing key never reaches the URL.
+ *
+ * Every frame carries this tab's `sid`, so the pilot runs one link-loss timer
+ * per tab across reconnects; `bye` precedes a deliberate close; the 1 Hz `hb`
+ * is timed by a Worker (see pilot-hb). With no RC transmitter declared and
+ * the drone armed, leaving the stream ends in the pilot's link-loss action
+ * unless another surface holds the sticks, so a leave is warned first.
  * @license GPL-3.0-only
  */
 
@@ -14,6 +20,8 @@ import { create } from "zustand";
 import { WS_TICKET_PROTOCOL, mintWsTicket } from "@/lib/api/ground-station/ws-ticket";
 import type { RequestContext } from "@/lib/api/ground-station/request";
 import { openReconnectingSocket } from "@/lib/net/reconnecting-socket";
+import { noRcLeaveText } from "@/lib/cockpit/no-rc-text";
+import { startPilotHeartbeat, type PilotHeartbeat } from "./pilot-hb";
 
 /** Stick frame rate on the pilot stream. */
 export const PILOT_INPUT_HZ = 50;
@@ -45,7 +53,8 @@ export type PilotActionName =
   | "mission_skip"
   | "goto"
   | `vtol:${"fw" | "mc"}`
-  | `place_class:${"open" | "confined"}`;
+  | `place_class:${"open" | "confined"}`
+  | `rc_receiver:${"absent" | "present"}`;
 
 /** Server reply to an action, when the pilot sends one. */
 export interface PilotActionResult {
@@ -56,20 +65,23 @@ export interface PilotActionResult {
   at: number;
 }
 
+/** Every client frame names this tab's instance (`sid`). */
 export type PilotOutboundFrame =
   | {
       op: "input";
       src: string;
+      sid: string;
       session: number;
       seq: number;
       t_ms: number;
       axes: [number, number, number, number];
       buttons: number;
     }
-  | { op: "release"; src: string; session: number }
-  | { op: "action"; name: PilotActionName; src: string; id: string; args?: Record<string, unknown> }
-  | { op: "session.take"; src: string; session: number }
-  | { op: "hb"; src: string };
+  | { op: "release"; src: string; sid: string; session: number }
+  | { op: "action"; name: PilotActionName; src: string; sid: string; id: string; args?: Record<string, unknown> }
+  | { op: "session.take"; src: string; sid: string; session: number }
+  | { op: "hb"; src: string; sid: string }
+  | { op: "bye"; src: string; sid: string };
 
 /**
  * One page load is one stick session. `pilot.v1` carries the session as a
@@ -85,6 +97,22 @@ export function newSessionId(): number {
 }
 
 export const PILOT_SESSION_ID = newSessionId();
+
+/** A surface instance id: 32 lowercase hex digits from 16 random bytes. */
+export function newSurfaceSid(): string {
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) crypto.getRandomValues(bytes);
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * This tab's instance id, once per page load and kept in memory only (a
+ * duplicated tab or a reload is a new instance). Every frame carries it, and
+ * a reconnect keeps it, so the pilot's link-loss timer for this tab runs on
+ * across the reconnect.
+ */
+export const PILOT_SID = newSurfaceSid();
 
 interface PilotLinkState {
   /** Drone the open stream belongs to, or null. */
@@ -120,6 +148,54 @@ type Sender = (frame: PilotOutboundFrame) => boolean;
 let sender: Sender | null = null;
 let seq = 0;
 const stateListeners = new Set<(droneId: string, data: unknown) => void>();
+
+/** What a deliberate leave depends on, from the last pilot state. */
+interface LeaveState {
+  /** Null while the pilot has no FC link: possibly airborne. */
+  armed: boolean | null;
+  rcAbsent: boolean;
+  /** The stick session's holder, or null while nobody holds it. */
+  session: { src: string; session: number | null } | null;
+  linkLossAction: string | null;
+  linkLossS: number | null;
+}
+
+let leaveState: LeaveState | null = null;
+/** The open stream's heartbeat, told whether this tab holds the sticks. */
+let heartbeat: PilotHeartbeat | null = null;
+
+/** Whether a stick-session holder is this tab: its session id, or `src` from
+ *  a pilot that names no session. */
+function isThisTab(holder: { src: string; session: number | null }): boolean {
+  return holder.session !== null ? holder.session === PILOT_SESSION_ID : holder.src === PILOT_SRC;
+}
+
+/** Whether this tab holds the pilot's stick session. */
+export function holdsPilotSession(): boolean {
+  const session = leaveState?.session ?? null;
+  return session !== null && isThisTab(session);
+}
+
+/**
+ * The warning a deliberate leave of the pilot stream needs, or null. Armed
+ * (or arm state unknown) with no RC transmitter declared, the pilot honours
+ * this tab's `bye` only when another surface holds the stick session, so
+ * otherwise leaving ends in its link-loss action.
+ */
+export function pilotLeaveWarning(): string | null {
+  const s = leaveState;
+  if (!s || !s.rcAbsent || s.armed === false) return null;
+  if (s.session !== null && !isThisTab(s.session)) return null;
+  return noRcLeaveText(s);
+}
+
+/** Ask before an in-app leave of the pilot stream (switching the drone).
+ *  True when there is nothing to warn about or the operator confirmed. */
+export function confirmPilotLeave(): boolean {
+  const text = pilotLeaveWarning();
+  if (text === null || typeof window === "undefined") return true;
+  return window.confirm(text);
+}
 
 /** Subscribe to pilot state frames received on the stream. */
 export function onPilotState(fn: (droneId: string, data: unknown) => void): () => void {
@@ -177,6 +253,7 @@ export function sendPilotInput(axes: [number, number, number, number], buttons: 
   const ok = send({
     op: "input",
     src: PILOT_SRC,
+    sid: PILOT_SID,
     session: PILOT_SESSION_ID,
     seq,
     t_ms: Date.now(),
@@ -193,7 +270,7 @@ export function sendPilotInput(axes: [number, number, number, number], buttons: 
 export function sendPilotRelease(): boolean {
   if (!usePilotLinkStore.getState().streaming) return false;
   usePilotLinkStore.getState().set({ streaming: false });
-  return send({ op: "release", src: PILOT_SRC, session: PILOT_SESSION_ID });
+  return send({ op: "release", src: PILOT_SRC, sid: PILOT_SID, session: PILOT_SESSION_ID });
 }
 
 /** How long an action waits for the pilot's `action_result`. */
@@ -236,7 +313,8 @@ function failPendingActions(err: string): void {
 }
 
 function actionFrame(name: PilotActionName, id: string, args?: Record<string, unknown>): PilotOutboundFrame {
-  return args ? { op: "action", name, src: PILOT_SRC, id, args } : { op: "action", name, src: PILOT_SRC, id };
+  const frame = { op: "action" as const, name, src: PILOT_SRC, sid: PILOT_SID, id };
+  return args ? { ...frame, args } : frame;
 }
 
 /** Send a flight action without waiting for its result. Returns false when no
@@ -267,12 +345,31 @@ export function requestPilotAction(
 
 /** One heartbeat: keeps the pilot's link-loss failsafe counting this surface. */
 export function sendPilotHeartbeat(): boolean {
-  return send({ op: "hb", src: PILOT_SRC });
+  return send({ op: "hb", src: PILOT_SRC, sid: PILOT_SID });
+}
+
+/** This tab is leaving the stream on purpose. Best effort: false when no
+ *  stream is open. */
+export function sendPilotBye(): boolean {
+  return send({ op: "bye", src: PILOT_SRC, sid: PILOT_SID });
 }
 
 /** Take the stick session from another surface. */
 export function takePilotSession(): boolean {
-  return send({ op: "session.take", src: PILOT_SRC, session: PILOT_SESSION_ID });
+  return send({ op: "session.take", src: PILOT_SRC, sid: PILOT_SID, session: PILOT_SESSION_ID });
+}
+
+function readLeaveState(data: Record<string, unknown>): LeaveState {
+  const is = data.input_session;
+  const holder = typeof is === "object" && is !== null ? (is as Record<string, unknown>) : null;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  return {
+    armed: typeof data.armed === "boolean" ? data.armed : null,
+    rcAbsent: data.rc_receiver === "absent",
+    session: holder && typeof holder.src === "string" ? { src: holder.src, session: num(holder.session) } : null,
+    linkLossAction: typeof data.link_loss_action === "string" ? data.link_loss_action : null,
+    linkLossS: num(data.link_loss_s),
+  };
 }
 
 /** Route one server frame. Exported for tests. */
@@ -280,11 +377,16 @@ export function handlePilotServerFrame(droneId: string, frame: unknown): void {
   if (typeof frame !== "object" || frame === null) return;
   const f = frame as Record<string, unknown>;
   if (f.kind === "pilot") {
-    const mode = (f.data as Record<string, unknown> | null)?.control_mode;
+    const data = typeof f.data === "object" && f.data !== null ? (f.data as Record<string, unknown>) : null;
+    const mode = data?.control_mode;
     if (mode === "ados" || mode === "fc_manual" || mode === "elrs") {
       if (usePilotLinkStore.getState().controlMode !== mode) {
         usePilotLinkStore.getState().set({ controlMode: mode });
       }
+    }
+    if (data) {
+      leaveState = readLeaveState(data);
+      heartbeat?.setHolder(holdsPilotSession());
     }
     for (const fn of stateListeners) fn(droneId, f.data);
   } else if (f.kind === "action_result" && typeof f.name === "string") {
@@ -302,7 +404,8 @@ export interface PilotStreamConnection {
   close: () => void;
 }
 
-/** Open the pilot stream for one drone. Closing releases the sticks first. */
+/** Open the pilot stream for one drone. Closing releases the sticks and
+ *  says `bye` first. */
 export function connectPilotStream(opts: {
   droneId: string;
   agentUrl: string;
@@ -314,10 +417,31 @@ export function connectPilotStream(opts: {
   const url = agentUrl.replace(/^http/, "ws") + "/api/v1/pilot/stream";
   let socket: WebSocket | null = null;
   // While not streaming sticks, a 1 Hz heartbeat keeps the pilot's link-loss
-  // failsafe from counting this surface as gone.
-  const hb = setInterval(() => {
+  // failsafe from counting this surface as gone. The Worker times it; see
+  // pilot-hb for the send path and the session holder's liveness gate.
+  heartbeat?.stop();
+  const hb = startPilotHeartbeat(() => {
     if (!usePilotLinkStore.getState().streaming) sendPilotHeartbeat();
-  }, 1000);
+  });
+  heartbeat = hb;
+  hb.setHolder(holdsPilotSession());
+  // The tab is going away (closed, reloaded, navigated off): release and say
+  // `bye` while the socket is still open. Best effort: the page may be gone
+  // before the frames leave.
+  const onPageHide = () => {
+    sendPilotRelease();
+    sendPilotBye();
+  };
+  // Closing the tab with no RC while armed ends in the link-loss action:
+  // the browser's own leave prompt asks first.
+  const onBeforeUnload = (e: BeforeUnloadEvent) => {
+    const text = pilotLeaveWarning();
+    if (text === null) return;
+    e.preventDefault();
+    e.returnValue = text;
+  };
+  window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("beforeunload", onBeforeUnload);
 
   usePilotLinkStore.getState().set({ agentFor: droneId, controlMode: null });
   const teardown = openReconnectingSocket<WebSocket>({
@@ -359,6 +483,7 @@ export function connectPilotStream(opts: {
   return {
     close: () => {
       sendPilotRelease();
+      sendPilotBye();
       sender = null;
       usePilotLinkStore.getState().set({
         droneId: null,
@@ -367,7 +492,11 @@ export function connectPilotStream(opts: {
         controlMode: null,
         agentFor: null,
       });
-      clearInterval(hb);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      hb.stop();
+      if (heartbeat === hb) heartbeat = null;
+      leaveState = null;
       failPendingActions(PILOT_CLOSED);
       teardown();
       socket = null;

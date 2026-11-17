@@ -24,6 +24,9 @@ import { cn } from "@/lib/utils";
 
 /** The step id whose actions render as the "Meet ADOS Pilot" screen. */
 export const ADOS_INTRO_STEP = "ados_intro";
+/** The intro's choice to fly ADOS Pilot with no RC transmitter; the engine
+ *  makes it the primary action when it saw no RC receiver (`rc_present`). */
+export const USE_ADOS_NO_RC = "use_ados_no_rc";
 
 const STYLE_CLASS: Record<ActionStyle, string> = {
   primary: "bg-accent-primary text-white hover:bg-accent-primary/90",
@@ -306,7 +309,9 @@ function StepStateBadge({ state }: { state: StepState }) {
 
 /** The `ados_intro` step: three lines on what ADOS flies, what the FC still
  *  does and how to take over, then the choice, recommended option first.
- *  The same layout and order as the agent's own wizard. */
+ *  When the no-RC choice is offered, its line says what stops the drone
+ *  without a transmitter. The same layout and order as the agent's own
+ *  wizard. */
 function MeetAdosPilot({ step, busy, error, onFire }: { step: SetupStep; busy: boolean; error: string | null; onFire: (id: string) => void }) {
   const lines = step.body_key
     ? setupText(step.body_key, step.args)
@@ -315,6 +320,7 @@ function MeetAdosPilot({ step, busy, error, onFire }: { step: SetupStep; busy: b
         .filter(Boolean)
     : [];
   const ordered = [...step.actions].sort((a, b) => Number(b.style === "primary") - Number(a.style === "primary"));
+  const noRc = step.actions.some((a) => a.id === USE_ADOS_NO_RC);
   return (
     <section className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-xl border border-accent-primary/40 bg-bg-secondary p-6" data-testid="setup-step-card" data-step={step.step} data-state={step.state}>
       <header className="flex items-start justify-between gap-2">
@@ -334,6 +340,11 @@ function MeetAdosPilot({ step, busy, error, onFire }: { step: SetupStep; busy: b
           );
         })}
       </ol>
+      {noRc && (
+        <p className="text-sm text-text-secondary" data-testid="setup-ados-intro-no-rc">
+          {setupText("setup.ados_intro.body.no_rc", step.args)}
+        </p>
+      )}
       {error && (
         <p className="text-sm text-status-error" role="alert">
           {error}

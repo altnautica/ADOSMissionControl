@@ -37,6 +37,7 @@ import { LayerLevelButton } from "../layers/LayerLevelButton";
 import { NavSourceChip } from "../NavSourceChip";
 import { StatusPill } from "./StatusPill";
 import { ConfinedChip } from "./ConfinedChip";
+import { NoRcChip } from "./NoRcChip";
 import { BatteryCell, LinkCell } from "./TopBarCells";
 import { ControllerCell } from "./ControllerCell";
 import { FlightMenu } from "./FlightMenu";
@@ -159,6 +160,8 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
           <StatusPill droneId={droneId} />
           {/* The confined-place profile: never moved off the bar. */}
           <ConfinedChip droneId={droneId} />
+          {/* The no-RC declaration: never moved off the bar either. */}
+          <NoRcChip droneId={droneId} />
           {/* The short reserve text once the bar is short of room. */}
           <BatteryCell droneId={droneId} short={compact || stage > 0} />
           {!hidden.has("link_icon") && <LinkCell droneId={droneId} detail={!hidden.has("link_text")} />}

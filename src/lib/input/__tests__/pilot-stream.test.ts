@@ -100,7 +100,7 @@ describe("pilot stream frames (pilot.v1)", () => {
  * `decode_request` (ados-protocol `pilot/wire.rs`): `input` needs src: string,
  * session/seq: u32, t_ms: u64, axes: [f32; 4], buttons: u32; `release` and
  * `session.take` need src and a u32 session; `action` needs name and src, with
- * an optional string id and object args.
+ * an optional string id and object args. Every frame carries the tab's `sid`.
  */
 describe("pilot.v1 wire shape", () => {
   const isU32 = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 0xffffffff;
@@ -114,7 +114,7 @@ describe("pilot.v1 wire shape", () => {
     sendPilotAction("launch", { after: "hold", alt_m: 3 });
     const [input, release, take, action] = frames.map((f) => JSON.parse(JSON.stringify(f)));
 
-    expect(keys(input)).toEqual(["axes", "buttons", "op", "seq", "session", "src", "t_ms"]);
+    expect(keys(input)).toEqual(["axes", "buttons", "op", "seq", "session", "sid", "src", "t_ms"]);
     expect(input.op).toBe("input");
     expect(typeof input.src).toBe("string");
     expect(isU32(input.session) && input.session !== 0).toBe(true);
@@ -125,12 +125,12 @@ describe("pilot.v1 wire shape", () => {
     expect(isU32(input.buttons)).toBe(true);
 
     for (const [f, op] of [[release, "release"], [take, "session.take"]] as const) {
-      expect(keys(f)).toEqual(["op", "session", "src"]);
+      expect(keys(f)).toEqual(["op", "session", "sid", "src"]);
       expect(f.op).toBe(op);
       expect(f.session).toBe(input.session);
     }
 
-    expect(keys(action)).toEqual(["args", "id", "name", "op", "src"]);
+    expect(keys(action)).toEqual(["args", "id", "name", "op", "sid", "src"]);
     expect(typeof action.id).toBe("string");
     expect(action.args).toEqual({ after: "hold", alt_m: 3 });
   });
