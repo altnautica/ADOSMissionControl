@@ -161,7 +161,14 @@ export interface PilotState {
   mission: MissionState | null;
   inputSession: { src: string; label: string; session: number | null } | null;
   gate: { pending: boolean; progress: number } | null;
-  sequence: { step: "checks" | "arm" | "takeoff" | "after" | "done"; after: string | null; error: string | null } | null;
+  sequence: {
+    step: "checks" | "arm" | "takeoff" | "after" | "done";
+    after: string | null;
+    error: string | null;
+    /** The supervised lift-off, from its spool-up until it hands over in the
+     *  air or stops on the ground; null while the launch runs none. */
+    liftoff: Liftoff | null;
+  } | null;
   banner: { textKey: string; args: Record<string, unknown>; untilMs: number | null } | null;
   rthCountdownS: number | null;
   /** A mission or return that stopped making progress; null while none. */
@@ -215,6 +222,34 @@ export interface PilotState {
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off", "stale", "unavailable"];
 const SEQ_STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
+const LIFTOFF_PHASES = ["spool", "level", "probe", "lift", "climb", "done", "stopped"] as const;
+
+/** The pilot's supervised lift-off (`sequence.liftoff`). */
+export interface Liftoff {
+  phase: (typeof LIFTOFF_PHASES)[number];
+  /** The status line (`Spinning up`, `Take-off stopped`, ...). */
+  text: string;
+  /** The longer line where a surface has room ("Climbing to 3 m", why it
+   *  stopped); empty when the pilot sends none. */
+  detail: string;
+  /** `learned` (this airframe's trim from earlier flights) or `probe`. */
+  trim: "learned" | "probe" | null;
+  /** Tilt from the resting attitude, degrees. */
+  tiltDeg: number | null;
+}
+
+function parseLiftoff(raw: unknown): Liftoff | null {
+  const o = obj(raw);
+  const phase = o ? oneOf(o.phase, LIFTOFF_PHASES) : null;
+  if (!o || !phase) return null;
+  return {
+    phase,
+    text: str(o.text) ?? "",
+    detail: str(o.detail) ?? "",
+    trim: oneOf(o.trim, ["learned", "probe"] as const),
+    tiltDeg: num(o.tilt_deg),
+  };
+}
 
 export function parsePilotState(raw: unknown): PilotState | null {
   const p = obj(raw);
@@ -273,7 +308,10 @@ export function parsePilotState(raw: unknown): PilotState | null {
     mission: parseMission(p.mission),
     inputSession: is && str(is.src) !== null ? { src: is.src as string, label: str(is.label) ?? (is.src as string), session: num(is.session) } : null,
     gate: gate ? { pending: gate.pending === true, progress: Math.min(1, Math.max(0, num(gate.progress) ?? 0)) } : null,
-    sequence: seq && seqStep ? { step: seqStep, after: str(seq.after), error: str(seq.error) } : null,
+    sequence:
+      seq && seqStep
+        ? { step: seqStep, after: str(seq.after), error: str(seq.error), liftoff: parseLiftoff(seq.liftoff) }
+        : null,
     banner:
       banner && str(banner.text_key) !== null
         ? { textKey: banner.text_key as string, args: obj(banner.args) ?? {}, untilMs: num(banner.until_ms) }

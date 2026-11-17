@@ -43,6 +43,9 @@ import { pluginNotify } from "@/lib/plugins/notifier";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
 import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 import { VisionAgentClient } from "@/lib/agent/vision-client";
+import { refusalText } from "@/lib/hud/refusal";
+import { requestPilotAction } from "@/lib/input/pilot-stream";
+import { launchViaPilot } from "@/lib/skills/builtins/_shared";
 import {
   PLUGIN_CONFIG_WRITE_COMMAND,
   VISION_DESIGNATE_COMMAND,
@@ -295,7 +298,17 @@ export function buildControlHandlers(
     const protocol = target
       ? useDroneManager.getState().drones.get(target.nodeId)?.protocol
       : undefined;
-    if (!target || !protocol || !protocol.sendCommand) {
+    const fcPath = !!protocol?.sendCommand;
+    // The operator arms first: a plugin's take-off for a drone not known
+    // armed is refused here, before the prompt, whatever route would carry
+    // it, since an agent can turn a take-off into a launch that arms.
+    if (target && command === "takeoff" && readTargetVehicle(target).armState !== "armed") {
+      return { ok: false, error: refusalText("disarmed") };
+    }
+    // A take-off for an armed drone with a pilot on the stream is the pilot's
+    // launch (its supervised lift-off), not a raw NAV_TAKEOFF.
+    const pilotLaunch = (t: NonNullable<typeof target>) => command === "takeoff" && launchViaPilot(t.nodeId, fcPath);
+    if (!target || (!fcPath && !pilotLaunch(target))) {
       return { ok: false, error: "command.send not supported" };
     }
 
@@ -332,6 +345,19 @@ export function buildControlHandlers(
       return { ok: false, error: RATE_LIMITED };
     }
 
+    // The route is read again after the approval: the pilot may have come
+    // or gone while the prompt was open.
+    if (pilotLaunch(target)) {
+      const r = await requestPilotAction("launch", { after: "hold", alt_m: params[6] });
+      if (r.ok) return { ok: true, result: { launched: true } };
+      const reason = refusalText(r.err);
+      reportApprovedFailure(pluginId, action, target, reason);
+      return { ok: false, error: reason };
+    }
+    if (!protocol?.sendCommand) {
+      reportApprovedFailure(pluginId, action, target, "no flight controller link");
+      return { ok: false, error: "command.send not supported" };
+    }
     const res = await protocol.sendCommand(entry.id, params);
     if (!res.success) {
       reportApprovedFailure(pluginId, action, target, res.message || "the vehicle rejected it");

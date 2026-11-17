@@ -340,7 +340,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "flight.rate_setpoint": {
     label: "Emit attitude/rate setpoints",
-    description: "Lets a plugin command the flight controller with SET_ATTITUDE_TARGET setpoints (an attitude quaternion and/or body rates, plus collective thrust) through a scoped sender, for GUIDED-mode vehicles that accept attitude/rate offboard control. This is a second flight-command surface alongside guided-mode position/velocity setpoints; the setpoint stream is the only flight-command surface this capability grants.",
+    description: "Lets a plugin command the flight controller with SET_ATTITUDE_TARGET setpoints (an attitude quaternion and/or body rates, plus collective thrust) through a scoped sender, for GUIDED-mode vehicles that accept attitude/rate offboard control. The thrust is collective thrust and is sent unchanged. ArduCopter reads it as thrust only with GUID_OPTIONS bit 3 set, which the agent sets before a supervised launch and the setup wizard writes; the host refuses a thrust setpoint while that bit is clear or unread. This is a second flight-command surface alongside guided-mode position/velocity setpoints; the setpoint stream is the only flight-command surface this capability grants.",
     category: "flight_control",
     risk: "critical",
     risk_reason: "Directly commands aircraft attitude/body rates and thrust at tick rate; a faulty stream can fly the aircraft outside guided-mode limits.",

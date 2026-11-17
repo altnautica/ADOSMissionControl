@@ -33,9 +33,16 @@ const STEP_KEY: Record<(typeof STEPS)[number], string> = {
   done: "flow.launch.step.done",
 };
 
+/** "Status line. Detail", or the status line alone when no detail came. */
+function liftoffLine(l: { text: string; detail: string }): string {
+  return l.detail ? `${l.text}. ${l.detail}` : l.text;
+}
+
 export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"] }) {
   if (!sequence) return null;
   const at = STEPS.indexOf(sequence.step);
+  const liftoff = sequence.liftoff;
+  const liftoffStopped = liftoff?.phase === "stopped" && liftoff.text !== "";
   return (
     <ol className="flex items-center gap-1" data-testid="launch-step-strip" data-step={sequence.step}>
       {STEPS.map((s, i) => (
@@ -55,7 +62,22 @@ export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"]
           {specString(STEP_KEY[s])}
         </li>
       ))}
-      {sequence.error && <span className="fs-text-crit ml-2 text-[11px]">{refusalText(sequence.error)}</span>}
+      {/* The lift-off's status line, with its detail, while it runs; once it
+          stopped on the ground they say why, in place of the error code. */}
+      {liftoffStopped ? (
+        <span className="fs-text-crit ml-2 text-[11px]" data-testid="launch-liftoff-text">
+          {liftoffLine(liftoff)}
+        </span>
+      ) : (
+        <>
+          {liftoff && liftoff.phase !== "done" && liftoff.text && !sequence.error && (
+            <span className="ml-2 text-[11px] text-text-secondary" data-testid="launch-liftoff-text">
+              {liftoffLine(liftoff)}
+            </span>
+          )}
+          {sequence.error && <span className="fs-text-crit ml-2 text-[11px]">{refusalText(sequence.error)}</span>}
+        </>
+      )}
     </ol>
   );
 }

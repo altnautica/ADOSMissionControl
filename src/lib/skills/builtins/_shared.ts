@@ -14,6 +14,7 @@ import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
 import { refusalText } from "@/lib/hud/refusal";
 import {
   PILOT_NO_ANSWER,
+  pilotStreamOpen,
   requestPilotAction,
   sticksRouteToPilot,
   type PilotActionName,
@@ -194,6 +195,17 @@ export function pilotLive(droneId: string, now: number = Date.now()): boolean {
 export function viaPilot(ctx: SkillContext): boolean {
   if (!sticksRouteToPilot(ctx.droneId)) return false;
   return pilotLive(ctx.droneId) || lastResortPath(ctx) === null;
+}
+
+/**
+ * True when a take-off for this drone goes to its pilot as `launch`: an open
+ * pilot stream in any control mode, so the pilot's supervised lift-off flies
+ * it. A stalled pilot loses the take-off to the flight controller whenever
+ * `fcPath` says one exists.
+ */
+export function launchViaPilot(droneId: string, fcPath: boolean): boolean {
+  if (!pilotStreamOpen(droneId)) return false;
+  return pilotLive(droneId) || !fcPath;
 }
 
 /** Send a built-in as a pilot action and wait for the pilot's answer, so a

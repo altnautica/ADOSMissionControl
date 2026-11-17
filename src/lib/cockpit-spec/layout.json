@@ -127,7 +127,7 @@
     "controller_rule": "hold_reason controller-lost while armed and airborne is a warning item alert.controller_lost (source controller)",
     "preflight_rule": "on the ground, every failing pre-flight checklist item is a warning item alert.preflight_failing (source preflight)"
   },
-  "battery": { "low_fallback_pct": 20, "low_fallback_note": "the low-battery threshold when the flight controller reports none" },
+  "battery": { "low_fallback_pct": 30, "low_fallback_note": "the low-battery threshold when the flight controller reports none" },
   "holds_ms": { "take_control": 1500, "hand_to_fc": 1500, "vtol_transition": 1500, "fly_here": 800, "stop": 3000 },
   "holds_note": "every confirm hold reads its duration here; fly_here keeps the value the agent cockpit and Android already use",
   "map_long_press_ms": 600,
