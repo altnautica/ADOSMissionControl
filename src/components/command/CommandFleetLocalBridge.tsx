@@ -21,6 +21,7 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { mapFullStatusToCloudStatus } from "@/lib/agent/full-status-to-cloud-status";
 import { isStaleLocalIdentity } from "@/lib/agent/stale-local-identity";
+import { isLoopbackHost } from "@/lib/nodes/loopback";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { reachErrorBucket } from "@/lib/nodes/local-reach";
 import { isDemoMode } from "@/lib/utils";
@@ -75,9 +76,16 @@ export function CommandFleetLocalBridge({
       stopAll();
       return;
     }
+    // Browsers block mixed-content fetches to http://*.local from an https
+    // origin, so those nodes cannot be polled from a secure page and this
+    // bridge says nothing about them (the node's own surfaces do). A node on
+    // this computer is exempt — loopback is a priori authenticated — so it keeps
+    // polling, which is the whole point of the hosted GCS reaching a local
+    // ground station.
     if (typeof window !== "undefined" && window.location.protocol === "https:") {
-      stopAll();
-      return;
+      for (const node of nodes) {
+        if (!isLoopbackHost(node.hostname)) stop(node.deviceId);
+      }
     }
 
     const currentIds = new Set(nodes.map((n) => n.deviceId));

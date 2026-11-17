@@ -82,6 +82,7 @@ describe("Configuration pages in the merged Agent sidebar", () => {
       nodeDeviceId: c.agentDeviceId,
       relayReach: c.relayReach,
       profile: c.drone.profile ?? "drone",
+      hostKind: "appliance",
       config: { swarm: {} },
       readOnly: false,
       setValue: async () => {},

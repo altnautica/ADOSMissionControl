@@ -49,6 +49,8 @@ import {
   REACH_ERROR_BUCKETS,
   type ReachErrorBucket,
 } from "@/lib/nodes/local-reach";
+import { isLoopbackHost } from "@/lib/nodes/loopback";
+import { useLoopbackPermission } from "@/lib/nodes/use-loopback-permission";
 
 export interface NodeReachBlockProps {
   /** Bare agent device id (NOT the `node:`-prefixed selection id). */
@@ -67,6 +69,7 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
   // The persisted stamp is coalesced; the live one moves on every success.
   const liveOkAt = useReachOkLiveStore((s) => (deviceId ? s.at[deviceId] : undefined));
   const cloudPaired = usePairingStore((s) => s.pairedDrones);
+  const loopbackPermission = useLoopbackPermission();
 
   // Not a LAN-paired node: say nothing.
   if (!node || !deviceId) return null;
@@ -76,6 +79,11 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
   let notice: ReactNode = null;
   if (lanBlockedOnSecurePage(deviceId, cloudPaired)) {
     notice = <ReachNotice icon={<ShieldAlert size={12} />} text={t("securePageBlocked")} />;
+  } else if (isLoopbackHost(node.hostname) && loopbackPermission === "denied") {
+    // The browser asked and the operator (or a previous session) said no: the
+    // request is refused before it leaves the page, so nothing on the node
+    // side can explain it. Say what to do.
+    notice = <ReachNotice icon={<ShieldAlert size={12} />} text={t("loopbackPermissionBlocked")} />;
   } else if (node.hostTakenBy) {
     notice = (
       <ReachNotice

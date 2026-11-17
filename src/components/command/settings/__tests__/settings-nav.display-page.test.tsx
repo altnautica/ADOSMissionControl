@@ -26,6 +26,9 @@ function ctxFor(profile: NodeProfile): SettingsPageContext {
     nodeDeviceId: "gs-1",
     relayReach: null,
     profile,
+    // These cases pin the appliance configuration; the personal-computer
+    // gating has its own cases in settings-nav.this-computer.test.tsx.
+    hostKind: "appliance",
     config: { ground_station: { display: { type: "auto" }, kiosk: {} } },
     readOnly: false,
     setValue: async () => {},

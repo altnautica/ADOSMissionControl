@@ -30,6 +30,7 @@ import { useTranslations } from "next-intl";
 import { useUiStore } from "@/stores/ui-store";
 import { useUiPrefsStore } from "@/stores/ui-prefs-store";
 import { useNodeConfig } from "@/components/command/settings/use-node-config";
+import { useNodeHost } from "@/components/command/settings/use-node-host";
 import { useStableRelayReach } from "@/hooks/use-stable-relay-reach";
 import type { SettingsPageContext } from "@/components/command/settings/settings-nav";
 import type { SurfaceContext } from "../surface-types";
@@ -109,12 +110,14 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
 
   const profile = ctx.drone.profile ?? "drone";
   const demoMode = useDemoMode();
+  const host = useNodeHost(nodeDeviceId);
   const settingsCtx: SettingsPageContext = useMemo(
     () => ({
       droneId: ctx.droneId,
       nodeDeviceId,
       relayReach,
       profile,
+      hostKind: host.hostKind,
       config,
       readOnly,
       setValue,
@@ -125,6 +128,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
       nodeDeviceId,
       relayReach,
       profile,
+      host.hostKind,
       config,
       readOnly,
       setValue,

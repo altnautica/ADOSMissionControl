@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Loader2, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, Laptop, Loader2, Plus, Search, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import {
   probeAgent,
@@ -36,6 +36,8 @@ import {
   useBrowserIdentityStore,
 } from "@/stores/browser-identity-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { isLoopbackHost } from "@/lib/nodes/loopback";
+import { isElectron } from "@/lib/utils";
 import { usePairingStore } from "@/stores/pairing-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { useDiscoveredAgents } from "@/hooks/use-discovered-agents";
@@ -50,6 +52,24 @@ interface AddNodeFormProps {
   onPaired?: (deviceId: string) => void;
 }
 
+/** Where a ground station served from this computer answers. */
+export const LOCAL_GROUND_STATION_URL = "http://127.0.0.1:8080";
+
+/** The install line for one, in the form the project's README publishes. */
+export const LOCAL_GROUND_STATION_INSTALL =
+  "curl -sSL https://raw.githubusercontent.com/altnautica/ADOSDroneAgent/main/scripts/install.sh | sudo bash -s -- --profile ground_station";
+
+/** Whether this page is served from this computer (or is the desktop app), in
+ * which case a probe of the local agent costs nothing and needs no permission
+ * prompt. On the hosted site the probe waits for the button, because the
+ * browser's private-network prompt should follow a user gesture and a visitor
+ * with no agent should never see it. */
+export function shouldAutoProbeLocal(): boolean {
+  if (isElectron()) return true;
+  if (typeof window === "undefined") return false;
+  return isLoopbackHost(window.location.origin);
+}
+
 export function AddNodeForm({ onPaired }: AddNodeFormProps) {
   const t = useTranslations("command.addNode");
   const { toast } = useToast();
@@ -62,6 +82,13 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
   // hostname is the reliable path, so we surface that tip.
   const [codeFailed, setCodeFailed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // The operator asked for this computer, and nothing answered there: show the
+  // one-liner that installs a ground station rather than a bare "unreachable".
+  const [localMissing, setLocalMissing] = useState(false);
+  // Auto-probing is one shot per page: a visitor who is not running a ground
+  // station should not pay for a probe on every re-render, and on the hosted
+  // site the probe never runs unprompted at all (see the effect below).
+  const autoProbed = useRef(false);
 
   const convexAvailable = useConvexAvailable();
   // useMutation must be called unconditionally; the call site below
@@ -140,6 +167,7 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
 
       setProbeError(null);
       setCodeFailed(false);
+      setLocalMissing(false);
       setProbe(null);
       setProbing(true);
       abortRef.current?.abort();
@@ -163,6 +191,10 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
       } catch (e) {
         if (ctrl.signal.aborted) return;
         setProbeError(describeFailure(e));
+        // Asking for this computer and getting nothing is not the same failure
+        // as a wrong hostname: there is a specific fix, and the surface offers
+        // it.
+        setLocalMissing(isLoopbackHost(trimmed));
         if (looksLikePairCode(trimmed)) setCodeFailed(true);
       } finally {
         if (!ctrl.signal.aborted) setProbing(false);
@@ -176,6 +208,20 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
   // probing is read-only, and it is exactly what the click asked for.
   const prefillHost = usePairDialogStore((s) => s.prefillHost);
   const consumePrefillHost = usePairDialogStore((s) => s.consumePrefillHost);
+
+  // Probe this computer once, and only where that is free: served from a
+  // loopback origin, or in the desktop app. On the hosted site the button is the
+  // gesture the browser's private-network prompt is meant to follow.
+  useEffect(() => {
+    if (autoProbed.current) return;
+    autoProbed.current = true;
+    if (!shouldAutoProbeLocal()) return;
+    if (useLocalNodesStore.getState().nodes.some((n) => isLoopbackHost(n.hostname))) {
+      // Already paired with this computer: nothing to discover.
+      return;
+    }
+    void probeTarget(LOCAL_GROUND_STATION_URL);
+  }, [probeTarget]);
   useEffect(() => {
     if (!prefillHost) return;
     consumePrefillHost();
@@ -335,6 +381,39 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
         <p className="text-[10px] text-text-tertiary leading-relaxed">
           {t("addNodeHint")}
         </p>
+
+        {/* The local first-party action: a ground station installed on this
+            computer answers 127.0.0.1, and the hosted GCS reaches it directly.
+            Primary because it is what most operators on a laptop want; the
+            field above is for every other node. */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            onClick={() => void probeTarget(LOCAL_GROUND_STATION_URL)}
+            disabled={probing}
+            className="px-3 py-2 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+          >
+            {probing ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Laptop size={12} />
+            )}
+            {t("useThisComputer")}
+          </button>
+          <span className="text-[10px] text-text-tertiary">
+            {t("useThisComputerHint")}
+          </span>
+        </div>
+
+        {localMissing && (
+          <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 space-y-1">
+            <p className="text-[11px] text-text-secondary">
+              {t("noLocalAgent")}
+            </p>
+            <code className="block overflow-x-auto font-mono text-[10px] text-text-primary">
+              {LOCAL_GROUND_STATION_INSTALL}
+            </code>
+          </div>
+        )}
 
         {probeError && (
           <p

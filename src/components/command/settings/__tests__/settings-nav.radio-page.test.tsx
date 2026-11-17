@@ -30,6 +30,7 @@ function ctxFor(profile: NodeProfile): SettingsPageContext {
     nodeDeviceId: "drone-1",
     relayReach: null,
     profile,
+    hostKind: "appliance",
     // Advertise the blocks the swarm gate checks so the only variable
     // under test is the profile.
     config: { swarm: {}, video: { wfb: {} } },

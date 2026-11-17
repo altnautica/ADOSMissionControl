@@ -24,6 +24,8 @@
  * @license GPL-3.0-only
  */
 
+import { isLoopbackHost } from "@/lib/nodes/loopback";
+
 /** Strip trailing slashes and normalise a user-pasted host string.
  * Bare hostnames default to ``http://<host>:8080``. https URLs are
  * left untouched (TLS endpoints terminate on their own port).
@@ -65,10 +67,17 @@ export const FETCH_TIMEOUT_MS = LAN_PAIR_UPSTREAM_TIMEOUT_MS + 2000;
  * agent, relayed verbatim. */
 export const PROXY_ERROR_HEADER = "x-ados-proxy-error";
 
-/** True when a window exists, so the calls should be routed through the
- * Mission Control proxy rather than a direct cross-origin fetch. */
-export function shouldUseProxy(): boolean {
-  return typeof window !== "undefined";
+/** True when a pair call to `host` should be routed through Mission Control's
+ * own proxy rather than fetched directly.
+ *
+ * The proxy exists because the browser cannot fetch a LAN agent cross-origin
+ * from the hosted site. It cannot help with a loopback host: the proxy runs on
+ * our server, so forwarding `127.0.0.1` there would have it dial itself. Those
+ * calls go direct from the browser, which is the only party that can make them.
+ */
+export function shouldUseProxy(host: string): boolean {
+  if (typeof window === "undefined") return false;
+  return !isLoopbackHost(host);
 }
 
 export async function safeJson(resp: Response): Promise<unknown> {

@@ -2215,6 +2215,17 @@
       "precedenceHold": "Hold",
       "runtimeNotice": "These values drive the node's onboard swarm runtime, which picks up a saved change within a few seconds. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here does not by itself put the node under swarm control."
     },
+    "thisComputer": {
+      "title": "This computer",
+      "blurb": "This ground station runs on a computer you also use. It keeps the radio, pairing, video and control services, and leaves your Wi-Fi, display, sleep and updates alone — so there is no access point, no kiosk and no status panel to configure here.",
+      "reachLabel": "Reachable from",
+      "reachHint": "Where this node's console answers. The agent binds to this choice when it starts.",
+      "reachShared": "Your network",
+      "reachLocal": "This computer only",
+      "shareLabel": "Share this ground station on the local network",
+      "shareHint": "Lets phones and tablets on your network reach this ground station. Off: only this computer can.",
+      "leftAlone": "Your Wi-Fi connection, display, power settings and system updates stay yours. The agent also keeps this computer awake only while a drone link is live."
+    },
     "wifi": {
       "title": "Wi-Fi",
       "blurb": "Join this node to a nearby Wi-Fi network, or manage its saved networks.",
@@ -2760,6 +2771,9 @@
       "addNodeSubtitle": "No account required. Works fully offline.",
       "addNodePlaceholder": "my-drone.local  or  9TW85C",
       "addNodeHint": "Same Wi-Fi as the agent? Paste the hostname or IP. New agent showing a 6-character code in `ados status`? Type that.",
+      "useThisComputer": "Use this computer as ground station",
+      "useThisComputerHint": "Runs here, answers only this computer until you share it.",
+      "noLocalAgent": "No ground station agent on this computer. Install it with:",
       "codeTryHostnameTip": "Tip: if the agent is on your network, enter its hostname or IP instead (for example my-drone.local).",
       "pairButton": "Pair",
       "codeNoHostError": "Pair code is valid but the agent hasn't advertised a network address yet. Wait a few seconds and try again.",

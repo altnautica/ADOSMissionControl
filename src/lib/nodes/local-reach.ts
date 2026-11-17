@@ -20,6 +20,8 @@
  */
 
 import { PairClientError } from "@/lib/agent/local-pair/errors";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { isLoopbackHost } from "@/lib/nodes/loopback";
 
 /**
  * What the GCS can honestly say about a failed reach.
@@ -106,12 +108,21 @@ export const SECURE_PAGE_LAN_MESSAGE =
  * and the node has no cloud relay to use instead (no cloud-paired row among
  * `cloudPaired`). Cloud relay is opt-in, so a LAN-only node is never moved
  * onto it.
+ *
+ * A node on this computer is the exception, and not a loophole: `http://127.0.0.1`
+ * is exempt from the mixed-content rule (loopback is a priori authenticated), so
+ * an https page reaches that node fine once the private-network grant is
+ * declared. Reporting it blocked would hide a ground station that works.
  */
 export function lanBlockedOnSecurePage(
   deviceId: string,
   cloudPaired: ReadonlyArray<{ deviceId: string }>,
 ): boolean {
   if (typeof window === "undefined" || window.location.protocol !== "https:") return false;
+  // Read the stored reach rather than a caller-supplied flag: every surface that
+  // asks this question already resolved the node from the same store.
+  const node = useLocalNodesStore.getState().nodes.find((n) => n.deviceId === deviceId);
+  if (node && isLoopbackHost(node.hostname)) return false;
   return !cloudPaired.some((d) => d.deviceId === deviceId);
 }
 

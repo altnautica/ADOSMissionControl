@@ -18,6 +18,7 @@
  */
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { isLoopbackHost } from "@/lib/nodes/loopback";
 import type { Transport } from "@/lib/protocol/types/transport";
 // Static: the shell already bundles this transport (auto-reconnect imports
 // it), so loading it lazily here saved nothing.
@@ -90,7 +91,14 @@ export function planDialPaths(plan: AgentDialPlan): AgentDialPaths {
       } else if (agentUrl && wsUrl.hostname !== new URL(agentUrl).hostname) {
         urlUsable = false;
       }
-      legacy = urlUsable && !(pageIsSecure() && wsUrl.protocol === "ws:");
+      // A bare ws:// dial from an https page is mixed content, with one
+      // exception: loopback is treated as a priori authenticated, so a ws://
+      // dial to this computer is not blocked. That is the local ground
+      // station's own bridge, which the hosted GCS reaches directly.
+      legacy =
+        urlUsable &&
+        (!(pageIsSecure() && wsUrl.protocol === "ws:") ||
+          isLoopbackHost(wsUrl.hostname));
     } catch {
       urlUsable = false;
       legacy = false;

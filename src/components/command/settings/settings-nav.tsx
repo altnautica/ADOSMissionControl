@@ -23,6 +23,7 @@ import {
   Fingerprint,
   Globe,
   HeartPulse,
+  Laptop,
   Layers,
   Monitor,
   Network,
@@ -39,6 +40,7 @@ import {
 
 import type { NodeProfile } from "@/lib/nodes/node-profile";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
+import type { HostKind } from "./use-node-host";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
 import { configMayAdvertise } from "./use-node-config";
 import { ProfilePage, CloudPage, AdvancedPage } from "./CorePages";
@@ -48,6 +50,7 @@ import { VisionPerceptionSection } from "./VisionPerceptionSection";
 import { SwarmSection } from "./SwarmSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { DisplaySection } from "./DisplaySection";
+import { ThisComputerCard } from "./ThisComputerCard";
 import { WifiClientSection } from "./WifiClientSection";
 import { CellularSection } from "./CellularSection";
 import { MacPinSection } from "./MacPinSection";
@@ -75,6 +78,12 @@ export interface SettingsPageContext {
    * Identity-stable, so a page may depend on it in an effect. */
   relayReach: RelayReach | null;
   profile: NodeProfile;
+  /** What kind of machine the node runs on. `"personal"` means somebody's own
+   * laptop or desktop: it has no access point, HDMI kiosk, status panel or
+   * uplink router, so those pages are not offered and "This computer" takes
+   * their place. Absent on a node that has not answered yet, which reads as an
+   * appliance — the configuration every node had before the field existed. */
+  hostKind: HostKind;
   config: Record<string, unknown> | null;
   readOnly: boolean;
   setValue: (key: string, value: string) => Promise<void>;
@@ -129,10 +138,32 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "nodeSettings.network.title",
     icon: <Network size={14} />,
     readsConfig: true,
+    // Uplinks, failover, the access point's own settings: all of it belongs to
+    // the uplink router, which a personal computer does not run (its Wi-Fi and
+    // routes are its owner's). "This computer" carries the one reach setting it
+    // does have.
+    when: (ctx) => ctx.hostKind !== "personal",
     render: (ctx) => (
       <NetworkUplinkSection
         nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
+        config={ctx.config}
+        readOnly={ctx.readOnly}
+        setValue={ctx.setValue}
+      />
+    ),
+  },
+  {
+    id: "this-computer",
+    labelKey: "nodeSettings.thisComputer.title",
+    icon: <Laptop size={14} />,
+    readsConfig: true,
+    // Only a ground station can land on a personal computer, and only there does
+    // this page exist: an appliance's reach is not a question.
+    when: (ctx) =>
+      ctx.profile === "ground-station" && ctx.hostKind === "personal",
+    render: (ctx) => (
+      <ThisComputerCard
         config={ctx.config}
         readOnly={ctx.readOnly}
         setValue={ctx.setValue}
@@ -360,7 +391,10 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     labelKey: "nodeSettings.display.title",
     icon: <Monitor size={14} />,
     readsConfig: true,
-    when: (ctx) => ctx.profile === "ground-station",
+    // The local display renderer and the HDMI kiosk are the box's console. A
+    // personal computer keeps its own, so the page is not offered there.
+    when: (ctx) =>
+      ctx.profile === "ground-station" && ctx.hostKind !== "personal",
     render: (ctx) => (
       <DisplaySection
         nodeDeviceId={ctx.nodeDeviceId}

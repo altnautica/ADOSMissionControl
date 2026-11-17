@@ -8,7 +8,13 @@
  */
 
 import { withTimeoutSignal } from "../agent-client/timeout";
-import { FETCH_TIMEOUT_MS, normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import {
+  FETCH_TIMEOUT_MS,
+  normaliseHost,
+  safeJson,
+  shouldUseProxy,
+} from "./transport";
+import { loopbackInit } from "@/lib/nodes/loopback";
 import { pairFailureFromResponse } from "./failure-copy";
 
 /** POST ``/api/pairing/unpair`` with the stored API key in the header.
@@ -22,7 +28,7 @@ export async function unpairLocal(
   const host = normaliseHost(hostname);
   let resp: Response;
   try {
-    resp = shouldUseProxy()
+    resp = shouldUseProxy(host)
       ? await fetch(`/api/lan-pair/unpair`, {
           method: "POST",
           headers: {
@@ -32,16 +38,19 @@ export async function unpairLocal(
           body: JSON.stringify({ host, apiKey }),
           signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
         })
-      : await fetch(`${host}/api/pairing/unpair`, {
-          method: "POST",
-          headers: {
-            // The agent's auth middleware reads X-ADOS-Key; every other
-            // agent surface uses the same header name.
-            "X-ADOS-Key": apiKey,
-            Accept: "application/json",
-          },
-          signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
-        });
+      : await fetch(
+          `${host}/api/pairing/unpair`,
+          loopbackInit(`${host}/api/pairing/unpair`, {
+            method: "POST",
+            headers: {
+              // The agent's auth middleware reads X-ADOS-Key; every other
+              // agent surface uses the same header name.
+              "X-ADOS-Key": apiKey,
+              Accept: "application/json",
+            },
+            signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
+          }),
+        );
   } catch (e) {
     if (signal?.aborted) throw e;
     throw pairFailureFromResponse("unpair", host, { status: 0 }, null);

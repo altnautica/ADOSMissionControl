@@ -8,6 +8,7 @@
  */
 
 import type { z } from "zod";
+import { loopbackInit } from "@/lib/nodes/loopback";
 import { AGENT_FETCH_TIMEOUT_MS, withTimeoutSignal } from "./timeout";
 
 export interface RequestContext {
@@ -242,11 +243,14 @@ export async function agentRequest<T>(
   // A half-open socket would otherwise hang this fetch for the browser
   // default (~minutes), which freezes the poll loop and defeats the
   // disconnect watchdog. Bound every request with a deadline.
-  const res = await fetch(`${ctx.baseUrl}${path}`, {
-    ...fetchInit,
-    headers,
-    signal: withTimeoutSignal(timeoutMs, signal ?? null),
-  });
+  const res = await fetch(
+    `${ctx.baseUrl}${path}`,
+    loopbackInit(`${ctx.baseUrl}${path}`, {
+      ...fetchInit,
+      headers,
+      signal: withTimeoutSignal(timeoutMs, signal ?? null),
+    }),
+  );
   if (!res.ok) {
     const text = await res.text().catch(() => "Unknown error");
     throw armedRefusalFrom(res.status, text) ?? new AgentHttpError(res.status, text);

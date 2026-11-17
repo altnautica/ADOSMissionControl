@@ -16,6 +16,7 @@
 
 import { PairClientError } from "./errors";
 import { normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { loopbackInit } from "@/lib/nodes/loopback";
 
 /** The node's dashboard-PIN posture. */
 export interface DashboardPinStatus {
@@ -64,17 +65,23 @@ export async function getDashboardPinStatus(
   signal?: AbortSignal,
 ): Promise<DashboardPinStatus> {
   const host = normaliseHost(hostname);
-  const resp = shouldUseProxy()
+  const resp = shouldUseProxy(host)
     ? await fetch(`/api/lan-pair/pin-status`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({ host, apiKey }),
         signal,
       })
-    : await fetch(`${host}/api/dashboard/pin/status`, {
-        headers: { "X-ADOS-Key": apiKey, Accept: "application/json" },
-        signal,
-      });
+    : await fetch(
+        `${host}/api/dashboard/pin/status`,
+        loopbackInit(`${host}/api/dashboard/pin/status`, {
+          headers: { "X-ADOS-Key": apiKey, Accept: "application/json" },
+          signal,
+        }),
+      );
   if (!resp.ok) {
     throw new PairClientError(
       "pinStatusFailedError",
@@ -91,8 +98,10 @@ export async function getDashboardPinStatus(
   return {
     pinSet: !!data?.pin_set,
     locked: !!data?.locked,
-    lockedUntil: typeof data?.locked_until === "number" ? data.locked_until : null,
-    lockScope: data?.scope === "node" || data?.scope === "peer" ? data.scope : null,
+    lockedUntil:
+      typeof data?.locked_until === "number" ? data.locked_until : null,
+    lockScope:
+      data?.scope === "node" || data?.scope === "peer" ? data.scope : null,
   };
 }
 
@@ -105,23 +114,29 @@ export async function setDashboardPin(
   signal?: AbortSignal,
 ): Promise<void> {
   const host = normaliseHost(hostname);
-  const resp = shouldUseProxy()
+  const resp = shouldUseProxy(host)
     ? await fetch(`/api/lan-pair/pin-set`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ host, apiKey, pin }),
-        signal,
-      })
-    : await fetch(`${host}/api/dashboard/pin/set`, {
-        method: "POST",
         headers: {
-          "X-ADOS-Key": apiKey,
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ host, apiKey, pin }),
         signal,
-      });
+      })
+    : await fetch(
+        `${host}/api/dashboard/pin/set`,
+        loopbackInit(`${host}/api/dashboard/pin/set`, {
+          method: "POST",
+          headers: {
+            "X-ADOS-Key": apiKey,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ pin }),
+          signal,
+        }),
+      );
   if (!resp.ok) {
     throw new PairClientError(
       "pinSetFailedError",
@@ -139,18 +154,24 @@ export async function clearDashboardPin(
   signal?: AbortSignal,
 ): Promise<void> {
   const host = normaliseHost(hostname);
-  const resp = shouldUseProxy()
+  const resp = shouldUseProxy(host)
     ? await fetch(`/api/lan-pair/pin-clear`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({ host, apiKey }),
         signal,
       })
-    : await fetch(`${host}/api/dashboard/pin/clear`, {
-        method: "POST",
-        headers: { "X-ADOS-Key": apiKey, Accept: "application/json" },
-        signal,
-      });
+    : await fetch(
+        `${host}/api/dashboard/pin/clear`,
+        loopbackInit(`${host}/api/dashboard/pin/clear`, {
+          method: "POST",
+          headers: { "X-ADOS-Key": apiKey, Accept: "application/json" },
+          signal,
+        }),
+      );
   if (!resp.ok) {
     throw new PairClientError(
       "pinClearFailedError",

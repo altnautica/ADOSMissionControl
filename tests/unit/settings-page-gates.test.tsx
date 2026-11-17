@@ -25,6 +25,7 @@ function ctxWith(overrides: Partial<SettingsPageContext>): SettingsPageContext {
     nodeDeviceId: "dev-1",
     relayReach: null,
     profile: "drone",
+    hostKind: "appliance",
     config: null,
     readOnly: false,
     setValue: async () => {},

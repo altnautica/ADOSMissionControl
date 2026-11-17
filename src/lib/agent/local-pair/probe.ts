@@ -11,7 +11,13 @@ import { parseNodeProfile } from "@/lib/nodes/node-profile";
 import type { ProbeResult } from "./types";
 import { PairClientError } from "./errors";
 import { withTimeoutSignal } from "../agent-client/timeout";
-import { FETCH_TIMEOUT_MS, normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import {
+  FETCH_TIMEOUT_MS,
+  normaliseHost,
+  safeJson,
+  shouldUseProxy,
+} from "./transport";
+import { loopbackInit } from "@/lib/nodes/loopback";
 import { pairFailureFromResponse } from "./failure-copy";
 
 /** Hit ``/api/pairing/info`` and return the agent identity.
@@ -30,7 +36,10 @@ export async function probeAgent(
 ): Promise<ProbeResult> {
   const host = normaliseHost(rawHost);
   if (!host) {
-    throw new PairClientError("enterHostnameError", "Enter a hostname or URL to probe");
+    throw new PairClientError(
+      "enterHostnameError",
+      "Enter a hostname or URL to probe",
+    );
   }
   // Demo mode never reaches a real agent. Return a representative
   // probe so the Add-a-Node card renders the bind-state surface.
@@ -59,7 +68,7 @@ export async function probeAgent(
     };
   }
   let body: Record<string, unknown>;
-  if (shouldUseProxy()) {
+  if (shouldUseProxy(host)) {
     // The route answers its own unreachable reply when the agent is silent;
     // a rejection here means the route itself did not answer in time.
     let resp: Response;
@@ -89,11 +98,15 @@ export async function probeAgent(
     // failure and is re-thrown untouched.
     let resp: Response;
     try {
-      resp = await fetch(`${host}/api/pairing/info`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
-      });
+      const url = `${host}/api/pairing/info`;
+      resp = await fetch(
+        url,
+        loopbackInit(url, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
+        }),
+      );
     } catch (e) {
       if (signal?.aborted) throw e;
       throw pairFailureFromResponse("probe", host, { status: 0 }, null);
@@ -105,7 +118,10 @@ export async function probeAgent(
   }
   const deviceId = String(body.device_id ?? "");
   if (!deviceId) {
-    throw new PairClientError("missingDeviceIdError", "Probe response missing device_id");
+    throw new PairClientError(
+      "missingDeviceIdError",
+      "Probe response missing device_id",
+    );
   }
   const role = (body.role as string | undefined) ?? null;
   const ipv4 =
@@ -120,8 +136,8 @@ export async function probeAgent(
     paired: Boolean(body.paired),
     radioPaired: Boolean(body.radio_paired),
     radioPeerDeviceId:
-      typeof body.radio_peer_device_id === "string"
-      && (body.radio_peer_device_id as string).length > 0
+      typeof body.radio_peer_device_id === "string" &&
+      (body.radio_peer_device_id as string).length > 0
         ? (body.radio_peer_device_id as string)
         : null,
     pairingCode: (body.pairing_code as string | undefined) ?? undefined,

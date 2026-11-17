@@ -54,6 +54,7 @@ function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
     nodeDeviceId: "d1",
     relayReach: null,
     profile,
+    hostKind: "appliance",
     config: {},
     readOnly: false,
     setValue: async () => {},
