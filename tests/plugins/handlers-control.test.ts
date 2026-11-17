@@ -189,7 +189,8 @@ describe("command.send gates", () => {
     });
   });
 
-  it("maps takeoff to MAV_CMD 22 with a clamped altitude after confirm", async () => {
+  it("maps takeoff to MAV_CMD 22 with a clamped altitude after confirm on an armed drone", async () => {
+    armState = "armed";
     const { sendCommand } = withProtocol();
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
@@ -203,6 +204,7 @@ describe("command.send gates", () => {
   });
 
   it("clamps the takeoff altitude into the 1..120 m band", async () => {
+    armState = "armed";
     const { sendCommand } = withProtocol();
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
@@ -214,6 +216,7 @@ describe("command.send gates", () => {
   });
 
   it("rejects takeoff with no/invalid altitude before sending", async () => {
+    armState = "armed";
     const { sendCommand } = withProtocol();
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });

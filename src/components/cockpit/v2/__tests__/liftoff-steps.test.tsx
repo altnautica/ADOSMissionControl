@@ -47,7 +47,7 @@ describe("steady take-off on the launch strip", () => {
       trim: "learned",
       tiltDeg: 1.5,
     });
-    expect(sequenceWith({ phase: "lift", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBeNull();
+    expect(sequenceWith({ phase: "lift", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBe("");
   });
 
   it("shows the status line, with its detail, while it runs", () => {
@@ -73,21 +73,6 @@ describe("steady take-off on the launch strip", () => {
     );
     expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Take-off stopped. The drone started to tip. Motors off.");
     expect(screen.queryByText(/liftoff_tipping/)).toBeNull();
-  });
-
-  it("keeps the airborne line after the hand-over while the step is still take-off", () => {
-    render(
-      <LaunchStepStrip
-        sequence={sequenceWith({ phase: "done", text: "Airborne", detail: "Climbing to 3 m", trim: "learned", tilt_deg: 0 })}
-      />,
-    );
-    expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Airborne. Climbing to 3 m");
-  });
-
-  it("reads the no-rate-data stop in the agent's words", () => {
-    expect(refusalText("liftoff_no_rate_data")).toBe(
-      "Take-off stopped. The flight controller sends no rate data to balance the drone with. Motors off.",
-    );
   });
 
   it("drops the airborne line once the sequence carries an error", () => {

@@ -20,7 +20,7 @@ class FakeSocket implements PilotSocket {
 }
 
 function input(seq: number): PilotOutboundFrame {
-  return { op: "input", src: "mc", session: 7, seq, t_ms: seq, axes: [0, seq / 10, 0, 0], buttons: 0 };
+  return { op: "input", src: "mc", sid: "tab-1", session: 7, seq, t_ms: seq, axes: [0, seq / 10, 0, 0], buttons: 0 };
 }
 
 const seqs = (s: FakeSocket) => s.sent.map((f) => (f.op === "input" ? f.seq : f.op));
@@ -56,7 +56,7 @@ describe("pilot stream coalescing", () => {
     const send = coalescingSender(s);
     s.bufferedAmount = 64;
     send(input(1));
-    send({ op: "release", src: "mc", session: 7 });
+    send({ op: "release", src: "mc", sid: "tab-1", session: 7 });
     s.bufferedAmount = 0;
     vi.advanceTimersByTime(100);
     expect(seqs(s)).toEqual(["release"]);
@@ -66,8 +66,8 @@ describe("pilot stream coalescing", () => {
     const s = new FakeSocket();
     const send = coalescingSender(s);
     s.bufferedAmount = 64;
-    send({ op: "action", name: "pause", src: "mc", id: "a1" });
-    send({ op: "action", name: "rth", src: "mc", id: "a2" });
+    send({ op: "action", name: "pause", src: "mc", sid: "tab-1", id: "a1" });
+    send({ op: "action", name: "rth", src: "mc", sid: "tab-1", id: "a2" });
     expect(seqs(s)).toEqual(["action", "action"]);
   });
 
