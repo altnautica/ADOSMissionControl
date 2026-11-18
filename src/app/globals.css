@@ -798,8 +798,8 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-pill:is([data-severity="warning"], [data-severity="critical"]) { border-color: color-mix(in srgb, var(--pill-color) 50%, transparent); color: var(--pill-text-color, var(--pill-color)); }
 .ados-cockpit .fs-pill .fs-dot { --dot-color: var(--pill-color); }
 .ados-cockpit .fs-pill-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .fs-pill[data-flashing="true"] { animation: fs-pill-flash 1s ease-in-out infinite; }
-@keyframes fs-pill-flash { 0%, 100% { background: transparent; } 50% { background: color-mix(in srgb, var(--pill-color) 48%, transparent); } }
+.ados-cockpit .fs-pill[data-flash-phase="bright"] { background: color-mix(in srgb, var(--pill-color) 48%, transparent); }
+.ados-cockpit .fs-pill[data-flash-phase="dim"] { background: transparent; }
 .ados-cockpit .fs-stop {
   flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: var(--fs-radius-sm); height: var(--fs-control);
   background: var(--fs-stop-bg); color: var(--fs-stop-text); font-size: var(--fs-top-px); font-weight: 700; letter-spacing: .06em; cursor: pointer;
@@ -827,8 +827,8 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 }
 @keyframes fs-sheet-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .ados-cockpit .fs-sheet, .ados-cockpit .fs-pill[data-flashing="true"] { animation: none; }
-  .ados-cockpit .fs-pill[data-flashing="true"] { background: color-mix(in srgb, var(--pill-color) 40%, transparent); }
+  .ados-cockpit .fs-sheet { animation: none; }
+  .ados-cockpit .fs-pill[data-flash-phase] { background: color-mix(in srgb, var(--pill-color) 30%, transparent); }
 }
 .ados-cockpit .fs-menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(340px, calc(100vw - 16px)); max-height: calc(100vh - 80px); overflow-y: auto; padding: 8px; }
 /* The layer switches drop from the bar's bottom edge, like the Menu: below the bar, never over STOP. */

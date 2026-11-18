@@ -168,15 +168,17 @@ export function pillArmed(
   return fcArmState === "armed" ? true : fcArmState === "disarmed" ? false : null;
 }
 
-/** Re-render cadence so a pilot state ages out of the pill. */
+/** Re-render cadence so a pilot state ages out of the pill, and the step of
+ *  its flash: two looks alternating every tick, never a running animation. */
 const PILL_TICK_MS = 500;
 
 export function usePillAlerts(droneId: string): PillAlert[] {
   return usePillState(droneId).alerts;
 }
 
-/** The pill's alerts and the arm state it read them with. */
-function usePillState(droneId: string): { alerts: PillAlert[]; armed: boolean | null } {
+/** The pill's alerts, the arm state it read them with, and the tick count
+ *  that steps the flash. */
+function usePillState(droneId: string): { alerts: PillAlert[]; armed: boolean | null; flashPhase: number } {
   const { alerts, label } = useCockpitAlertList(droneId);
   const { pilot, receivedAt } = usePilotState(droneId);
   const fcArmState = useDroneStore((s) => s.armState);
@@ -192,8 +194,12 @@ function usePillState(droneId: string): { alerts: PillAlert[]; armed: boolean | 
   const failures = useAgentConnectionStore((s) => s.consecutiveFailures);
   const preflight = useChecklistStore((s) => (s.droneId === droneId ? s.preflight : null));
   const [now, setNow] = useState(() => Date.now());
+  const [flashPhase, setFlashPhase] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), PILL_TICK_MS);
+    const id = setInterval(() => {
+      setNow(Date.now());
+      setFlashPhase((p) => p + 1);
+    }, PILL_TICK_MS);
     return () => clearInterval(id);
   }, []);
 
@@ -216,11 +222,12 @@ function usePillState(droneId: string): { alerts: PillAlert[]; armed: boolean | 
       navSource: nav,
     }),
     armed,
+    flashPhase,
   };
 }
 
 export function StatusPill({ droneId }: { droneId: string }) {
-  const { alerts, armed } = usePillState(droneId);
+  const { alerts, armed, flashPhase } = usePillState(droneId);
   const [acked, setAcked] = useState<ReadonlySet<string>>(() => new Set());
   // The list is a flight-screen sheet: one at a time, and the tips see it.
   const [open, setOpen] = useFlightSheet("status");
@@ -273,6 +280,7 @@ export function StatusPill({ droneId }: { droneId: string }) {
         data-testid="status-pill"
         data-severity={summary.severity}
         data-flashing={summary.flashing ? "true" : "false"}
+        data-flash-phase={summary.flashing ? (flashPhase % 2 ? "dim" : "bright") : undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`${specString("cockpit.menu.status")}: ${summary.text}`}
