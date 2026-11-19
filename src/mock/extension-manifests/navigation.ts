@@ -294,7 +294,7 @@ agent:
       - name: lidar-slam
         command: "bin:navigation-lidar-slam com.altnautica.navigation"
         profiles: [drone, visor]
-        udp_listen_ports: [56101, 56201, 56301, 56401, 56501]
+        udp_listen_ports: [56000, 56101, 56201, 56301, 56401, 56501, 44332]
     shared_topics:
       - { topic: plugin.navigation.pose, subscribe_capability: telemetry.read }
       - { topic: plugin.navigation.scan, subscribe_capability: telemetry.read }
