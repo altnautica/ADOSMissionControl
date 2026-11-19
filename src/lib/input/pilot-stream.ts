@@ -22,6 +22,8 @@ import type { RequestContext } from "@/lib/api/ground-station/request";
 import { openReconnectingSocket } from "@/lib/net/reconnecting-socket";
 import { noRcLeaveText } from "@/lib/cockpit/no-rc-text";
 import { startPilotHeartbeat, type PilotHeartbeat } from "./pilot-hb";
+import { coalescingSender } from "./pilot-coalesce";
+import { newSessionId, newSurfaceSid } from "./pilot-ids";
 
 /** Stick frame rate on the pilot stream. */
 export const PILOT_INPUT_HZ = 50;
@@ -84,28 +86,8 @@ export type PilotOutboundFrame =
   | { op: "hb"; src: string; sid: string }
   | { op: "bye"; src: string; sid: string };
 
-/**
- * One page load is one stick session. `pilot.v1` carries the session as a
- * non-zero u32, so it is a random integer in 1..2^32-1.
- */
-export function newSessionId(): number {
-  const word = new Uint32Array(1);
-  do {
-    if (typeof crypto !== "undefined" && "getRandomValues" in crypto) crypto.getRandomValues(word);
-    else word[0] = Math.floor(Math.random() * 0x1_0000_0000);
-  } while (word[0] === 0);
-  return word[0];
-}
-
+/** One page load is one stick session (a non-zero u32 in `pilot.v1`). */
 export const PILOT_SESSION_ID = newSessionId();
-
-/** A surface instance id: 32 lowercase hex digits from 16 random bytes. */
-export function newSurfaceSid(): string {
-  const bytes = new Uint8Array(16);
-  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) crypto.getRandomValues(bytes);
-  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 /**
  * This tab's instance id, once per page load and kept in memory only (a
@@ -399,54 +381,6 @@ export function handlePilotServerFrame(droneId: string, frame: unknown): void {
     });
     if (id) settleAction(id, err ? { ok, err } : { ok });
   }
-}
-
-/** The parts of a WebSocket the pilot sender uses. */
-export interface PilotSocket {
-  readonly readyState: number;
-  readonly bufferedAmount: number;
-  send(data: string): void;
-}
-
-const SOCKET_OPEN = 1;
-/** How often a waiting stick frame checks whether the socket drained. */
-const COALESCE_RETRY_MS = 5;
-
-/**
- * The frame sender for one open socket. While the socket still holds unsent
- * bytes, only the newest stick frame waits (an older one is replaced), and
- * it goes out once the buffer drains, so a slow link flies the latest stick
- * rather than a queue of old ones. A release drops the waiting stick frame,
- * so no older stick follows it. Every other frame is sent at once.
- */
-export function coalescingSender(socket: PilotSocket): Sender {
-  let pending: string | null = null;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const flush = () => {
-    timer = null;
-    if (pending === null) return;
-    if (socket.readyState !== SOCKET_OPEN) {
-      pending = null;
-      return;
-    }
-    if (socket.bufferedAmount > 0) {
-      timer = setTimeout(flush, COALESCE_RETRY_MS);
-      return;
-    }
-    socket.send(pending);
-    pending = null;
-  };
-  return (frame) => {
-    if (socket.readyState !== SOCKET_OPEN) return false;
-    if (frame.op === "input" && socket.bufferedAmount > 0) {
-      pending = JSON.stringify(frame);
-      timer ??= setTimeout(flush, COALESCE_RETRY_MS);
-      return true;
-    }
-    if (frame.op === "input" || frame.op === "release") pending = null;
-    socket.send(JSON.stringify(frame));
-    return true;
-  };
 }
 
 export interface PilotStreamConnection {

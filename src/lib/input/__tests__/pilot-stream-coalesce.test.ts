@@ -8,7 +8,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { coalescingSender, type PilotOutboundFrame, type PilotSocket } from "../pilot-stream";
+import { coalescingSender, type PilotSocket } from "../pilot-coalesce";
+import type { PilotOutboundFrame } from "../pilot-stream";
 
 class FakeSocket implements PilotSocket {
   readyState = 1;

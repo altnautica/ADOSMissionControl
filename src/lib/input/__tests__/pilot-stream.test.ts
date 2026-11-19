@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PILOT_SESSION_ID,
   handlePilotServerFrame,
-  newSessionId,
   pilotStreamOpen,
   requestPilotAction,
   sendPilotAction,
@@ -16,6 +15,7 @@ import {
   type PilotOutboundFrame,
 } from "../pilot-stream";
 import { radialDeadzone } from "../gamepad-axes";
+import { newSessionId } from "../pilot-ids";
 
 function capture(): PilotOutboundFrame[] {
   const frames: PilotOutboundFrame[] = [];
