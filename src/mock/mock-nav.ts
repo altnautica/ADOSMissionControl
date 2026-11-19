@@ -4,7 +4,7 @@
  * demo drone at the rates a live agent's nav stream delivers:
  *
  * - `follow.state` at 5 Hz from the scripted HUD cycle (`mock-hud-script`);
- * - `nav.state` at 2 Hz: external nav on the commanded EKF source set, with a
+ * - `plugin.navigation.state` at 2 Hz: external nav on the commanded EKF source set, with a
  *   degraded window while the subject is being searched for, and degraded
  *   with its reason while the demo pilot reports `position_unverified`;
  * - `pose` and a 360-ray `scan` at 10 Hz: the drone flying a slow loop through
@@ -68,7 +68,7 @@ const NAV_MODE: Record<1 | 2 | 3, string> = {
   3: "gps",
 };
 
-/** The `nav.state` frame for `tSec` into the cycle. While the demo pilot
+/** The `plugin.navigation.state` frame for `tSec` into the cycle. While the demo pilot
  * reports `position_unverified`, Navigation reports its pose degraded (lost
  * for `extnav_lost`) with the reason: `ekf_flow_disagree` for a flow
  * disagreement, else the pilot's detail. */

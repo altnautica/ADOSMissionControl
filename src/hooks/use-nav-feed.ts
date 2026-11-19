@@ -5,7 +5,7 @@
  * @description Read hooks over the navigation feed. The LAN nav stream
  * (`nav-stream-store`) is the primary source; for a cloud-reached node the
  * plugin heartbeat slices (`plugin-cloud-state-store`) carry the same
- * `follow.state` / `nav.state` / map status payloads, so the HUD still has a
+ * `follow.state` / `plugin.navigation.state` / map status payloads, so the HUD still has a
  * source when no LAN path exists. Each hook returns the payload with its
  * receive time; callers apply the HUD staleness rules.
  *
@@ -27,11 +27,11 @@ import { usePluginCloudStateStore, type PluginCloudSlice } from "@/stores/plugin
 import { useNavStreamStore, type DroneNavFeed, type Stamped } from "@/stores/nav-stream-store";
 
 export const FOLLOW_ME_PLUGIN_ID = "com.altnautica.follow-me";
-/** Navigation publishes the pose, scan, map status and `nav.state`. */
+/** Navigation publishes the pose, scan, map status and `plugin.navigation.state`. */
 export const NAVIGATION_PLUGIN_ID = "com.altnautica.navigation";
 
 export const FOLLOW_STATE_TOPIC = "follow.state";
-export const NAV_STATE_TOPIC = "nav.state";
+export const NAV_STATE_TOPIC = "plugin.navigation.state";
 export const MAP_STATUS_TOPIC = "plugin.navigation.map_status";
 
 /**
@@ -85,7 +85,7 @@ export function useFollowStateEntry(droneId: string | null | undefined): Stamped
   return newer(live, cloud);
 }
 
-/** Latest Navigation `nav.state`. */
+/** Latest Navigation `plugin.navigation.state`. */
 export function useNavStateEntry(droneId: string | null | undefined): Stamped<NavState> | null {
   const live = useNavStreamStore((s) => (droneId ? s.byDrone[droneId]?.nav : undefined));
   const cloud = useCloudTopic(droneId, NAVIGATION_PLUGIN_ID, NAV_STATE_TOPIC, parseNavState);

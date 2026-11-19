@@ -5,7 +5,7 @@
  * @description Everything the nav-source chip (and any other surface that
  * reports what the EKF navigates on) resolves from: the latest
  * EKF_STATUS_REPORT flags and their age, the latest GPS fix, Navigation
- * `nav.state` while fresh, the set this GCS last commanded, the
+ * `plugin.navigation.state` while fresh, the set this GCS last commanded, the
  * EK3_SRC* parameters, and the fresh pilot state's `position_unverified`.
  * Re-renders on throttled telemetry and on the shared 1 Hz clock so a report
  * that stops arriving goes stale on screen.

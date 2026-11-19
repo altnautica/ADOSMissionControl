@@ -212,7 +212,7 @@ function FallbackBanner({ health, tr }: { health: NavigationHealth; tr: Translat
   );
 }
 
-/** The extension's Navigation feed card, read from `nav.state` and the
+/** The extension's Navigation feed card, read from `plugin.navigation.state` and the
  * `navigation.poseAgeMs` field. */
 function NavStateCard({ state, poseAgeMs, tr }: { state: NavigationState; poseAgeMs: number | null; tr: Translate }) {
   const health = state.extnav_health ? EXTNAV_HEALTH[state.extnav_health] : null;

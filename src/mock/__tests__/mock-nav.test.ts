@@ -162,7 +162,7 @@ describe("MockNavStream", () => {
     expect(feed?.trail.length).toBeGreaterThan(0);
   });
 
-  it("reports the commanded source set in nav.state", () => {
+  it("reports the commanded source set in plugin.navigation.state", () => {
     stream.start("node:demo", Date.now());
     setMockEkfSourceSet(2);
     vi.advanceTimersByTime(500);

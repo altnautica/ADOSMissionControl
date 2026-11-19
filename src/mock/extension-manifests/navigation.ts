@@ -37,7 +37,7 @@ features:
   - "Live occupancy map and sweep cloud, built on board or streamed to a reconstruction node"
   - "External navigation: shared pose topic to ODOMETRY, EKF source-set switching, EKF origin"
   - "Planar-scan obstacle feed (OBSTACLE_DISTANCE, 72 sectors)"
-  - "Live nav.state: active source set, tracking health, ODOMETRY and obstacle rates, nearest obstacle"
+  - "Live plugin.navigation.state: active source set, tracking health, ODOMETRY and obstacle rates, nearest obstacle"
 hardware_requirements:
   cameras: "USB UVC global-shutter or rolling-shutter, or CSI via V4L2"
   fc_firmware: "ArduPilot 4.5+, PX4 1.14+, iNav 7.0+"
@@ -122,7 +122,7 @@ telemetry_fields:
   - "navigation.degradedReasons"
   - "navigation.fcParams"
   - "navigation.poseAgeMs"
-  - "nav.state"
+  - "plugin.navigation.state"
 documentation_url: "https://docs.altnautica.com/drone-agent/navigation-overview"
 author: "Altnautica"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/navigation"
@@ -130,7 +130,7 @@ license: "GPL-3.0-or-later"
 risk: high
 
 compatibility:
-  ados_version: ">=0.104.0"
+  ados_version: ">=0.122.0"
   gcs_version: ">=0.66.0"
   supported_boards: ["*"]
 
@@ -299,6 +299,7 @@ agent:
       - { topic: plugin.navigation.scan_polar, subscribe_capability: plugin.navigation.map.read }
       - { topic: plugin.navigation.scan_raw, subscribe_capability: plugin.navigation.map.read }
       - { topic: plugin.navigation.pose_track, subscribe_capability: plugin.navigation.map.read }
+      - { topic: plugin.navigation.state, subscribe_capability: telemetry.read }
 
 gcs:
   entrypoint: "gcs/plugin.bundle.js"

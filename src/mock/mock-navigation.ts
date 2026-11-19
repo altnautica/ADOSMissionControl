@@ -13,7 +13,7 @@
  * key for key (`HealthSnapshot::to_value` in the extension's agent half):
  * every key is always present, an unset optional rides as `null`, and the
  * pre-arm report is the gate's `{ mode, armable, checks }` map. The
- * `nav.state` event the Navigation feed card reads is mirrored by
+ * `plugin.navigation.state` event the Navigation feed card reads is mirrored by
  * {@link getMockNavigationState}.
  *
  * @license GPL-3.0-only
@@ -145,7 +145,7 @@ export function getMockNavigationHealth(): NavigationHealth {
 /** Tracking health of the external pose feed. */
 export type NavigationExtnavHealth = "good" | "degraded" | "lost";
 
-/** The extension's `nav.state` event (snake_case wire): what the navigation
+/** The extension's `plugin.navigation.state` event (snake_case wire): what the navigation
  * feed is doing now. Fields the running mode does not produce are null. */
 export interface NavigationState {
   mode: NavigationMode;
@@ -158,7 +158,7 @@ export interface NavigationState {
   gps_fix: number;
 }
 
-/** `nav.state` for the demo's optical-flow run: no external pose or obstacle
+/** `plugin.navigation.state` for the demo's optical-flow run: no external pose or obstacle
  * feed, so those fields are null, and no GPS (the reason to fly on flow). The
  * EKF source set is the flow set the operator switched to. */
 export function getMockNavigationState(): NavigationState {

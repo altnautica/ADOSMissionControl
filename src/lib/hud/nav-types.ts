@@ -2,7 +2,7 @@
  * @module hud/nav-types
  * @description Typed shapes and boundary parsers for the agent's navigation
  * feed: the follow-me `follow.state` and its discrete events, the Navigation
- * `nav.state`, Navigation's pose / scan / map status topics, and the live
+ * `plugin.navigation.state`, Navigation's pose / scan / map status topics, and the live
  * occupancy tiles. The agent forwards each source payload verbatim (snake
  * case); these parsers narrow `unknown` into the camelCase shapes the HUD and
  * the minimap read, dropping anything malformed instead of guessing.
@@ -137,7 +137,7 @@ export type FollowEvent =
     }
   | { topic: "follow.stopped"; reason: string };
 
-/** The Navigation `nav.state` payload. */
+/** The Navigation `plugin.navigation.state` payload. */
 export interface NavState {
   mode: string;
   activeSet: 1 | 2 | 3 | null;

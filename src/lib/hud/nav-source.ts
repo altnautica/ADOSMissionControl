@@ -3,7 +3,7 @@
  * @description What the EKF navigates on, as one chip: a source (DR, EXT NAV,
  * GPS, FLOW), a quality word and a tone. Inputs are the FC's
  * EKF_STATUS_REPORT flags, the GPS fix, the EKF source-set parameters and the
- * Navigation `nav.state`. Pure; every surface renders its result.
+ * Navigation `plugin.navigation.state`. Pure; every surface renders its result.
  *
  * @license GPL-3.0-only
  */

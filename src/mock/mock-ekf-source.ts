@@ -3,7 +3,7 @@
  * @description The demo FC's active EKF3 source set and the
  * EKF_STATUS_REPORT flags it implies. The demo parameter sets are
  * 1 = external nav, 2 = optical flow, 3 = GPS. `setEkfSourceSet` on the mock
- * protocol writes here; the telemetry tick and the demo `nav.state` read it.
+ * protocol writes here; the telemetry tick and the demo `plugin.navigation.state` read it.
  * @license GPL-3.0-only
  */
 
