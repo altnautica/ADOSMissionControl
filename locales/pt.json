@@ -2215,6 +2215,17 @@
       "precedenceHold": "Hold",
       "runtimeNotice": "These values drive the node's onboard swarm runtime, which picks up a saved change within a few seconds. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here does not by itself put the node under swarm control."
     },
+    "thisComputer": {
+      "title": "Este computador",
+      "blurb": "Esta estação de solo roda em um computador que você também usa. Ela mantém os serviços de rádio, pareamento, vídeo e controle, e não mexe no seu Wi-Fi, tela, suspensão nem atualizações — por isso não há ponto de acesso, quiosque nem painel de status para configurar aqui.",
+      "reachLabel": "Acessível a partir de",
+      "reachHint": "Onde o console deste nó responde. O agente aplica essa escolha ao iniciar.",
+      "reachShared": "Sua rede",
+      "reachLocal": "Somente este computador",
+      "shareLabel": "Compartilhar esta estação de solo na rede local",
+      "shareHint": "Permite que celulares e tablets da sua rede acessem esta estação de solo. Desligado: só este computador pode.",
+      "leftAlone": "Sua conexão Wi-Fi, tela, configurações de energia e atualizações do sistema continuam sendo suas. O agente só mantém este computador acordado enquanto há um link ativo com o drone."
+    },
     "wifi": {
       "title": "Wi-Fi",
       "blurb": "Join this node to a nearby Wi-Fi network, or manage its saved networks.",
@@ -2760,6 +2771,9 @@
       "addNodeSubtitle": "No account required. Works fully offline.",
       "addNodePlaceholder": "my-drone.local  or  9TW85C",
       "addNodeHint": "Same Wi-Fi as the agent? Paste the hostname or IP. New agent showing a 6-character code in `ados status`? Type that.",
+      "useThisComputer": "Usar este computador como estação de solo",
+      "useThisComputerHint": "Roda aqui e responde só a este computador até você compartilhá-lo.",
+      "noLocalAgent": "Nenhum agente de estação de solo neste computador. Instale com:",
       "codeTryHostnameTip": "Tip: if the agent is on your network, enter its hostname or IP instead (for example my-drone.local).",
       "pairButton": "Pair",
       "codeNoHostError": "Pair code is valid but the agent hasn't advertised a network address yet. Wait a few seconds and try again.",
@@ -2906,6 +2920,7 @@
         "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
       },
       "securePageBlocked": "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.",
+      "loopbackPermissionBlocked": "Permita que este site se conecte a apps deste dispositivo quando o navegador pedir e tente novamente.",
       "keyRejected": "{host} answered but refused this browser's key: it was paired again elsewhere or its key was reset. Re-pair it here to use it.",
       "hostTaken": "Another node now answers at {host}, so this node has moved or was re-flashed. Use its new address, or re-pair it.",
       "rePair": "Re-pair"

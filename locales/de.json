@@ -2920,6 +2920,7 @@
         "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
       },
       "securePageBlocked": "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.",
+      "loopbackPermissionBlocked": "Erlaube dieser Website, sich mit Apps auf diesem Gerät zu verbinden, wenn dein Browser fragt, und versuche es dann erneut.",
       "keyRejected": "{host} answered but refused this browser's key: it was paired again elsewhere or its key was reset. Re-pair it here to use it.",
       "hostTaken": "Another node now answers at {host}, so this node has moved or was re-flashed. Use its new address, or re-pair it.",
       "rePair": "Re-pair"

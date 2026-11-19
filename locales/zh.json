@@ -2215,6 +2215,17 @@
       "precedenceHold": "Hold",
       "runtimeNotice": "These values drive the node's onboard swarm runtime, which picks up a saved change within a few seconds. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here does not by itself put the node under swarm control."
     },
+    "thisComputer": {
+      "title": "此计算机",
+      "blurb": "此地面站运行在你日常使用的计算机上。它负责无线电、配对、视频和控制服务，不会改动你的 Wi-Fi、显示、睡眠和更新设置，因此这里没有需要配置的接入点、展台模式或状态面板。",
+      "reachLabel": "可访问范围",
+      "reachHint": "此节点控制台响应的范围。代理在启动时应用此选择。",
+      "reachShared": "你的网络",
+      "reachLocal": "仅此计算机",
+      "shareLabel": "在本地网络上共享此地面站",
+      "shareHint": "让你网络中的手机和平板访问此地面站。关闭时：只有此计算机可以访问。",
+      "leftAlone": "你的 Wi-Fi 连接、显示、电源设置和系统更新保持不变。代理仅在无人机链路活动时保持此计算机唤醒。"
+    },
     "wifi": {
       "title": "Wi-Fi",
       "blurb": "Join this node to a nearby Wi-Fi network, or manage its saved networks.",
@@ -2760,6 +2771,9 @@
       "addNodeSubtitle": "No account required. Works fully offline.",
       "addNodePlaceholder": "my-drone.local  or  9TW85C",
       "addNodeHint": "Same Wi-Fi as the agent? Paste the hostname or IP. New agent showing a 6-character code in `ados status`? Type that.",
+      "useThisComputer": "将此计算机用作地面站",
+      "useThisComputerHint": "在此运行，在你共享之前只响应此计算机。",
+      "noLocalAgent": "此计算机上没有地面站代理。使用以下命令安装：",
       "codeTryHostnameTip": "Tip: if the agent is on your network, enter its hostname or IP instead (for example my-drone.local).",
       "pairButton": "Pair",
       "codeNoHostError": "Pair code is valid but the agent hasn't advertised a network address yet. Wait a few seconds and try again.",
@@ -2906,6 +2920,7 @@
         "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
       },
       "securePageBlocked": "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.",
+      "loopbackPermissionBlocked": "当浏览器询问时，允许此网站连接到此设备上的应用，然后重试。",
       "keyRejected": "{host} answered but refused this browser's key: it was paired again elsewhere or its key was reset. Re-pair it here to use it.",
       "hostTaken": "Another node now answers at {host}, so this node has moved or was re-flashed. Use its new address, or re-pair it.",
       "rePair": "Re-pair"

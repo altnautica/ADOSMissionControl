@@ -2215,6 +2215,17 @@
       "precedenceHold": "Hold",
       "runtimeNotice": "These values drive the node's onboard swarm runtime, which picks up a saved change within a few seconds. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here does not by itself put the node under swarm control."
     },
+    "thisComputer": {
+      "title": "このコンピューター",
+      "blurb": "この地上局は普段お使いのコンピューター上で動作します。無線、ペアリング、映像、制御のサービスを担い、Wi-Fi、ディスプレイ、スリープ、アップデートには手を加えません。そのため、ここで設定するアクセスポイント、キオスク、ステータスパネルはありません。",
+      "reachLabel": "接続元",
+      "reachHint": "このノードのコンソールが応答する範囲です。エージェントは起動時にこの設定を適用します。",
+      "reachShared": "ネットワーク全体",
+      "reachLocal": "このコンピューターのみ",
+      "shareLabel": "この地上局をローカルネットワークで共有する",
+      "shareHint": "ネットワーク上のスマートフォンやタブレットからこの地上局に接続できるようにします。オフ: このコンピューターからのみ接続できます。",
+      "leftAlone": "Wi-Fi 接続、ディスプレイ、電源設定、システムアップデートはそのままです。エージェントはドローンとのリンクが有効な間だけこのコンピューターをスリープさせません。"
+    },
     "wifi": {
       "title": "Wi-Fi",
       "blurb": "Join this node to a nearby Wi-Fi network, or manage its saved networks.",
@@ -2760,6 +2771,9 @@
       "addNodeSubtitle": "No account required. Works fully offline.",
       "addNodePlaceholder": "my-drone.local  or  9TW85C",
       "addNodeHint": "Same Wi-Fi as the agent? Paste the hostname or IP. New agent showing a 6-character code in `ados status`? Type that.",
+      "useThisComputer": "このコンピューターを地上局として使う",
+      "useThisComputerHint": "ここで動作し、共有するまではこのコンピューターにのみ応答します。",
+      "noLocalAgent": "このコンピューターに地上局エージェントがありません。次のコマンドでインストールしてください:",
       "codeTryHostnameTip": "Tip: if the agent is on your network, enter its hostname or IP instead (for example my-drone.local).",
       "pairButton": "Pair",
       "codeNoHostError": "Pair code is valid but the agent hasn't advertised a network address yet. Wait a few seconds and try again.",
@@ -2906,6 +2920,7 @@
         "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
       },
       "securePageBlocked": "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.",
+      "loopbackPermissionBlocked": "ブラウザーに確認されたら、このサイトがこのデバイス上のアプリに接続することを許可してから、もう一度お試しください。",
       "keyRejected": "{host} answered but refused this browser's key: it was paired again elsewhere or its key was reset. Re-pair it here to use it.",
       "hostTaken": "Another node now answers at {host}, so this node has moved or was re-flashed. Use its new address, or re-pair it.",
       "rePair": "Re-pair"
