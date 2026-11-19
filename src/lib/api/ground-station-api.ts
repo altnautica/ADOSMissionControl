@@ -25,6 +25,7 @@ import * as fleet from "./ground-station/fleet";
 import * as gnss from "./ground-station/gnss";
 import * as lora from "./ground-station/lora";
 import * as adapters from "./ground-station/radio-adapters";
+import * as uplinkHandover from "./ground-station/uplink-handover";
 
 export { GroundStationApiError };
 export type { FleetHeroSlot, FleetHeroResult } from "./ground-station/fleet";
@@ -60,6 +61,8 @@ export class GroundStationApi {
   getWfbReceiverCombined = () => wfb.getWfbReceiverCombined(this.ctx);
   listPhoneInvites = () => wfb.listPhoneInvites(this.ctx);
   decidePhoneInvite = (inviteId: string, decision: "approve" | "reject") => wfb.decidePhoneInvite(this.ctx, inviteId, decision);
+  getRadioUplink = () => uplinkHandover.getRadioUplink(this.ctx);
+  takeBackRadioUplink = () => uplinkHandover.takeBackRadioUplink(this.ctx);
   getNetwork = () => net.getNetwork(this.ctx);
   setAp = (update: ApUpdate) => net.setAp(this.ctx, update);
   getEthernetConfig = () => net.getEthernetConfig(this.ctx);

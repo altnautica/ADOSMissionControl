@@ -29,6 +29,7 @@ vi.mock("../use-radio-adapters", () => ({ useRadioAdapters: () => adaptersRead.v
 vi.mock("@/components/hardware/radio/RadioPanel", () => ({ RadioPanel: () => null }));
 vi.mock("@/components/hardware/VideoLinkPanel", () => ({ VideoLinkPanel: () => null }));
 vi.mock("../PhoneReceiversCard", () => ({ PhoneReceiversCard: () => null }));
+vi.mock("../UplinkHandoverCard", () => ({ UplinkHandoverCard: () => null }));
 vi.mock("@/stores/agent-capabilities-store", () => ({
   // The capability block still lists two adapters: the REST verdict must win.
   selectDeviceCapabilities: () => ({

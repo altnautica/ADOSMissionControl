@@ -33,6 +33,7 @@ import {
 import { LaneCard } from "./lane-ui";
 import { PhoneReceiversCard } from "./PhoneReceiversCard";
 import { RadioAdaptersView } from "./RadioAdaptersView";
+import { UplinkHandoverCard } from "./UplinkHandoverCard";
 import { useRadioAdapters } from "./use-radio-adapters";
 
 export interface RadioTabProps {
@@ -74,6 +75,7 @@ export function RadioTab({ nodeDeviceId }: RadioTabProps) {
           ) : adapters.length > 1 ? (
             <RadioAdaptersView adapters={adapters} summary={summary} historyKey={nodeDeviceId ?? direct.agentUrl} />
           ) : null}
+          <UplinkHandoverCard agentUrl={direct.agentUrl} apiKey={direct.apiKey} />
           <RadioPanel />
           <VideoLinkPanel />
           <PhoneReceiversCard agentUrl={direct.agentUrl} apiKey={direct.apiKey} />
