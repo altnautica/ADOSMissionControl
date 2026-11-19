@@ -437,6 +437,8 @@ export class MockPilot {
     // The stick row of the flown profile, and the sticks while they fly.
     const limits = DEMO_STICK_LIMITS[this.wire.profile as keyof typeof DEMO_STICK_LIMITS] ?? DEMO_STICK_LIMITS.normal;
     this.wire.profile_limits = limits;
+    // The demo flies on wall time, as a real node does.
+    this.wire.clock = { source: "wall" };
     const flying = this.wire.owner === "pilot" && this.wire.input_src !== null && this.lastInputAt > 0 && !lost;
     this.wire.stick = flying ? demoStick(this.lastAxes, limits, now - this.lastInputAt, this.lastSeq) : null;
     const sequence = this.liftoff.sequence(now);

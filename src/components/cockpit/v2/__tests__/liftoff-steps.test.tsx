@@ -47,11 +47,11 @@ describe("steady take-off on the launch strip", () => {
       trim: "learned",
       tiltDeg: 1.5,
     });
-    expect(sequenceWith({ phase: "lift", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBeNull();
+    expect(sequenceWith({ phase: "commit", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBeNull();
   });
 
   it("shows the status line, with its detail, while it runs", () => {
-    render(<LaunchStepStrip sequence={sequenceWith({ phase: "lift", text: "Lifting off", trim: "probe", tilt_deg: 0 })} />);
+    render(<LaunchStepStrip sequence={sequenceWith({ phase: "commit", text: "Lifting off", trim: "probe", tilt_deg: 0 })} />);
     expect(screen.getByTestId("launch-liftoff-text").textContent).toBe("Lifting off");
     cleanup();
     render(

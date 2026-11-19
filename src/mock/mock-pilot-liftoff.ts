@@ -1,8 +1,8 @@
 /**
  * @module mock/mock-pilot-liftoff
  * @description The demo pilot's steady take-off: on `launch` or `takeoff`
- * the wire's `sequence` walks the supervised lift-off phases (spin up, set
- * trim, lift off, climb) on a timer, as the agent reports them, then ends.
+ * the wire's `sequence` walks the supervised lift-off phases (spin up, find,
+ * bracket, settle, commit, climb) on a timer, as the agent reports them, then ends.
  * The first flight probes the airframe's trim; later flights fly it
  * `learned` and the balance readiness row turns OK. `airframe_reset`
  * forgets the learned trim on the ground. A pinned `supervised_liftoff`
@@ -18,8 +18,10 @@ import { DEMO_BALANCE_LEARNED, DEMO_BALANCE_LEARNING, type Json } from "./mock-p
  * renamed phase set is a change here only. */
 export const DEMO_LIFTOFF_PHASES: readonly { phase: string; text: string; ms: number | null }[] = [
   { phase: "spool", text: "Spinning up", ms: 800 },
-  { phase: "level", text: "Setting trim", ms: 600 },
-  { phase: "lift", text: "Lifting off", ms: 500 },
+  { phase: "find", text: "Lifting off", ms: 500 },
+  { phase: "bracket", text: "Checking balance", ms: 800 },
+  { phase: "settle", text: "Checking balance", ms: 300 },
+  { phase: "commit", text: "Lifting off", ms: 300 },
   { phase: "climb", text: "Climbing to {alt} m", ms: null },
   { phase: "done", text: "Lifted off", ms: 500 },
 ];

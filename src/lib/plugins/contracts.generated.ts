@@ -21,6 +21,7 @@ export const CONTRACT_VERSIONS = {
   "sensor.v1": 1,
   "plugin.events": 1,
   "pilot.v1": 5,
+  "simclock.v1": 1,
 } as const;
 
 export const SIDECAR_VERSIONS = {
@@ -226,6 +227,13 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     transport: "unix-stream",
     status: "active",
     description: "The command-authority socket served by ados-pilot (pilot.sock): 4-byte big-endian length-prefixed msgpack maps keyed by `op`. Client ops: input {src, session, seq, t_ms, axes:[roll,pitch,thr,yaw], buttons}, release, session.take, hb, action {name, src, args?, id?}, lease.acquire {holder:{plugin_id, skill_id}, kind}, lease.release, goal {lease_id, goal}, goto {n, e, d, yaw?}, swarm.goal {vn, ve, vd, yaw?}, subscribe, view_demand {cameras, models}, feed {topic, payload}, and the setup.* family (list, start, action, run_step, abort, subscribe). Server messages: state (the nav `pilot` kind), obstacles (the nav `obstacles` kind), sticks {lease_id, axes}, lease.revoked {lease_id, reason}, goal.status {lease_id, state (enroute|arrived|no-vantage), vantage_ne?, coverage, occluder_ne?, occluder_width_m?} at every replan while the lease goal is a vantage goal (goal.kind vantage with goal.vantage {predicted_ne, cov_ne, sigma_k, standoff_m, max_radius_m, anchor_ne, hypotheses_ne?}), and replies keyed by the request op. On a ground station the native control front binds the same path and relays input, release, action, session.take and hb to the drone over the aux Pilot channel. v2: in the state message armed and landed are null while the flight controller link is down (unknown, so a surface treats the vehicle as possibly airborne); v1 sent them as booleans. v3: fc_mode and fc_mode_name are null while the flight controller link is down too (unknown); v2 sent mode 0 and its name. v4: goal.vel_mode (feed_forward, the default when absent, or command): with command, goal.vn/ve are the whole horizontal velocity the skill asks for and the pilot adds no pull toward goal.n/e; every goal's velocity is shaped by the pilot's acceleration and jerk limits. v5: goal.subject_sigma_m (absent reads 0), the 1-sigma error of goal.subject_ne along the line of sight; the pilot keeps a skill goal's subject_ne clear by a distance this widens, and the state message's command.limits may name subject.",
+  },
+  "simclock.v1": {
+    version: 1,
+    wire: "binary",
+    transport: "udp",
+    status: "active",
+    description: "The sim-clock feed (seam L): the simulator owns sim time and sends it over UDP, little-endian. Simulator to agent TICK (32 bytes) {u8 v=1, u8 kind=1, u8 flags (bit0 paused, bit1 realtime, bit2 final, bit3 lockstep), u8 rsv, u32 seq, u64 sim_ns, u64 grant_ns, f64 speed}; agent to simulator ACK (24 bytes) {u8 v=1, u8 kind=2, u16 parts, u32 seq, u64 done_ns, u32 lag_wall_us, u32 rsv}. Received only on a node with simulation.enabled and simulation.clock sim, one UDP port per consumer from simulation.clock_feed: the pilot on it, the log store on +1, the plugin relay (ados-clock-service) on +2. The relay writes every TICK, unchanged, to each follower of the Unix stream socket run/simclock/relay.sock, which the plugin host names to plugins in ADOS_CLOCK_FEED. A tick with an older or repeated seq, or an earlier sim_ns, is dropped; a feed silent for 500 ms of wall time is stale and stops every sim timer, with no fallback to wall time.",
   },
 };
 

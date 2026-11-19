@@ -36,6 +36,25 @@ export function parseSpeedCap(raw: unknown): SpeedCap | null {
   return reason !== null && vHMps !== null ? { reason, vHMps } : null;
 }
 
+/** The charge a low-battery return home needs (`battery_reserve`), airborne:
+ *  `needPct` is the level the return fires at, `basis` `energy` when the
+ *  estimate of the way home sets it, `floor` when the fixed floor does. */
+export interface BatteryReserve {
+  needPct: number;
+  basis: "energy" | "floor";
+  returnS: number;
+}
+
+/** `battery_reserve` from the pilot frame, or null when absent or malformed. */
+export function parseBatteryReserve(raw: unknown): BatteryReserve | null {
+  const o = obj(raw);
+  if (!o) return null;
+  const needPct = num(o.need_pct);
+  const returnS = num(o.return_s);
+  const basis = o.basis === "energy" || o.basis === "floor" ? o.basis : null;
+  return needPct !== null && returnS !== null && basis !== null ? { needPct, basis, returnS } : null;
+}
+
 /** The cap in m/s with at most one decimal (1.5 → "1.5", 2 → "2"), the same
  *  on every surface. */
 export function speedCapText(vHMps: number): string {

@@ -20,11 +20,13 @@
  */
 
 import {
+  parseBatteryReserve,
   parsePositionUnverified,
   parseProfileLimits,
   parseSpeedCap,
   parseStatusText,
   parseStickCommand,
+  type BatteryReserve,
   type FcStatusText,
   type PositionUnverified,
   type ProfileLimits,
@@ -41,8 +43,9 @@ import {
   type PlaceClass,
   type RouteCheck,
 } from "./cockpit-mission";
+import { parseSimClock, type SimClock } from "./sim-clock";
 
-export type { FcStatusText, PositionUnverified, ProfileLimits, SpeedCap, StickCommand } from "./pilot-fields";
+export type { BatteryReserve, FcStatusText, PositionUnverified, ProfileLimits, SpeedCap, StickCommand } from "./pilot-fields";
 export {
   decodeBase64Into,
   decodeGridCode,
@@ -126,7 +129,7 @@ export interface ReadinessItem {
   msg: string;
 }
 
-export const LIFTOFF_PHASES = ["spool", "level", "probe", "lift", "climb", "done", "stopped"] as const;
+export const LIFTOFF_PHASES = ["spool", "level", "find", "bracket", "settle", "commit", "climb", "done", "stopped"] as const;
 export type LiftoffPhase = (typeof LIFTOFF_PHASES)[number];
 
 /** A steady take-off on an ArduPilot multirotor: its phase, its status
@@ -227,6 +230,9 @@ export interface PilotState {
    *  or `rth`, while its countdown runs (`rthCountdownS`) and after it
    *  fired; null while none. */
   lowBatteryAction: "land" | "rth" | null;
+  /** The charge a low-battery return home needs, airborne; null on the
+   *  ground. */
+  batteryReserve: BatteryReserve | null;
   /** A horizontal speed cap the pilot applies to every setpoint it flies
    *  (`gnss-denied` while the EKF horizontal source is not GNSS,
    *  `confined-near` near the clearance limit in a confined place), or null. */
@@ -251,6 +257,9 @@ export interface PilotState {
   /** The limits that cut the asked velocity since the previous frame
    *  (`command.limits`, first bound first); empty while it flies none. */
   commandLimits: string[];
+  /** The simulator's clock while the pilot follows one (the "SIM ×N"
+   *  badge); null on wall time and from an older agent. */
+  simClock: SimClock | null;
 }
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off", "stale", "unavailable"];
@@ -329,6 +338,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     failsafeCause: str(p.failsafe_cause),
     setupAbort: str(p.setup_abort),
     lowBatteryAction: oneOf(p.low_battery_action, ["land", "rth"] as const),
+    batteryReserve: parseBatteryReserve(p.battery_reserve),
     speedCap: parseSpeedCap(p.speed_cap),
     placeClass: oneOf(p.place_class, PLACE_CLASSES) ?? "open",
     rcReceiver: p.rc_receiver === "absent" ? "absent" : "present",
@@ -337,6 +347,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     positionUnverified: parsePositionUnverified(p.position_unverified),
     profileLimits: parseProfileLimits(p.profile_limits),
     stick: parseStickCommand(p.stick),
+    simClock: parseSimClock(p.clock),
     commandLimits: Array.isArray(obj(p.command)?.limits)
       ? (obj(p.command)!.limits as unknown[]).filter((l): l is string => typeof l === "string")
       : [],

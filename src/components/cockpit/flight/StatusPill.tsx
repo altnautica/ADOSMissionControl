@@ -40,6 +40,7 @@ import {
   type PillSource,
 } from "@/lib/hud/status-pill";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
+import { simClockLabel } from "@/lib/hud/sim-clock";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightSheet } from "./flight-sheet";
 import { PILL_COLOR, StatusPillList } from "./StatusPillList";
@@ -228,6 +229,7 @@ function usePillState(droneId: string): { alerts: PillAlert[]; armed: boolean | 
 
 export function StatusPill({ droneId }: { droneId: string }) {
   const { alerts, armed, flashPhase } = usePillState(droneId);
+  const simClock = usePilotState(droneId).pilot?.simClock ?? null;
   const [acked, setAcked] = useState<ReadonlySet<string>>(() => new Set());
   // The list is a flight-screen sheet: one at a time, and the tips see it.
   const [open, setOpen] = useFlightSheet("status");
@@ -299,6 +301,16 @@ export function StatusPill({ droneId }: { droneId: string }) {
         <span className="fs-dot" aria-hidden="true" data-testid="status-pill-dot" />
         <span className="fs-pill-text" title={summary.text}>{summary.text}</span>
       </button>
+      {simClock ? (
+        // A run on a simulator's clock never reads as real time.
+        <span
+          className="fs-pill-text"
+          data-testid="sim-clock"
+          style={{ color: PILL_TEXT_COLOR.warning, border: `1px solid ${PILL_COLOR.warning}`, borderRadius: 4, padding: "0 4px" }}
+        >
+          {simClockLabel(simClock)}
+        </span>
+      ) : null}
       {open && <StatusPillList alerts={alerts} listRef={listRef} armed={armed} />}
     </div>
   );

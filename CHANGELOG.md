@@ -33,6 +33,8 @@ ground holds the uplink and takes it back from a phone.
 
 ### Added
 
+- Cockpit: the pilot frame's `clock` is parsed (`simClock`), and the status pill is followed by a "SIM ×N" badge while the pilot runs on a simulator's clock. Demo: the demo pilot reports `clock: {source: "wall"}`.
+- Cockpit: the pilot frame's `battery_reserve` (the charge a low-battery return home needs, `energy` or `floor` basis) is parsed (`batteryReserve`), and the cockpit spec carries the energy-aware return's banner string `pilot.banner.low_battery_rth_energy` ("Battery {pct}% · need {need_pct}% to reach home · Returning in {in_s} s"). Demo: `DEMO_LOW_BATTERY_ENERGY_PIN`.
 - Map tab: while the map's placement is `stream`, Mission Control reads the drone's live stream on its Reconstruct compute node (`/api/plugins/com.altnautica.reconstruct/x/ws/live/<drone>`, the node the drone's Capture readiness names): the node's occupancy tiles join the live map and its sweep points draw over the 3D view, and the status card names the compute node and whether its stream is live, connecting or not reachable from this browser. A closed stream is dialled again every 2 s. Demo: the demo drone streams to the demo workstation. New dependency `@msgpack/msgpack` for the stream's framing.
 - Flight-state chip: while a skill, a goto or the sticks fly, the secondary line says which limit cut the commanded speed, from the pilot's `command.limits` ("Slowed: obstacle", "Slowed: sensor range", "Stopped: obstacle", ...), as the agent's cockpit does.
 - Map tab: shown while the drone's Navigation extension publishes a live map, with a 2D and a 3D view. 2D is the local-frame map with the `map.overlay` slot over it, so an extension layer (Capture's coverage) renders in the map's frame; 3D is Navigation's live sweep cloud (`/navigation/sweep`), coloured by height, with the drone's pose. The status card reads Navigation's map status: placement, memory, voxel size, sweep points, area, the pose provider and the FC IMU feed. Demo: the demo drone's room cloud.
@@ -119,6 +121,7 @@ ground holds the uplink and takes it back from a phone.
 
 ### Changed
 
+- Cockpit: the steady take-off's phases are the agent's new ones (`find`, `bracket`, `settle`, `commit` in place of `probe` and `lift`); the demo's lift-off walks them.
 - The capture session list, the navigation topics and the plugin ids follow the extension split: sessions come from `com.altnautica.capture` (`/x/capture/sessions`), the pose, scan, map status and the shared `plugin.navigation.state` topic from `com.altnautica.navigation`, and the reconstruction node from `com.altnautica.reconstruct`. The Map tab's launcher for the old 3D viewer page is gone.
 - Cockpit: the sticks' flight-state chip drops its "Pilot · " prefix and reads the profile first ("Cine · 3 m/s", "Normal" without a limit); the control mode line below still names ADOS Pilot.
 - The pilot stream keeps only the newest stick frame while its WebSocket still has unsent bytes, so a slow link flies the latest stick rather than a queue of old ones; a release drops a waiting stick frame.

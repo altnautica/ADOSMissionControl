@@ -128,6 +128,23 @@ export const DEMO_POSITION_UNVERIFIED_PIN: Json = {
   position_unverified: { reason: "flow_disagrees", flow_mps: 5.3, estimate_mps: 0.3 },
 };
 
+/**
+ * The pin for a low-battery return the estimate of the way home asked for
+ * above the 30 % floor: 1 km out, the return needs 52 % and the battery
+ * reads 48 %, so the pilot counts down to its SmartRTL. From the console:
+ * `__adosDemoPilot.pin(DEMO_LOW_BATTERY_ENERGY_PIN)` while flying.
+ */
+export const DEMO_LOW_BATTERY_ENERGY_PIN: Json = {
+  low_battery_action: "rth",
+  rth_countdown_s: 8,
+  battery_reserve: { need_pct: 52, basis: "energy", return_s: 248 },
+  banner: {
+    text_key: "pilot.banner.low_battery_rth_energy",
+    args: { pct: 48, need_pct: 52, in_s: 10 },
+    until_ms: null,
+  },
+};
+
 /** The wire's `position_unverified` reason and detail. */
 export interface DemoPositionUnverified {
   reason: string;
