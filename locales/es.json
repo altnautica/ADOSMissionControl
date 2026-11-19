@@ -6568,7 +6568,7 @@
     "radio": {
       "phoneReceivers": {
         "title": "Receptores de teléfono",
-        "description": "Teléfonos con radio propia que solicitaron las claves de recepción de esta flota. Aprueba solo si la huella coincide con la del teléfono. Los teléfonos solo reciben; nunca transmiten.",
+        "description": "Teléfonos con radio propia que solicitaron las claves de esta flota. Aprueba solo si la huella coincide con la del teléfono. Un teléfono aprobado recibe y puede tomar el enlace ascendente de esta estación de tierra; la tarjeta de enlace ascendente de arriba muestra quién lo tiene.",
         "loading": "Cargando…",
         "unreachable": "La estación de tierra no responde. La lista puede estar desactualizada; las decisiones quedan en pausa hasta que responda.",
         "empty": "Ningún teléfono espera aprobación.",

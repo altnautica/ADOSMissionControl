@@ -6554,7 +6554,7 @@
     "radio": {
       "phoneReceivers": {
         "title": "Receptores de telefone",
-        "description": "Telefones com rádio próprio que pediram as chaves de recepção desta frota. Aprove apenas se a impressão digital corresponder à do telefone. Telefones só recebem; nunca transmitem.",
+        "description": "Telefones com rádio próprio que pediram as chaves desta frota. Aprove apenas se a impressão digital corresponder à do telefone. Um telefone aprovado recebe e pode assumir o uplink desta estação de solo; o cartão Uplink acima mostra quem o detém.",
         "loading": "Carregando…",
         "unreachable": "A estação de solo não respondeu. A lista pode estar desatualizada; as decisões ficam pausadas até ela responder.",
         "empty": "Nenhum telefone aguardando aprovação.",

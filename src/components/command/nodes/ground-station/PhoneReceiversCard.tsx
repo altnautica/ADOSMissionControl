@@ -3,9 +3,10 @@
 /**
  * @module PhoneReceiversCard
  * @description Phone receivers waiting for this ground station's approval. A
- * phone with its own radio asks for the fleet receive keys; nothing is shared
+ * phone with its own radio asks for the fleet's keys; nothing is shared
  * until an operator compares the fingerprint shown on the phone with the one
- * listed here and approves it. Receive-only: the phone never transmits.
+ * listed here and approves it. An approved phone receives, and may take the
+ * uplink from this box (`UplinkHandoverCard` shows who holds it).
  * @license GPL-3.0-only
  */
 

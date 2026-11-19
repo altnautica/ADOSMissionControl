@@ -6554,7 +6554,7 @@
     "radio": {
       "phoneReceivers": {
         "title": "Penerima ponsel",
-        "description": "Ponsel dengan radio sendiri yang meminta kunci penerimaan armada ini. Setujui hanya jika sidik jari cocok dengan yang ada di ponsel. Ponsel hanya menerima; tidak pernah memancar.",
+        "description": "Ponsel dengan radio sendiri yang meminta kunci armada ini. Setujui hanya jika sidik jari cocok dengan yang ada di ponsel. Ponsel yang disetujui menerima, dan dapat mengambil uplink dari stasiun darat ini; kartu Uplink di atas menunjukkan siapa yang memegangnya.",
         "loading": "Memuat…",
         "unreachable": "Stasiun darat tidak merespons. Daftar mungkin sudah usang; keputusan dijeda sampai stasiun merespons lagi.",
         "empty": "Tidak ada ponsel yang menunggu persetujuan.",
