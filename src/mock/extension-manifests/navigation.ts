@@ -273,6 +273,10 @@ agent:
     - id: network.outbound
       required: false
       degraded_behavior: "No network LiDAR: the LiDAR pose needs a serial LiDAR or one on the sensor bus."
+    # The Livox data ports (UDP) the lidar-slam service binds.
+    - id: network.listen
+      required: false
+      degraded_behavior: "No Livox LiDAR: its UDP data ports stay closed."
   mavlink_components:
     - component_id: 198
       component_kind: vio
@@ -290,6 +294,7 @@ agent:
       - name: lidar-slam
         command: "bin:navigation-lidar-slam com.altnautica.navigation"
         profiles: [drone, visor]
+        udp_listen_ports: [56101, 56201, 56301, 56401, 56501]
     shared_topics:
       - { topic: plugin.navigation.pose, subscribe_capability: telemetry.read }
       - { topic: plugin.navigation.scan, subscribe_capability: telemetry.read }

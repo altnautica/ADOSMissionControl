@@ -389,7 +389,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "network.listen": {
     label: "Accept inbound network connections",
-    description: "Lets a declared plugin service bind the TCP ports it lists in its manifest (listen_ports) so other nodes on the network can reach it, and advertise those ports on the local network over mDNS through the agent. Every other port stays closed to the plugin, and the plugin's main process never listens.",
+    description: "Lets a declared plugin service bind the TCP ports in its manifest's listen_ports and the UDP ports in its udp_listen_ports so other nodes on the network can reach it, and advertise its TCP ports on the local network over mDNS through the agent. Every other port stays closed to the plugin, and the plugin's main process never listens.",
     category: "data_network",
     risk: "high",
     risk_reason: "Opens a network entry point into a plugin process on the agent host. Enforced by the generated unit: every plugin unit carries SocketBindDeny=any, and only a granted service unit gets SocketBindAllow for its declared ports. The mdns.advertise host method is gated on it at dispatch and publishes only a declared port.",
