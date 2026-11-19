@@ -1,6 +1,8 @@
 /**
  * @module WaypointEntities
  * @description Renders numbered waypoint billboards at their actual altitude in the 3D scene.
+ * The number tag is drawn once the terrain-resolved positions arrive; until then
+ * the dot is clamped to the ground alone (see scene-label).
  * Clicking a waypoint selects it (syncs with planner store) unless the parent
  * owns input (`selectOnClick={false}`, the planner's 3D view).
  * Entity creation and selection styling are split into separate effects
@@ -17,9 +19,6 @@ import {
   Color,
   ConstantProperty,
   HeightReference,
-  VerticalOrigin,
-  HorizontalOrigin,
-  LabelStyle,
   type Viewer as CesiumViewer,
   type Entity,
   ScreenSpaceEventType,
@@ -30,6 +29,7 @@ import type { Waypoint } from "@/lib/types";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { usePlannerStore } from "@/stores/planner-store";
 import { isWaypointSelected } from "@/lib/waypoint-selection";
+import { sceneLabel } from "./scene-label";
 
 interface WaypointEntitiesProps {
   viewer: CesiumViewer | null;
@@ -79,22 +79,7 @@ export function WaypointEntities({ viewer, waypoints, resolvedPositions, selectO
           heightReference: heightRef,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
-        label: {
-          text: String(i + 1),
-          font: "12px Inter, sans-serif",
-          fillColor: Color.WHITE,
-          style: LabelStyle.FILL,
-          outlineWidth: 2,
-          outlineColor: Color.BLACK,
-          verticalOrigin: VerticalOrigin.BOTTOM,
-          horizontalOrigin: HorizontalOrigin.CENTER,
-          pixelOffset: new Cartesian2(0, -16),
-          heightReference: heightRef,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          showBackground: true,
-          backgroundColor: bgColor.withAlpha(0.8),
-          backgroundPadding: new Cartesian2(4, 2),
-        },
+        label: sceneLabel(String(i + 1), "12px Inter, sans-serif", bgColor, heightRef),
       });
       entityMap.set(wp.id, entity);
     }

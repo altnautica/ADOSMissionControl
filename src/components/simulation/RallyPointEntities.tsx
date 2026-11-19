@@ -4,7 +4,7 @@
  * Shows orange markers with labels (R1, R2, R3...) and altitude pillars. A
  * rally altitude is measured from home, so the marker sits at home terrain
  * height plus the altitude; until that datum is known the marker is clamped to
- * the ground and no pillar is drawn.
+ * the ground with no label (see scene-label) and no pillar is drawn.
  * @license GPL-3.0-only
  */
 
@@ -12,18 +12,15 @@
 
 import { useEffect } from "react";
 import {
-  Cartesian2,
   Cartesian3,
   Cartographic,
   Color,
   HeightReference,
-  VerticalOrigin,
-  HorizontalOrigin,
-  LabelStyle,
   type Viewer as CesiumViewer,
   type Entity,
 } from "cesium";
 import { useRallyStore } from "@/stores/rally-store";
+import { sceneLabel } from "./scene-label";
 
 interface RallyPointEntitiesProps {
   viewer: CesiumViewer | null;
@@ -63,22 +60,7 @@ export function RallyPointEntities({ viewer, homeHeight, terrainVersion }: Rally
           heightReference,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
-        label: {
-          text: `R${i + 1}`,
-          font: "11px Inter, sans-serif",
-          fillColor: Color.WHITE,
-          style: LabelStyle.FILL,
-          outlineWidth: 2,
-          outlineColor: Color.BLACK,
-          verticalOrigin: VerticalOrigin.BOTTOM,
-          horizontalOrigin: HorizontalOrigin.CENTER,
-          pixelOffset: new Cartesian2(0, -16),
-          heightReference,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          showBackground: true,
-          backgroundColor: color.withAlpha(0.8),
-          backgroundPadding: new Cartesian2(4, 2),
-        },
+        label: sceneLabel(`R${i + 1}`, "11px Inter, sans-serif", color, heightReference),
       });
       entities.push(marker);
 
