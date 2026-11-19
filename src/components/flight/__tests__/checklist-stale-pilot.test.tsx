@@ -51,7 +51,12 @@ describe("pre-flight checklist and pilot freshness", () => {
   it("takes the readiness items from a fresh frame", () => {
     setPilot(0);
     renderWithIntl(<ChecklistAutoRunner />);
-    expect(pilotItems().map((i) => i.id)).toEqual(["pilot:fc_profile", "pilot:position", "pilot:agl"]);
+    expect(pilotItems().map((i) => i.id)).toEqual([
+      "pilot:fc_profile",
+      "pilot:position",
+      "pilot:agl",
+      "pilot:airframe_balance",
+    ]);
     expect(pilotItems().every((i) => i.state === "pass")).toBe(true);
     expect(autoItem("pilot-readiness")?.status).toBe("pass");
   });
