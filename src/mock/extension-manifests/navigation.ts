@@ -269,6 +269,10 @@ agent:
     - id: estimator.pose.inject
     - id: mavlink.component.vio
     - id: sensor.stream.read
+    # A network LiDAR: an RPLIDAR over TCP and the Livox command channel.
+    - id: network.outbound
+      required: false
+      degraded_behavior: "No network LiDAR: the LiDAR pose needs a serial LiDAR or one on the sensor bus."
   mavlink_components:
     - component_id: 198
       component_kind: vio
