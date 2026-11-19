@@ -57,8 +57,13 @@ async function fetchSweep(deviceId: string, since: number | null): Promise<Sweep
 }
 
 export function useLiveSweep(droneId: string, active: boolean): LiveSweep {
+  // The poll folds replies into the ref; the view reads the copy published
+  // with each version bump, never the ref during render.
   const cloud = useRef<SweepCloud>(emptySweepCloud());
-  const [version, setVersion] = useState(0);
+  const [view, setView] = useState<{ cloud: SweepCloud; version: number }>(() => ({
+    cloud: emptySweepCloud(),
+    version: 0,
+  }));
   const [state, setState] = useState<SweepState>("loading");
 
   // A different drone starts from nothing. Declared before the poll so it
@@ -66,7 +71,8 @@ export function useLiveSweep(droneId: string, active: boolean): LiveSweep {
   // cloud.
   useEffect(() => {
     cloud.current = emptySweepCloud();
-    setVersion((v) => v + 1);
+    const next = cloud.current;
+    setView((v) => ({ cloud: next, version: v.version + 1 }));
     setState("loading");
   }, [droneId]);
 
@@ -88,7 +94,8 @@ export function useLiveSweep(droneId: string, active: boolean): LiveSweep {
           const frame = parseSweep(reply);
           if (frame && (frame.reset || frame.count > 0 || cloud.current.seq === null)) {
             cloud.current = applySweep(cloud.current, frame);
-            setVersion((v) => v + 1);
+            const next = cloud.current;
+            setView((v) => ({ cloud: next, version: v.version + 1 }));
           } else if (frame) {
             cloud.current = { ...cloud.current, seq: frame.seq };
           }
@@ -106,5 +113,5 @@ export function useLiveSweep(droneId: string, active: boolean): LiveSweep {
     };
   }, [active, droneId]);
 
-  return { cloud: cloud.current, version, state };
+  return { cloud: view.cloud, version: view.version, state };
 }
