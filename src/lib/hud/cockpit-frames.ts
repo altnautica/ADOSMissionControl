@@ -12,9 +12,10 @@
  * byte buffer (`decodeBase64Into`), so a frame costs no fresh allocation.
  *
  * Dependency-free on purpose apart from its siblings `pilot-fields.ts`,
- * `cockpit-grids.ts` (the `obstacles`/`depth` grids) and `cockpit-mission.ts`
- * (mission state, stall, place class and route check), both re-exported
- * here: Mission Control copies all four files byte for byte.
+ * `cockpit-grids.ts` (the `obstacles`/`depth` grids), `cockpit-mission.ts`
+ * (mission state, stall, place class and route check) and
+ * `cockpit-surfaces.ts` (landing-zone candidates), all re-exported here:
+ * Mission Control copies all five files byte for byte.
  *
  * @license GPL-3.0-only
  */
@@ -71,6 +72,7 @@ export {
   type RouteCheck,
   type RoutePinch,
 } from "./cockpit-mission";
+export { parseSurfacesFrame, type SurfaceZone, type SurfacesFrame } from "./cockpit-surfaces";
 
 // ── small readers ─────────────────────────────────────────────────────────
 
@@ -474,32 +476,4 @@ export function parseArFrame(raw: unknown): ArFrame | null {
     mission: parseMission(o.mission),
     cameras,
   };
-}
-
-// ── surfaces (landing-zone candidates) ────────────────────────────────────
-
-export interface SurfaceZone {
-  pts: [number, number][];
-  score: number;
-  slopeDeg: number | null;
-}
-
-export interface SurfacesFrame {
-  tsMs: number;
-  cameraId: string;
-  zones: SurfaceZone[];
-}
-
-export function parseSurfacesFrame(raw: unknown): SurfacesFrame | null {
-  const o = obj(raw);
-  const cameraId = o ? str(o.camera_id) : null;
-  if (!o || cameraId === null || !Array.isArray(o.zones)) return null;
-  const zones: SurfaceZone[] = [];
-  for (const z of o.zones) {
-    const zo = obj(z);
-    const pts = zo ? pts2(zo.pts) : [];
-    if (!zo || pts.length < 3) continue;
-    zones.push({ pts, score: num(zo.score) ?? 0, slopeDeg: num(zo.slope_deg) });
-  }
-  return { tsMs: num(o.ts_ms) ?? 0, cameraId, zones };
 }
