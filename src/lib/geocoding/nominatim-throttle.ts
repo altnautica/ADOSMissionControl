@@ -9,7 +9,7 @@
 
 const MIN_INTERVAL_MS = 1100; // small margin above Nominatim's 1 req/s
 export const NOMINATIM_USER_AGENT =
-  "Altnautica Mission Control (https://github.com/altnautica/ADOSMissionControl)";
+  "Altnautica Mission Control (https://github.com/altnautica/ADOSMissionControlGCS)";
 
 let lastFetchAt = 0;
 let queue: Promise<void> = Promise.resolve();

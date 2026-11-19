@@ -24,6 +24,9 @@ interface ChangelogNotificationEntryProps {
 
 function repoLabel(repo: string): string {
   const labels: Record<string, string> = {
+    ADOSMissionControlGCS: "Mission Control",
+    // Entries synced before the repository was renamed keep the name they
+    // were stored under.
     ADOSMissionControl: "Mission Control",
   };
   return labels[repo] ?? repo;

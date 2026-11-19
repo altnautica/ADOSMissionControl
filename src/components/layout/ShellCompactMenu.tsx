@@ -16,7 +16,7 @@ import { SHELL_NAV_TABS } from "./shell-nav-tabs";
 
 const EXTERNAL: Record<string, string> = {
   docs: "https://docs.altnautica.com",
-  starOnGitHub: "https://github.com/altnautica/ADOSMissionControl",
+  starOnGitHub: "https://github.com/altnautica/ADOSMissionControlGCS",
   joinDiscord: "https://discord.gg/uxbvuD4d5q",
 };
 

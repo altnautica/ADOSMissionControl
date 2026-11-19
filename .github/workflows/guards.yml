@@ -208,7 +208,7 @@ jobs:
       # checks run here too, against the agent beside this checkout.
       - uses: actions/checkout@v7
         with:
-          path: ADOSMissionControl
+          path: ADOSMissionControlGCS
 
       - uses: actions/checkout@v7
         with:

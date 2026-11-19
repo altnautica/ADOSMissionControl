@@ -294,7 +294,7 @@ export function getMockCapabilities(
       ],
       cache_used_mb: 76,
       cache_max_mb: 500,
-      registry_url: "https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/public/models/registry.json",
+      registry_url: "https://raw.githubusercontent.com/altnautica/ADOSMissionControlGCS/main/public/models/registry.json",
     },
     navigation: mockNavigationFor(mode),
     // Demo agent reports the native runtime so the RuntimeModeBadge

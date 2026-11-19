@@ -18,8 +18,8 @@ Altnautica Command is licensed under the [GNU General Public License v3.0](LICEN
 ## Development Setup
 
 ```bash
-git clone https://github.com/altnautica/ADOSMissionControl.git
-cd ADOSMissionControl
+git clone https://github.com/altnautica/ADOSMissionControlGCS.git
+cd ADOSMissionControlGCS
 npm install
 npm run demo    # Start with 5 simulated drones (recommended for development)
 npm run dev     # Start without demo data
@@ -36,7 +36,7 @@ Open [http://localhost:4000](http://localhost:4000) in Chrome.
 ## Project Structure
 
 ```
-ADOSMissionControl/
+ADOSMissionControlGCS/
 ├── src/
 │   ├── app/                  # Next.js App Router pages
 │   ├── components/
@@ -139,7 +139,7 @@ Test by enabling the MAVLink Inspector panel in the UI — it shows all incoming
 
 ## Issue Reporting
 
-Use [GitHub Issues](https://github.com/altnautica/ADOSMissionControl/issues) for bugs and feature requests.
+Use [GitHub Issues](https://github.com/altnautica/ADOSMissionControlGCS/issues) for bugs and feature requests.
 
 **For bug reports, include:**
 - Browser and version (must be Chrome 89+ for WebSerial features)

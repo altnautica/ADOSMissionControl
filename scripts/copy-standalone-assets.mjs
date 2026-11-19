@@ -9,8 +9,8 @@
  * desktop wrapper runs this standalone server, so it needs both trees copied in.
  *
  * Next.js may also nest the traced server under a path that mirrors the
- * absolute project location (e.g. `.next/standalone/src/ADOSMissionControl/`
- * when the repo lives at `~/src/ADOSMissionControl`). Desktop packaging and
+ * absolute project location (e.g. `.next/standalone/src/ADOSMissionControlGCS/`
+ * when the repo lives at `~/src/ADOSMissionControlGCS`). Desktop packaging and
  * electron/server.ts expect `server.js` at the standalone root; we flatten here.
  *
  * Runs as `postbuild`, so every `next build` (including the desktop scripts)

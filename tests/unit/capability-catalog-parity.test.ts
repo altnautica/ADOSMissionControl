@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import { getMergedCapabilityMeta } from "@/lib/plugins/capabilities";
 
-// `ADOSMissionControl/` is a sibling of `ADOSExtensions/` inside the
+// `ADOSMissionControlGCS/` is a sibling of `ADOSExtensions/` inside the
 // private monorepo. Resolve from the GCS package root.
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VISION_NAV_MANIFEST = path.join(

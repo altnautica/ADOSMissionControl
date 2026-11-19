@@ -27,7 +27,7 @@ pub struct Ctx {
     // --- deploy state ------------------------------------------------------
     /// The collected deploy configuration (the wizard answers).
     pub config: DeployConfig,
-    /// The ADOSMissionControl repo root the deploy runs from.
+    /// The ADOSMissionControlGCS repo root the deploy runs from.
     pub repo_root: PathBuf,
     /// The Convex admin key, retrieved by the `admin_key` step and consumed by
     /// the function-push + env-set steps. `None` until retrieved.

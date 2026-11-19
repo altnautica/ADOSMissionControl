@@ -350,7 +350,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
           {/* GitHub Star */}
           <Tooltip content={t("starOnGitHub")} position="bottom">
             <a
-              href="https://github.com/altnautica/ADOSMissionControl"
+              href="https://github.com/altnautica/ADOSMissionControlGCS"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"

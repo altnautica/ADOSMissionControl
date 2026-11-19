@@ -19,7 +19,7 @@ service, and verifies it, with no out-of-band steps.
 
 ```bash
 # One-liner (clones the repo if needed, then launches the TUI):
-curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/tools/deploy/deploy.sh | sh
+curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControlGCS/main/tools/deploy/deploy.sh | sh
 
 # Or, from a checkout:
 npm run deploy -- deploy          # the guided deploy wizard
@@ -83,7 +83,7 @@ The GCS uses [Convex](https://convex.dev) for auth, fleet data, and cloud comman
 
 **Option A: Convex Cloud (easiest)**
 ```bash
-cd ADOSMissionControl
+cd ADOSMissionControlGCS
 npx convex init
 npx @convex-dev/auth          # generates JWT keys
 npx convex dev                # starts dev backend
@@ -175,7 +175,7 @@ The MQTT relay gives you 2Hz+ telemetry updates (vs 5s baseline polling through 
 ### 2a. Configure
 
 ```bash
-cd ADOSMissionControl/tools/mqtt-bridge/deploy
+cd ADOSMissionControlGCS/tools/mqtt-bridge/deploy
 cp .env.example .env
 ```
 
@@ -225,7 +225,7 @@ The video relay converts RTSP from the drone agent into fragmented MP4 over WebS
 ### 3a. Configure
 
 ```bash
-cd ADOSMissionControl/tools/video-relay/deploy
+cd ADOSMissionControlGCS/tools/video-relay/deploy
 cp .env.example .env
 ```
 

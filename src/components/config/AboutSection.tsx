@@ -18,7 +18,7 @@ import type { ElectronUpdateStatus } from "@/types/electron";
 import { usePlatform } from "@/hooks/use-platform";
 import { APP_VERSION } from "@/lib/app-version";
 
-const THIRD_PARTY_URL = "https://github.com/altnautica/ADOSMissionControl/network/dependencies";
+const THIRD_PARTY_URL = "https://github.com/altnautica/ADOSMissionControlGCS/network/dependencies";
 
 type CheckResult =
   | { kind: "idle" }

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-/// Locate the ADOSMissionControl repo root from the current working directory:
+/// Locate the ADOSMissionControlGCS repo root from the current working directory:
 /// walk up until a directory contains `tools/selfhost/docker-compose.yml`. The
 /// deployer always operates on a repo checkout (it builds the GCS image + pushes
 /// Convex functions from it), so a missing root is a hard, actionable error.

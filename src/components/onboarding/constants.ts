@@ -80,7 +80,7 @@ export const PRIMARY_CTA_CLASS =
   "h-10 px-8 bg-accent-primary text-accent-foreground text-sm font-semibold hover:brightness-110 transition-all rounded-sm";
 
 export const GITHUB_RELEASES_URL =
-  "https://github.com/altnautica/ADOSMissionControl/releases/latest";
+  "https://github.com/altnautica/ADOSMissionControlGCS/releases/latest";
 
 /** Bump this when disclaimer content changes materially to force re-acceptance. */
 export const DISCLAIMER_VERSION = 1;

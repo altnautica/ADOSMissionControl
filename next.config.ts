@@ -3,8 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Pin tracing root to this package. Without it, repos under paths like
-// ~/src/ADOSMissionControl can emit standalone output nested as
-// .next/standalone/src/ADOSMissionControl/ — which breaks electron/server.ts
+// ~/src/ADOSMissionControlGCS can emit standalone output nested as
+// .next/standalone/src/ADOSMissionControlGCS/ — which breaks electron/server.ts
 // and electron-builder (they expect server.js at the standalone root).
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 

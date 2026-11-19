@@ -1428,7 +1428,7 @@
     "selectDrone": "ಡ್ರೋನ್ ಆಯ್ಕೆಮಾಡಿ",
     "targetDroneHint": "ಹೊಸ ಟ್ರಾನ್ಸ್‌ಪೋರ್ಟ್ ಆಯ್ಕೆಮಾಡಿದ ಡ್ರೋನ್‌ನ ಅದೇ sysid ಅನ್ನು ತಲುಪಬೇಕು, ಇಲ್ಲದಿದ್ದರೆ ಅದನ್ನು ತಿರಸ್ಕರಿಸಲಾಗುತ್ತದೆ.",
     "presetNamePrompt": "ಪ್ರೀಸೆಟ್ ಹೆಸರು:",
-    "bridgeFromSource": "The bridge is not published to npm. Run this from a clone of the Mission Control repository (github.com/altnautica/ADOSMissionControl); it needs Node.js 20 or newer.",
+    "bridgeFromSource": "The bridge is not published to npm. Run this from a clone of the Mission Control repository (github.com/altnautica/ADOSMissionControlGCS); it needs Node.js 20 or newer.",
     "presetSaveFailed": "Could not save the preset",
     "targetDroneRequired": "Choose the drone this link belongs to before connecting.",
     "ws": {

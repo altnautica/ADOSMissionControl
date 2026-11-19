@@ -1428,7 +1428,7 @@
     "selectDrone": "ਡਰੋਨ ਚੁਣੋ",
     "targetDroneHint": "ਨਵੇਂ ਟ੍ਰਾਂਸਪੋਰਟ ਨੂੰ ਚੁਣੇ ਗਏ ਡਰੋਨ ਵਾਂਗ ਹੀ sysid ਤੱਕ ਪਹੁੰਚਣਾ ਚਾਹੀਦਾ ਹੈ, ਨਹੀਂ ਤਾਂ ਇਸਨੂੰ ਰੱਦ ਕਰ ਦਿੱਤਾ ਜਾਵੇਗਾ।",
     "presetNamePrompt": "ਪ੍ਰੀਸੈੱਟ ਨਾਮ:",
-    "bridgeFromSource": "The bridge is not published to npm. Run this from a clone of the Mission Control repository (github.com/altnautica/ADOSMissionControl); it needs Node.js 20 or newer.",
+    "bridgeFromSource": "The bridge is not published to npm. Run this from a clone of the Mission Control repository (github.com/altnautica/ADOSMissionControlGCS); it needs Node.js 20 or newer.",
     "presetSaveFailed": "Could not save the preset",
     "targetDroneRequired": "Choose the drone this link belongs to before connecting.",
     "ws": {

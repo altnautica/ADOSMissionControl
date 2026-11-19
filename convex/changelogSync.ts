@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import { renderChangelogBodyHtml } from "./lib/changelogHtml";
 
 const REPOS = [
-  { owner: "altnautica", name: "ADOSMissionControl", label: "ADOS Mission Control" },
+  { owner: "altnautica", name: "ADOSMissionControlGCS", label: "ADOS Mission Control" },
   { owner: "altnautica", name: "ADOSDroneAgent", label: "ADOS Drone Agent" },
   { owner: "altnautica", name: "ADOSExtensions", label: "ADOS Extensions" },
 ];

@@ -71,7 +71,7 @@ export function ReadyStep({ onFinish, back, dotStep, totalSteps }: Props) {
 
           {/* GitHub card */}
           <a
-            href="https://github.com/altnautica/ADOSMissionControl"
+            href="https://github.com/altnautica/ADOSMissionControlGCS"
             target="_blank"
             rel="noopener noreferrer"
             className="group border border-border-default bg-bg-secondary rounded-lg p-4 hover:border-text-secondary/30 transition-colors"

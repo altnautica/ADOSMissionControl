@@ -10,7 +10,7 @@
 <p align="center"><em>Open-source ground control station for software-defined drones. ArduPilot, PX4, Betaflight and iNav, in the browser.</em></p>
 <p align="center"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-green.svg"> <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-blue.svg"> <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-black.svg"> <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"> <a href="https://discord.gg/uxbvuD4d5q"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join-5865F2.svg"></a></p>
 <p align="center">
-  <strong><a href="https://github.com/altnautica/ADOSMissionControl">Mission Control</a></strong> |
+  <strong><a href="https://github.com/altnautica/ADOSMissionControlGCS">Mission Control</a></strong> |
   <strong><a href="https://github.com/altnautica/ADOSDroneAgent">Drone Agent</a></strong> |
   <strong><a href="https://github.com/altnautica/ADOSAndroidGCS">Android GCS</a></strong> |
   <strong><a href="https://github.com/altnautica/ADOSExtensions">Extensions</a></strong> |
@@ -21,7 +21,7 @@
   <strong><a href="https://discord.gg/uxbvuD4d5q">Discord</a></strong>
 </p>
 
-<p align="center"><a href="https://command.altnautica.com">Live App</a> · <a href="https://command.altnautica.com/community/changelog">Changelog</a> · <a href="https://command.altnautica.com/community/contact">Contact</a> · <a href="https://github.com/altnautica/ADOSMissionControl/issues">Issues</a></p>
+<p align="center"><a href="https://command.altnautica.com">Live App</a> · <a href="https://command.altnautica.com/community/changelog">Changelog</a> · <a href="https://command.altnautica.com/community/contact">Contact</a> · <a href="https://github.com/altnautica/ADOSMissionControlGCS/issues">Issues</a></p>
 
 https://github.com/user-attachments/assets/09f265f4-b692-468a-a170-2be2d8525ae7
 
@@ -36,8 +36,8 @@ Try it right now at [command.altnautica.com](https://command.altnautica.com). No
 Or run locally:
 
 ```bash
-git clone https://github.com/altnautica/ADOSMissionControl.git
-cd ADOSMissionControl
+git clone https://github.com/altnautica/ADOSMissionControlGCS.git
+cd ADOSMissionControlGCS
 npm install
 npm run demo
 ```
@@ -198,7 +198,7 @@ ADOS Ground Agent is the Drone Agent running its ground-station profile.
 <!-- ados-family:repos -->
 | Repo | Runs on | What it does | Link |
 |---|---|---|---|
-| ADOS Mission Control | Browser, desktop (Electron) | Ground control station: FC setup, mission planning, flight, 3D simulation, fleet | [ADOSMissionControl](https://github.com/altnautica/ADOSMissionControl) |
+| ADOS Mission Control | Browser, desktop (Electron) | Ground control station: FC setup, mission planning, flight, 3D simulation, fleet | [ADOSMissionControlGCS](https://github.com/altnautica/ADOSMissionControlGCS) |
 | ADOS Drone Agent | Companion computer on the drone, or a ground node | Onboard agent: MAVLink routing, HD video, long-range radio link, plugins, remote control | [ADOSDroneAgent](https://github.com/altnautica/ADOSDroneAgent) |
 | ADOS Android GCS | Android phones and tablets | Native ground control app for agents on the LAN, direct flight controllers and the cloud | [ADOSAndroidGCS](https://github.com/altnautica/ADOSAndroidGCS) |
 | ADOS Extensions | Drone Agent and Mission Control | First-party signed plugins, each with an agent half and a GCS half | [ADOSExtensions](https://github.com/altnautica/ADOSExtensions) |
@@ -358,7 +358,7 @@ and also runs the web GCS, builds the desktop app, and manages a running stack.
 
 ```bash
 # One-line convenience (clones the repo if needed, then launches the TUI):
-curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/tools/deploy/deploy.sh | sh
+curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControlGCS/main/tools/deploy/deploy.sh | sh
 
 # Local-first, from a checkout:
 npm run deploy                    # interactive menu
@@ -471,7 +471,7 @@ All variables are optional. Set them by editing `.env.local` directly (or re-run
 - **[LinkedIn](https://www.linkedin.com/company/altnautica/)** - Follow company updates
 - **[Email](mailto:team@altnautica.com)** - team@altnautica.com
 - **[Changelog](https://command.altnautica.com/community/changelog)** - What shipped and when
-- **[GitHub Issues](https://github.com/altnautica/ADOSMissionControl/issues)** - Bug reports and technical discussions
+- **[GitHub Issues](https://github.com/altnautica/ADOSMissionControlGCS/issues)** - Bug reports and technical discussions
 
 ---
 

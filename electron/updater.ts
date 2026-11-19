@@ -3,7 +3,7 @@ import { autoUpdater } from "electron-updater";
 
 /** Where an operator goes when this build cannot update itself. */
 export const RELEASES_URL =
-  "https://github.com/altnautica/ADOSMissionControl/releases";
+  "https://github.com/altnautica/ADOSMissionControlGCS/releases";
 
 /**
  * What this build can actually do about updates on the machine it is running

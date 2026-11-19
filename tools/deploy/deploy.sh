@@ -2,9 +2,9 @@
 # ADOS stack deployer bootstrap.
 #
 # One-line convenience:
-#   curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/tools/deploy/deploy.sh | sh
+#   curl -sSL https://raw.githubusercontent.com/altnautica/ADOSMissionControlGCS/main/tools/deploy/deploy.sh | sh
 #
-# Local-first (repo-only): clone ADOSMissionControl, then run from inside it:
+# Local-first (repo-only): clone ADOSMissionControlGCS, then run from inside it:
 #   ./tools/deploy/deploy.sh          (verified prebuilt release binary, else cargo)
 #   cargo run --manifest-path tools/deploy/Cargo.toml
 #
@@ -13,8 +13,8 @@
 # launches the Rust TUI. Any extra args are passed through to `ados-deploy`.
 set -eu
 
-REPO_URL="${ADOS_REPO_URL:-https://github.com/altnautica/ADOSMissionControl.git}"
-DIR="${ADOS_DIR:-$HOME/ADOSMissionControl}"
+REPO_URL="${ADOS_REPO_URL:-https://github.com/altnautica/ADOSMissionControlGCS.git}"
+DIR="${ADOS_DIR:-$HOME/ADOSMissionControlGCS}"
 
 say() { printf '  %s\n' "$*"; }
 
@@ -38,7 +38,7 @@ cd "$DIR/tools/deploy"
 #    must pass the release signature and checksum, then a cargo build. Nothing
 #    downloaded is ever executed unverified.
 RELEASE_PUBKEY="RWQ/CJ1+gk7rjVfGSoy6MOL50e8TmO30KD/J+goaEj+WMI1uzEf92rHN"
-RELEASES="https://github.com/altnautica/ADOSMissionControl/releases/download"
+RELEASES="https://github.com/altnautica/ADOSMissionControlGCS/releases/download"
 
 OS="$(uname -s 2>/dev/null || echo unknown)"
 ARCH="$(uname -m 2>/dev/null || echo unknown)"
