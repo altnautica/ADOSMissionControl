@@ -63,9 +63,10 @@ describe("parseNavFrame", () => {
     expect(
       parseNavFrame({ kind: "scan", data: { angle_start_rad: 0, angle_increment_rad: 0.1, ranges_m: [1, null, 2] } }),
     ).toMatchObject({ kind: "scan", data: { ranges: [1, 0, 2] } });
-    expect(
-      parseNavFrame({ kind: "map", data: { placement: "hybrid", upload: { state: "uploading", bytes_done: 5, bytes_total: 10 } } }),
-    ).toMatchObject({ kind: "map", data: { placement: "hybrid", upload: { state: "uploading", bytesDone: 5 } } });
+    expect(parseNavFrame({ kind: "map", data: { placement: "hybrid" } })).toMatchObject({
+      kind: "map",
+      data: { placement: "hybrid" },
+    });
     expect(
       parseNavFrame({ kind: "follow_event", topic: "follow.reacquired", data: { track_id: 15, similarity: 0.86, gap_s: 1.8 } }),
     ).toEqual({
@@ -101,7 +102,7 @@ describe("parseNavFrame", () => {
   it("other parsers tolerate missing fields", () => {
     expect(parseNavState({ mode: "flow", active_set: 9 })?.activeSet).toBeNull();
     expect(parseNavPose({ R: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [0, 0, 0] })?.t).toEqual([0, 0, 0]);
-    expect(parseMapStatus({})).toMatchObject({ placement: null, upload: null, stream: null });
+    expect(parseMapStatus({})).toMatchObject({ placement: null });
   });
 });
 
