@@ -22,8 +22,11 @@ import YAML from "yaml";
 
 import type { RegistryCategory, RegistryPluginRow } from "@/lib/plugins/registry-row";
 import {
+  CAPTURE,
   FOLLOW_ME,
   GIMBAL,
+  NAVIGATION,
+  RECONSTRUCT,
   SIYI_POD,
   THERMAL,
   demoReleaseManifest,
@@ -91,4 +94,7 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
   releaseEntry(FOLLOW_ME, "ai"),
   releaseEntry(GIMBAL, "drivers"),
   releaseEntry(THERMAL, "drivers"),
+  releaseEntry(CAPTURE, "ai"),
+  releaseEntry(RECONSTRUCT, "ai"),
+  releaseEntry(NAVIGATION, "ai"),
 ];

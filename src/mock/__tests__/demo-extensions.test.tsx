@@ -13,10 +13,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import {
+  CAPTURE,
   FOLLOW_ME,
   GIMBAL,
   SIYI_POD,
   NAVIGATION,
+  RECONSTRUCT,
   THERMAL,
   type DemoExtensionManifest,
   type DemoExtensionRelease,
@@ -37,9 +39,10 @@ vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: vi.fn() }) }
 import { PluginParametersPanel } from "@/components/plugins/parameters/PluginParametersPanel";
 import enMessages from "../../../locales/en.json";
 
-const RELEASES: DemoExtensionRelease[] = [SIYI_POD, FOLLOW_ME, GIMBAL, THERMAL];
-/** Installed in the demo, with no published release yet. */
-const UNRELEASED: DemoExtensionManifest[] = [NAVIGATION];
+/** Released and installed on the demo drones. */
+const RELEASES: DemoExtensionRelease[] = [SIYI_POD, FOLLOW_ME, GIMBAL, THERMAL, NAVIGATION];
+/** Every release the demo catalog lists. */
+const CATALOG: DemoExtensionRelease[] = [...RELEASES, CAPTURE, RECONSTRUCT];
 const DRONES = ["alpha-1", "charlie-3", "delta-4"];
 const parsed = (r: DemoExtensionManifest) => parseManifestYaml(r.manifestYaml);
 const installsOf = (pluginId: string) =>
@@ -47,7 +50,7 @@ const installsOf = (pluginId: string) =>
 
 describe("demo catalog", () => {
   it("lists every first-party extension at its newest published release", () => {
-    for (const release of RELEASES) {
+    for (const release of CATALOG) {
       const m = parsed(release);
       const entry = DEMO_REGISTRY_ENTRIES.find((e) => e.row.plugin_id === m.pluginId);
       expect(entry, m.pluginId).toBeTruthy();
@@ -58,18 +61,11 @@ describe("demo catalog", () => {
       expect(entry!.archiveSizeBytes).toBe(release.archiveSizeBytes);
     }
   });
-
-  it("has no row for an extension with no published release", () => {
-    for (const manifest of UNRELEASED) {
-      const id = parsed(manifest).pluginId;
-      expect(DEMO_REGISTRY_ENTRIES.find((e) => e.row.plugin_id === id), id).toBeUndefined();
-    }
-  });
 });
 
 describe("demo installs", () => {
   it("carry each manifest's id, name, version and tab", () => {
-    for (const release of [...RELEASES, ...UNRELEASED]) {
+    for (const release of RELEASES) {
       const m = parsed(release);
       const installs = installsOf(m.pluginId);
       expect(installs.length, m.pluginId).toBeGreaterThan(0);
