@@ -54,12 +54,9 @@ describe("resolveVideoUrls", () => {
   });
 
   it("dials nothing when the node advertises no WHEP URL", () => {
-    // mediamtx's own WHEP port is loopback-only on the node; neither a port
-    // hint nor a LAN host becomes a URL.
-    const out = resolveVideoUrls(
-      { videoState: "running", lastIp: "192.168.1.51", videoWhepPort: 9001 },
-      "testnode.local",
-    );
+    // mediamtx's own WHEP port is loopback-only on the node; a LAN host never
+    // becomes a URL.
+    const out = resolveVideoUrls({ videoState: "running", lastIp: "192.168.1.51" }, "testnode.local");
     expect(out.whepUrl).toBeNull();
   });
 
@@ -77,11 +74,8 @@ describe("resolveVideoUrls", () => {
     expect(out.lanHost).toBe("testnode.local");
   });
 
-  it("ignores a zero / missing WHEP port and a null LAN host", () => {
-    const out = resolveVideoUrls(
-      { videoState: "running", lastIp: "10.0.0.7", videoWhepPort: 0 },
-      null,
-    );
+  it("returns a null WHEP URL with no published URL and no LAN host", () => {
+    const out = resolveVideoUrls({ videoState: "running", lastIp: "10.0.0.7" }, null);
     expect(out.whepUrl).toBeNull();
   });
 });
@@ -98,30 +92,14 @@ describe("resolveMavlinkUrl", () => {
     expect(out.url).toBe("ws://192.168.1.50:8765/");
   });
 
-  it("builds ws:// from lastIp + port when no URL is published", () => {
-    const out = resolveMavlinkUrl(
-      { lastIp: "192.168.1.52", mavlinkWsPort: 8770 },
-      "testnode.local",
-    );
-    expect(out.url).toBe("ws://192.168.1.52:8770/");
-  });
-
   it("falls back to the LAN host on the stable :8765 default", () => {
     const out = resolveMavlinkUrl({}, "testnode.local");
     expect(out.url).toBe("ws://testnode.local:8765/");
   });
 
-  it("returns null when no URL, port hint, or LAN host is available", () => {
+  it("returns null when no URL or LAN host is available", () => {
     const out = resolveMavlinkUrl({}, null);
     expect(out.url).toBeNull();
-  });
-
-  it("ignores a zero MAVLink port and falls through to the LAN host", () => {
-    const out = resolveMavlinkUrl(
-      { lastIp: "192.168.1.52", mavlinkWsPort: 0 },
-      "testnode.local",
-    );
-    expect(out.url).toBe("ws://testnode.local:8765/");
   });
 });
 

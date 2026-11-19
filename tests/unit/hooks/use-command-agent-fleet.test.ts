@@ -47,7 +47,6 @@ function makeStatus(
     updatedAt: NOW,
     lastIp: "192.168.1.50",
     videoState: "running",
-    videoWhepPort: 8889,
     ...overrides,
   };
 }

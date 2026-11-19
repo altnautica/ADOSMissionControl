@@ -87,7 +87,6 @@ describe("CommandFleetOverview", () => {
         fcConnected: true,
         services: [{ name: "ados-api", status: "running" }],
         videoState: "stopped",
-        videoWhepPort: 0,
         updatedAt: Date.now(),
       },
       {
@@ -99,7 +98,6 @@ describe("CommandFleetOverview", () => {
         fcConnected: false,
         services: [],
         videoState: "stopped",
-        videoWhepPort: 0,
         updatedAt: Date.now() - 30_000,
       },
     ]);
