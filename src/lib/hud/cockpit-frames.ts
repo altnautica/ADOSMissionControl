@@ -126,6 +126,43 @@ export interface ReadinessItem {
   msg: string;
 }
 
+export const LIFTOFF_PHASES = ["spool", "level", "probe", "lift", "climb", "done", "stopped"] as const;
+export type LiftoffPhase = (typeof LIFTOFF_PHASES)[number];
+
+/** A steady take-off on an ArduPilot multirotor: its phase, its status
+ *  line ("Spinning up", "Take-off stopped"), the longer line where a surface
+ *  has room ("Climbing to 3 m"; null when the agent sends none), whether it
+ *  loads a learned trim or probes for one, and the tilt from rest. */
+export interface LaunchLiftoff {
+  phase: LiftoffPhase;
+  text: string;
+  detail: string | null;
+  trim: "learned" | "probe" | null;
+  tiltDeg: number | null;
+}
+
+export interface LaunchSequence {
+  step: "checks" | "arm" | "takeoff" | "after" | "done";
+  after: string | null;
+  error: string | null;
+  /** Present while the take-off is a steady take-off; absent from an agent
+   *  without one. */
+  liftoff?: LaunchLiftoff | null;
+}
+
+function parseLiftoff(v: unknown): LaunchLiftoff | null {
+  const o = obj(v);
+  const phase = o ? oneOf(o.phase, LIFTOFF_PHASES) : null;
+  if (!o || !phase) return null;
+  return {
+    phase,
+    text: str(o.text) ?? "",
+    detail: str(o.detail) || null,
+    trim: oneOf(o.trim, ["learned", "probe"] as const),
+    tiltDeg: num(o.tilt_deg),
+  };
+}
+
 export interface PilotState {
   owner: PilotOwner;
   ownerLabel: string | null;
@@ -161,14 +198,7 @@ export interface PilotState {
   mission: MissionState | null;
   inputSession: { src: string; label: string; session: number | null } | null;
   gate: { pending: boolean; progress: number } | null;
-  sequence: {
-    step: "checks" | "arm" | "takeoff" | "after" | "done";
-    after: string | null;
-    error: string | null;
-    /** The supervised lift-off, from its spool-up until it hands over in the
-     *  air or stops on the ground; null while the launch runs none. */
-    liftoff: Liftoff | null;
-  } | null;
+  sequence: LaunchSequence | null;
   banner: { textKey: string; args: Record<string, unknown>; untilMs: number | null } | null;
   rthCountdownS: number | null;
   /** A mission or return that stopped making progress; null while none. */
@@ -218,38 +248,13 @@ export interface PilotState {
   /** The operator's sticks on the latest stick tick, while they own the
    *  vehicle; else null. */
   stick: StickCommand | null;
+  /** The limits that cut the asked velocity since the previous frame
+   *  (`command.limits`, first bound first); empty while it flies none. */
+  commandLimits: string[];
 }
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off", "stale", "unavailable"];
 const SEQ_STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
-const LIFTOFF_PHASES = ["spool", "level", "probe", "lift", "climb", "done", "stopped"] as const;
-
-/** The pilot's supervised lift-off (`sequence.liftoff`). */
-export interface Liftoff {
-  phase: (typeof LIFTOFF_PHASES)[number];
-  /** The status line (`Spinning up`, `Take-off stopped`, ...). */
-  text: string;
-  /** The longer line where a surface has room ("Climbing to 3 m", why it
-   *  stopped); empty when the pilot sends none. */
-  detail: string;
-  /** `learned` (this airframe's trim from earlier flights) or `probe`. */
-  trim: "learned" | "probe" | null;
-  /** Tilt from the resting attitude, degrees. */
-  tiltDeg: number | null;
-}
-
-function parseLiftoff(raw: unknown): Liftoff | null {
-  const o = obj(raw);
-  const phase = o ? oneOf(o.phase, LIFTOFF_PHASES) : null;
-  if (!o || !phase) return null;
-  return {
-    phase,
-    text: str(o.text) ?? "",
-    detail: str(o.detail) ?? "",
-    trim: oneOf(o.trim, ["learned", "probe"] as const),
-    tiltDeg: num(o.tilt_deg),
-  };
-}
 
 export function parsePilotState(raw: unknown): PilotState | null {
   const p = obj(raw);
@@ -308,10 +313,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     mission: parseMission(p.mission),
     inputSession: is && str(is.src) !== null ? { src: is.src as string, label: str(is.label) ?? (is.src as string), session: num(is.session) } : null,
     gate: gate ? { pending: gate.pending === true, progress: Math.min(1, Math.max(0, num(gate.progress) ?? 0)) } : null,
-    sequence:
-      seq && seqStep
-        ? { step: seqStep, after: str(seq.after), error: str(seq.error), liftoff: parseLiftoff(seq.liftoff) }
-        : null,
+    sequence: seq && seqStep ? { step: seqStep, after: str(seq.after), error: str(seq.error), liftoff: parseLiftoff(seq.liftoff) } : null,
     banner:
       banner && str(banner.text_key) !== null
         ? { textKey: banner.text_key as string, args: obj(banner.args) ?? {}, untilMs: num(banner.until_ms) }
@@ -335,6 +337,9 @@ export function parsePilotState(raw: unknown): PilotState | null {
     positionUnverified: parsePositionUnverified(p.position_unverified),
     profileLimits: parseProfileLimits(p.profile_limits),
     stick: parseStickCommand(p.stick),
+    commandLimits: Array.isArray(obj(p.command)?.limits)
+      ? (obj(p.command)!.limits as unknown[]).filter((l): l is string => typeof l === "string")
+      : [],
   };
 }
 

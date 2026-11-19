@@ -47,7 +47,7 @@ describe("steady take-off on the launch strip", () => {
       trim: "learned",
       tiltDeg: 1.5,
     });
-    expect(sequenceWith({ phase: "lift", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBe("");
+    expect(sequenceWith({ phase: "lift", text: "Lifting off", trim: "learned", tilt_deg: 0 })?.liftoff?.detail).toBeNull();
   });
 
   it("shows the status line, with its detail, while it runs", () => {

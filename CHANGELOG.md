@@ -8,6 +8,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Flight-state chip: while a skill, a goto or the sticks fly, the secondary line says which limit cut the commanded speed, from the pilot's `command.limits` ("Slowed: obstacle", "Slowed: sensor range", "Stopped: obstacle", ...), as the agent's cockpit does.
 - Map tab: shown while the drone's Navigation extension publishes a live map, with a 2D and a 3D view. 2D is the local-frame map with the `map.overlay` slot over it, so an extension layer (Capture's coverage) renders in the map's frame; 3D is Navigation's live sweep cloud (`/navigation/sweep`), coloured by height, with the drone's pose. The status card reads Navigation's map status: placement, memory, voxel size, sweep points, area, the pose provider and the FC IMU feed. Demo: the demo drone's room cloud.
 - Demo: the Capture, Reconstruct and Navigation extensions are installed from their manifests, with demo stand-ins for their pages (the Capture surface shows the capture monitor, Navigation's Agent page the navigation panel).
 - Demo follow-me: a follow distance set below 5 m, the least on a camera's range alone, is flown at 5 m and read back as standoff_min_m, standoff_raised and standoff_reason; the distance setpoint reads "at least 5.0 m with camera-only range", as in follow-me 0.5.0.

@@ -48,8 +48,22 @@ const CHIP_SECONDARY = flightStateJson.secondary as {
   input_age: ChipTextPart & { over_ms: number };
   h_speed: ChipTextPart & { owner: string };
   v_speed: ChipTextPart & { owner: string };
+  command_limit: { owners: string[]; skip: string[]; suppress_while_blocked: string[]; color: string; colors: Record<string, string> };
 };
+const COMMAND_LIMIT_LABELS: Readonly<Record<string, string>> = flightStateJson.command_limit_labels;
 const PROFILE_SHEET: { values: string[]; labels: string[] } = flightStateJson.mode_sheet.profile;
+
+/** The `command.limits` code the chip shows: the first one the spec does not
+ *  skip, while a skill, goto or the sticks fly; a code hidden while avoidance
+ *  reports blocked (that part says it) or with no label is not shown. */
+export function commandLimitCode(f: Pick<ChipFacts, "owner" | "commandLimits" | "avoidState">): string | null {
+  const c = CHIP_SECONDARY.command_limit;
+  if (!c.owners.includes(f.owner)) return null;
+  const code = f.commandLimits.find((l) => !c.skip.includes(l));
+  if (code === undefined || !(code in COMMAND_LIMIT_LABELS)) return null;
+  if (f.avoidState === "blocked" && c.suppress_while_blocked.includes(code)) return null;
+  return code;
+}
 const STATE_COLORS: Readonly<Record<string, string>> = tokensJson.state as Record<string, string>;
 
 /** The values a rule can match on and fill its placeholders from. */
@@ -85,6 +99,8 @@ export interface ChipFacts {
   fcFailsafe: boolean;
   /** The pilot's horizontal speed cap in m/s, or null with none. */
   speedCapMps: number | null;
+  /** The pilot's `command.limits` codes, first bound first; empty with none. */
+  commandLimits: string[];
   /** The pilot's position-unverified label key (its `detail` when the spec
    *  labels it, else its `reason`), or null while the position is trusted. */
   positionUnverified: string | null;
@@ -253,8 +269,9 @@ function holdReasonLabel(reason: string): string {
 }
 
 /** The secondary line, in the spec's order: FC failsafe, the obstacle
- *  clearance, a late stick input, the pilot's speed cap, a mission the pilot
- *  holds paused, hold reason, avoidance state, control mode, then the
+ *  clearance, a late stick input, the pilot's speed cap, the limit that cut
+ *  the commanded speed, a mission the pilot holds paused, hold reason,
+ *  avoidance state, control mode, then the
  *  horizontal and vertical speed while the sticks fly. */
 export function chipSecondary(f: ChipFacts): ChipLine[] {
   const out: ChipLine[] = [];
@@ -282,6 +299,12 @@ export function chipSecondary(f: ChipFacts): ChipLine[] {
       const line = CHIP_SECONDARY.speed_cap;
       const own = f.speedCapReason === null ? null : speedCapLine({ reason: f.speedCapReason, vHMps: f.speedCapMps });
       out.push({ id: part, text: own ?? line.text.replace("{v}", speedCapText(f.speedCapMps)), color: colorOf(line.color) });
+    } else if (part === "command_limit") {
+      const code = commandLimitCode(f);
+      if (code !== null) {
+        const c = CHIP_SECONDARY.command_limit;
+        out.push({ id: part, text: COMMAND_LIMIT_LABELS[code], color: colorOf(c.colors[code] ?? c.color) });
+      }
     } else if (part === "mission_paused_line" && matches(CHIP_SECONDARY.mission_paused_line.match, f)) {
       const line = CHIP_SECONDARY.mission_paused_line;
       out.push({ id: part, text: fill(line.text, f), color: colorOf(line.color) });
@@ -392,6 +415,7 @@ export function chipFacts(
     stickInputAgeMs: p.stick?.inputAgeMs ?? null,
     minClearanceM: p.minClearanceM,
     marginM: p.profileLimits && p.profileLimits.marginM > 0 ? p.profileLimits.marginM : (p.routeCheck?.marginM ?? null),
+    commandLimits: p.commandLimits,
     ageMs,
   };
 }

@@ -28,7 +28,7 @@
     "land": { "copter": [9], "plane": [20] }
   },
   "secondary": {
-    "order": ["fc_failsafe", "clearance", "input_age", "speed_cap", "mission_paused_line", "hold_reason", "avoid_state", "control_mode", "h_speed", "v_speed"],
+    "order": ["fc_failsafe", "clearance", "input_age", "speed_cap", "command_limit", "mission_paused_line", "hold_reason", "avoid_state", "control_mode", "h_speed", "v_speed"],
     "profile_limit": { "text_key": "chip.stick.limit", "note": "{profile_limit} of a rule: the horizontal limit the sticks fly at (profile_limits.v_h_mps, one decimal at most); empty while the agent sends no limits." },
     "clearance": { "text_key": "chip.stick.clearance", "near_factor": 2.0, "near_color": "avoiding", "inside_margin_color": "blocked", "note": "Any owner: min_clearance_m (one decimal) while under near_factor × the margin (profile_limits.margin_m, else route_check.margin_m); inside the margin in the second colour. Hidden with no margin known." },
     "input_age": { "text_key": "chip.stick.input_age", "over_ms": 100, "color": "avoiding", "note": "stick.input_age_ms, while the sticks fly and it is over over_ms." },
@@ -36,6 +36,14 @@
     "v_speed": { "text_key": "chip.stick.v_speed", "owner": "pilot", "color": "fc", "note": "The vehicle's vertical speed (VFR_HUD climb, + up), one signed decimal, beside h_speed." },
     "fc_failsafe": { "text": "Failsafe", "color": "blocked" },
     "speed_cap": { "text": "GNSS-denied: {v} m/s max", "color": "avoiding", "text_key": "pilot.speed_cap.gnss_denied" },
+    "command_limit": {
+      "owners": ["skill", "goto", "pilot"],
+      "skip": ["speed", "nav_cap", "shaper", "hold"],
+      "suppress_while_blocked": ["hard_stop", "obstacle", "obstacle_closing"],
+      "color": "avoiding",
+      "colors": { "hard_stop": "blocked" },
+      "note": "The first code of the pilot's command.limits not in skip, while one of owners flies; shown as command_limit_labels words it, a code with no label not at all. The suppress_while_blocked codes are hidden while avoid_state is blocked (that part says it)."
+    },
     "mission_paused_line": { "match": { "owner": "pilot", "mission_state": "paused" }, "text": "Mission paused · WP {seq}/{total}", "color": "mission" },
     "avoid_state": {
       "detour": { "text": "Avoiding", "color": "avoiding" },
@@ -80,6 +88,17 @@
     "route-infeasible": "Route too tight"
   },
   "hold_reason_labels_note": "keyed by the exact hold_reason wire string the pilot emits (hyphenated); setup-strings.json pilot.hold_reason.<same key> carries the same text",
+  "command_limit_labels": {
+    "hard_stop": "Stopped: obstacle",
+    "obstacle": "Slowed: obstacle",
+    "obstacle_closing": "Slowed: obstacle closing",
+    "seen_space": "Slowed: sensor range",
+    "clearance": "Slowed: tight space",
+    "push": "Pushing off obstacle",
+    "subject": "Keeping distance from subject",
+    "geofence": "Slowed: geofence"
+  },
+  "command_limit_labels_note": "keyed by the pilot's command.limits code; setup-strings.json pilot.command_limit.<same key> carries the same text",
   "stale_after_ms": 2000,
   "tap": "open_mode_sheet",
   "mode_sheet": {

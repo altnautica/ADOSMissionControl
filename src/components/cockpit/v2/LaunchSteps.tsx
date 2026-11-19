@@ -34,7 +34,7 @@ const STEP_KEY: Record<(typeof STEPS)[number], string> = {
 };
 
 /** "Status line. Detail", or the status line alone when no detail came. */
-function liftoffLine(l: { text: string; detail: string }): string {
+function liftoffLine(l: { text: string; detail: string | null }): string {
   return l.detail ? `${l.text}. ${l.detail}` : l.text;
 }
 
