@@ -10169,7 +10169,7 @@
       "sweepEmpty": "Noch keine Sweep-Punkte",
       "sweepUnavailable": "Die Navigation dieses Knotens stellt keine Sweep-Punktwolke bereit",
       "streamSource": "Rechenknoten",
-      "streamLive": "{node} · live",
+      "streamLive": "{node} · verbunden",
       "streamConnecting": "{node} · verbindet",
       "streamUnreachable": "{node} · von diesem Browser nicht erreichbar"
     },
