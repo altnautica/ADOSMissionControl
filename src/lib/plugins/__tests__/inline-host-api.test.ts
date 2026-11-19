@@ -39,7 +39,7 @@ function paired(deviceId: string, hostname: string, apiKey: string): LocalNode {
   return { deviceId, name: deviceId, hostname, apiKey, profile: "drone", pairedAt: 0 };
 }
 
-function session() {
+function session(granted: ReadonlySet<string> = new Set()) {
   const bundle: InlineBundle = {
     kind: "inline",
     module: { mount: () => () => {} },
@@ -56,6 +56,7 @@ function session() {
     deviceId: "ws-1",
     nodeProfile: "workstation",
     ctx: createInlineContext(createInlineChannel(() => {}).client, { slot: "node.surface", panelId: "p" }),
+    grantedCapabilities: () => granted,
   });
 }
 
@@ -113,6 +114,24 @@ describe("host.nodes.agent", () => {
       expect((err as InlineHostError).code).toBe("node_unreachable");
     }
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reaches a companion extension only under its plugin.http grant", async () => {
+    const COMPANION = "com.example.companion";
+    const refused = session().api.nodes.agent("drone-lan", { plugin: COMPANION });
+    const err = await refused.fetch("status").then(() => null, (e: unknown) => e);
+    expect((err as InlineHostError).code).toBe("plugin_not_granted");
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const host = session(new Set([`plugin.http.${COMPANION}`])).api;
+    await host.nodes.agent("drone-lan", { plugin: COMPANION }).fetch("pair");
+    expect(lastCall()).toEqual({
+      url: `http://192.168.1.20:8080/api/plugins/${COMPANION}/x/pair`,
+      key: "key-lan",
+    });
+    // A grant for one companion opens no other.
+    const other = await host.agentFor("com.example.other").fetch("x").then(() => null, (e: unknown) => e);
+    expect((other as InlineHostError).code).toBe("plugin_not_granted");
   });
 });
 

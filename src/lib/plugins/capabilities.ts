@@ -98,11 +98,11 @@ export function isKnownCapability(id: string): boolean {
   return id in CAPABILITY_CATALOG;
 }
 
-/** Base ids of the capabilities the dispatch layer scopes with a topic
- * suffix (`telemetry.subscribe` -> `telemetry.subscribe.<topic>`). A driver
- * plugin grants the topic-scoped form, so the catalog resolver maps it back
- * to the base entry. */
-const PER_STREAM_CAPABILITY_BASES = ["telemetry.subscribe"] as const;
+/** Base ids of the capabilities granted in a scoped form (`telemetry.subscribe`
+ * -> `telemetry.subscribe.<topic>`, `plugin.http` -> `plugin.http.<plugin id>`).
+ * A plugin grants the scoped form, so the catalog resolver maps it back to the
+ * base entry. */
+const PER_STREAM_CAPABILITY_BASES = ["telemetry.subscribe", "plugin.http"] as const;
 
 /** The base capability id for a topic-scoped per-stream capability, or null
  * when `id` is not a recognized per-stream form. */

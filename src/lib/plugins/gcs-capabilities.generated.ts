@@ -15,6 +15,7 @@ export const GCS_CAPABILITIES = [
   "ui.slot.cockpit-widget",
   "vision.track.designate",
   "telemetry.subscribe",
+  "plugin.http",
   "command.send",
   "recording.write",
   "mission.read",
@@ -121,6 +122,13 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "data_network",
     risk: "low",
     risk_reason: "Read-only on the telemetry stream.",
+  },
+  "plugin.http": {
+    label: "Call a companion extension's server",
+    description: "Lets the plugin's GCS module call the routes of the one extension the grant names (`plugin.http.<extension id>`), on the nodes this GCS reaches, with the operator's own access. Extensions that ship as a set use it to share one workflow, such as pairing a drone with a reconstruction node.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Acts through another extension's API as the operator could; scoped to the extension the grant names.",
   },
   "command.send": {
     label: "Send commands to drones from the GCS",

@@ -102,6 +102,9 @@ export interface InlineHostApi {
   node: { deviceId: string | null; profile: PairedNodeProfile | null };
   /** The plugin's server on the mounted node. */
   agent: InlineAgentApi;
+  /** A companion extension's server on the mounted node, under the GCS grant
+   * `plugin.http.<plugin>` (`plugin_not_granted` without it). */
+  agentFor(plugin: string): InlineAgentApi;
   /** An object URL for a file under the plugin's `gcs/` dir, revoked when the
    * module unmounts. */
   assetUrl(path: string): Promise<string>;
@@ -111,9 +114,10 @@ export interface InlineHostApi {
   records: PluginRecordsApi;
   nodes: {
     list(): InlineNodeSummary[];
-    /** The plugin's server on another node; rejects `node_unreachable` when
-     * this browser has no reach to it. */
-    agent(deviceId: string): InlineAgentApi;
+    /** The plugin's server on another node (or, with `plugin`, a companion
+     * extension's under the same grant as `agentFor`); rejects
+     * `node_unreachable` when this browser has no reach to it. */
+    agent(deviceId: string, opts?: { plugin?: string }): InlineAgentApi;
     pluginConfig(deviceId: string): {
       get(): Promise<Record<string, unknown>>;
       set(key: string, value: unknown): Promise<void>;
@@ -132,7 +136,8 @@ export type InlineHostErrorCode =
   | "no_node_agent"
   | "node_unreachable"
   | "unknown_node"
-  | "asset_unavailable";
+  | "asset_unavailable"
+  | "plugin_not_granted";
 
 /** A host capability the inline module asked for is unavailable here. */
 export class InlineHostError extends Error {

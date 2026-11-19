@@ -146,6 +146,7 @@ function InlineMount({
       deviceId: agentId,
       nodeProfile: profileRef.current,
       ctx: createInlineContext(channel.client, { slot, panelId }),
+      grantedCapabilities: () => capsRef.current,
     });
     // The token first, so the module's first request already carries it.
     if (tokenRef.current) dispatcher.pushEvent("capability.token", "", { token: tokenRef.current });

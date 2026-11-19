@@ -107,6 +107,22 @@ function pluginAgent(
   };
 }
 
+/** The GCS grant that lets a module call `plugin`'s server. */
+export function companionCapability(plugin: string): string {
+  return `plugin.http.${plugin}`;
+}
+
+/** Calls that all reject: a companion server the module holds no grant for. */
+function refusedAgent(plugin: string): InlineAgentApi {
+  const refuse = async (): Promise<never> => {
+    throw new InlineHostError(
+      "plugin_not_granted",
+      `this extension holds no ${companionCapability(plugin)} grant`,
+    );
+  };
+  return { fetch: refuse, websocket: refuse };
+}
+
 export function createInlineHostSession(input: {
   pluginId: string;
   panelId: string;
@@ -114,8 +130,27 @@ export function createInlineHostSession(input: {
   deviceId: string | null;
   nodeProfile: PairedNodeProfile | null;
   ctx: InlinePluginContext;
+  /** The GCS grants of the mounted plugin, read per call. */
+  grantedCapabilities: () => ReadonlySet<string>;
 }): InlineHostSession {
   const { pluginId, panelId, bundle, deviceId, ctx } = input;
+  /** `plugin`'s server on `target`: this plugin's own, or a companion's
+   * under its grant (checked per call, so a grant revoked while mounted
+   * takes effect). */
+  const agentOn = (
+    target: string | null,
+    unreachable: "no_node_agent" | "node_unreachable",
+    plugin: string = pluginId,
+  ): InlineAgentApi => {
+    if (plugin === pluginId) return pluginAgent(pluginId, target, unreachable, trackSocket);
+    const granted = () => input.grantedCapabilities().has(companionCapability(plugin));
+    const agent = pluginAgent(plugin, target, unreachable, trackSocket);
+    const refused = refusedAgent(plugin);
+    return {
+      fetch: (path, init) => (granted() ? agent : refused).fetch(path, init),
+      websocket: (path) => (granted() ? agent : refused).websocket(path),
+    };
+  };
   const objectUrls = new Map<string, Promise<string>>();
   const sockets = new Set<WebSocket>();
   let released = false;
@@ -180,7 +215,8 @@ export function createInlineHostSession(input: {
       signerId: bundle.trust.signerId,
     },
     node: { deviceId, profile: input.nodeProfile },
-    agent: pluginAgent(pluginId, deviceId, "no_node_agent", trackSocket),
+    agent: agentOn(deviceId, "no_node_agent"),
+    agentFor: (plugin) => agentOn(deviceId, "no_node_agent", plugin),
     assetUrl,
     readAsset,
     records: ctx.records,
@@ -208,7 +244,7 @@ export function createInlineHostSession(input: {
               lanHost,
             };
           }),
-      agent: (target) => pluginAgent(pluginId, target, "node_unreachable", trackSocket),
+      agent: (target, opts) => agentOn(target, "node_unreachable", opts?.plugin),
       pluginConfig: (target) => ({
         get: () => clientFor(target).getConfig(pluginId),
         set: async (key, value) => {
