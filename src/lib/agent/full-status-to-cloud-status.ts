@@ -31,17 +31,6 @@ function booleanOrUndefined(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
-function parseWhepPort(url: string | null | undefined): number | undefined {
-  if (!url) return undefined;
-  try {
-    const parsed = new URL(url);
-    const port = Number(parsed.port);
-    return Number.isFinite(port) && port > 0 ? port : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function block(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -210,7 +199,6 @@ export function mapFullStatusToCloudStatus(
     apiUrl: node.hostname ? `${node.hostname}/api` : undefined,
     videoState: resp.video?.state,
     videoWhepUrl: videoWhepUrl ?? undefined,
-    videoWhepPort: parseWhepPort(videoWhepUrl),
     telemetry: mapTelemetry(resp.telemetry ?? {}),
     radio: resp.radio ?? undefined,
     peerDeviceId: stringOrUndefined(resp.peerDeviceId) ?? null,

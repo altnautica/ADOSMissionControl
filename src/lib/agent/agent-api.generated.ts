@@ -81,7 +81,6 @@ export interface HeartbeatPayload {
   linkedPeers?: LinkedPeerHb[] | null;
   macStability?: unknown;
   mavlinkAlive?: boolean | null;
-  mavlinkWsPort?: number | null;
   mavlinkWsUrl?: string | null;
   mdnsHost?: string | null;
   memoryHistory?: number[] | null;
@@ -111,7 +110,6 @@ export interface HeartbeatPayload {
   videoRecording?: boolean | null;
   videoState?: string | null;
   videoStreams?: VideoStreamHb[] | null;
-  videoWhepPort?: number | null;
   videoWhepUrl?: string | null;
   wfbAdapterChipset: string | null;
   wfbAdapterInjectionOk: boolean | null;

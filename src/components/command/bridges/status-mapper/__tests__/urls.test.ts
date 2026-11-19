@@ -51,7 +51,7 @@ describe("resolveVideoUrls — relative same-origin resolution", () => {
     // mediamtx's WHEP port is loopback-only on the node; only the :8080 front
     // is reachable and authenticated.
     const { whepUrl } = resolveVideoUrls(
-      { videoState: "running", videoWhepPort: 8889, lastIp: "10.0.0.5" },
+      { videoState: "running", lastIp: "10.0.0.5" },
       "10.0.0.5",
     );
     expect(whepUrl).toBeNull();
@@ -107,14 +107,6 @@ describe("resolveMavlinkUrl — raw proxy URL", () => {
       "drone.local",
     );
     expect(url).toBe("ws://10.0.0.5:8765/");
-  });
-
-  it("falls back to a port hint + lastIp", () => {
-    const { url } = resolveMavlinkUrl(
-      { mavlinkWsPort: 9000, lastIp: "10.0.0.5" },
-      "drone.local",
-    );
-    expect(url).toBe("ws://10.0.0.5:9000/");
   });
 
   it("falls back to the LAN-host default port 8765", () => {

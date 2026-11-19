@@ -65,7 +65,7 @@ describe("resolveAgentVideoUrl (WHEP)", () => {
     // mediamtx's own WHEP port is loopback-only on the node.
     expect(
       resolveAgentVideoUrl(
-        status({ videoWhepPort: 8889, lastIp: "192.168.1.50" }),
+        status({ lastIp: "192.168.1.50" }),
       ),
     ).toBeNull();
   });

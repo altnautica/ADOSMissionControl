@@ -119,8 +119,8 @@ export interface MavlinkUrl {
 
 /**
  * Resolve the MAVLink WebSocket URL the connection store should advertise.
- * ``url`` is the raw proxy (heartbeat-published URL, then a port hint +
- * lastIp, then the LAN-host default port 8765). The cascade dials it bare
+ * ``url`` is the raw proxy (heartbeat-published URL, then the LAN-host
+ * default port 8765). The cascade dials it bare
  * for an unpaired agent and with a ticket subprotocol when a pairing key is
  * held.
  */
@@ -128,15 +128,12 @@ export function resolveMavlinkUrl(
   cloudStatus: Record<string, unknown>,
   lanHost: string | null,
 ): MavlinkUrl {
-  const mavlinkWsPort = cloudStatus.mavlinkWsPort as number | undefined;
   const mavlinkWsUrl = cloudStatus.mavlinkWsUrl as string | undefined;
   const lastIp = cloudStatus.lastIp as string | undefined;
 
   let url: string | null = null;
   if (mavlinkWsUrl) {
     url = preferIpv4Host(mavlinkWsUrl, lastIp);
-  } else if (lastIp && mavlinkWsPort && mavlinkWsPort > 0) {
-    url = `ws://${lastIp}:${mavlinkWsPort}/`;
   } else if (lanHost) {
     // ados-mavlink defaults to port 8765 across all shipped agents.
     url = `ws://${lanHost}:8765/`;

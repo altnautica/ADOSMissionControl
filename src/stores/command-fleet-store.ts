@@ -126,9 +126,7 @@ export interface CommandCloudStatus {
   apiUrl?: string;
   missionControlUrl?: string;
   videoState?: string;
-  videoWhepPort?: number;
   videoWhepUrl?: string;
-  mavlinkWsPort?: number;
   mavlinkWsUrl?: string;
   remoteAccess?: {
     provider?: string;

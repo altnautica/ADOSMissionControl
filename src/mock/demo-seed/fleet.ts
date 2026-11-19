@@ -210,7 +210,6 @@ export function buildDemoStatus(
     boardArch: "arm64" as const,
     lastIp: agent.lastIp,
     videoState: "stopped" as const,
-    videoWhepPort: 0,
     updatedAt: now,
   };
   const hostMetrics = {
@@ -228,7 +227,6 @@ export function buildDemoStatus(
       fcConnected: false,
       fcPort: "",
       fcBaud: 0,
-      mavlinkWsPort: 0,
       services: [
         { name: "ados-control", status: "running" },
         { name: "ados-plugin-host", status: "running" },
@@ -243,7 +241,6 @@ export function buildDemoStatus(
       fcConnected: false,
       fcPort: "",
       fcBaud: 0,
-      mavlinkWsPort: 0,
       services: [
         { name: "ados-control", status: "running" },
         { name: "ados-sensorhub", status: "running" },
@@ -261,7 +258,6 @@ export function buildDemoStatus(
       fcConnected: false,
       fcPort: "",
       fcBaud: 0,
-      mavlinkWsPort: 0,
       services: [
         { name: "ados-control", status: "running" },
         { name: "ados-wfb-receiver", status: "running" },
@@ -309,7 +305,6 @@ export function buildDemoStatus(
     fcBaud: 115200,
     fcFirmware: DRONE_META[agent.deviceId]?.fcFirmware ?? "ardupilot",
     frameType: DRONE_META[agent.deviceId]?.frameType,
-    mavlinkWsPort: 8765,
     services: isCompanion
       ? [
           { name: "ados-control", status: "running" },
