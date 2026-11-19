@@ -210,13 +210,15 @@ function formatLocale(
   });
 }
 
-/** The SDK context shape over `client`. */
+/** The SDK context shape over `client`, for the contribution named by `mount`. */
 export function createInlineContext(
   client: InlineRpcClient,
+  mount: InlinePluginContext["mount"],
   locale: Readonly<Record<string, string>> = {},
 ): InlinePluginContext {
   return {
     client,
+    mount,
     telemetry: { subscribe: (topic, handler) => client.subscribeTelemetry(topic, handler) },
     perception: {
       readTier: () => client.request("perception.read", "perception.read", {}),

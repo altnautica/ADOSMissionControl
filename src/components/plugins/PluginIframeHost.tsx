@@ -44,6 +44,12 @@ interface PluginIframeHostProps {
   /** Width/height controlled by the parent slot; iframe fills its box. */
   className?: string;
   /**
+   * The contribution's panel id. With {@link slot} it is passed to the bundle
+   * in the frame URL's fragment (`#slot=<slot>&panel=<id>`), so one bundle
+   * serving several contributions knows which one it was mounted as.
+   */
+  panelId?: string;
+  /**
    * Optional drone id the iframe is bound to: its config is read from, and
    * its agent-published state and camera names forwarded for, this drone.
    */
@@ -85,6 +91,16 @@ interface PluginIframeHostProps {
 }
 
 /**
+ * The frame URL: the bundle URL plus, when the contribution has a panel id,
+ * a fragment naming the slot and panel. A fragment never reaches the
+ * bundle's fetch, so the blob URL loads unchanged.
+ */
+export function frameSrc(bundleUrl: string, slot: string, panelId?: string): string {
+  if (!panelId) return bundleUrl;
+  return `${bundleUrl}#slot=${encodeURIComponent(slot)}&panel=${encodeURIComponent(panelId)}`;
+}
+
+/**
  * Sandboxed plugin iframe.
  *
  * The iframe runs in `sandbox="allow-scripts"` (no allow-same-origin) so the
@@ -121,6 +137,7 @@ interface PluginIframeHostProps {
 export function PluginIframeHost({
   pluginId,
   slot,
+  panelId,
   bundleUrl,
   grantedCapabilities,
   handlers,
@@ -167,15 +184,16 @@ export function PluginIframeHost({
   useLayoutEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
+    const src = frameSrc(bundleUrl, slot, panelId);
     // Re-assigning an identical src would reload the frame.
-    if (iframe.getAttribute("src") !== bundleUrl) iframe.setAttribute("src", bundleUrl);
+    if (iframe.getAttribute("src") !== src) iframe.setAttribute("src", src);
     iframe.title = title ?? pluginId;
     iframe.className = className ?? "";
     iframe.dataset.pluginId = pluginId;
     iframe.dataset.slot = slot;
     if (agentId) iframe.dataset.agentId = agentId;
     else delete iframe.dataset.agentId;
-  }, [hasBundle, bundleUrl, title, pluginId, className, slot, agentId]);
+  }, [hasBundle, bundleUrl, title, pluginId, className, slot, panelId, agentId]);
 
   const themeVars = useHostThemeVars();
 

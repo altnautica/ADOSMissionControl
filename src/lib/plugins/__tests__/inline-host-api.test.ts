@@ -55,7 +55,7 @@ function session() {
     bundle,
     deviceId: "ws-1",
     nodeProfile: "workstation",
-    ctx: createInlineContext(createInlineChannel(() => {}).client),
+    ctx: createInlineContext(createInlineChannel(() => {}).client, { slot: "node.surface", panelId: "p" }),
   });
 }
 

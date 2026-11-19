@@ -57,12 +57,12 @@ describe("FleetPluginSlot — real iframe mount", () => {
     contributionsRef.value = [];
   });
 
-  it("mounts a sandboxed iframe pointing at the contribution bundle", () => {
+  it("mounts a sandboxed iframe at the bundle, naming its slot and panel in the fragment", () => {
     contributionsRef.value = [contribution("hardware.tab")];
     const { container } = renderHost();
     const iframe = container.querySelector("iframe");
     expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute("src")).toBe(DEMO_BUNDLE);
+    expect(iframe?.getAttribute("src")).toBe(`${DEMO_BUNDLE}#slot=hardware.tab&panel=panel-1`);
     // No allow-same-origin: the bundle runs at a null origin.
     expect(iframe?.getAttribute("sandbox")).toContain("allow-scripts");
     expect(iframe?.getAttribute("sandbox")).not.toContain("allow-same-origin");

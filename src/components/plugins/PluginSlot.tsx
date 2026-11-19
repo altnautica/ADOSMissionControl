@@ -217,6 +217,7 @@ function ContributionBody({
     <PluginIframeHost
       pluginId={c.pluginId}
       slot={slot}
+      panelId={c.panelId}
       bundleUrl={c.bundleUrl}
       grantedCapabilities={c.grantedCapabilities}
       handlers={c.handlers}

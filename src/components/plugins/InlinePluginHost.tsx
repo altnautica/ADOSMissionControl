@@ -145,7 +145,7 @@ function InlineMount({
       bundle,
       deviceId: agentId,
       nodeProfile: profileRef.current,
-      ctx: createInlineContext(channel.client),
+      ctx: createInlineContext(channel.client, { slot, panelId }),
     });
     // The token first, so the module's first request already carries it.
     if (tokenRef.current) dispatcher.pushEvent("capability.token", "", { token: tokenRef.current });
@@ -177,7 +177,7 @@ function InlineMount({
       session.release();
       root.replaceChildren();
     };
-  }, [bundle, pluginId, panelId, agentId, validatorEnabled, attempt]);
+  }, [bundle, pluginId, panelId, slot, agentId, validatorEnabled, attempt]);
 
   // Host events, pushed once the module is mounted and on every change.
   useEffect(() => {

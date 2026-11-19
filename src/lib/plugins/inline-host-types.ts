@@ -48,6 +48,8 @@ export interface InlineRpcClient {
 /** The SDK `PluginContext` shape, served by the host. */
 export interface InlinePluginContext {
   client: InlineRpcClient;
+  /** The contribution this module renders, as the SDK's `ctx.mount` names it. */
+  mount: { slot: string | null; panelId: string | null };
   telemetry: {
     subscribe<TArgs = unknown>(topic: string, handler: (args: TArgs) => void): Promise<() => void>;
   };
