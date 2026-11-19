@@ -11,25 +11,25 @@ describe("parseNodePageContributions", () => {
   it("normalizes agent pages, keeping placement and renaming setup_for", () => {
     const rows = parseNodePageContributions({
       agent_pages: [
-        { id: "world-model", title: "World Model", section: "videoVision", profile: ["drone"], order: 5 },
-        { id: "world-model-setup", title: "Setup", setup_for: "world-model", after: "vision" },
+        { id: "capture", title: "Capture", section: "videoVision", profile: ["drone"], order: 5 },
+        { id: "capture-setup", title: "Setup", setup_for: "capture", after: "vision" },
       ],
     });
     expect(rows).toEqual([
       {
         slot: "node.agent.page",
-        panelId: "world-model",
-        title: "World Model",
+        panelId: "capture",
+        title: "Capture",
         section: "videoVision",
         order: 5,
         profile: ["drone"],
       },
       {
         slot: "node.agent.page",
-        panelId: "world-model-setup",
+        panelId: "capture-setup",
         title: "Setup",
         after: "vision",
-        setupFor: "world-model",
+        setupFor: "capture",
       },
     ]);
   });

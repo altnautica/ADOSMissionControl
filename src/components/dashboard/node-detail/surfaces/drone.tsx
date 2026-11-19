@@ -68,14 +68,14 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
     render: (ctx) => <CockpitView droneId={ctx.droneId} />,
   },
   {
-    // The companion's local map: world-engine status, the 3D viewer launch
-    // and the live local-frame map. Needs a companion agent; a bare flight
-    // controller has no map source.
+    // The companion's live map: Navigation's map status and the map in 2D
+    // or 3D. Shown while Navigation publishes a live map; a bare flight
+    // controller, or a drone without the map, has no Map tab.
     id: "map",
     labelKey: "hud.mapTab.title",
     group: STATUS_GROUP,
-    when: (ctx) => ctx.agentIdentityKnown,
-    render: (ctx) => <DroneMapTab droneId={ctx.droneId} pluginAgentPages={ctx.pluginAgentPages} />,
+    when: (ctx) => ctx.agentIdentityKnown && ctx.liveMapFresh,
+    render: (ctx) => <DroneMapTab droneId={ctx.droneId} />,
   },
   {
     id: "configure",

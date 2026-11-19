@@ -23,16 +23,16 @@ import {
   type NavState,
 } from "@/lib/hud/nav-types";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
-import { WORLD_ENGINE_PLUGIN_ID } from "@/lib/api/agent/sensors";
 import { usePluginCloudStateStore, type PluginCloudSlice } from "@/stores/plugin-cloud-state-store";
 import { useNavStreamStore, type DroneNavFeed, type Stamped } from "@/stores/nav-stream-store";
 
 export const FOLLOW_ME_PLUGIN_ID = "com.altnautica.follow-me";
-export const VISION_NAV_PLUGIN_ID = "com.altnautica.vision-nav";
+/** Navigation publishes the pose, scan, map status and `nav.state`. */
+export const NAVIGATION_PLUGIN_ID = "com.altnautica.navigation";
 
 export const FOLLOW_STATE_TOPIC = "follow.state";
 export const NAV_STATE_TOPIC = "nav.state";
-export const MAP_STATUS_TOPIC = "plugin.world-engine.map_status";
+export const MAP_STATUS_TOPIC = "plugin.navigation.map_status";
 
 /**
  * One topic's payload from a plugin heartbeat slice (`{topic: {payload,
@@ -85,16 +85,16 @@ export function useFollowStateEntry(droneId: string | null | undefined): Stamped
   return newer(live, cloud);
 }
 
-/** Latest vision-nav `nav.state`. */
+/** Latest Navigation `nav.state`. */
 export function useNavStateEntry(droneId: string | null | undefined): Stamped<NavState> | null {
   const live = useNavStreamStore((s) => (droneId ? s.byDrone[droneId]?.nav : undefined));
-  const cloud = useCloudTopic(droneId, VISION_NAV_PLUGIN_ID, NAV_STATE_TOPIC, parseNavState);
+  const cloud = useCloudTopic(droneId, NAVIGATION_PLUGIN_ID, NAV_STATE_TOPIC, parseNavState);
   return newer(live, cloud);
 }
 
-/** Latest world-engine map status. */
+/** Latest Navigation map status. */
 export function useMapStatusEntry(droneId: string | null | undefined): Stamped<MapStatus> | null {
   const live = useNavStreamStore((s) => (droneId ? s.byDrone[droneId]?.map : undefined));
-  const cloud = useCloudTopic(droneId, WORLD_ENGINE_PLUGIN_ID, MAP_STATUS_TOPIC, parseMapStatus);
+  const cloud = useCloudTopic(droneId, NAVIGATION_PLUGIN_ID, MAP_STATUS_TOPIC, parseMapStatus);
   return newer(live, cloud);
 }

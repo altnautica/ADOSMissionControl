@@ -4,7 +4,7 @@
  * @module use-nav-source
  * @description Everything the nav-source chip (and any other surface that
  * reports what the EKF navigates on) resolves from: the latest
- * EKF_STATUS_REPORT flags and their age, the latest GPS fix, vision-nav
+ * EKF_STATUS_REPORT flags and their age, the latest GPS fix, Navigation
  * `nav.state` while fresh, the set this GCS last commanded, the
  * EK3_SRC* parameters, and the fresh pilot state's `position_unverified`.
  * Re-renders on throttled telemetry and on the shared 1 Hz clock so a report
@@ -33,7 +33,7 @@ export interface NavSourceGps {
 export interface NavSourceView {
   result: NavSourceResult;
   params: Readonly<Record<string, number>> | null;
-  /** Vision-nav state while fresh (≤ 2 s), else null. */
+  /** Navigation state while fresh (≤ 2 s), else null. */
   nav: NavState | null;
   gps: NavSourceGps | null;
   /** Latest EKF flags, or null when no report has arrived. */

@@ -1,14 +1,14 @@
 /**
- * @module mock/vision-nav-demo-panel
- * @description The demo rendition of the Vision Navigation extension's node
- * tab: the header with the Replay tour link and the companion pill, the
+ * @module mock/navigation-demo-panel
+ * @description The demo rendition of the Navigation extension's Agent
+ * page: the header with the Replay tour link and the companion pill, the
  * first-run tour, the fallback banner, then the Mode, Navigation feed,
  * Sensors, Estimator, Telemetry trends, Flow health, Pre-arm and ArduPilot
  * parameter cards, laid out and labelled as the extension's own GCS panel
  * renders them, fed by the demo health snapshot.
  * Copy resolves through the host's plugin i18n with the extension's English
  * fallbacks, exactly as the extension resolves it. Mounted by
- * `DEMO_VISION_NAV_MODULE` inside the inline plugin host.
+ * `DEMO_NAVIGATION_MODULE` inside the inline plugin host.
  *
  * @license GPL-3.0-only
  */
@@ -18,15 +18,15 @@ import { createRoot } from "react-dom/client";
 
 import type { InlineHostApi } from "@/lib/plugins/inline-host-types";
 import {
-  getMockVisionNavHealth,
-  getMockVisionNavState,
-  VISION_NAV_REFRESH_MS,
-  type VisionNavCheckSeverity,
-  type VisionNavExtnavHealth,
-  type VisionNavHealth,
-  type VisionNavState,
-} from "./mock-vision-nav";
-import { TelemetryCharts, TourOrchestrator, type Translate } from "./vision-nav-demo-tour";
+  getMockNavigationHealth,
+  getMockNavigationState,
+  NAVIGATION_REFRESH_MS,
+  type NavigationCheckSeverity,
+  type NavigationExtnavHealth,
+  type NavigationHealth,
+  type NavigationState,
+} from "./mock-navigation";
+import { TelemetryCharts, TourOrchestrator, type Translate } from "./navigation-demo-tour";
 
 const OK = "var(--vn-ok, #34d399)";
 const WARN = "var(--vn-warn, #f59e0b)";
@@ -58,7 +58,7 @@ const STATE_TONES: Record<string, { color: string; label: string }> = {
   degraded: { color: WARN, label: "Degraded" },
   failed: { color: ERROR, label: "Failed" },
 };
-const COMPANION_TONES: Record<VisionNavHealth["companionState"], { color: string; label: string }> = {
+const COMPANION_TONES: Record<NavigationHealth["companionState"], { color: string; label: string }> = {
   active: { color: OK, label: "Active" },
   critical: { color: ERROR, label: "Critical" },
   terminating: { color: ERROR, label: "Terminating" },
@@ -77,7 +77,7 @@ const ENGINE_LABELS: Record<string, string> = {
   external_nav: "External pose (ODOMETRY)",
 };
 /** Symbol plus word for each tracking health, so colour is never the only cue. */
-const EXTNAV_HEALTH: Record<VisionNavExtnavHealth, { symbol: string; word: string; color: string }> = {
+const EXTNAV_HEALTH: Record<NavigationExtnavHealth, { symbol: string; word: string; color: string }> = {
   good: { symbol: "●", word: "Good", color: OK },
   degraded: { symbol: "◐", word: "Degraded", color: WARN },
   lost: { symbol: "✕", word: "Lost", color: ERROR },
@@ -115,7 +115,7 @@ const CHECK_TITLES: Record<string, string> = {
   rangefinder: "Rangefinder healthy",
   scale_source: "Altitude scale source",
 };
-const SEVERITY: Record<VisionNavCheckSeverity, { color: string; icon: string }> = {
+const SEVERITY: Record<NavigationCheckSeverity, { color: string; icon: string }> = {
   ok: { color: OK, icon: "✓" },
   pending: { color: WARN, icon: "…" },
   blocking: { color: ERROR, icon: "✕" },
@@ -174,7 +174,7 @@ function syncTone(offset: number | null, tr: Translate): { color: string; label:
 /** The extension's fallback banner: hidden while the estimator is healthy;
  * on a degraded or failed estimator it names the first likely cause and a
  * next action, in the extension's order. */
-function FallbackBanner({ health, tr }: { health: VisionNavHealth; tr: Translate }) {
+function FallbackBanner({ health, tr }: { health: NavigationHealth; tr: Translate }) {
   const state = health.estimatorState;
   if (state !== "degraded" && state !== "failed") return null;
   const failed = state === "failed";
@@ -214,7 +214,7 @@ function FallbackBanner({ health, tr }: { health: VisionNavHealth; tr: Translate
 
 /** The extension's Navigation feed card, read from `nav.state` and the
  * `navigation.poseAgeMs` field. */
-function NavStateCard({ state, poseAgeMs, tr }: { state: VisionNavState; poseAgeMs: number | null; tr: Translate }) {
+function NavStateCard({ state, poseAgeMs, tr }: { state: NavigationState; poseAgeMs: number | null; tr: Translate }) {
   const health = state.extnav_health ? EXTNAV_HEALTH[state.extnav_health] : null;
   const rows: ReadonlyArray<{ id: string; key: string; fallback: string; text: string; color?: string }> = [
     { id: "active-set", key: "activeSet", fallback: "EKF source set", text: state.active_set === null ? "—" : `${state.active_set}` },
@@ -245,13 +245,13 @@ function NavStateCard({ state, poseAgeMs, tr }: { state: VisionNavState; poseAge
   );
 }
 
-function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
-  const [health, setHealth] = useState(getMockVisionNavHealth);
-  const navState = getMockVisionNavState();
+function NavigationDemoPanel({ host }: { host: InlineHostApi }) {
+  const [health, setHealth] = useState(getMockNavigationHealth);
+  const navState = getMockNavigationState();
   const [themeVars, setThemeVars] = useState<Record<string, string>>({});
   const [tourReplay, setTourReplay] = useState(false);
   useEffect(() => {
-    const timer = setInterval(() => setHealth(getMockVisionNavHealth()), VISION_NAV_REFRESH_MS);
+    const timer = setInterval(() => setHealth(getMockNavigationHealth()), NAVIGATION_REFRESH_MS);
     const offTheme = host.ctx.theme.onChange(setThemeVars);
     return () => {
       clearInterval(timer);
@@ -276,7 +276,7 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
       style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.75rem", padding: "0.875rem", background: "var(--vn-bg, #0A0A0A)", color: "var(--vn-text, #EDEDED)", minHeight: "100%", boxSizing: "border-box", ...(themeVars as CSSProperties) }}
     >
       <header style={spread}>
-        <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>{tr("navigation.tabTitle", "Vision Nav")}</h2>
+        <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>{tr("navigation.tabTitle", "Navigation")}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button
             type="button"
@@ -415,14 +415,14 @@ function VisionNavDemoPanel({ host }: { host: InlineHostApi }) {
  * first one's disposer has run. The host calls the disposer from its own
  * effect cleanup, while React is committing, so the nested root unmounts on
  * the next microtask. */
-export function mountVisionNavDemoPanel(root: HTMLElement, host: InlineHostApi): () => void {
+export function mountNavigationDemoPanel(root: HTMLElement, host: InlineHostApi): () => void {
   const container = document.createElement("div");
   container.style.display = "flex";
   container.style.flexDirection = "column";
   container.style.flex = "1 1 auto";
   root.append(container);
   const reactRoot = createRoot(container);
-  reactRoot.render(<VisionNavDemoPanel host={host} />);
+  reactRoot.render(<NavigationDemoPanel host={host} />);
   return () =>
     queueMicrotask(() => {
       reactRoot.unmount();

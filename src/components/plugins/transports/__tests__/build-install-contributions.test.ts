@@ -73,7 +73,7 @@ describe("buildGcsContributes", () => {
   });
 
   it("mounts a node.detail.tab declared only under contributes.tabs", () => {
-    // A plugin (Follow-Me, vision-nav) declares its tab under `tabs:` with no
+    // A plugin (Follow-Me) declares its tab under `tabs:` with no
     // matching `panels` slot. It must still be emitted as a mountable
     // node.detail.tab slot, carrying its title/icon/order/profile.
     const manifest: SlotsAndTabs = {

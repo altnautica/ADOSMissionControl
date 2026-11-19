@@ -1,7 +1,7 @@
 /**
  * @module nav-stream-store
  * @description Per-drone latest navigation feed: the follow-me state and its
- * last discrete event, the vision-nav state, the world-engine pose, scan and
+ * last discrete event, the Navigation state, Navigation's pose, scan and
  * map status, the SLAM trail and the live occupancy grid. Fed by the agent's
  * `WS /api/v1/nav/stream` and `GET /api/v1/map/live` (`lib/agent/nav-stream`)
  * or by the demo generator; read by the HUD, the minimap, the radar and the

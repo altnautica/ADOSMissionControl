@@ -308,20 +308,20 @@ describe("useLocalAgentPlugins", () => {
   it("surfaces the pages of a plugin installed outside this browser", async () => {
     listImpl.value = async () => ({
       installs: [
-        { plugin_id: "com.altnautica.world-engine", version: "1.0.0", status: "running" },
+        { plugin_id: "com.altnautica.capture", version: "1.0.0", status: "running" },
       ],
     });
     getImpl.value = async () => ({
       install: { status: "running" },
       manifest: {
         version: "1.0.0",
-        name: "World Engine",
+        name: "Capture",
         gcs: {
           entrypoint: "gcs/plugin.bundle.js",
           isolation: "inline",
           contributes: {
-            agent_pages: [{ id: "world-model", title: "World Model", profile: ["drone"] }],
-            node_surfaces: [{ id: "compute", title: "Compute", profile: ["compute"] }],
+            agent_pages: [{ id: "capture-setup", title: "Capture setup", profile: ["drone"] }],
+            node_surfaces: [{ id: "capture", title: "Capture", profile: ["visor"] }],
           },
           locales: [],
         },
@@ -332,8 +332,8 @@ describe("useLocalAgentPlugins", () => {
     await waitFor(() => expect(result.current).not.toBeNull());
     expect(result.current).toHaveLength(1);
     expect(result.current![0].gcsContributes).toEqual([
-      { slot: "node.agent.page", panelId: "world-model", title: "World Model", profile: ["drone"] },
-      { slot: "node.surface", panelId: "compute", title: "Compute", profile: ["compute"] },
+      { slot: "node.agent.page", panelId: "capture-setup", title: "Capture setup", profile: ["drone"] },
+      { slot: "node.surface", panelId: "capture", title: "Capture", profile: ["visor"] },
     ]);
   });
 

@@ -117,12 +117,11 @@ describe("EKF source flags", () => {
 });
 
 describe("map status", () => {
-  it("grows the sweep and reports an uploading hybrid session", () => {
+  it("grows the sweep of a hybrid map posed by the planar LiDAR", () => {
     const a = demoMapStatus(10, 2);
     const b = demoMapStatus(20, 4);
-    expect(a).toMatchObject({ sessionId: "demo-session", placement: "hybrid", voxelM: 0.1, navPose: "always" });
-    expect(a.upload?.state).toBe("uploading");
-    expect(a.stream).toEqual({ state: "off", bytesPerS: 0 });
+    expect(a).toMatchObject({ placement: "hybrid", voxelM: 0.1, poseProvider: "lidar_planar" });
+    expect(a.imuFeed?.state).toBe("ok");
     expect(b.sweepPoints!).toBeGreaterThan(a.sweepPoints!);
     expect(b.areaM2!).toBeGreaterThan(a.areaM2!);
   });
@@ -158,7 +157,7 @@ describe("MockNavStream", () => {
     expect(feed?.pose?.data.frame).toBe("map_ned");
     expect(feed?.pose?.data.R).toHaveLength(9);
     expect(feed?.scan?.data.ranges).toHaveLength(360);
-    expect(feed?.map?.data.sessionId).toBe("demo-session");
+    expect(feed?.map?.data.poseProvider).toBe("lidar_planar");
     expect(Object.keys(feed?.occupancy.tiles ?? {})).toHaveLength(2);
     expect(feed?.trail.length).toBeGreaterThan(0);
   });

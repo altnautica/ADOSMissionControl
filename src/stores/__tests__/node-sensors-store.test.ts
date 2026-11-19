@@ -105,7 +105,7 @@ describe("node-sensors store load", () => {
   it("lists capture sessions newest first through the plugin passthrough", async () => {
     const session = (id: string, at: string) => ({ session_id: id, started_at_utc: at });
     respond({
-      "/api/plugins/com.altnautica.world-engine/x/atlas/sessions": {
+      "/api/plugins/com.altnautica.capture/x/capture/sessions": {
         status: 200,
         body: { sessions: [session("a", "2026-10-18T10:00:00Z"), session("b", "2026-10-19T10:00:00Z")] },
       },

@@ -117,7 +117,7 @@ export interface FleetDrone extends DroneInfo {
    * card can render a "VIO" pill without joining cmd_droneStatus.
    * Undefined for agents that predate the navigation surface. */
   navigationGpsDenied?: boolean;
-  /** Active vision-nav estimator mode (free-form string mirroring the
+  /** Active Navigation estimator mode (free-form string mirroring the
    * agent's ``mode`` config). Used by the fleet card to render the
    * correct short badge: "OF" / "OF*" / "VIO" / "Hybrid". Undefined
    * for agents that predate the estimator framework heartbeat. */

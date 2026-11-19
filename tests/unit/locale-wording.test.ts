@@ -33,7 +33,7 @@ const others = readdirSync(LOCALES_DIR)
   .map((f) => f.replace(/\.json$/, ""));
 
 /** Map-tab entries that are pure formats, the same in every language. */
-const MAP_TAB_FORMATS: Record<string, true> = { memoryValue: true };
+const MAP_TAB_FORMATS: Record<string, true> = { memoryValue: true, view2d: true, view3d: true };
 
 describe("locale wording", () => {
   it.each(others)("%s translates the map tab", (code) => {

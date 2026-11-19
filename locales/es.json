@@ -10136,16 +10136,14 @@
       "title": "Mapa",
       "status": "Estado del mapa",
       "noData": "Aún no hay datos de mapa de este nodo. El mapa aparecerá cuando la extensión de mapeo publique su estado.",
-      "noSession": "Sin sesión de captura",
       "health": "Estado de la pose",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "Pose de navegación",
-      "openViewer": "Abrir visor 3D",
-      "viewerUnavailable": "El visor de la extensión de mapeo no está instalado en este nodo.",
       "liveMap": "Mapa en vivo",
-      "navPoseAlways": "Siempre",
-      "navPoseCapture": "Solo durante la captura",
-      "noPose": "Sin pose"
+      "noPose": "Sin pose",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "Aún no hay puntos de barrido",
+      "sweepUnavailable": "La navegación de este nodo no ofrece una nube de barrido"
     },
     "followSkill": {
       "title": "Follow",

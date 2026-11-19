@@ -155,9 +155,8 @@ export function parseManifestYaml(text: string): ParsedManifest {
   const permissions: Array<{ id: string; required: boolean; half?: PluginHalf }> = [];
   collectPermissions(agent?.permissions, "agent", permissions);
   collectPermissions(gcs?.permissions, "gcs", permissions);
-  // Legacy top-level `permissions:` (untagged half). Vision-nav v0.2.2
-  // had this shape; keeping support so historical registry rows still
-  // render correctly.
+  // Legacy top-level `permissions:` (untagged half): early extension
+  // manifests had this shape, and historical registry rows still carry it.
   collectPermissions(root.permissions, undefined, permissions);
 
   return {

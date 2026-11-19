@@ -10136,16 +10136,14 @@
       "title": "Karte",
       "status": "Kartenstatus",
       "noData": "Noch keine Kartendaten von diesem Knoten. Die Karte erscheint, sobald die Mapping-Erweiterung ihren Status veröffentlicht.",
-      "noSession": "Keine Aufnahmesitzung",
       "health": "Pose-Zustand",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "Navigations-Pose",
-      "openViewer": "3D-Ansicht öffnen",
-      "viewerUnavailable": "Die Ansicht der Mapping-Erweiterung ist auf diesem Knoten nicht installiert.",
       "liveMap": "Live-Karte",
-      "navPoseAlways": "Immer",
-      "navPoseCapture": "Nur während der Aufnahme",
-      "noPose": "Keine Pose"
+      "noPose": "Keine Pose",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "Noch keine Sweep-Punkte",
+      "sweepUnavailable": "Die Navigation dieses Knotens stellt keine Sweep-Punktwolke bereit"
     },
     "followSkill": {
       "title": "Follow",

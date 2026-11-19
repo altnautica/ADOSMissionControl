@@ -45,6 +45,7 @@ function ctxFor(profile: NodeProfile): SurfaceContext {
     capabilitiesKnown: true,
     showLockedTabs: false,
     pluginAgentPages: [],
+    liveMapFresh: false,
   };
 }
 

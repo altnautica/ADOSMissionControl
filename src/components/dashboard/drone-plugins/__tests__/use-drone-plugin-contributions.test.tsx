@@ -58,8 +58,8 @@ describe("useDronePluginContributions", () => {
     const { result } = renderHook(() =>
       useDronePluginContributions("alpha-1"),
     );
-    // alpha-1 runs vision-nav among its extensions.
-    expect(result.current.map((c) => c.pluginId)).toContain("com.altnautica.vision-nav");
+    // alpha-1 runs follow-me among its extensions.
+    expect(result.current.map((c) => c.pluginId)).toContain("com.altnautica.follow-me");
   });
 
   it("surfaces a demo plugin's declarative parameters on its tab", () => {
@@ -73,11 +73,6 @@ describe("useDronePluginContributions", () => {
     expect(followMe!.parameters.map((p) => p.key)).toContain(
       "follow_distance_m",
     );
-    // Vision-nav's manifest declares no parameters, and neither does its mock.
-    const visionNav = result.current.find(
-      (c) => c.pluginId === "com.altnautica.vision-nav",
-    );
-    expect(visionNav!.parameters).toEqual([]);
   });
 
   it("returns an empty array for an unknown demo drone", () => {
@@ -88,14 +83,13 @@ describe("useDronePluginContributions", () => {
   });
 
   it("sorts by manifest order ascending, then pluginId", () => {
-    // alpha-1 runs the optical pod (order 55), vision-nav (60) and
-    // follow-me (70); charlie-3 the thermal camera, delta-4 the gimbal.
+    // alpha-1 runs the optical pod (order 55) and follow-me (70);
+    // charlie-3 the thermal camera, delta-4 the gimbal.
     const { result: r1 } = renderHook(() =>
       useDronePluginContributions("alpha-1"),
     );
     expect(r1.current.map((c) => c.pluginId)).toEqual([
       "com.altnautica.siyi-pod",
-      "com.altnautica.vision-nav",
       "com.altnautica.follow-me",
     ]);
 

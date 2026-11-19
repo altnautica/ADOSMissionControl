@@ -40,6 +40,7 @@ function gs(role: AgentRole): SurfaceContext {
     capabilitiesKnown: true,
     showLockedTabs: false,
     pluginAgentPages: [],
+    liveMapFresh: false,
   };
 }
 

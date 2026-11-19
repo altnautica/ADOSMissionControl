@@ -1,8 +1,8 @@
 /**
  * @module hud/nav-types
  * @description Typed shapes and boundary parsers for the agent's navigation
- * feed: the follow-me `follow.state` and its discrete events, the vision-nav
- * `nav.state`, the world-engine pose / scan / map status topics, and the live
+ * feed: the follow-me `follow.state` and its discrete events, the Navigation
+ * `nav.state`, Navigation's pose / scan / map status topics, and the live
  * occupancy tiles. The agent forwards each source payload verbatim (snake
  * case); these parsers narrow `unknown` into the camelCase shapes the HUD and
  * the minimap read, dropping anything malformed instead of guessing.
@@ -137,14 +137,14 @@ export type FollowEvent =
     }
   | { topic: "follow.stopped"; reason: string };
 
-/** The vision-nav `nav.state` payload. */
+/** The Navigation `nav.state` payload. */
 export interface NavState {
   mode: string;
   activeSet: 1 | 2 | 3 | null;
   extnavHealth: NavHealth | null;
   /** Why the pose is degraded or lost (`health_reason`: `corridor_unmeasured`,
    *  `flow_disagrees`, `ekf_flow_disagree`, …); null when none is named or an
-   *  older vision-nav sends none. */
+   *  older Navigation sends none. */
   healthReason: string | null;
   odomRateHz: number | null;
   lastResetCounter: number | null;
@@ -155,7 +155,7 @@ export interface NavState {
   poseAgeMs: number | null;
 }
 
-/** The world-engine pose: rotation `R` (row-major 3×3) and translation `t`
+/** Navigation's pose: rotation `R` (row-major 3×3) and translation `t`
  * of the body FRD frame in the map frame. */
 export interface NavPose {
   R: number[];
@@ -176,22 +176,27 @@ export interface NavScan {
 }
 
 export type MapPlacement = "onboard" | "stream" | "post_flight" | "hybrid";
-export type UploadState = "idle" | "queued" | "uploading" | "done" | "failed";
-export type StreamState = "off" | "connecting" | "live" | "degraded";
+export type PoseProvider = "lidar_planar" | "fc_ekf" | "vio" | "replay";
+export type ImuFeedState = "ok" | "degraded" | "lost";
 
-/** The world-engine `map_status` payload. */
+/** The FC IMU feed of a planar LiDAR pose that takes the flight controller as
+ * its IMU; `reason` is null while the feed is ok. */
+export interface ImuFeed {
+  state: ImuFeedState;
+  reason: string | null;
+  rateHz: number | null;
+}
+
+/** Navigation's `map_status` payload: the live map's own facts. */
 export interface MapStatus {
-  sessionId: string | null;
   placement: MapPlacement | null;
   memoryUsedMb: number | null;
   memoryBudgetMb: number | null;
   voxelM: number | null;
-  keyframesDropped: number | null;
   sweepPoints: number | null;
   areaM2: number | null;
-  navPose: "always" | "capture" | null;
-  upload: { state: UploadState; bytesDone: number; bytesTotal: number } | null;
-  stream: { state: StreamState; bytesPerS: number } | null;
+  poseProvider: PoseProvider | null;
+  imuFeed: ImuFeed | null;
 }
 
 export interface OccupancyTileWire {
@@ -419,34 +424,22 @@ export function parseNavScan(raw: unknown): NavScan | null {
 
 export function parseMapStatus(raw: unknown): MapStatus | null {
   if (!isRec(raw)) return null;
-  const upload = isRec(raw.upload)
-    ? {
-        state:
-          oneOf(raw.upload.state, ["idle", "queued", "uploading", "done", "failed"] as const) ??
-          "idle",
-        bytesDone: num(raw.upload.bytes_done) ?? 0,
-        bytesTotal: num(raw.upload.bytes_total) ?? 0,
-      }
+  const feedState = isRec(raw.imu_feed)
+    ? oneOf(raw.imu_feed.state, ["ok", "degraded", "lost"] as const)
     : null;
-  const stream = isRec(raw.stream)
-    ? {
-        state:
-          oneOf(raw.stream.state, ["off", "connecting", "live", "degraded"] as const) ?? "off",
-        bytesPerS: num(raw.stream.bytes_per_s) ?? 0,
-      }
-    : null;
+  const imuFeed =
+    isRec(raw.imu_feed) && feedState
+      ? { state: feedState, reason: str(raw.imu_feed.reason), rateHz: num(raw.imu_feed.rate_hz) }
+      : null;
   return {
-    sessionId: str(raw.session_id),
     placement: oneOf(raw.placement, ["onboard", "stream", "post_flight", "hybrid"] as const),
     memoryUsedMb: num(raw.memory_used_mb),
     memoryBudgetMb: num(raw.memory_budget_mb),
     voxelM: num(raw.voxel_m),
-    keyframesDropped: int(raw.keyframes_dropped),
     sweepPoints: int(raw.sweep_points),
     areaM2: num(raw.area_m2),
-    navPose: oneOf(raw.nav_pose, ["always", "capture"] as const),
-    upload,
-    stream,
+    poseProvider: oneOf(raw.pose_provider, ["lidar_planar", "fc_ekf", "vio", "replay"] as const),
+    imuFeed,
   };
 }
 

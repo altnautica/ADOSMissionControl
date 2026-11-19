@@ -27,6 +27,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     capabilitiesKnown: true,
     showLockedTabs: true,
     pluginAgentPages: [],
+    liveMapFresh: false,
     ...over,
   };
 }

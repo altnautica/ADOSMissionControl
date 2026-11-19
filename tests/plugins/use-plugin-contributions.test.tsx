@@ -22,9 +22,11 @@ import { renderHook, waitFor, act, cleanup } from "@testing-library/react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEMO_INLINE_FIXTURE_PLUGIN_ID } from "@/mock/inline-fixture-plugin";
 
-const WE = "com.altnautica.world-engine";
-import { VISION_NAV_PLUGIN_ID } from "@/mock/mock-vision-nav";
-import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
+import { FOLLOW_ME_PLUGIN_ID, NAVIGATION_PLUGIN_ID } from "@/hooks/use-nav-feed";
+
+const CAPTURE = "com.altnautica.capture";
+const RECONSTRUCT = "com.altnautica.reconstruct";
+const DEMO_EXTENSIONS = new Set([CAPTURE, RECONSTRUCT, NAVIGATION_PLUGIN_ID]);
 
 // --- Mocks ----------------------------------------------------------
 
@@ -137,23 +139,21 @@ describe("usePluginContributions", () => {
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     const { result } = renderHook(() => usePluginContributions("drone-1"));
     const rows = result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation]);
-    expect(rows.every(([pluginId, , , isolation]) => pluginId === WE && isolation === "inline")).toBe(true);
-    expect(rows).toContainEqual([WE, "node.agent.page", "live-world", "inline"]);
+    expect(rows.every(([pluginId, , , isolation]) => DEMO_EXTENSIONS.has(pluginId ?? "") && isolation === "inline")).toBe(true);
+    expect(rows).toContainEqual([CAPTURE, "node.agent.page", "capture-setup", "inline"]);
     expect(rows.some(([pluginId]) => pluginId === DEMO_INLINE_FIXTURE_PLUGIN_ID)).toBe(false);
   });
 
-  it("adds the demo Vision Nav and Follow-Me tab bodies on the drone running those extensions", () => {
+  it("adds the demo Follow-Me tab body and the extension pages on a demo drone", () => {
     useSettingsStore.setState({ demoMode: true });
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     const { result } = renderHook(() => usePluginContributions("alpha-1", undefined, "drone"));
     expect(result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation])).toEqual([
-      [VISION_NAV_PLUGIN_ID, "node.detail.tab", "vision-nav-tab", "inline"],
       [FOLLOW_ME_PLUGIN_ID, "node.detail.tab", "follow-me-tab", "inline"],
-      [WE, "node.agent.page", "world-model", "inline"],
-      [WE, "node.agent.page", "world-model-setup", "inline"],
-      [WE, "node.agent.page", "live-world", "inline"],
-      [WE, "node.agent.page", "offload", "inline"],
-      [WE, "node.surface", "sessions", "inline"],
+      [CAPTURE, "node.agent.page", "capture-setup", "inline"],
+      [CAPTURE, "node.surface", "capture", "inline"],
+      [RECONSTRUCT, "node.agent.page", "offload", "inline"],
+      [NAVIGATION_PLUGIN_ID, "node.agent.page", "navigation", "inline"],
     ]);
     const narrowed = renderHook(() =>
       usePluginContributions("alpha-1", "node.detail.tab", "ground-station"),

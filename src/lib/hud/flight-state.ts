@@ -241,7 +241,7 @@ function colorOf(name: string): string {
   return STATE_COLORS[name] ?? STATE_COLORS.fc ?? "#909090";
 }
 
-/** The label key of a pilot's `position_unverified`: vision-nav's detail when
+/** The label key of a pilot's `position_unverified`: Navigation's detail when
  *  the spec labels it, else the pilot's reason. */
 export function positionUnverifiedKey(p: PilotState["positionUnverified"]): string | null {
   if (!p) return null;

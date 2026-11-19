@@ -10122,16 +10122,14 @@
       "title": "Carte",
       "status": "État de la carte",
       "noData": "Aucune donnée cartographique de ce nœud pour l'instant. La carte s'affiche dès que l'extension de cartographie publie son état.",
-      "noSession": "Aucune session de capture",
       "health": "État de la pose",
       "memoryValue": "{used} / {budget} Mo",
-      "navPose": "Pose de navigation",
-      "openViewer": "Ouvrir la visionneuse 3D",
-      "viewerUnavailable": "La visionneuse de l'extension de cartographie n'est pas installée sur ce nœud.",
       "liveMap": "Carte en direct",
-      "navPoseAlways": "Toujours",
-      "navPoseCapture": "Pendant la capture uniquement",
-      "noPose": "Aucune pose"
+      "noPose": "Aucune pose",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "Aucun point de balayage pour l'instant",
+      "sweepUnavailable": "La navigation de ce nœud ne fournit pas de nuage de balayage"
     },
     "followSkill": {
       "title": "Follow",

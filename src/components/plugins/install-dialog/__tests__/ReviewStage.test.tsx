@@ -35,9 +35,9 @@ function wrap(node: React.ReactElement) {
 }
 
 const baseManifest: InstallManifestSummary = {
-  pluginId: "altnautica.vision-nav",
+  pluginId: "altnautica.navigation",
   version: "0.2.3",
-  name: "Vision Nav",
+  name: "Navigation",
   author: "Altnautica",
   description: "GPS-denied estimator",
   license: "GPL-3.0-or-later",
@@ -111,7 +111,7 @@ describe("ReviewStage", () => {
         />,
       ),
     );
-    expect(screen.getByText("Vision Nav")).toBeInTheDocument();
+    expect(screen.getByText("Navigation")).toBeInTheDocument();
     expect(screen.getByText(/by Altnautica/)).toBeInTheDocument();
     expect(screen.getByText(/Installing to: testnode/)).toBeInTheDocument();
   });

@@ -3,7 +3,7 @@
  * @description Mock capability snapshot used by the demo agent.
  * Reflects an active follow-target run on a tier-4 drone with a small
  * person-detection model loaded on the NPU, plus a fully-populated
- * vision-nav navigation block so demo-mode renders every Navigation
+ * Navigation navigation block so demo-mode renders every Navigation
  * tab surface without hardware. Tests and screenshot fixtures can
  * call ``getMockCapabilities("vio_openvins")`` etc. to render the
  * non-default mode states.

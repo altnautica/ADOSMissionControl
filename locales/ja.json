@@ -10122,16 +10122,14 @@
       "title": "マップ",
       "status": "マップの状態",
       "noData": "このノードからのマップデータはまだありません。マッピング拡張機能がステータスを公開するとマップが表示されます。",
-      "noSession": "キャプチャセッションなし",
       "health": "姿勢の健全性",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "ナビゲーション姿勢",
-      "openViewer": "3Dビューアーを開く",
-      "viewerUnavailable": "このノードにはマッピング拡張機能のビューアーがインストールされていません。",
       "liveMap": "ライブマップ",
-      "navPoseAlways": "常時",
-      "navPoseCapture": "キャプチャ中のみ",
-      "noPose": "姿勢なし"
+      "noPose": "姿勢なし",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "スイープ点はまだありません",
+      "sweepUnavailable": "このノードのナビゲーションはスイープ点群を提供していません"
     },
     "followSkill": {
       "title": "Follow",

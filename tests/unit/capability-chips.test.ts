@@ -97,7 +97,7 @@ describe("permissionsToChips", () => {
 const EXTENSIONS_DIR = path.resolve(__dirname, "..", "..", "..", "ADOSExtensions", "extensions");
 
 const FIRST_PARTY_CHIPS: ReadonlyArray<[string, string[]]> = [
-  ["vision-nav", ["camera"]],
+  ["navigation", ["camera"]],
   ["thermal-camera-flir-lepton-usb", ["camera", "thermal"]],
   ["siyi-pod", ["camera"]],
   ["follow-me", ["camera"]],

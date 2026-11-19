@@ -32,6 +32,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     capabilitiesKnown: true,
     showLockedTabs: false,
     pluginAgentPages: [],
+    liveMapFresh: false,
     ...over,
   };
 }
@@ -42,7 +43,7 @@ function forProfile(profile: NodeProfile): SurfaceContext {
 
 describe("node-detail surface registry (createContributionRegistry instance)", () => {
   it("resolves the built-in drone surfaces in authored order", () => {
-    const ids = resolveSurfaces(forProfile("drone"), []).map((s) => s.id);
+    const ids = resolveSurfaces({ ...forProfile("drone"), liveMapFresh: true }, []).map((s) => s.id);
     expect(ids).toEqual([
       "overview",
       "cockpit",
@@ -61,13 +62,16 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
     expect(gs?.labelKey).toBe("dronePanel.flight");
   });
 
-  it("shows the drone Map tab only when the node has a companion agent", () => {
+  it("shows the drone Map tab only while a companion agent's live map is fresh", () => {
     const bare = resolveSurfaces(
-      ctx({ agentDeviceId: null, agentIdentityKnown: false, role: null }),
+      ctx({ agentDeviceId: null, agentIdentityKnown: false, role: null, liveMapFresh: true }),
       [],
     ).map((s) => s.id);
     expect(bare).not.toContain("map");
-    expect(resolveSurfaces(forProfile("drone"), []).map((s) => s.id)).toContain("map");
+    expect(resolveSurfaces(forProfile("drone"), []).map((s) => s.id)).not.toContain("map");
+    expect(
+      resolveSurfaces({ ...forProfile("drone"), liveMapFresh: true }, []).map((s) => s.id),
+    ).toContain("map");
   });
 
   it("appends the Agent surface to every profile", () => {

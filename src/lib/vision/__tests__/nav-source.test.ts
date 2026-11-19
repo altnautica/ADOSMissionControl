@@ -104,7 +104,7 @@ describe("resolveNavSource", () => {
     });
   });
 
-  it("uses the last commanded set when vision-nav is absent", () => {
+  it("uses the last commanded set when Navigation is absent", () => {
     const r = run({
       ekf: { flags: 2, ageMs: 0 },
       lastCommandedSet: 2,

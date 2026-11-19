@@ -50,6 +50,7 @@ function ctxFor(
     capabilitiesKnown: true,
     showLockedTabs: false,
     pluginAgentPages: [],
+    liveMapFresh: false,
     ...over,
   };
 }

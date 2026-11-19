@@ -20,7 +20,7 @@ import type {
   DronePluginContribution,
   InstallDetailRow,
 } from "@/hooks/use-drone-plugin-contributions";
-import { DEMO_CAPTURE_INSTALL_ROW } from "./mock-visor-surfaces";
+import { DEMO_EXTENSION_PAGES } from "./mock-extension-pages";
 import type { DroneTargetActionContribution } from "@/lib/skills/target-actions";
 import type {
   PluginInstallSummary,
@@ -33,11 +33,11 @@ import type { ParsedManifest } from "@/components/plugins/transports/manifest-ty
 import {
   FOLLOW_ME,
   GIMBAL,
+  NAVIGATION,
   SIYI_POD,
   THERMAL,
-  VISION_NAV,
   demoReleaseManifest,
-  type DemoExtensionRelease,
+  type DemoExtensionManifest,
 } from "./extension-manifests";
 
 /**
@@ -70,10 +70,10 @@ export interface DemoPluginInstall {
   failureReason?: string;
 }
 
-/** A first-party install of a published release: its id, name, version, tab
- * and parameters come from the release manifest, never a hand-copied list. */
+/** A first-party install: its id, name, version, tab and parameters come from
+ * the mirrored manifest, never a hand-copied list. */
 function releaseInstall(
-  release: DemoExtensionRelease,
+  release: DemoExtensionManifest,
   install: Pick<DemoPluginInstall, "installId" | "agentId" | "status" | "failureReason">,
 ): DemoPluginInstall {
   const manifest = demoReleaseManifest(release);
@@ -96,10 +96,10 @@ function releaseInstall(
 }
 
 const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
-  // ── Drone 1: vision-nav, follow-me and the optical pod running ──
-  // Vision-nav declares no parameters; its tab body is the demo inline panel
-  // (`mock-vision-nav`). The others render their declared parameters.
-  releaseInstall(VISION_NAV, { installId: "demo-install-001", agentId: "alpha-1", status: "running" }),
+  // ── Drone 1: Navigation, follow-me and the optical pod running ──
+  // Navigation declares no parameters; its Agent page body is the demo inline
+  // panel (`mock-navigation`). The others render their declared parameters.
+  releaseInstall(NAVIGATION, { installId: "demo-install-001", agentId: "alpha-1", status: "running" }),
   releaseInstall(FOLLOW_ME, { installId: "demo-install-006", agentId: "alpha-1", status: "running" }),
   releaseInstall(SIYI_POD, { installId: "demo-install-008", agentId: "alpha-1", status: "running" }),
   {
@@ -194,9 +194,9 @@ export function getDemoDronePluginContributions(
     }));
 }
 
-/** The release each first-party demo install mirrors, by extension id. */
-export const DEMO_RELEASES: ReadonlyMap<string, DemoExtensionRelease> = new Map(
-  [VISION_NAV, FOLLOW_ME, SIYI_POD, THERMAL, GIMBAL].map((r) => [demoReleaseManifest(r).pluginId, r]),
+/** The manifest each first-party demo install mirrors, by extension id. */
+export const DEMO_RELEASES: ReadonlyMap<string, DemoExtensionManifest> = new Map(
+  [NAVIGATION, FOLLOW_ME, SIYI_POD, THERMAL, GIMBAL].map((r) => [demoReleaseManifest(r).pluginId, r]),
 );
 
 /** Running installs on a drone paired with the manifest of their release. */
@@ -386,11 +386,12 @@ export function getDemoFleetPluginContributions(): DemoFleetSlotContribution[] {
 }
 
 /**
- * Demo install rows carrying node pages: the world-engine extension's Agent
- * pages and node surfaces, as its manifest declares them. Read by
+ * Demo install rows carrying node pages: the Capture, Reconstruct and
+ * Navigation extensions' Agent pages and node surfaces, as their manifests
+ * declare them. Read by
  * `useNodePluginPages` in demo mode; the demo contribution producer mounts the
  * bodies behind them.
  */
 export function getDemoNodePageInstallRows(): InstallDetailRow[] {
-  return [DEMO_CAPTURE_INSTALL_ROW];
+  return DEMO_EXTENSION_PAGES.map((p) => p.installRow);
 }

@@ -10144,16 +10144,14 @@
       "title": "Map",
       "status": "Map status",
       "noData": "No map data from this node yet. The map appears once the mapping extension publishes its status.",
-      "noSession": "No capture session",
       "health": "Pose health",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "Navigation pose",
-      "openViewer": "Open 3D viewer",
-      "viewerUnavailable": "The mapping extension's viewer is not installed on this node.",
       "liveMap": "Live map",
-      "navPoseAlways": "Always",
-      "navPoseCapture": "During capture only",
-      "noPose": "No pose"
+      "noPose": "No pose",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "No sweep points yet",
+      "sweepUnavailable": "This node's Navigation does not serve a sweep cloud"
     },
     "followSkill": {
       "title": "Follow",

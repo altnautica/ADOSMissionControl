@@ -35,7 +35,7 @@
     "expected": { "label": "EXT NAV", "word": "UNVERIFIED", "tone": "crit" }
   },
   {
-    "name": "pilot_unverified_takes_vision_nav_detail",
+    "name": "pilot_unverified_takes_navigation_detail",
     "input": { "ekf_flags": 10, "params": { "EK3_SRC1_POSXY": 6 }, "nav": { "mode": "external_nav", "active_set": 1, "extnav_health": "lost" }, "position_unverified": { "reason": "extnav_lost", "detail": "corridor_unmeasured" } },
     "expected": { "label": "EXT NAV", "word": "CORRIDOR", "tone": "crit" }
   },

@@ -3,7 +3,7 @@
  * @description What the EKF navigates on, as one chip: a source (DR, EXT NAV,
  * GPS, FLOW), a quality word and a tone. Inputs are the FC's
  * EKF_STATUS_REPORT flags, the GPS fix, the EKF source-set parameters and the
- * vision-nav `nav.state`. Pure; every surface renders its result.
+ * Navigation `nav.state`. Pure; every surface renders its result.
  *
  * @license GPL-3.0-only
  */
@@ -53,13 +53,13 @@ export interface NavSourceInput {
   /** Latest EKF_STATUS_REPORT flags and its age (ms), or null. */
   ekf: { flags: number; ageMs: number } | null;
   gps: { fixType: number; satellites?: number; hdop?: number } | null;
-  /** Fresh vision-nav state, or null when absent or stale. */
+  /** Fresh Navigation state, or null when absent or stale. */
   nav: NavState | null;
   /** The set this GCS last commanded, or null. */
   lastCommandedSet: 1 | 2 | 3 | null;
   /** EK3_SRC{1,2,3}_{POSXY,VELXY,YAW} values; null when not loaded. */
   params: Readonly<Record<string, number>> | null;
-  /** The pilot's `position_unverified` (its reason and vision-nav's detail),
+  /** The pilot's `position_unverified` (its reason and Navigation's detail),
    *  or null / absent while the pilot trusts the position or is unheard. */
   positionUnverified?: { reason: string; detail: string | null } | null;
 }
@@ -91,7 +91,7 @@ export function gpsFixWord(fixType: number): GpsFixWord {
   }
 }
 
-/** The active EKF source set: vision-nav's report, else the GCS's last
+/** The active EKF source set: Navigation's report, else the GCS's last
  * command, else 1 (ArduPilot's boot default). */
 export function activeSourceSet(nav: NavState | null, lastCommanded: 1 | 2 | 3 | null): 1 | 2 | 3 {
   return nav?.activeSet ?? lastCommanded ?? 1;
@@ -128,7 +128,7 @@ function unverifiedWord(reason: string | null): NavQuality {
 
 function extRow(flags: number, nav: NavState | null, activeSet: 1 | 2 | 3): NavSourceResult {
   const h = nav?.extnavHealth ?? null;
-  // A reason from vision-nav on a degraded or lost pose says why the
+  // A reason from Navigation on a degraded or lost pose says why the
   // position cannot be trusted: never just "DEGRADED".
   const why = nav?.healthReason ?? null;
   if (why !== null && (h === "degraded" || h === "lost")) {

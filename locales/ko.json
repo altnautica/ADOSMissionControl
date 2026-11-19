@@ -10122,16 +10122,14 @@
       "title": "지도",
       "status": "지도 상태",
       "noData": "이 노드에서 아직 지도 데이터가 없습니다. 매핑 확장 기능이 상태를 게시하면 지도가 표시됩니다.",
-      "noSession": "캡처 세션 없음",
       "health": "포즈 상태",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "내비게이션 포즈",
-      "openViewer": "3D 뷰어 열기",
-      "viewerUnavailable": "이 노드에 매핑 확장 기능의 뷰어가 설치되어 있지 않습니다.",
       "liveMap": "실시간 지도",
-      "navPoseAlways": "항상",
-      "navPoseCapture": "캡처 중에만",
-      "noPose": "포즈 없음"
+      "noPose": "포즈 없음",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "아직 스윕 포인트가 없습니다",
+      "sweepUnavailable": "이 노드의 내비게이션은 스윕 클라우드를 제공하지 않습니다"
     },
     "followSkill": {
       "title": "Follow",

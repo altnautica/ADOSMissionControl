@@ -10,7 +10,7 @@
  */
 
 import type { McpPluginView } from "@/lib/plugins/mcp-plugin-tools";
-import { demoReleaseManifest, type DemoExtensionRelease } from "./extension-manifests";
+import { demoReleaseManifest, type DemoExtensionManifest } from "./extension-manifests";
 import { DEMO_RELEASES, getDemoDronePluginInstalls } from "./mock-plugins";
 
 /** Demo drones with extension installs. */
@@ -20,7 +20,7 @@ const DEMO_NODES = ["alpha-1", "charlie-3", "delta-4"];
  * agent-half permissions and version from the manifest, installed on the demo
  * drones that carry it. The releases declare tools only (no resources or
  * prompts). */
-function releaseView(release: DemoExtensionRelease): McpPluginView {
+function releaseView(release: DemoExtensionManifest): McpPluginView {
   const m = demoReleaseManifest(release);
   const grantedCaps = m.permissions.filter((p) => p.half === "agent").map((p) => p.id);
   return {

@@ -3,7 +3,7 @@ agent:
   contributes:
     drivers: []
     services: []
-  entrypoint: altnautica_vision_nav.plugin:VisionNavPlugin
+  entrypoint: altnautica_navigation.plugin:NavigationPlugin
   isolation: subprocess
   mavlink_components:
   - component_id: 198
@@ -84,7 +84,7 @@ description: GPS-denied navigation. Optical flow (downward camera) and visual-in
   USB UVC or CSI cameras.
 description_long: "What problem it solves. GPS fails indoors, under bridges, in urban\
   \ canyons, and under jamming. Without a position estimate the flight controller\
-  \ reverts to attitude-only flight, which cannot hold position. ADOS Vision Navigation\
+  \ reverts to attitude-only flight, which cannot hold position. ADOS Navigation\
   \ feeds the FC a position estimate derived from a camera plus the IMU so position\
   \ hold, loiter, and mission flight keep working when GPS is gone or unreliable.\n\
   \nThe pipeline. Each frame from the camera is timestamp-aligned with IMU samples\
@@ -131,7 +131,7 @@ description_long: "What problem it solves. GPS fails indoors, under bridges, in 
   \ cameras are preferred for VIO: a global shutter avoids the rolling-shutter wobble\
   \ that breaks feature triangulation. Rolling-shutter and CSI-V4L2 cameras work for\
   \ optical flow modes where only horizontal motion matters. VIO modes also need a\
-  \ Kalibr-compatible IMU-camera calibration file at /etc/ados/vision-nav/calib/.\
+  \ Kalibr-compatible IMU-camera calibration file at /etc/ados/navigation/calib/.\
   \ The bundled vendor binaries (OpenVINS and VINS-Fusion shims) ship signed alongside\
   \ the rest of the archive and run as subprocesses under the agent's sandbox. Optical-flow\
   \ paths are pure Python and need no vendor code.\n\nCalibration \u2014 what the\
@@ -148,7 +148,7 @@ description_long: "What problem it solves. GPS fails indoors, under bridges, in 
   \ Watch the feature count first \u2014 sudden drops mean the camera lost the scene\
   \ (sun glare, motion blur, low-texture ground). Watch drift second \u2014 gradual\
   \ growth means the estimator needs a re-init."
-documentation_url: https://docs.altnautica.com/drone-agent/vision-nav-overview
+documentation_url: https://docs.altnautica.com/drone-agent/navigation-overview
 extra: {}
 features:
 - Optical flow with or without rangefinder (Lucas-Kanade tracker)
@@ -160,13 +160,13 @@ features:
 gcs:
   contributes:
     notifications:
-    - id: vision-nav-degraded
+    - id: navigation-degraded
       severity: warning
       title: Vision navigation degraded
     overlays: []
     panels:
     - icon: compass
-      id: vision-nav-tab
+      id: navigation-tab
       order: 60
       slot: drone.detail.tab
       title: Vision Nav
@@ -199,10 +199,10 @@ hardware_requirements:
   fc_firmware: ArduPilot 4.5+, PX4 1.14+, iNav 7.0+
   optional:
   - Rangefinder (TF-Luna, Garmin LIDAR-Lite, ST VL53L1X) for optical flow modes
-homepage: https://github.com/altnautica/ADOSExtensions/tree/main/extensions/vision-nav
-id: com.altnautica.vision-nav
+homepage: https://github.com/altnautica/ADOSExtensions/tree/main/extensions/navigation
+id: com.altnautica.navigation
 license: GPL-3.0-or-later
-name: ADOS Vision Navigation
+name: ADOS Navigation
 required_fc_parameters:
   ardupilot:
   - note: Select vision pose source for the active EKF lane

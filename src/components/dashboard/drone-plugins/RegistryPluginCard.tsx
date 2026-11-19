@@ -109,7 +109,7 @@ const CATEGORY_STYLE: Record<
  * website mirror (`website/src/components/extensions/ExtensionIcon.tsx`). */
 const PLUGIN_ICON_NAME: Record<string, string> = {
   "com.altnautica.follow-me": "follow",
-  "com.altnautica.vision-nav": "navigation",
+  "com.altnautica.navigation": "navigation",
   "com.altnautica.thermal-flir-lepton-usb": "thermal",
   "com.altnautica.mavlink-gimbal-v2": "gimbal",
   "com.altnautica.siyi-pod": "camera",

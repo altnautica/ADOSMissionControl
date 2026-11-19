@@ -69,7 +69,7 @@ const NAV_MODE: Record<1 | 2 | 3, string> = {
 };
 
 /** The `nav.state` frame for `tSec` into the cycle. While the demo pilot
- * reports `position_unverified`, vision-nav reports its pose degraded (lost
+ * reports `position_unverified`, Navigation reports its pose degraded (lost
  * for `extnav_lost`) with the reason: `ekf_flow_disagree` for a flow
  * disagreement, else the pilot's detail. */
 export function demoNavState(
@@ -101,36 +101,25 @@ export function demoNavState(
   };
 }
 
-const UPLOAD_TOTAL_BYTES = 48 * 1024 * 1024;
-const UPLOAD_PERIOD_S = 90;
-
-/** The mapping extension's plugin RAM cap on a drone, MB. */
+/** Navigation's plugin RAM cap on a drone, MB. */
 const DRONE_PLUGIN_RAM_CAP_MB = 768;
 
-/** The live mapping memory budget: 80 % of the drone cap, the extension's
+/** The live mapping memory budget: 80 % of the drone cap, Navigation's
  * default (614 MB). */
 export const DEMO_MAP_MEMORY_BUDGET_MB = Math.floor(DRONE_PLUGIN_RAM_CAP_MB * 0.8);
 
 /** The `map_status` frame `tSec` into the stream with `tiles` revealed. */
 export function demoMapStatus(tSec: number, tiles: number): MapStatus {
-  const uploadShare = (tSec % UPLOAD_PERIOD_S) / UPLOAD_PERIOD_S;
   return {
-    sessionId: "demo-session",
     placement: "hybrid",
     memoryUsedMb: Math.round(180 + Math.min(420, tSec * 2.5)),
     memoryBudgetMb: DEMO_MAP_MEMORY_BUDGET_MB,
     voxelM: 0.1,
-    keyframesDropped: Math.floor(tSec / 75),
     sweepPoints: Math.round(tSec * 1800),
     // Each 3.2 m tile adds ~10 m² of floor.
     areaM2: Math.round(tiles * 10.24 * 10) / 10,
-    navPose: "always",
-    upload: {
-      state: "uploading",
-      bytesDone: Math.round(UPLOAD_TOTAL_BYTES * uploadShare),
-      bytesTotal: UPLOAD_TOTAL_BYTES,
-    },
-    stream: { state: "off", bytesPerS: 0 },
+    poseProvider: "lidar_planar",
+    imuFeed: { state: "ok", reason: null, rateHz: 50 },
   };
 }
 

@@ -8,6 +8,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Map tab: shown while the drone's Navigation extension publishes a live map, with a 2D and a 3D view. 2D is the local-frame map with the `map.overlay` slot over it, so an extension layer (Capture's coverage) renders in the map's frame; 3D is Navigation's live sweep cloud (`/navigation/sweep`), coloured by height, with the drone's pose. The status card reads Navigation's map status: placement, memory, voxel size, sweep points, area, the pose provider and the FC IMU feed. Demo: the demo drone's room cloud.
+- Demo: the Capture, Reconstruct and Navigation extensions are installed from their manifests, with demo stand-ins for their pages (the Capture surface shows the capture monitor, Navigation's Agent page the navigation panel).
 - Demo follow-me: a follow distance set below 5 m, the least on a camera's range alone, is flown at 5 m and read back as standoff_min_m, standoff_raised and standoff_reason; the distance setpoint reads "at least 5.0 m with camera-only range", as in follow-me 0.5.0.
 - Demo follow-me: a follow height set below 3.4 m (a 2 m subject, 0.4 m of rotor and 1 m between them) is flown at 3.4 m, and the height setpoint reads "kept above head height for safety". The height setting's least value is 3.4 m, in 0.1 m steps, as in follow-me 0.5.0.
 - Controller-free flight groundwork. The aircraft setup wizard's "Meet ADOS Pilot" step offers "Use ADOS Pilot with no controller" with a line on what stops the drone without one; it leads when the agent saw no RC receiver. While the drone is declared to fly with no RC transmitter, a "No controller" chip sits beside the Confined chip on the top bar, and the new readiness items and refusals read their words from the shared spec. Demo: the demo pilot and setup wizard answer the declaration and its refusals.
@@ -67,6 +69,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The capture session list, the navigation topics and the plugin ids follow the extension split: sessions come from `com.altnautica.capture` (`/x/capture/sessions`), the pose, scan, map status and `nav.state` from `com.altnautica.navigation`, and the reconstruction node from `com.altnautica.reconstruct`. The Map tab's launcher for the old 3D viewer page is gone.
 - Cockpit: the sticks' flight-state chip drops its "Pilot · " prefix and reads the profile first ("Cine · 3 m/s", "Normal" without a limit); the control mode line below still names ADOS Pilot.
 - The pilot stream keeps only the newest stick frame while its WebSocket still has unsent bytes, so a slow link flies the latest stick rather than a queue of old ones; a release drops a waiting stick frame.
 - Settings › Input: the expo slider reads "Stick expo (direct flight controller only)" and says the onboard pilot uses the speed profile's own curve.

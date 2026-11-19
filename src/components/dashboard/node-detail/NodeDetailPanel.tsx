@@ -39,6 +39,7 @@ import {
   pluginTabIds,
 } from "@/components/plugins/DroneDetailTabHost";
 import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
+import { useLiveMapFresh } from "@/components/drone-detail/map/use-live-map-fresh";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { useNodePluginPages } from "@/hooks/use-node-plugin-pages";
@@ -155,6 +156,7 @@ export function NodeDetailPanel({ droneId, onClose, fleetToggle }: NodeDetailPan
   // Plugin Agent-sidebar pages and top-level surfaces for this node's profile,
   // from the same install rows as the tab headers above.
   const pluginPages = useNodePluginPages(bareDeviceId, drone?.profile);
+  const liveMapFresh = useLiveMapFresh(droneId);
 
   // Select this drone in drone-manager so the tab bodies that read the
   // selected vehicle show this one. Safety actions in the header (reboot and
@@ -195,6 +197,7 @@ export function NodeDetailPanel({ droneId, onClose, fleetToggle }: NodeDetailPan
     capabilitiesKnown: caps !== null,
     showLockedTabs: !showAgentTabs,
     pluginAgentPages: pluginPages.agentPages,
+    liveMapFresh,
   };
   const surfaces = resolveSurfaces(ctx, pluginPages.surfaces);
   const pluginIds = pluginTabIds(nodeDetailTabContributions);

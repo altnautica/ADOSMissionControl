@@ -75,6 +75,9 @@ export interface SurfaceContext {
   /** Agent-sidebar pages installed plugins contribute to THIS node, already
    * narrowed to its profile. The Agent page places them into its sections. */
   pluginAgentPages: ReadonlyArray<AgentNavContribution>;
+  /** Whether this node's Navigation publishes a fresh live map status; the
+   * Map tab shows only while it does. */
+  liveMapFresh: boolean;
 }
 
 /**

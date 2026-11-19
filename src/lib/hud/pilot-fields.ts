@@ -43,7 +43,7 @@ export function speedCapText(vHMps: number): string {
 }
 
 /** The pilot does not trust the horizontal position: `reason` is
- *  `flow_disagrees`, `extnav_lost` or `extnav_degraded`; `detail` vision-nav's
+ *  `flow_disagrees`, `extnav_lost` or `extnav_degraded`; `detail` Navigation's
  *  own reason when it named one. */
 export interface PositionUnverified {
   reason: string;

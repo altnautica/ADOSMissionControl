@@ -10122,16 +10122,14 @@
       "title": "地图",
       "status": "地图状态",
       "noData": "此节点暂无地图数据。建图扩展发布状态后将显示地图。",
-      "noSession": "无采集会话",
       "health": "位姿健康状态",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "导航位姿",
-      "openViewer": "打开 3D 查看器",
-      "viewerUnavailable": "此节点未安装建图扩展的查看器。",
       "liveMap": "实时地图",
-      "navPoseAlways": "始终",
-      "navPoseCapture": "仅在采集期间",
-      "noPose": "无位姿"
+      "noPose": "无位姿",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "尚无扫描点",
+      "sweepUnavailable": "此节点的导航不提供扫描点云"
     },
     "followSkill": {
       "title": "Follow",

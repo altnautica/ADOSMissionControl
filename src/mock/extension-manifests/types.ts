@@ -7,20 +7,24 @@
 import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import type { ParsedManifest } from "@/components/plugins/transports/manifest-types";
 
-/** One published release: its manifest text and signed asset. */
-export interface DemoExtensionRelease {
+/** An extension manifest the demo mirrors. */
+export interface DemoExtensionManifest {
   manifestYaml: string;
+}
+
+/** One published release: its manifest text and signed asset. */
+export interface DemoExtensionRelease extends DemoExtensionManifest {
   tag: string;
   downloadUrl: string;
   archiveSha256: string;
   archiveSizeBytes: number;
 }
 
-const parsedReleases = new Map<DemoExtensionRelease, ParsedManifest>();
+const parsedReleases = new Map<DemoExtensionManifest, ParsedManifest>();
 
-/** A release's manifest, parsed once by the same parser the install pop-up
- * uses, so demo installs and contributions read exactly what it declares. */
-export function demoReleaseManifest(release: DemoExtensionRelease): ParsedManifest {
+/** A manifest, parsed once by the same parser the install pop-up uses, so
+ * demo installs and contributions read exactly what it declares. */
+export function demoReleaseManifest(release: DemoExtensionManifest): ParsedManifest {
   let parsed = parsedReleases.get(release);
   if (!parsed) {
     parsed = parseManifestYaml(release.manifestYaml);

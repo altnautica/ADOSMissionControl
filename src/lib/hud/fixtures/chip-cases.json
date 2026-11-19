@@ -8957,7 +8957,7 @@
     }
   },
   {
-    "name": "position_unverified_names_vision_nav_detail",
+    "name": "position_unverified_names_navigation_detail",
     "input": {
       "pilot": {
         "owner": "pilot",

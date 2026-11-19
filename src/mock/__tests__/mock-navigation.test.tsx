@@ -1,10 +1,10 @@
 /**
- * @module mock-vision-nav.test
- * @description The demo Vision Nav tab: the health snapshot carries the
- * published vision-nav release's `navigation` block key for key with a pre-arm report the
- * gate would produce from the same readings, the tab body is keyed to the
- * install row its header reads, and the inline module renders the panel's
- * cards, Pre-arm included.
+ * @module mock-navigation.test
+ * @description The demo Navigation page: the health snapshot carries the
+ * extension's `navigation` block key for key with a pre-arm report the gate
+ * would produce from the same readings, the version is the mirrored
+ * manifest's, and the inline module renders the page's cards, Pre-arm
+ * included.
  * @license GPL-3.0-only
  */
 
@@ -12,27 +12,21 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { InlineHostApi } from "@/lib/plugins/inline-host-types";
-import { slotToCapability } from "@/lib/plugins/types";
-import { getDemoDronePluginContributions } from "@/mock/mock-plugins";
 import {
-  DEMO_VISION_NAV_MODULE,
-  getDemoVisionNavContribution,
-  getMockVisionNavHealth,
-  VISION_NAV_HEALTH_KEYS,
-  VISION_NAV_PANEL_ID,
-  VISION_NAV_PLUGIN_ID,
-  VISION_NAV_VERSION,
-  VISION_NAV_REFRESH_MS,
-} from "@/mock/mock-vision-nav";
-import { TOUR_PERSIST_KEY } from "@/mock/vision-nav-demo-tour";
+  DEMO_NAVIGATION_MODULE,
+  getMockNavigationHealth,
+  NAVIGATION_HEALTH_KEYS,
+  NAVIGATION_REFRESH_MS,
+} from "@/mock/mock-navigation";
+import { TOUR_PERSIST_KEY } from "@/mock/navigation-demo-tour";
 
-describe("getMockVisionNavHealth", () => {
+describe("getMockNavigationHealth", () => {
   it("emits exactly the navigation block keys, in agent order", () => {
-    expect(Object.keys(getMockVisionNavHealth())).toEqual([...VISION_NAV_HEALTH_KEYS]);
+    expect(Object.keys(getMockNavigationHealth())).toEqual([...NAVIGATION_HEALTH_KEYS]);
   });
 
   it("advertises the estimators the release runs and a converged optical-flow run", () => {
-    const h = getMockVisionNavHealth();
+    const h = getMockNavigationHealth();
     expect(h.opticalFlowSupported).toBe(true);
     expect(h.availableEstimators).toEqual(["external_nav", "off", "optical_flow", "optical_flow_degraded"]);
     expect(h.poseAgeMs).toBeNull();
@@ -52,7 +46,7 @@ describe("getMockVisionNavHealth", () => {
   });
 
   it("reports the gate's checks, computed from the same readings", () => {
-    const h = getMockVisionNavHealth();
+    const h = getMockNavigationHealth();
     const report = h.preArmReport!;
     expect(report.mode).toBe(h.mode);
     expect(report.checks.map((c) => c.id)).toEqual(["companion_active", "flow_quality", "rangefinder"]);
@@ -64,32 +58,7 @@ describe("getMockVisionNavHealth", () => {
   });
 });
 
-describe("getDemoVisionNavContribution", () => {
-  it("mounts under the tab header the demo drone's install row produces", () => {
-    const header = getDemoDronePluginContributions("alpha-1").find(
-      (c) => c.pluginId === VISION_NAV_PLUGIN_ID,
-    )!;
-    const demo = getDemoVisionNavContribution("alpha-1")!;
-    expect(header.version).toBe(VISION_NAV_VERSION);
-    expect(VISION_NAV_VERSION).toBe("0.6.7");
-    expect(demo.contribution.pluginInstallId).toBe(header.installId);
-    expect(demo.contribution.panelId).toBe(header.panelId);
-    expect(demo.contribution.panelId).toBe(VISION_NAV_PANEL_ID);
-    expect(demo.contribution.isolation).toBe("inline");
-    expect(demo.contribution.grantedCapabilities.has(slotToCapability("node.detail.tab"))).toBe(
-      true,
-    );
-    expect(demo.entry.profile).toEqual(["drone"]);
-    // Identity-stable, so a re-render does not remount the panel.
-    expect(getDemoVisionNavContribution("alpha-1")).toBe(demo);
-  });
-
-  it("is absent on a demo drone without the extension", () => {
-    expect(getDemoVisionNavContribution("charlie-3")).toBeNull();
-  });
-});
-
-describe("DEMO_VISION_NAV_MODULE", () => {
+describe("DEMO_NAVIGATION_MODULE", () => {
   let root: HTMLElement | null = null;
   afterEach(() => {
     root?.remove();
@@ -107,11 +76,11 @@ describe("DEMO_VISION_NAV_MODULE", () => {
     } as unknown as InlineHostApi;
     let dispose: (() => void) | null = null;
     await act(async () => {
-      dispose = await DEMO_VISION_NAV_MODULE.mount(root!, host);
+      dispose = await DEMO_NAVIGATION_MODULE.mount(root!, host);
     });
     const text = root.textContent ?? "";
     for (const label of [
-      "Vision Nav",
+      "Navigation",
       "Companion: Active",
       "Mode",
       "Sensors",
@@ -142,7 +111,7 @@ describe("DEMO_VISION_NAV_MODULE", () => {
   });
 });
 
-describe("DEMO_VISION_NAV_MODULE trends and tour", () => {
+describe("DEMO_NAVIGATION_MODULE trends and tour", () => {
   let root: HTMLElement | null = null;
   let dispose: (() => void) | null = null;
   const host = {
@@ -156,7 +125,7 @@ describe("DEMO_VISION_NAV_MODULE trends and tour", () => {
     root = document.createElement("div");
     document.body.append(root);
     await act(async () => {
-      dispose = await DEMO_VISION_NAV_MODULE.mount(root!, host);
+      dispose = await DEMO_NAVIGATION_MODULE.mount(root!, host);
     });
     return root;
   }
@@ -192,7 +161,7 @@ describe("DEMO_VISION_NAV_MODULE trends and tour", () => {
     const refresh = async (n: number) => {
       for (let i = 0; i < n; i++) {
         await act(async () => {
-          vi.advanceTimersByTime(VISION_NAV_REFRESH_MS);
+          vi.advanceTimersByTime(NAVIGATION_REFRESH_MS);
         });
       }
     };

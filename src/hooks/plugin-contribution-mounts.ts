@@ -14,8 +14,7 @@ import {
   type PairedNodeProfile,
 } from "@/lib/plugins/types";
 import { getDemoFollowMeContribution } from "@/mock/mock-follow-me";
-import { getDemoVisionNavContribution } from "@/mock/mock-vision-nav";
-import { DEMO_WORLD_ENGINE_CONTRIBUTIONS } from "@/mock/mock-visor-surfaces";
+import { DEMO_EXTENSION_PAGE_CONTRIBUTIONS } from "@/mock/mock-extension-pages";
 
 /** A renderable contribution carrying the slot it mounts into. */
 export type SlottedContribution = PluginSlotContribution & { slot: PluginSlotName };
@@ -43,9 +42,9 @@ export function entryMounts(
   );
 }
 
-/** The demo's inline mounts on a node: the Vision Nav and Follow-Me tab
- * bodies on the demo drones running those extensions, and the world-engine stand-ins for every page
- * its manifest declares on the node's profile (a top-level surface only on a
+/** The demo's inline mounts on a node: the Follow-Me tab body on the demo
+ * drones running it, and the Capture, Reconstruct and Navigation stand-ins for
+ * every page their manifests declare on the node's profile (a top-level surface only on a
  * node whose profile is known). In-memory modules handed straight to the host
  * (no trust gate, no agent). */
 export function demoInlineContributions(
@@ -55,10 +54,9 @@ export function demoInlineContributions(
 ): ReadonlyArray<SlottedContribution> {
   if (deviceId === null) return EMPTY_CONTRIBUTIONS;
   const out: SlottedContribution[] = [];
-  for (const tab of [getDemoVisionNavContribution(deviceId), getDemoFollowMeContribution(deviceId)]) {
-    if (tab && entryMounts(tab.entry, slot, nodeProfile)) out.push(tab.contribution);
-  }
-  for (const page of DEMO_WORLD_ENGINE_CONTRIBUTIONS) {
+  const tab = getDemoFollowMeContribution(deviceId);
+  if (tab && entryMounts(tab.entry, slot, nodeProfile)) out.push(tab.contribution);
+  for (const page of DEMO_EXTENSION_PAGE_CONTRIBUTIONS) {
     if (page.entry.slot === "node.surface" && nodeProfile === undefined) continue;
     if (entryMounts(page.entry, slot, nodeProfile)) out.push(page.contribution);
   }

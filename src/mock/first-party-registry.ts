@@ -26,8 +26,6 @@ import {
   GIMBAL,
   SIYI_POD,
   THERMAL,
-  VISION_NAV,
-  WORLD_ENGINE_RELEASE,
   demoReleaseManifest,
   type DemoExtensionRelease,
 } from "./extension-manifests";
@@ -93,6 +91,4 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
   releaseEntry(FOLLOW_ME, "ai"),
   releaseEntry(GIMBAL, "drivers"),
   releaseEntry(THERMAL, "drivers"),
-  releaseEntry(VISION_NAV, "ai"),
-  releaseEntry(WORLD_ENGINE_RELEASE, "ai"),
 ];

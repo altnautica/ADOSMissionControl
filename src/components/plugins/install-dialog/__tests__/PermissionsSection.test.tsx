@@ -31,9 +31,9 @@ function wrap(node: React.ReactElement) {
 }
 
 const baseManifest: InstallManifestSummary = {
-  pluginId: "altnautica.vision-nav",
+  pluginId: "altnautica.navigation",
   version: "0.2.4",
-  name: "Vision Nav",
+  name: "Navigation",
   halves: ["agent"],
   signatureState: "unsigned",
   trustSignals: [],

@@ -97,8 +97,8 @@ describe("DemoRegistryGrid", () => {
     const search = screen.getByRole("searchbox", {
       name: browse.searchPlaceholder,
     });
-    fireEvent.change(search, { target: { value: "optical flow" } });
-    expect(cardIds()).toEqual(["com.altnautica.vision-nav"]);
+    fireEvent.change(search, { target: { value: "Lepton" } });
+    expect(cardIds()).toEqual(["com.altnautica.thermal-flir-lepton-usb"]);
 
     fireEvent.change(search, { target: { value: "no-such-extension" } });
     expect(cardIds()).toEqual([]);

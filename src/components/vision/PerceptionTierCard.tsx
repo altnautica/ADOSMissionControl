@@ -7,7 +7,7 @@
  * workstation), hybrid, or none — with the accelerator rationale behind it.
  * The tier + the current offload target are read from the heartbeat (honest
  * status, never fabricated). Choosing the offload workstation belongs to the
- * World Engine extension, which owns the offload lane.
+ * Reconstruct extension, which owns the offload lane.
  * @license GPL-3.0-only
  */
 

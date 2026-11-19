@@ -126,8 +126,8 @@ export interface RigWriteResult {
   calib_version: string;
 }
 
-/** One capture session as the world-engine extension lists it
- * (`GET /atlas/sessions` on its plugin route mount). */
+/** One capture session as the Capture extension lists it
+ * (`GET /capture/sessions` on its plugin route mount). */
 export interface CaptureSessionSummary {
   session_id: string;
   started_at_utc: string;

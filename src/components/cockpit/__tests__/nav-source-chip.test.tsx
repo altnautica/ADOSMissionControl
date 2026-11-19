@@ -153,7 +153,7 @@ describe("NavSourceChip", () => {
   };
   const unverifiedPilot = () => parsePilotState(demoPilotWire({ armed: true, landed: false, ...DEMO_POSITION_UNVERIFIED_PIN }))!;
 
-  it("reads EXT NAV crit with vision-nav's reason for a degraded pose", () => {
+  it("reads EXT NAV crit with Navigation's reason for a degraded pose", () => {
     setSrc(6, 6);
     useNavStreamStore.getState().setNav(DRONE, { ...EXT_GOOD, extnavHealth: "degraded", healthReason: "ekf_flow_disagree" });
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
@@ -162,7 +162,7 @@ describe("NavSourceChip", () => {
     expect(chip().getAttribute("data-tone")).toBe("crit");
   });
 
-  it("carries a fresh pilot's position_unverified into the chip, whatever vision-nav says", () => {
+  it("carries a fresh pilot's position_unverified into the chip, whatever Navigation says", () => {
     setSrc(6, 6);
     useNavStreamStore.getState().setNav(DRONE, EXT_GOOD);
     useNavStreamStore.getState().setPilot(DRONE, unverifiedPilot());
@@ -231,7 +231,7 @@ describe("NavSourceChip", () => {
     expect(screen.getByTestId("nav-no-fc").textContent).toBe(specString("nav_source.no_fc"));
   });
 
-  it("notes automatic switching while vision-nav runs external nav", () => {
+  it("notes automatic switching while Navigation runs external nav", () => {
     setSrc(6, 6);
     useNavStreamStore.getState().setNav(DRONE, {
       mode: "external_nav",

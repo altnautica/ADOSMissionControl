@@ -1,0 +1,220 @@
+// Exempt from 300 LOC soft rule: verbatim manifest.
+/**
+ * @module mock/extension-manifests/capture
+ * @description The Capture extension's manifest at the head of its repository,
+ * which the demo install mirrors. It has no published release yet, so the
+ * demo catalog carries no row for it.
+ * @license GPL-3.0-only
+ */
+
+import type { DemoExtensionManifest } from "./types";
+
+export const CAPTURE: DemoExtensionManifest = {
+  manifestYaml: `schema_version: 3
+id: com.altnautica.capture
+name: "ADOS Capture"
+version: "1.0.0"
+description: "Record capture sessions on a drone or Visor and hand them to a reconstruction node."
+description_long: |
+  A drone or a Visor records capture sessions (every enabled camera, IMU, GNSS, LiDAR from the Navigation extension, and the pose the session is tagged with) and selects pose-tagged keyframes from one camera up to an all-sides rig. Sessions upload to a reconstruction node on the same network, resumably and checksum-verified, and the operator starts a reconstruction from the same page.
+
+  Keyframes ride the local network first, fall back to the radio link's auxiliary stream through a ground station, then to the cloud relay. The ground station relays the radio lane onto the local network when no shared network reaches the drone.
+
+  A session is posed by the Navigation extension's pose when it runs, and by the flight controller's EKF otherwise.
+features:
+  - "Session recording: every enabled camera, IMU, GNSS and the LiDAR Navigation measures"
+  - "Pose-tagged keyframe selection, one camera up to an all-sides rig"
+  - "Quality chips, coverage and a verdict on whether the session is enough to reconstruct"
+  - "Resumable session upload to a reconstruction node with checksum verification"
+  - "Rig calibration on a Visor"
+  - "LAN, radio-relay and cloud bearers with automatic failover"
+hardware_requirements:
+  cameras: "Any camera the vision engine publishes frames for"
+  optional:
+    - "The Navigation extension, for a VIO or LiDAR pose and LiDAR in sessions"
+    - "A workstation or compute node on the same network running the Reconstruct extension"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions/capture"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/capture"
+license: "GPL-3.0-or-later"
+risk: high
+
+compatibility:
+  ados_version: ">=0.104.0"
+  gcs_version: ">=0.66.0"
+  supported_boards: ["*"]
+
+agent:
+  # Every process is a compiled Rust binary shipped per architecture as a
+  # release payload. The main process (\`capture-link\`) runs on every profile
+  # and picks its mode from the node profile the host passes in
+  # ADOS_NODE_PROFILE; the capture service runs only on a drone or Visor.
+  runtime: rust
+  isolation: subprocess
+  entrypoint: "bin:capture-link"
+  target_profiles: [drone, visor, ground-station]
+  resources:
+    class: heavy
+    max_ram_mb: 768
+    max_cpu_percent: 200
+    max_pids: 512
+  # \`capture.memory_budget_mb\` (the keyframe queue) defaults to 80 % of the
+  # running profile's cap.
+  resources_by_profile:
+    drone:
+      class: heavy
+      max_ram_mb: 320
+      max_cpu_percent: 80
+      max_pids: 48
+    visor:
+      class: heavy
+      max_ram_mb: 768
+      max_cpu_percent: 200
+      max_pids: 512
+    ground-station:
+      class: heavy
+      max_ram_mb: 512
+      max_cpu_percent: 200
+      max_pids: 256
+  # The link serves the extension's HTTP API on the host-created socket; the
+  # link and the capture service meet on private sockets in the same
+  # directory.
+  http: true
+  binaries:
+    capture-link:
+      aarch64-linux: bin/aarch64-linux/capture-link
+      x86_64-linux: bin/x86_64-linux/capture-link
+      aarch64-macos: bin/aarch64-macos/capture-link
+    capture-service:
+      aarch64-linux: bin/aarch64-linux/capture-service
+      x86_64-linux: bin/x86_64-linux/capture-service
+  # Fetched at install, verified against sha256 and size, and covered by the
+  # archive signature because they are declared here. Only the entries that
+  # apply to the node's profile and architecture are downloaded. The release
+  # workflow writes the real source, sha256 and size_bytes.
+  payloads:
+    - path: bin/aarch64-linux/capture-link
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/capture-v1.0.0/capture-link-aarch64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-linux
+    - path: bin/x86_64-linux/capture-link
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/capture-v1.0.0/capture-link-x86_64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: x86_64-linux
+    - path: bin/aarch64-macos/capture-link
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/capture-v1.0.0/capture-link-aarch64-macos"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-macos
+    - path: bin/aarch64-linux/capture-service
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/capture-v1.0.0/capture-service-aarch64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-linux
+      profiles: [drone, visor]
+    - path: bin/x86_64-linux/capture-service
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/capture-v1.0.0/capture-service-x86_64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: x86_64-linux
+      profiles: [drone, visor]
+    # The Rerun web viewer's wasm, served to the GCS half as a plugin asset.
+    # Every profile serves the GCS module, so every profile fetches it.
+    - path: gcs/assets/re_viewer_bg.wasm
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/capture-v1.0.0/re_viewer_bg.wasm"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+  permissions:
+    # link: the state publish and status telemetry, the relay lane, the LAN
+    # bearer and the cloud bearer, Navigation's map status (placement), MCP
+    # tools, the WHEP preview relay and the rig write relay.
+    # capture service: engine frames, the sensor bus, session storage, the FC
+    # EKF messages, the onboard display page, front-panel buttons, the
+    # exposure lock, and Navigation's pose and scans.
+    - id: telemetry.extend
+    - id: event.publish
+    - id: event.subscribe
+    - id: telemetry.read
+    - id: plugin.navigation.map.read
+      required: false
+      degraded_behavior: "Sessions are posed by the flight controller's EKF and record no LiDAR."
+    - id: node.info.read
+    - id: vision.frame.read
+    - id: radio.aux_stream
+    - id: network.outbound
+    - id: cloud.publish
+    - id: sensor.stream.read
+    - id: capture.storage.write
+    - id: mavlink.read
+    - id: display.oled.page
+    - id: button.subscribe
+    - id: mcp.expose
+    - id: video.whep.relay
+    - id: sensors.rig.write
+    - id: camera.control.write
+  contributes:
+    services:
+      - name: capture
+        command: "bin:capture-service com.altnautica.capture"
+        profiles: [drone, visor]
+    shared_topics:
+      - topic: plugin.capture.state
+        subscribe_capability: telemetry.read
+    tools:
+      - name: capture_start
+        description: "Start a capture session on this device, optionally tagged with site, floor and room."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties:
+            site: { type: string }
+            floor: { type: integer }
+            room: { type: string }
+          additionalProperties: false
+      - name: capture_stop
+        description: "Stop the capture session; returns the final capture state."
+        safety_class: safe_write
+        inputSchema: { type: object, properties: {}, additionalProperties: false }
+      - name: capture_mark
+        description: "Mark the room and floor the operator just entered; returns the segment number."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties:
+            room: { type: string, minLength: 1 }
+            floor: { type: integer }
+          required: [room]
+          additionalProperties: false
+      - name: sessions_list
+        description: "List the capture sessions on this device with size, rooms and upload state."
+        safety_class: read
+        inputSchema: { type: object, properties: {}, additionalProperties: false }
+
+gcs:
+  entrypoint: "gcs/capture.mjs"
+  isolation: inline
+  permissions:
+    - id: ui.slot.node-surface
+    - id: ui.slot.cockpit-panel
+    - id: ui.slot.map-overlay
+    - id: ui.slot.node-agent-page
+    - id: telemetry.subscribe.status
+    # The Model view and credential provisioning read the reconstruction
+    # node's job API and credentials, which the Reconstruct extension serves.
+    - id: plugin.http.com.altnautica.reconstruct
+  contributes:
+    node_surfaces:
+      - { id: capture, title: "Capture", profile: [drone, visor], group: status, order: 20 }
+    panels:
+      - { id: capture-chips, slot: cockpit.panel, profile: [drone], title: "Capture", icon: "scan", order: 45 }
+      - { id: capture-coverage, slot: map.overlay, profile: [drone, visor], title: "Coverage" }
+    agent_pages:
+      - { id: capture-setup, title: "Capture setup", section: videoVision, after: cameras, profile: [drone, visor] }
+      - { id: calibration, title: "Calibration", section: videoVision, after: capture-setup, profile: [visor] }
+      - { id: relay, title: "Relay", section: radioLink, profile: [ground-station] }
+  locales:
+    - en
+`,
+};

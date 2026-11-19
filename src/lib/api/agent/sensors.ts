@@ -3,7 +3,7 @@
  * @description REST client for a node's rig sensors, session clock, capture
  * storage and battery gauge (`/api/v1/sensors`, `/api/v1/clock`,
  * `/api/v1/storage`, `/api/v1/battery`, `PUT /api/v1/sensors/rig`), plus the
- * capture-session list the world-engine extension serves on its plugin route
+ * capture-session list the Capture extension serves on its plugin route
  * mount. Same transport as the ground-station modules: the node's own origin
  * (or a relay-proxy prefix) with its API key or dashboard PIN session.
  * @license GPL-3.0-only
@@ -26,9 +26,9 @@ import type {
 
 export type * from "./sensors-types";
 
-/** The world-engine extension's plugin id; its routes sit under the agent's
+/** The Capture extension's plugin id; its routes sit under the agent's
  * plugin passthrough `/api/plugins/{id}/x/`. */
-export const WORLD_ENGINE_PLUGIN_ID = "com.altnautica.world-engine";
+export const CAPTURE_PLUGIN_ID = "com.altnautica.capture";
 
 export function getSensors(ctx: RequestContext): Promise<SensorsStatus> {
   return gsRequest<SensorsStatus>(ctx, "/api/v1/sensors");
@@ -56,7 +56,7 @@ export function putRig(ctx: RequestContext, rig: unknown): Promise<RigWriteResul
 }
 
 /**
- * The node's capture sessions, newest first, or null when the world-engine
+ * The node's capture sessions, newest first, or null when the Capture
  * extension is not installed or not running on it (its route is absent).
  */
 export async function listCaptureSessions(
@@ -65,7 +65,7 @@ export async function listCaptureSessions(
   try {
     const body = await gsRequest<{ sessions: CaptureSessionSummary[] }>(
       ctx,
-      `/api/plugins/${encodeURIComponent(WORLD_ENGINE_PLUGIN_ID)}/x/atlas/sessions`,
+      `/api/plugins/${encodeURIComponent(CAPTURE_PLUGIN_ID)}/x/capture/sessions`,
     );
     return [...body.sessions].sort((a, b) => b.started_at_utc.localeCompare(a.started_at_utc));
   } catch (err) {

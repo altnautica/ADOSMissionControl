@@ -1,11 +1,11 @@
 /**
- * @module mock/live-world-monitor-demo
- * @description The demo rendition of the world-engine `live-world` Agent page,
- * laid out like the real page: a capture-session header with its state, the
- * capture controls (inert in demo), the Capture and Stream cards fed by demo
- * values, and the World model section, which holds a placeholder because the
- * demo runs no reconstruction. The live map is on the demo `world-model` page,
- * as it is on the real extension.
+ * @module mock/capture-monitor-demo
+ * @description The demo rendition of the Capture extension's Live view: a
+ * capture-session header with its state, the capture controls (inert in
+ * demo), the Capture and Stream cards fed by demo values, and the
+ * Reconstruction section, which holds a placeholder because the demo runs no
+ * reconstruction. The live map is on the drone's Map tab, as it is on a real
+ * node.
  *
  * @license GPL-3.0-only
  */
@@ -73,7 +73,7 @@ function useElapsedSeconds(): number {
   return elapsed;
 }
 
-export function LiveWorldMonitorDemo({ tr }: { tr: Translate }) {
+export function CaptureMonitorDemo({ tr }: { tr: Translate }) {
   const elapsed = useElapsedSeconds();
   const keyframes = KEYFRAMES_AT_MOUNT + Math.floor(elapsed * INGEST_HZ);
   const controlsBlocked = tr(
@@ -88,21 +88,21 @@ export function LiveWorldMonitorDemo({ tr }: { tr: Translate }) {
 
   return (
     <div
-      data-testid="live-world-demo"
+      data-testid="capture-demo"
       style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "1rem", color: "var(--alt-text-primary)", background: "var(--alt-bg-primary)", minHeight: "100%", boxSizing: "border-box" }}
     >
       <div style={{ ...box, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tr("capture.liveWorldTitle", "Live World")}</span>
-          <span data-testid="live-world-state" style={{ fontSize: "0.625rem", fontWeight: 500, padding: "0.125rem 0.375rem", borderRadius: "0.25rem", color: "var(--alt-status-success)" }}>
+          <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tr("capture.title", "Capture")}</span>
+          <span data-testid="capture-state" style={{ fontSize: "0.625rem", fontWeight: 500, padding: "0.125rem 0.375rem", borderRadius: "0.25rem", color: "var(--alt-status-success)" }}>
             capturing
           </span>
-          <span style={{ fontSize: "0.625rem", color: "var(--alt-status-warning)" }}>{tr("liveWorld.demoBadge", "Demo data")}</span>
+          <span style={{ fontSize: "0.625rem", color: "var(--alt-status-warning)" }}>{tr("capture.demoBadge", "Demo data")}</span>
         </div>
         <span style={{ ...mono, fontSize: "0.625rem", color: "var(--alt-text-tertiary)" }}>{DEMO_CAPTURE_SESSION_ID}</span>
       </div>
 
-      <div style={box} data-testid="live-world-controls">
+      <div style={box} data-testid="capture-controls">
         <span style={label}>{tr("capture.captureControlsTitle", "Capture")}</span>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
           {controls.map(([key, fallback]) => (
@@ -115,7 +115,7 @@ export function LiveWorldMonitorDemo({ tr }: { tr: Translate }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", gap: "1rem" }}>
-        <div style={box} data-testid="live-world-capture">
+        <div style={box} data-testid="capture-capture">
           <span style={label}>{tr("capture.captureSection", "Capture")}</span>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
             <Stat name={tr("capture.statKeyframes", "Keyframes")} value={String(keyframes)} />
@@ -124,7 +124,7 @@ export function LiveWorldMonitorDemo({ tr }: { tr: Translate }) {
           </div>
           <Row name={tr("capture.vioTracking", "VIO tracking")}>good</Row>
         </div>
-        <div style={box} data-testid="live-world-stream">
+        <div style={box} data-testid="capture-stream">
           <span style={label}>{tr("capture.streamSection", "Stream")}</span>
           <Row name={tr("capture.computeNode", "Compute node")}>{DEMO_WORKSTATION.deviceId}</Row>
           <Row name={tr("capture.bearer", "Bearer")}>{tr("capture.bearerDirectLan", "Direct LAN")}</Row>
@@ -132,12 +132,12 @@ export function LiveWorldMonitorDemo({ tr }: { tr: Translate }) {
         </div>
       </div>
 
-      <div style={box} data-testid="live-world-reconstruction">
-        <span style={label}>{tr("capture.worldModelSection", "World model")}</span>
+      <div style={box} data-testid="capture-reconstruction">
+        <span style={label}>{tr("capture.reconstructionSection", "Reconstruction")}</span>
         <p style={{ ...muted, textAlign: "center", padding: "2rem 1rem" }}>
           {tr(
-            "liveWorld.demoReconstruction",
-            "The demo runs no reconstruction, so no world model is shown here. The live map of this session is on the World Model page.",
+            "capture.demoReconstruction",
+            "The demo runs no reconstruction, so no model is shown here. The live map of this session is on the drone's Map tab.",
           )}
         </p>
       </div>

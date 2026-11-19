@@ -99,9 +99,9 @@ describe("host.nodes.agent", () => {
     useNodeRegistryStore
       .getState()
       .upsertPresence("node:drone-r", { deviceId: "drone-r", reachedVia: "node:gs-1" }, "relayed");
-    await session().api.nodes.agent("drone-r").fetch("atlas/state", { method: "POST" });
+    await session().api.nodes.agent("drone-r").fetch("capture/state", { method: "POST" });
     expect(lastCall()).toEqual({
-      url: `http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/drone-r/api/plugins/${PLUGIN_ID}/x/atlas/state`,
+      url: `http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/drone-r/api/plugins/${PLUGIN_ID}/x/capture/state`,
       key: "key-gs",
     });
   });

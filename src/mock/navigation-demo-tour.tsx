@@ -1,8 +1,8 @@
 /**
- * @module mock/vision-nav-demo-tour
- * @description The Vision Navigation extension's telemetry trend charts and
- * first-run guided tour, as its GCS tab renders them, for the demo stand-in
- * in `vision-nav-demo-panel`. The charts keep a one-minute rolling history of
+ * @module mock/navigation-demo-tour
+ * @description The Navigation extension's telemetry trend charts and
+ * first-run guided tour, as its GCS page renders them, for the demo stand-in
+ * in `navigation-demo-panel`. The charts keep a one-minute rolling history of
  * flow quality and the camera-IMU sync offset from each health refresh. The
  * tour walks the five cards in the extension's order, opens on the first
  * visit, and reopens from the header's "Replay tour" link.
@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 
-import type { VisionNavHealth } from "./mock-vision-nav";
+import type { NavigationHealth } from "./mock-navigation";
 
 export type Translate = (key: string, fallback: string) => string;
 
@@ -24,7 +24,7 @@ export type Translate = (key: string, fallback: string) => string;
 export const CHART_BUFFER_LIMIT = 60;
 
 /** Records that the operator finished or skipped the tour once. */
-export const TOUR_PERSIST_KEY = "vision-nav-tour-seen";
+export const TOUR_PERSIST_KEY = "navigation-tour-seen";
 
 interface TourStepSpec {
   id: string;
@@ -159,10 +159,10 @@ function Sparkline({ label, unit, values, color, yMin, yMax, tr }: Series & { tr
 /** The extension's "Telemetry trends" card: flow quality and the absolute
  * camera-IMU sync offset, one sample per health refresh. A null reading adds
  * no sample, and a series under two samples shows "no data". */
-export function TelemetryCharts({ health, tr }: { health: VisionNavHealth; tr: Translate }) {
+export function TelemetryCharts({ health, tr }: { health: NavigationHealth; tr: Translate }) {
   // One sample per health report, taken when the report changes (the
   // adjust-state-during-render pattern, so no effect re-renders the card).
-  const [history, setHistory] = useState<{ seen: VisionNavHealth | null; quality: number[]; sync: number[] }>({
+  const [history, setHistory] = useState<{ seen: NavigationHealth | null; quality: number[]; sync: number[] }>({
     seen: null,
     quality: [],
     sync: [],

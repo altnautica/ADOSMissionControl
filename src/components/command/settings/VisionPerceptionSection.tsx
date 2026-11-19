@@ -5,7 +5,7 @@
  * @description The node Settings "Perception setup" page: WHAT this drone
  * detects (the engine-wide detector model, via the shared model picker).
  * Renders nothing on any other profile. Where perception executes (offload to
- * a workstation, serving on one) belongs to the World Engine extension.
+ * a workstation, serving on one) belongs to the Reconstruct extension.
  *
  * The detector picker needs the node's LAN vision client (model listing,
  * download, and upload are not proxied); a cloud-only session says so

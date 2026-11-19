@@ -2,7 +2,7 @@
  * @license GPL-3.0-only
  *
  * The Map tab's status card: the empty, stale and full states, and the
- * formatting of memory, upload and stream.
+ * formatting of memory, the pose provider and the FC IMU feed.
  */
 
 import { describe, expect, it } from "vitest";
@@ -22,17 +22,14 @@ import type { MapStatus, NavHealth } from "@/lib/hud/nav-types";
 const NOW = 1_000_000;
 
 const FULL: MapStatus = {
-  sessionId: "s-0042",
   placement: "hybrid",
   memoryUsedMb: 512,
   memoryBudgetMb: 1024,
   voxelM: 0.05,
-  keyframesDropped: 3,
   sweepPoints: 125000,
   areaM2: 84.25,
-  navPose: "always",
-  upload: { state: "uploading", bytesDone: 250, bytesTotal: 1000 },
-  stream: { state: "live", bytesPerS: 2 * 1024 * 1024 },
+  poseProvider: "lidar_planar",
+  imuFeed: { state: "ok", reason: null, rateHz: 49.7 },
 };
 
 function renderCard(entry: { data: MapStatus; receivedAt: number } | null, poseHealth: NavHealth | null = null) {
@@ -55,16 +52,14 @@ describe("MapStatusCard", () => {
     const { container } = renderCard({ data: FULL, receivedAt: NOW - 500 }, "good");
     const text = container.textContent ?? "";
     expect(container.querySelector("section")?.getAttribute("data-state")).toBe("live");
-    expect(text).toContain("s-0042");
     expect(text).toContain((125000).toLocaleString());
     expect(text).toContain("84.3 m²");
     expect(text).toContain("GOOD");
     expect(text).toContain("Hybrid");
     expect(text).toContain("512 / 1024 MB");
     expect(text).toContain("5 cm");
-    expect(text).toContain("Always");
-    expect(text).toContain(`${specString("map.status.upload.uploading")} 25%`);
-    expect(text).toContain(`${specString("map.status.stream.live")} · 16.8 Mbit/s`);
+    expect(text).toContain(specString("map.status.pose_provider.lidar_planar"));
+    expect(text).toContain(`${specString("map.status.imu_feed.ok")} · 50 Hz`);
     expect(text).not.toContain("STALE");
   });
 
@@ -74,36 +69,22 @@ describe("MapStatusCard", () => {
     expect(container.textContent).toContain(
       specString("map.panel.stale", { s: Math.floor((MAP_STATUS_STREAM_STALE_MS + 1000) / 1000) }),
     );
-    expect(container.textContent).toContain("s-0042");
+    expect(container.textContent).toContain("Hybrid");
     expect(container.textContent).toContain(messages.hud.mapTab.noPose);
   });
 
-  it("shows absent fields as dashes and no session explicitly", () => {
-    const sparse: MapStatus = {
-      ...FULL,
-      sessionId: null,
-      memoryUsedMb: null,
-      upload: null,
-      stream: null,
-      navPose: null,
-      placement: null,
-    };
+  it("shows absent fields as dashes and no IMU feed row without a feed", () => {
+    const sparse: MapStatus = { ...FULL, memoryUsedMb: null, placement: null, poseProvider: null, imuFeed: null };
     const { container } = renderCard({ data: sparse, receivedAt: NOW });
     const text = container.textContent ?? "";
-    expect(text).toContain(messages.hud.mapTab.noSession);
-    expect(text).not.toContain(specString("map.status.upload"));
-    expect(text).not.toContain(specString("map.status.live_stream"));
+    expect(text).toContain("—");
+    expect(text).not.toContain(specString("map.status.imu_feed"));
   });
 });
 
 describe("mapStatusView", () => {
-  it("computes the memory fraction and a zero-byte upload as 0 %", () => {
-    const v = mapStatusView(
-      { data: { ...FULL, upload: { state: "queued", bytesDone: 0, bytesTotal: 0 } }, receivedAt: NOW },
-      NOW,
-    );
-    expect(v.memoryFraction).toBe(0.5);
-    expect(v.uploadPct).toBe(0);
+  it("computes the memory fraction", () => {
+    expect(mapStatusView({ data: FULL, receivedAt: NOW }, NOW).memoryFraction).toBe(0.5);
   });
 
   it("uses the stream budget for nav-stream entries and the longer one for the heartbeat slice", () => {
@@ -121,22 +102,12 @@ describe("mapStatusView", () => {
     expect(at(84)).toBe("ok");
     expect(at(85)).toBe("warn");
     expect(at(95)).toBe("crit");
-    const v = mapStatusView(
-      {
-        data: {
-          ...FULL,
-          keyframesDropped: 1,
-          upload: { state: "failed", bytesDone: 0, bytesTotal: 10 },
-          stream: { state: "degraded", bytesPerS: 1000 },
-        },
-        receivedAt: NOW,
-      },
-      NOW,
-    );
-    expect(v.keyframesTone).toBe("warn");
-    expect(v.uploadTone).toBe("crit");
-    expect(v.streamTone).toBe("warn");
-    expect(mapStatusView({ data: { ...FULL, keyframesDropped: 0 }, receivedAt: NOW }, NOW).keyframesTone).toBe("ok");
+    const imu = (state: "ok" | "degraded" | "lost") =>
+      mapStatusView({ data: { ...FULL, imuFeed: { state, reason: null, rateHz: null } }, receivedAt: NOW }, NOW)
+        .imuTone;
+    expect(imu("ok")).toBe("ok");
+    expect(imu("degraded")).toBe("warn");
+    expect(imu("lost")).toBe("crit");
   });
 
   it("uses the shared spec words for placement", () => {

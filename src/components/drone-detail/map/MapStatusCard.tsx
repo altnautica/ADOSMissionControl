@@ -2,11 +2,11 @@
 
 /**
  * @module drone-detail/map/MapStatusCard
- * @description The Map tab's status card for the world-engine `map_status`:
- * session, sweep points, area, pose health, compute placement, memory against
- * its budget, voxel size, dropped keyframes, upload progress and stream
- * state. The empty and stale states are explicit; a stale card keeps its last
- * values, marked stale.
+ * @description The Map tab's status card for Navigation's `map_status`:
+ * sweep points, area, pose health, compute placement, memory against its
+ * budget, voxel size, the pose provider and the FC IMU feed. The empty and
+ * stale states are explicit; a stale card keeps its last values, marked
+ * stale.
  *
  * @license GPL-3.0-only
  */
@@ -18,9 +18,9 @@ import type { NavHealth } from "@/lib/hud/nav-types";
 import { cn } from "@/lib/utils";
 import { specString } from "@/lib/cockpit/spec-strings";
 import {
+  IMU_FEED_KEY,
   PLACEMENT_KEY,
-  STREAM_KEY,
-  UPLOAD_KEY,
+  PROVIDER_KEY,
   type MapStatusView,
   type MapTone,
 } from "@/components/drone-detail/map/map-status-view";
@@ -82,7 +82,6 @@ export function MapStatusCard({ view, poseHealth }: MapStatusCardProps) {
         <p className="text-xs text-text-secondary">{t("noData")}</p>
       ) : (
         <dl className={cn("divide-y divide-border-default", view.state === "stale" && "opacity-60")}>
-          <Row label={specString("map.status.session")}>{s.sessionId ?? t("noSession")}</Row>
           <Row label={specString("map.status.sweep_points")}>{s.sweepPoints !== null ? s.sweepPoints.toLocaleString() : dash}</Row>
           <Row label={specString("map.status.area")}>{s.areaM2 !== null ? `${s.areaM2.toFixed(1)} m²` : dash}</Row>
           <Row label={t("health")}>
@@ -115,27 +114,14 @@ export function MapStatusCard({ view, poseHealth }: MapStatusCardProps) {
             )}
           </Row>
           <Row label={specString("map.status.voxel_size")}>{s.voxelM !== null ? `${(s.voxelM * 100).toFixed(0)} cm` : dash}</Row>
-          <Row label={specString("map.status.keyframes_dropped")}>
-            <span className={TONE[view.keyframesTone]} data-tone={view.keyframesTone}>
-              {s.keyframesDropped ?? dash}
-            </span>
+          <Row label={specString("map.status.pose_provider")}>
+            {s.poseProvider ? specString(PROVIDER_KEY[s.poseProvider]) : dash}
           </Row>
-          {s.navPose && (
-            <Row label={t("navPose")}>{t(s.navPose === "always" ? "navPoseAlways" : "navPoseCapture")}</Row>
-          )}
-          {s.upload && (
-            <Row label={specString("map.status.upload")}>
-              <span className={TONE[view.uploadTone]} data-tone={view.uploadTone}>
-                {specString(UPLOAD_KEY[s.upload.state])}
-                {s.upload.state === "uploading" ? ` ${view.uploadPct ?? 0}%` : ""}
-              </span>
-            </Row>
-          )}
-          {s.stream && (
-            <Row label={specString("map.status.live_stream")}>
-              <span className={TONE[view.streamTone]} data-tone={view.streamTone}>
-                {specString(STREAM_KEY[s.stream.state])}
-                {s.stream.state === "live" || s.stream.state === "degraded" ? ` · ${view.streamRate ?? dash}` : ""}
+          {s.imuFeed && (
+            <Row label={specString("map.status.imu_feed")}>
+              <span className={TONE[view.imuTone]} data-tone={view.imuTone}>
+                {specString(IMU_FEED_KEY[s.imuFeed.state])}
+                {s.imuFeed.rateHz !== null ? ` · ${Math.round(s.imuFeed.rateHz)} Hz` : ""}
               </span>
             </Row>
           )}

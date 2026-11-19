@@ -17,16 +17,16 @@ import { parseManifestYaml } from "@/components/plugins/transports/manifest-pars
 import { toInstallSummary } from "@/components/plugins/transports/manifest-summary";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
-const VISION_NAV_MANIFEST = path.join(
+const NAVIGATION_MANIFEST = path.join(
   REPO_ROOT,
   "ADOSExtensions",
   "extensions",
-  "vision-nav",
+  "navigation",
   "manifest.yaml",
 );
 
-const BASE = `id: com.altnautica.vision-nav
-name: ADOS Vision Navigation
+const BASE = `id: com.altnautica.navigation
+name: ADOS Navigation
 version: 0.2.3
 description: Short summary
 risk: high
@@ -66,14 +66,14 @@ required_fc_parameters:
 telemetry_fields:
   - navigation.feature_count
   - navigation.drift_m
-documentation_url: "https://docs.altnautica.com/drone-agent/vision-nav-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/navigation-overview"
 `;
 
 describe("parseManifestYaml — rich fields", () => {
   it("parses every rich field round-trip", () => {
     const parsed = parseManifestYaml(RICH);
 
-    expect(parsed.pluginId).toBe("com.altnautica.vision-nav");
+    expect(parsed.pluginId).toBe("com.altnautica.navigation");
     expect(parsed.version).toBe("0.2.3");
 
     expect(parsed.descriptionLong).toBeDefined();
@@ -124,7 +124,7 @@ describe("parseManifestYaml — rich fields", () => {
     ]);
 
     expect(parsed.documentationUrl).toBe(
-      "https://docs.altnautica.com/drone-agent/vision-nav-overview",
+      "https://docs.altnautica.com/drone-agent/navigation-overview",
     );
 
     // Screenshots field absent in this manifest — must stay undefined
@@ -177,16 +177,16 @@ permissions:
 });
 
 // Slice of the real v0.2.3 manifest at
-// `ADOSExtensions/extensions/vision-nav/manifest.yaml`. Exercises the
+// `ADOSExtensions/extensions/navigation/manifest.yaml`. Exercises the
 // nested `agent.permissions` + `gcs.permissions` shape the parser must
 // walk so the install modal renders a non-zero permissions count.
-const NESTED = `id: com.altnautica.vision-nav
-name: ADOS Vision Navigation
+const NESTED = `id: com.altnautica.navigation
+name: ADOS Navigation
 version: 0.2.3
 risk: high
 description: Short summary
 agent:
-  entrypoint: "altnautica_vision_nav.plugin:VisionNavPlugin"
+  entrypoint: "altnautica_navigation.plugin:NavigationPlugin"
   isolation: subprocess
   per_drone_config: true
   contains_vendor_binary: true
@@ -341,18 +341,18 @@ gcs:
     expect(ids.some((id) => /license/.test(id))).toBe(false);
   });
 
-  // Real vision-nav fixture. No exact permission count is asserted here: the
+  // Real navigation fixture. No exact permission count is asserted here: the
   // exact-list contract is pinned above against the inline TRAP fixture, which
   // cannot drift, while this manifest lives in another repository and changes
   // whenever that extension's permissions legitimately change. Pinning its
   // count made a correct manifest edit fail this suite and taught nothing about
   // the parser. What this case is for is the shapes a hand-written real file
   // produces: spurious ids leaking in from sibling keys, and duplicates.
-  const hasFixture = fs.existsSync(VISION_NAV_MANIFEST);
+  const hasFixture = fs.existsSync(NAVIGATION_MANIFEST);
   const maybeIt = hasFixture ? it : it.skip;
 
-  maybeIt("collects no spurious entries from the real vision-nav manifest", () => {
-    const yaml = fs.readFileSync(VISION_NAV_MANIFEST, "utf-8");
+  maybeIt("collects no spurious entries from the real navigation manifest", () => {
+    const yaml = fs.readFileSync(NAVIGATION_MANIFEST, "utf-8");
     const parsed = parseManifestYaml(yaml);
     const ids = parsed.permissions.map((p) => p.id);
     // Spurious ids that used to leak through must be absent.
@@ -418,7 +418,7 @@ describe("parseManifestYaml — PyYAML-emitted Convex fixture", () => {
     __dirname,
     "..",
     "fixtures",
-    "vision-nav-v0.2.5-convex.yaml",
+    "navigation-pyyaml-convex.yaml",
   );
   const yaml = fs.readFileSync(CONVEX_FIXTURE, "utf8");
   const parsed = parseManifestYaml(yaml);
@@ -509,7 +509,7 @@ describe("toInstallSummary — rich fields", () => {
     ]);
 
     expect(summary.documentationUrl).toBe(
-      "https://docs.altnautica.com/drone-agent/vision-nav-overview",
+      "https://docs.altnautica.com/drone-agent/navigation-overview",
     );
     expect(summary.screenshots).toBeUndefined();
     expect(summary.manifestHash).toBe("deadbeef");

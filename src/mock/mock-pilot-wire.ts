@@ -68,7 +68,7 @@ export function demoPilotWire(over: Json = {}): Json {
 /**
  * The pin for a position the pilot cannot trust: the optical flow measures
  * 5.3 m/s while the estimate reads 0.3 m/s (the estimate froze while the
- * drone flew on), and the pilot holds for it. The demo vision-nav echoes it
+ * drone flew on), and the pilot holds for it. The demo Navigation echoes it
  * as a degraded pose (`mock-nav`). From the console:
  * `__adosDemoPilot.pin({ hold_reason: "position-unverified", position_unverified:
  * { reason: "flow_disagrees", flow_mps: 5.3, estimate_mps: 0.3 } })`.

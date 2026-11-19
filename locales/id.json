@@ -10122,16 +10122,14 @@
       "title": "Peta",
       "status": "Status peta",
       "noData": "Belum ada data peta dari node ini. Peta akan muncul setelah ekstensi pemetaan memublikasikan statusnya.",
-      "noSession": "Tidak ada sesi perekaman",
       "health": "Kesehatan pose",
       "memoryValue": "{used} / {budget} MB",
-      "navPose": "Pose navigasi",
-      "openViewer": "Buka penampil 3D",
-      "viewerUnavailable": "Penampil ekstensi pemetaan belum terpasang di node ini.",
       "liveMap": "Peta langsung",
-      "navPoseAlways": "Selalu",
-      "navPoseCapture": "Hanya saat perekaman",
-      "noPose": "Tidak ada pose"
+      "noPose": "Tidak ada pose",
+      "view2d": "2D",
+      "view3d": "3D",
+      "sweepEmpty": "Belum ada titik sapuan",
+      "sweepUnavailable": "Navigasi node ini tidak menyediakan awan sapuan"
     },
     "followSkill": {
       "title": "Follow",

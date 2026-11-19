@@ -87,6 +87,7 @@ function ctxFor(droneId: string): SurfaceContext {
     capabilitiesKnown: true,
     showLockedTabs: false,
     pluginAgentPages: [],
+    liveMapFresh: false,
   };
 }
 

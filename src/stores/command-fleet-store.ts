@@ -162,7 +162,7 @@ export interface CommandCloudStatus {
   manualMavlinkWsUrl?: string;
   /** True when the agent reports an active GPS-denied estimator. */
   navigationGpsDenied?: boolean;
-  /** Active vision-nav estimator mode (free-form string). */
+  /** Active Navigation estimator mode (free-form string). */
   navigationMode?: string;
   /** Inter-rig peer device-id from a decoded WFB PresenceBeacon. */
   peerDeviceId?: string | null;

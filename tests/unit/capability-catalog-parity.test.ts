@@ -1,9 +1,9 @@
 /**
  * @module CapabilityCatalogParityTest
  * @description Parity test that the GCS-side capability catalog mirrors
- * every permission id surfaced by the bundled vision-nav manifest.
+ * every permission id surfaced by the bundled navigation manifest.
  *
- * Reads the real manifest at `ADOSExtensions/extensions/vision-nav/
+ * Reads the real manifest at `ADOSExtensions/extensions/navigation/
  * manifest.yaml`, runs it through the client-side parser, then asserts
  * every emitted permission resolves to a known catalog entry with a
  * non-empty label and description. When the agent grows a new
@@ -25,25 +25,25 @@ import { getMergedCapabilityMeta } from "@/lib/plugins/capabilities";
 // `ADOSMissionControlGCS/` is a sibling of `ADOSExtensions/` inside the
 // private monorepo. Resolve from the GCS package root.
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
-const VISION_NAV_MANIFEST = path.join(
+const NAVIGATION_MANIFEST = path.join(
   REPO_ROOT,
   "ADOSExtensions",
   "extensions",
-  "vision-nav",
+  "navigation",
   "manifest.yaml",
 );
 
-describe("capability catalog parity (vision-nav)", () => {
+describe("capability catalog parity (navigation)", () => {
   // The parity test is meaningful only when the sibling submodule is
   // checked out alongside the GCS repo. Skip gracefully when the file
   // is missing so a standalone GCS clone (OSS contributor) does not
   // see a spurious failure.
-  const hasFixture = fs.existsSync(VISION_NAV_MANIFEST);
+  const hasFixture = fs.existsSync(NAVIGATION_MANIFEST);
 
   const maybeIt = hasFixture ? it : it.skip;
 
   maybeIt("every parsed permission resolves to a known catalog entry", () => {
-    const yaml = fs.readFileSync(VISION_NAV_MANIFEST, "utf-8");
+    const yaml = fs.readFileSync(NAVIGATION_MANIFEST, "utf-8");
     const parsed = parseManifestYaml(yaml);
 
     expect(parsed.permissions.length).toBeGreaterThan(0);
