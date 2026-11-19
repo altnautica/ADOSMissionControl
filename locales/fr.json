@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "Aucun point de balayage pour l'instant",
-      "sweepUnavailable": "La navigation de ce nœud ne fournit pas de nuage de balayage"
+      "sweepUnavailable": "La navigation de ce nœud ne fournit pas de nuage de balayage",
+      "streamSource": "Nœud de calcul",
+      "streamLive": "{node} · en direct",
+      "streamConnecting": "{node} · connexion",
+      "streamUnreachable": "{node} · inaccessible depuis ce navigateur"
     },
     "followSkill": {
       "title": "Follow",

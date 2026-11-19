@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "Aún no hay puntos de barrido",
-      "sweepUnavailable": "La navegación de este nodo no ofrece una nube de barrido"
+      "sweepUnavailable": "La navegación de este nodo no ofrece una nube de barrido",
+      "streamSource": "Nodo de cómputo",
+      "streamLive": "{node} · en vivo",
+      "streamConnecting": "{node} · conectando",
+      "streamUnreachable": "{node} · no accesible desde este navegador"
     },
     "followSkill": {
       "title": "Follow",

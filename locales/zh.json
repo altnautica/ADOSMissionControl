@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "尚无扫描点",
-      "sweepUnavailable": "此节点的导航不提供扫描点云"
+      "sweepUnavailable": "此节点的导航不提供扫描点云",
+      "streamSource": "计算节点",
+      "streamLive": "{node} · 实时",
+      "streamConnecting": "{node} · 连接中",
+      "streamUnreachable": "{node} · 无法从此浏览器访问"
     },
     "followSkill": {
       "title": "Follow",

@@ -117,10 +117,10 @@ describe("EKF source flags", () => {
 });
 
 describe("map status", () => {
-  it("grows the sweep of a hybrid map posed by the planar LiDAR", () => {
+  it("grows the sweep of a streamed map posed by the planar LiDAR", () => {
     const a = demoMapStatus(10, 2);
     const b = demoMapStatus(20, 4);
-    expect(a).toMatchObject({ placement: "hybrid", voxelM: 0.1, poseProvider: "lidar_planar" });
+    expect(a).toMatchObject({ placement: "stream", voxelM: 0.2, poseProvider: "lidar_planar" });
     expect(a.imuFeed?.state).toBe("ok");
     expect(b.sweepPoints!).toBeGreaterThan(a.sweepPoints!);
     expect(b.areaM2!).toBeGreaterThan(a.areaM2!);

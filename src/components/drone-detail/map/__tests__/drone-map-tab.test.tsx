@@ -7,16 +7,39 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import messages from "../../../../../locales/en.json";
 import { DroneMapTab } from "@/components/drone-detail/map/DroneMapTab";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { useReconstructStreamStore } from "@/stores/reconstruct-stream-store";
+import type { MapStatus } from "@/lib/hud/nav-types";
+import type * as WorldStream from "@/lib/api/reconstruct/world-stream";
 
 vi.mock("@/components/drone-detail/map/LiveSweep3D", () => ({
   LiveSweep3D: ({ droneId }: { droneId: string }) => <div data-testid="sweep-stub">{droneId}</div>,
 }));
+
+const { startStream, stopStream } = vi.hoisted(() => {
+  const stopStream = vi.fn();
+  return { stopStream, startStream: vi.fn((_droneId: string) => stopStream) };
+});
+vi.mock("@/lib/api/reconstruct/world-stream", async (importOriginal) => ({
+  ...(await importOriginal<typeof WorldStream>()),
+  startReconstructStream: startStream,
+}));
+
+const STATUS: MapStatus = {
+  placement: "onboard",
+  memoryUsedMb: 100,
+  memoryBudgetMb: 400,
+  voxelM: 0.1,
+  sweepPoints: 10,
+  areaM2: 2,
+  poseProvider: "lidar_planar",
+  imuFeed: null,
+};
 
 const DRONE = "node:map-tab-test";
 
@@ -29,8 +52,26 @@ function renderTab() {
 }
 
 describe("DroneMapTab", () => {
-  beforeEach(() => useNavStreamStore.getState().clear(DRONE));
+  beforeEach(() => {
+    useNavStreamStore.getState().clear(DRONE);
+    useReconstructStreamStore.getState().clear(DRONE);
+    startStream.mockClear();
+    stopStream.mockClear();
+  });
   afterEach(() => cleanup());
+
+  it("runs the compute node's stream only while the placement is stream, and names the node", () => {
+    useNavStreamStore.getState().setMap(DRONE, STATUS);
+    const { container, unmount } = renderTab();
+    expect(startStream).not.toHaveBeenCalled();
+    act(() => useNavStreamStore.getState().setMap(DRONE, { ...STATUS, placement: "stream" }));
+    expect(startStream).toHaveBeenCalledWith(DRONE);
+    expect(container.textContent).not.toContain(messages.hud.mapTab.streamSource);
+    act(() => useReconstructStreamStore.getState().setStatus(DRONE, "forge-1", "live"));
+    expect(container.textContent).toContain("forge-1 · live");
+    unmount();
+    expect(stopStream).toHaveBeenCalledTimes(1);
+  });
 
   it("shows the empty card, and the 2D map with the overlay layer by default", () => {
     const { container } = renderTab();

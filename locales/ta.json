@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "இன்னும் ஸ்வீப் புள்ளிகள் இல்லை",
-      "sweepUnavailable": "இந்த நோடின் வழிசெலுத்தல் ஸ்வீப் கிளவுடை வழங்கவில்லை"
+      "sweepUnavailable": "இந்த நோடின் வழிசெலுத்தல் ஸ்வீப் கிளவுடை வழங்கவில்லை",
+      "streamSource": "கணினி நோட்",
+      "streamLive": "{node} · நேரலை",
+      "streamConnecting": "{node} · இணைக்கிறது",
+      "streamUnreachable": "{node} · இந்த உலாவியிலிருந்து அணுக முடியவில்லை"
     },
     "followSkill": {
       "title": "Follow",

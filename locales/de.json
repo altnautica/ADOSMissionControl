@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "Noch keine Sweep-Punkte",
-      "sweepUnavailable": "Die Navigation dieses Knotens stellt keine Sweep-Punktwolke bereit"
+      "sweepUnavailable": "Die Navigation dieses Knotens stellt keine Sweep-Punktwolke bereit",
+      "streamSource": "Rechenknoten",
+      "streamLive": "{node} · live",
+      "streamConnecting": "{node} · verbindet",
+      "streamUnreachable": "{node} · von diesem Browser nicht erreichbar"
     },
     "followSkill": {
       "title": "Follow",

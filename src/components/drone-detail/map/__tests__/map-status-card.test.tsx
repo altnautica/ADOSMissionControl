@@ -80,6 +80,31 @@ describe("MapStatusCard", () => {
     expect(text).toContain("—");
     expect(text).not.toContain(specString("map.status.imu_feed"));
   });
+
+  it("names the compute node a streamed map comes from, and only then", () => {
+    const entry = { data: { ...FULL, placement: "stream" as const }, receivedAt: NOW };
+    const { container, rerender } = render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <MapStatusCard view={mapStatusView(entry, NOW)} poseHealth={null} stream={{ node: "Forge", state: "live" }} />
+      </NextIntlClientProvider>,
+    );
+    expect(container.textContent).toContain(messages.hud.mapTab.streamSource);
+    expect(container.textContent).toContain("Forge · live");
+    rerender(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <MapStatusCard view={mapStatusView(entry, NOW)} poseHealth={null} stream={{ node: "Forge", state: "unreachable" }} />
+      </NextIntlClientProvider>,
+    );
+    expect(container.querySelector("[data-stream-state='unreachable']")?.textContent).toBe(
+      "Forge · not reachable from this browser",
+    );
+    rerender(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <MapStatusCard view={mapStatusView(entry, NOW)} poseHealth={null} />
+      </NextIntlClientProvider>,
+    );
+    expect(container.textContent).not.toContain(messages.hud.mapTab.streamSource);
+  });
 });
 
 describe("mapStatusView", () => {

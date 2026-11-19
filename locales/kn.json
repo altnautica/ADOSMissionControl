@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "ಇನ್ನೂ ಯಾವುದೇ ಸ್ವೀಪ್ ಪಾಯಿಂಟ್‌ಗಳಿಲ್ಲ",
-      "sweepUnavailable": "ಈ ನೋಡ್‌ನ ನ್ಯಾವಿಗೇಶನ್ ಸ್ವೀಪ್ ಕ್ಲೌಡ್ ಒದಗಿಸುವುದಿಲ್ಲ"
+      "sweepUnavailable": "ಈ ನೋಡ್‌ನ ನ್ಯಾವಿಗೇಶನ್ ಸ್ವೀಪ್ ಕ್ಲೌಡ್ ಒದಗಿಸುವುದಿಲ್ಲ",
+      "streamSource": "ಕಂಪ್ಯೂಟ್ ನೋಡ್",
+      "streamLive": "{node} · ಲೈವ್",
+      "streamConnecting": "{node} · ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ",
+      "streamUnreachable": "{node} · ಈ ಬ್ರೌಸರ್‌ನಿಂದ ತಲುಪಲಾಗುವುದಿಲ್ಲ"
     },
     "followSkill": {
       "title": "Follow",

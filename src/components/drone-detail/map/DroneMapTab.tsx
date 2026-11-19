@@ -6,7 +6,10 @@
  * the live map, in 2D (the local-frame map the cockpit minimap uses in its
  * local mode, with the `map.overlay` slot over it, so an extension's layer
  * such as Capture's coverage renders in the map's frame) or 3D (the live
- * sweep cloud). The view choice is kept per drone for the session.
+ * sweep cloud). While the map's placement is `stream`, the Reconstruct
+ * compute node's live stream of this drone runs too (`world-stream`): its
+ * occupancy tiles join the live map, its sweep points the 3D view, and the
+ * card names the node. The view choice is kept per drone for the session.
  *
  * @license GPL-3.0-only
  */
@@ -21,8 +24,12 @@ import { mapStatusView } from "@/components/drone-detail/map/map-status-view";
 import { PluginSlot } from "@/components/plugins/PluginSlot";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useMapStatusEntry, useNavFeed } from "@/hooks/use-nav-feed";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { startReconstructStream } from "@/lib/api/reconstruct/world-stream";
 import { isDemoMode } from "@/lib/utils";
 import { NAV_STATE_STALE_MS, freshData, useNavStreamStore } from "@/stores/nav-stream-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
+import { useReconstructStreamStore } from "@/stores/reconstruct-stream-store";
 
 const LiveSweep3D = dynamic(
   () => import("@/components/drone-detail/map/LiveSweep3D").then((m) => ({ default: m.LiveSweep3D })),
@@ -72,6 +79,14 @@ export function DroneMapTab({ droneId }: DroneMapTabProps) {
   const poseEntry = useNavFeed(droneId)?.pose;
   const pose = freshData(poseEntry, now, NAV_STATE_STALE_MS);
 
+  const streamed = entry?.data.placement === "stream";
+  useEffect(() => (streamed ? startReconstructStream(droneId) : undefined), [droneId, streamed]);
+  const world = useReconstructStreamStore((s) => s.byDrone[droneId]);
+  const worldNodeName = useNodeRegistryStore((s) =>
+    world ? s.nodes[nodeIdForDevice(world.nodeId)]?.presence.name : undefined,
+  );
+  const worldSource = world ? { node: worldNodeName || world.nodeId, state: world.state } : null;
+
   const choose = (next: MapView) => {
     viewByDrone.set(droneId, next);
     setView(next);
@@ -93,7 +108,11 @@ export function DroneMapTab({ droneId }: DroneMapTabProps) {
         />
       </div>
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[20rem_1fr]">
-        <MapStatusCard view={mapStatusView(entry, now, source)} poseHealth={pose?.health ?? null} />
+        <MapStatusCard
+          view={mapStatusView(entry, now, source)}
+          poseHealth={pose?.health ?? null}
+          stream={worldSource}
+        />
         <section
           className="relative min-h-[360px] overflow-hidden rounded border border-border-default bg-media"
           aria-label={t("liveMap")}

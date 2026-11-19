@@ -4,9 +4,11 @@
  * @module drone-detail/map/LiveSweep3D
  * @description The Map tab's 3D view: Navigation's live sweep cloud
  * ({@link useLiveSweep}) as one point buffer coloured by height, with the
- * drone's pose as an arrow, under orbit controls. The wire is `map_ned`
- * (x north, y east, z down); the scene is y-up, so a point lands at
- * (east, up, south). Loaded on demand by the Map tab, off the panel's chunk.
+ * Reconstruct compute node's cloud (streamed placement, held since this
+ * browser connected) drawn over it, and the drone's pose as an arrow, under
+ * orbit controls. The wire is `map_ned` (x north, y east, z down); the scene
+ * is y-up, so a point lands at (east, up, south). Loaded on demand by the Map
+ * tab, off the panel's chunk.
  *
  * @license GPL-3.0-only
  */
@@ -20,6 +22,7 @@ import * as THREE from "three";
 import type { NavPose } from "@/lib/hud/nav-types";
 import { useLiveSweep } from "@/hooks/use-live-sweep";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
+import { useReconstructStreamStore } from "@/stores/reconstruct-stream-store";
 
 /** Height colour ramp ends, metres above the map origin. */
 const RAMP_LOW_M = 0;
@@ -89,19 +92,29 @@ export function LiveSweep3D({ droneId, pose }: LiveSweep3DProps) {
   const t = useTranslations("hud.mapTab");
   const reducedMotion = usePrefersReducedMotion();
   const { cloud, version, state } = useLiveSweep(droneId, true);
+  const node = useReconstructStreamStore((s) => s.byDrone[droneId]);
+  const nodePoints = node && node.cloud.count > 0 ? node : null;
 
-  if (state === "unavailable") {
+  if (state === "unavailable" && !nodePoints) {
     return <p className="p-4 text-xs text-text-secondary">{t("sweepUnavailable")}</p>;
   }
   return (
     <div className="absolute inset-0" data-testid="live-sweep-3d">
       <Canvas camera={{ position: [6, 8, 10], fov: 50 }}>
         <SweepPoints ned={cloud.positions} count={cloud.count} version={version} voxelM={cloud.voxelM ?? 0.1} />
+        {nodePoints && (
+          <SweepPoints
+            ned={nodePoints.cloud.positions}
+            count={nodePoints.cloud.count}
+            version={nodePoints.version}
+            voxelM={nodePoints.cloud.voxelM ?? 0.05}
+          />
+        )}
         {pose && <PoseArrow pose={pose} />}
         <gridHelper args={[40, 40, "#444444", "#2a2a2a"]} />
         <OrbitControls enableDamping={!reducedMotion} makeDefault />
       </Canvas>
-      {cloud.count === 0 && (
+      {cloud.count === 0 && !nodePoints && (
         <p className="pointer-events-none absolute left-3 top-3 text-xs text-text-secondary">{t("sweepEmpty")}</p>
       )}
     </div>

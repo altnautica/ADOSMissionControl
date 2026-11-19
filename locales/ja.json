@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "スイープ点はまだありません",
-      "sweepUnavailable": "このノードのナビゲーションはスイープ点群を提供していません"
+      "sweepUnavailable": "このノードのナビゲーションはスイープ点群を提供していません",
+      "streamSource": "計算ノード",
+      "streamLive": "{node} · ライブ",
+      "streamConnecting": "{node} · 接続中",
+      "streamUnreachable": "{node} · このブラウザーから到達できません"
     },
     "followSkill": {
       "title": "Follow",

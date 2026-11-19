@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "Ainda sem pontos de varredura",
-      "sweepUnavailable": "A navegação deste nó não fornece uma nuvem de varredura"
+      "sweepUnavailable": "A navegação deste nó não fornece uma nuvem de varredura",
+      "streamSource": "Nó de computação",
+      "streamLive": "{node} · ao vivo",
+      "streamConnecting": "{node} · conectando",
+      "streamUnreachable": "{node} · inacessível a partir deste navegador"
     },
     "followSkill": {
       "title": "Follow",

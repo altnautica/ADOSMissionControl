@@ -10174,7 +10174,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "No sweep points yet",
-      "sweepUnavailable": "This node's Navigation does not serve a sweep cloud"
+      "sweepUnavailable": "This node's Navigation does not serve a sweep cloud",
+      "streamSource": "Compute node",
+      "streamLive": "{node} · live",
+      "streamConnecting": "{node} · connecting",
+      "streamUnreachable": "{node} · not reachable from this browser"
     },
     "followSkill": {
       "title": "Follow",

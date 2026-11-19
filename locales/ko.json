@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "아직 스윕 포인트가 없습니다",
-      "sweepUnavailable": "이 노드의 내비게이션은 스윕 클라우드를 제공하지 않습니다"
+      "sweepUnavailable": "이 노드의 내비게이션은 스윕 클라우드를 제공하지 않습니다",
+      "streamSource": "컴퓨트 노드",
+      "streamLive": "{node} · 실시간",
+      "streamConnecting": "{node} · 연결 중",
+      "streamUnreachable": "{node} · 이 브라우저에서 연결할 수 없음"
     },
     "followSkill": {
       "title": "Follow",

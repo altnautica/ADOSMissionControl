@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "હજી સુધી કોઈ સ્વીપ પોઇન્ટ નથી",
-      "sweepUnavailable": "આ નોડનું નેવિગેશન સ્વીપ ક્લાઉડ આપતું નથી"
+      "sweepUnavailable": "આ નોડનું નેવિગેશન સ્વીપ ક્લાઉડ આપતું નથી",
+      "streamSource": "કમ્પ્યુટ નોડ",
+      "streamLive": "{node} · લાઇવ",
+      "streamConnecting": "{node} · કનેક્ટ થઈ રહ્યું છે",
+      "streamUnreachable": "{node} · આ બ્રાઉઝરથી પહોંચી શકાતું નથી"
     },
     "followSkill": {
       "title": "Follow",

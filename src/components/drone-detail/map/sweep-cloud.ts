@@ -78,3 +78,15 @@ export function applySweep(
   positions.set(frame.points.subarray(skipIncoming * 3, frame.count * 3), survivors * 3);
   return { seq: frame.seq, voxelM: frame.voxelM, positions, count };
 }
+
+/** Fold a delta that carries no reset flag (the compute node's live cloud):
+ * a changed voxel means the cloud was coarsened and every earlier delta is
+ * superseded. */
+export function applyVoxelDelta(
+  cloud: SweepCloud,
+  frame: Omit<SweepFrame, "reset">,
+  max: number = SWEEP_MAX_POINTS,
+): SweepCloud {
+  const reset = cloud.voxelM !== null && cloud.voxelM !== frame.voxelM;
+  return applySweep(cloud, { ...frame, reset }, max);
+}

@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "ఇంకా స్వీప్ పాయింట్లు లేవు",
-      "sweepUnavailable": "ఈ నోడ్ నావిగేషన్ స్వీప్ క్లౌడ్‌ను అందించదు"
+      "sweepUnavailable": "ఈ నోడ్ నావిగేషన్ స్వీప్ క్లౌడ్‌ను అందించదు",
+      "streamSource": "కంప్యూట్ నోడ్",
+      "streamLive": "{node} · లైవ్",
+      "streamConnecting": "{node} · కనెక్ట్ అవుతోంది",
+      "streamUnreachable": "{node} · ఈ బ్రౌజర్ నుండి చేరుకోలేము"
     },
     "followSkill": {
       "title": "Follow",

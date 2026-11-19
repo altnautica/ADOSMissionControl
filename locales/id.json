@@ -10167,7 +10167,11 @@
       "view2d": "2D",
       "view3d": "3D",
       "sweepEmpty": "Belum ada titik sapuan",
-      "sweepUnavailable": "Navigasi node ini tidak menyediakan awan sapuan"
+      "sweepUnavailable": "Navigasi node ini tidak menyediakan awan sapuan",
+      "streamSource": "Node komputasi",
+      "streamLive": "{node} · langsung",
+      "streamConnecting": "{node} · menghubungkan",
+      "streamUnreachable": "{node} · tidak dapat dijangkau dari browser ini"
     },
     "followSkill": {
       "title": "Follow",

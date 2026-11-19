@@ -108,13 +108,15 @@ const DRONE_PLUGIN_RAM_CAP_MB = 768;
  * default (614 MB). */
 export const DEMO_MAP_MEMORY_BUDGET_MB = Math.floor(DRONE_PLUGIN_RAM_CAP_MB * 0.8);
 
-/** The `map_status` frame `tSec` into the stream with `tiles` revealed. */
+/** The `map_status` frame `tSec` into the stream with `tiles` revealed. The
+ * demo drone streams to the demo workstation (`mock-world-stream`), so it
+ * keeps only the coarse live cloud on board. */
 export function demoMapStatus(tSec: number, tiles: number): MapStatus {
   return {
-    placement: "hybrid",
+    placement: "stream",
     memoryUsedMb: Math.round(180 + Math.min(420, tSec * 2.5)),
     memoryBudgetMb: DEMO_MAP_MEMORY_BUDGET_MB,
-    voxelM: 0.1,
+    voxelM: 0.2,
     sweepPoints: Math.round(tSec * 1800),
     // Each 3.2 m tile adds ~10 m² of floor.
     areaM2: Math.round(tiles * 10.24 * 10) / 10,
