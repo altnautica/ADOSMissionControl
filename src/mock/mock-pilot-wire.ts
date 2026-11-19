@@ -48,6 +48,7 @@ export function demoPilotWire(over: Json = {}): Json {
       { id: "fc_profile", ok: true, severity: "block", msg: "FC failsafe parameters match the ADOS profile" },
       { id: "position", ok: true, severity: "block", msg: "Position estimate available" },
       { id: "agl", ok: true, severity: "warn", msg: "Rangefinder AGL available" },
+      DEMO_BALANCE_LEARNING,
     ],
     link_loss_in_s: null,
     mission: null,
@@ -64,6 +65,55 @@ export function demoPilotWire(over: Json = {}): Json {
     ...over,
   };
 }
+
+/** The airframe balance row before the first steady hover has taught it. */
+export const DEMO_BALANCE_LEARNING: Json = {
+  id: "airframe_balance",
+  ok: true,
+  severity: "warn",
+  msg: "Balance: learning. Learned after the first steady hover.",
+};
+
+/** The airframe balance row once a steady take-off has learned the trim. */
+export const DEMO_BALANCE_LEARNED: Json = { ...DEMO_BALANCE_LEARNING, msg: "Balance: OK." };
+
+/** The stop distance from `v` m/s, as the agent's
+ * `ProfileLimits::stop_distance_m`: `v²/(2·a_brk) + v·a_brk/(2·jerk) + v·0.15 s`. */
+function stopM(v: number, aBrk: number, jerk: number): number {
+  return Math.round(((v * v) / (2 * aBrk) + (v * aBrk) / (2 * jerk) + v * 0.15) * 100) / 100;
+}
+
+function limitsRow(profile: string, r: Json): Json {
+  const stop = stopM(r.v_h_mps as number, r.a_brk_mps2 as number, r.jerk_mps3 as number);
+  return { profile, ...r, stop_m: stop, margin_m: 1.5 };
+}
+
+/** The multirotor stick rows the agent flies per profile (snake_case
+ * `profile_limits`), from ados-pilot's `multirotor_sticks`. */
+export const DEMO_STICK_LIMITS: Record<"cine" | "normal" | "sport", Json> = {
+  cine: limitsRow("cine", {
+    v_h_mps: 3, v_up_mps: 1.5, v_down_mps: 1, yaw_dps: 30, a_acc_mps2: 1, a_brk_mps2: 2, jerk_mps3: 4,
+    a_v_mps2: 0.6, yaw_dps2: 60, expo_h: 0.25, expo_v: 0.3, expo_yaw: 0.2,
+  }),
+  normal: limitsRow("normal", {
+    v_h_mps: 7, v_up_mps: 2.5, v_down_mps: 1.5, yaw_dps: 90, a_acc_mps2: 2, a_brk_mps2: 2.5, jerk_mps3: 5,
+    a_v_mps2: 1, yaw_dps2: 180, expo_h: 0.25, expo_v: 0.3, expo_yaw: 0.2,
+  }),
+  sport: limitsRow("sport", {
+    v_h_mps: 10, v_up_mps: 3, v_down_mps: 2, yaw_dps: 150, a_acc_mps2: 2.5, a_brk_mps2: 2.5, jerk_mps3: 5,
+    a_v_mps2: 1, yaw_dps2: 270, expo_h: 0.4, expo_v: 0.4, expo_yaw: 0.3,
+  }),
+};
+
+/** The pin for an airframe flying the standard take-off (steady take-off
+ * off): its readiness row says so and a launch runs no supervised lift-off.
+ * The demo default is steady take-off on. */
+export const DEMO_STANDARD_TAKEOFF_PIN: Json = {
+  readiness: [
+    ...(demoPilotWire().readiness as Json[]),
+    { id: "supervised_liftoff", ok: false, severity: "warn", msg: "Standard take-off. Steady take-off is off." },
+  ],
+};
 
 /**
  * The pin for a position the pilot cannot trust: the optical flow measures

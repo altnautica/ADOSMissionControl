@@ -41,6 +41,7 @@ import { demoNavStreamBlockedAt, demoTelemetryFrozen } from "./demo-link";
 import { MockProtocol } from "./mock-protocol";
 import { DEMO_DRONES } from "./drones";
 import {
+  DEMO_STICK_LIMITS,
   DEMO_SURFACE_OPS,
   PilotPins,
   demoPilotWire,
@@ -57,6 +58,7 @@ import {
 } from "./mock-pilot-confined";
 import { DemoVehicleDriver } from "./mock-pilot-vehicle";
 import { noRcReadiness, noRcRefusal, rcReceiverRefusal } from "./mock-pilot-no-rc";
+import { DemoLiftoff } from "./mock-pilot-liftoff";
 
 export { demoPilotWire } from "./mock-pilot-wire";
 
@@ -92,6 +94,41 @@ const INPUT_STALE_MS = 300;
  * Take Control is not one: it is refused while the failsafe flies. */
 const OPERATOR_MODE_CHANGE: Record<string, true> = { hand_to_fc: true };
 
+/** Height a demo launch climbs to when the action names none, metres (the
+ * driver's own default). */
+const LAUNCH_ALT_M = 10;
+
+/** Stick expo, as the agent applies it per axis: `(1-e)·x + e·x³`. */
+function expo(x: number, e: number): number {
+  return (1 - e) * x + e * x * x * x;
+}
+
+/**
+ * The pilot's `stick` block for the last stick frame. Axes are the agent's
+ * order: right, forward, climb (+ up), yaw (+ clockwise). The demo flies a
+ * north-facing body frame and does not shape, so the reference is the ask.
+ */
+function demoStick(axes: readonly number[], lim: Json, ageMs: number, seq: number): Json {
+  const n = (k: string) => lim[k] as number;
+  const right = expo(axes[0], n("expo_h")) * n("v_h_mps");
+  const fwd = expo(axes[1], n("expo_h")) * n("v_h_mps");
+  const climb = expo(axes[2], n("expo_v"));
+  const vz = climb * (climb >= 0 ? n("v_up_mps") : n("v_down_mps"));
+  const yaw = expo(axes[3], n("expo_yaw")) * n("yaw_dps");
+  return {
+    ask_ne_mps: [fwd, right],
+    ask_vz_mps: vz,
+    ask_yaw_dps: yaw,
+    v_ne_mps: [fwd, right],
+    a_ne_mps2: [0, 0],
+    vz_mps: vz,
+    yaw_rate_dps: yaw,
+    braking: false,
+    input_age_ms: ageMs,
+    input_seq: seq,
+  };
+}
+
 export class MockPilot {
   private droneId: string | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -105,6 +142,11 @@ export class MockPilot {
   private framesFrozen = false;
   /** The follow pin is the search a resume started from the scripted wait. */
   private resumedSearch = false;
+  /** The steady take-off the demo walks on launch. */
+  private liftoff = new DemoLiftoff();
+  /** The last stick frame's axes and sequence number. */
+  private lastAxes: readonly number[] = [0, 0, 0, 0];
+  private lastSeq = 0;
 
   start(droneId: string): void {
     this.stop();
@@ -112,6 +154,9 @@ export class MockPilot {
     this.wire = this.freshWire();
     this.pins.clear();
     this.stall.reset();
+    this.liftoff.reset();
+    this.lastAxes = [0, 0, 0, 0];
+    this.lastSeq = 0;
     this.lastInputAt = 0;
     this.framesFrozen = false;
     this.resumedSearch = false;
@@ -266,6 +311,8 @@ export class MockPilot {
     switch (frame.op) {
       case "input": {
         this.lastInputAt = Date.now();
+        this.lastAxes = frame.axes;
+        this.lastSeq = frame.seq;
         const armed = this.vehicle()?.flight.armed ?? useDroneStore.getState().armState === "armed";
         if (armed && (this.wire.owner === "idle" || this.wire.owner === "pilot")) {
           this.wire.owner = "pilot";
@@ -319,6 +366,12 @@ export class MockPilot {
         this.wire.avoid_state = value === "off" ? "off" : "clear";
         return null;
     }
+    // Forgetting the learned balance is a ground action.
+    if (verb === "airframe_reset") {
+      if (seen.armed === true && seen.landed === false) return "airborne";
+      this.liftoff.forget();
+      return null;
+    }
     const vehicle = this.vehicle();
     // The no-RC declaration is the pilot's config, set on the ground; the
     // state carries it only while declared.
@@ -354,6 +407,9 @@ export class MockPilot {
       ? this.driver.act(vehicle, this.wire, seen, verb, args)
       : this.driver.wireOnly(this.wire, seen, verb, args);
     if (err === null && OPERATOR_MODE_CHANGE[verb]) this.pins.clearFailsafe();
+    if (err === null && (verb === "launch" || verb === "takeoff") && seen.landed !== false) {
+      this.liftoff.begin(seen, typeof args.alt_m === "number" ? args.alt_m : LAUNCH_ALT_M, Date.now());
+    }
     return err;
   }
 
@@ -378,6 +434,15 @@ export class MockPilot {
     this.wire.hold_reason = lost ? "controller-lost" : null;
     // The goal is the goto's own: any other owner flies none.
     if (this.wire.owner !== "goto") this.wire.goal_ned = null;
+    // The stick row of the flown profile, and the sticks while they fly.
+    const limits = DEMO_STICK_LIMITS[this.wire.profile as keyof typeof DEMO_STICK_LIMITS] ?? DEMO_STICK_LIMITS.normal;
+    this.wire.profile_limits = limits;
+    const flying = this.wire.owner === "pilot" && this.wire.input_src !== null && this.lastInputAt > 0 && !lost;
+    this.wire.stick = flying ? demoStick(this.lastAxes, limits, now - this.lastInputAt, this.lastSeq) : null;
+    const sequence = this.liftoff.sequence(now);
+    if (sequence !== undefined) this.wire.sequence = sequence;
+    const balance = this.liftoff.balanceRow();
+    this.wire.readiness = (this.wire.readiness as Json[]).map((r) => (r.id === balance.id ? balance : r));
     // A stall whose countdown ran out: the pilot skips or lands on its own.
     const due = this.stall.due(this.pins.over(this.wire), now);
     if (due) this.action(due, {});
