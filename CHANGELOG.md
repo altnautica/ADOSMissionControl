@@ -6,6 +6,29 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+This release covers 106 commits from 2026-11-14 to 2026-11-20, since 0.65.0.
+Three threads run through it.
+
+The first is the cockpit working with the agent's onboard pilot. A take-off
+goes through the pilot's launch and shows the steady take-off on the launch
+strip, the flight-state chip names the speed profile, a late stick and the
+limit that cut the commanded speed, a position the drone cannot vouch for
+reads red, a mission that stops making progress gets a stall card, and a
+confined place class keeps a wall margin from the planner to the send dialog.
+Controller-free flight has its groundwork: a No controller chip, a per-tab
+pilot stream that ends in the link-loss action when the tab freezes, and
+controller rumble and light bar driven by one shared rule table.
+
+The second is the extension split. Capture, Reconstruct and Navigation are
+separate extensions, the new Map tab draws Navigation's live map in 2D and 3D
+and joins the Reconstruct compute node's live stream, and Follow Me gains its
+recovery phases, quick settings on the rail and the standoff and height floors
+of follow-me 0.5.
+
+The third is the ground station: a ground station agent on the operator's
+own computer is reachable from the hosted page, and the Radio tab shows which
+ground holds the uplink and takes it back from a phone.
+
 ### Added
 
 - Map tab: while the map's placement is `stream`, Mission Control reads the drone's live stream on its Reconstruct compute node (`/api/plugins/com.altnautica.reconstruct/x/ws/live/<drone>`, the node the drone's Capture readiness names): the node's occupancy tiles join the live map and its sweep points draw over the 3D view, and the status card names the compute node and whether its stream is live, connecting or not reachable from this browser. A closed stream is dialled again every 2 s. Demo: the demo drone streams to the demo workstation. New dependency `@msgpack/msgpack` for the stream's framing.
@@ -17,7 +40,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 - Controller-free flight groundwork. The aircraft setup wizard's "Meet ADOS Pilot" step offers "Use ADOS Pilot with no controller" with a line on what stops the drone without one; it leads when the agent saw no RC receiver. While the drone is declared to fly with no RC transmitter, a "No controller" chip sits beside the Confined chip on the top bar, and the new readiness items and refusals read their words from the shared spec. Demo: the demo pilot and setup wizard answer the declaration and its refusals.
 - Cockpit: a take-off goes through the pilot's launch. While the drone's steady take-off runs, the launch strip shows its status line and detail, and the status pill lists the Balance check and Steady take-off rows from the drone, with "I rebalanced it" on a failing Balance check of a disarmed drone. The steady take-off ships switched off on the agent.
 - Plugins: `command.send` `takeoff` is refused ("Not armed") until the drone is known to be armed, before the confirm prompt, on every route: the operator arms first.
-- Pilot stream: every frame names this tab with an instance id that stays the same across reconnects, so the drone keeps one link-loss timer per tab, and the tab says goodbye before a deliberate close (switching the drone, closing or leaving the page). The heartbeat is timed by a Web Worker, so a hidden tab's throttled timers no longer fake a lost link. While the tab holds the sticks it beats only while the page itself is responsive, so a frozen operator tab ends in the link-loss action. With no RC declared and the drone armed, closing the tab or switching the drone first warns "Leaving ends in <action> in <s> s", and switching can be cancelled.
+- Pilot stream: every frame names this tab with an instance id that stays the same across reconnects, so the drone keeps one link-loss timer per tab, and the tab says goodbye before a deliberate close (switching the drone, closing or leaving the page). The heartbeat is timed by a Web Worker, so a hidden tab's throttled timers no longer look like a lost link. While the tab holds the sticks it beats only while the page itself is responsive, so a frozen operator tab ends in the link-loss action. With no RC declared and the drone armed, closing the tab or switching the drone first warns "Leaving ends in <action> in <s> s", and switching can be cancelled.
 - Controller feedback: the pad rumbles from pilot-state changes by the shared rule table in the cockpit spec, the same rules every surface runs. A profile, owner, skill, control-mode change or a takeover plays the mode-change pattern; avoiding or blocked, a new hold reason, a speed cap coming on or a new readiness warning plays the warning; a lost controller, the link-loss or low-battery countdown, a failsafe, a new blocking item while armed, or the pilot state going stale is critical. One update plays only its strongest class, once.
 - Controller light bar: while the operator's sticks fly, the bar shows the speed profile (Cine soft green-cyan, Normal blue, Sport orange); failsafe, low battery, RTH, mission and skill keep priority, and goto, swarm and tuning show the plain pilot blue.
 - Cockpit: the flight-state chip names the profile with its horizontal limit ("Normal · 7 m/s"), shows a stick input older than 100 ms, and shows the nearest obstacle in amber when it is under twice the margin and in red inside it. Where the bottom row has no room for the speed readouts, the chip carries the horizontal and vertical speed while the sticks fly. Warning and critical facts on the chip keep their colour.
@@ -62,16 +85,39 @@ the project follows [Semantic Versioning](https://semver.org/).
 - **Steady boxes while following.** While a target is designated, the
   agent's vision engine detects most frames only in a window around the
   subject. The video overlay keeps the boxes from the last whole frame that
-  lie outside that window until the next whole frame, or for one second, so
+  sit outside that window until the next whole frame, or for one second, so
   other people and objects no longer blink at the whole-frame rate; over a
   ground station's relay the agent's reply carries that whole frame. Plugins
   and the pipeline counts see only what each frame detected. A batch from an
   older agent, without the window, draws as before. The demo follow sends the
   same windowed batches.
+- **Uplink card on the ground station's Radio tab.** It shows whether the
+  station transmits, or stands by while a named phone holds the uplink (since
+  when, with that phone's last presence beacon), or is unknown while the radio
+  service is not reporting. Take back asks first. The phone receivers card now
+  says an approved phone receives and may take the uplink. Demo: the station
+  stands by while a phone holds it.
+- **Use this computer as ground station.** The Add node form offers a ground
+  station agent running on this computer, reached over loopback from the
+  hosted page once the browser allows it; without an agent it shows the
+  install command. A This computer settings page chooses whether the node
+  answers this computer only or the local network, and states that Wi-Fi,
+  display, power settings and system updates stay the operator's.
+- **Plugins reach a companion extension.** `host.agentFor(plugin)` and
+  `host.nodes.agent(deviceId, { plugin })` call another extension's routes
+  when the module holds the `plugin.http.<plugin>` grant; without it every
+  call rejects with `plugin_not_granted`. The grant is read per call, and the
+  install dialog labels it. A frame or inline module also learns which
+  contribution it was mounted as (`#slot=` and `panel=` in the frame URL,
+  `ctx.mount` inline), so one bundle can serve a cockpit panel and an Agent
+  page.
+- **A 320x320 person detector.** The YOLOX-Tiny person model lists a
+  `cpu_fp32_320` variant for Follow Me's crop pass; the whole-frame pick stays
+  640.
 
 ### Changed
 
-- The capture session list, the navigation topics and the plugin ids follow the extension split: sessions come from `com.altnautica.capture` (`/x/capture/sessions`), the pose, scan, map status and `nav.state` from `com.altnautica.navigation`, and the reconstruction node from `com.altnautica.reconstruct`. The Map tab's launcher for the old 3D viewer page is gone.
+- The capture session list, the navigation topics and the plugin ids follow the extension split: sessions come from `com.altnautica.capture` (`/x/capture/sessions`), the pose, scan, map status and the shared `plugin.navigation.state` topic from `com.altnautica.navigation`, and the reconstruction node from `com.altnautica.reconstruct`. The Map tab's launcher for the old 3D viewer page is gone.
 - Cockpit: the sticks' flight-state chip drops its "Pilot · " prefix and reads the profile first ("Cine · 3 m/s", "Normal" without a limit); the control mode line below still names ADOS Pilot.
 - The pilot stream keeps only the newest stick frame while its WebSocket still has unsent bytes, so a slow link flies the latest stick rather than a queue of old ones; a release drops a waiting stick frame.
 - Settings › Input: the expo slider reads "Stick expo (direct flight controller only)" and says the onboard pilot uses the speed profile's own curve.
@@ -84,6 +130,9 @@ the project follows [Semantic Versioning](https://semver.org/).
   carry the error of its subject's range, which widens the distance the pilot
   keeps from the subject, and a pilot command limit may name the subject.
 - Return all and a relayed drone's Return send the drone's own agent its return, which the pilot flies back along the flown path in ADOS control, instead of the flight controller's straight-home RTL. A drone seen only through a ground station's relay gets it through that ground station. When the relay does not answer (the ground station unreachable, its radio lane down, a timeout), the flight controller's RTL goes out over the live MAVLink session and the result says so; a refusal from the pilot is shown as it is.
+- The planner's built-in camera presets are named by sensor format, resolution and focal length. A plan saved under a retired preset name loads with the renamed preset.
+- The cockpit status pill steps its flash twice a second instead of fading at 60 frames a second.
+- Links and references point at the repository's new name, `altnautica/ADOSMissionControlGCS`.
 
 ### Fixed
 
@@ -114,6 +163,10 @@ the project follows [Semantic Versioning](https://semver.org/).
   reports the hold reason `no-vantage`. The cockpit spec now gives that reason a
   label, so the flight-state chip reads "No clear view" instead of the raw key.
   A hold on stale scans still reads "Holding: no fresh obstacle data".
+- **Plan 3D and Simulate show waypoint and rally numbers.** A label created
+  on a ground-clamped marker kept a stale position underground after the
+  marker was rebuilt at an absolute height. Labels are now made only for a
+  marker with an absolute position.
 
 ## [0.65.0] - 2026-11-14
 
