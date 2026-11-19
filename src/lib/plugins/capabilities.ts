@@ -158,10 +158,11 @@ export function getMergedCapabilityMeta(
   if (base !== null) {
     const baseMeta = lookupCatalogs(catalogs, base);
     if (baseMeta !== undefined) {
-      const topic = id.slice(base.length + 1);
+      const scope = id.slice(base.length + 1);
+      const noun = base === "plugin.http" ? "extension" : "stream";
       return {
         ...baseMeta,
-        description: `${baseMeta.description} Scoped to the "${topic}" stream.`,
+        description: `${baseMeta.description} Scoped to the "${scope}" ${noun}.`,
       };
     }
   }

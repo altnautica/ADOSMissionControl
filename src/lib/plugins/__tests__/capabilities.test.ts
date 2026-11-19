@@ -165,3 +165,16 @@ describe("Risk classification spot checks", () => {
     }
   });
 });
+
+describe("per-scope grants", () => {
+  it("a plugin.http grant is scoped to an extension", () => {
+    const meta = getMergedCapabilityMeta("plugin.http.com.example.nav", "agent");
+    expect("unknown" in meta).toBe(false);
+    expect(meta.description).toMatch(/Scoped to the "com\.example\.nav" extension\.$/);
+  });
+
+  it("a telemetry.subscribe grant is scoped to a stream", () => {
+    const meta = getMergedCapabilityMeta("telemetry.subscribe.navigation", "agent");
+    expect(meta.description).toMatch(/Scoped to the "navigation" stream\.$/);
+  });
+});

@@ -6,8 +6,9 @@
  * (LAN, the HTTPS proxy, or a ground station's relay), folds each reply into
  * the held cloud ({@link applySweep}) and bumps `version` so the canvas
  * re-uploads it. A node whose Navigation serves no sweep (404 or 503), or
- * that this browser cannot reach, reads `unavailable`; a failed poll keeps the
- * cloud and retries. Demo mode answers from the synthetic warehouse sweep.
+ * that this browser cannot reach, reads `unavailable` and is asked again every
+ * {@link SWEEP_UNAVAILABLE_POLL_MS}; a failed poll keeps the cloud and retries.
+ * Demo mode answers from the synthetic warehouse sweep.
  *
  * @license GPL-3.0-only
  */
@@ -26,6 +27,8 @@ import { pluginClientForReach, resolveNodeAgentReach } from "@/lib/plugins/node-
 import { isDemoMode } from "@/lib/utils";
 
 export const SWEEP_POLL_MS = 1000;
+/** Poll period while the node reports no sweep, until it starts serving. */
+export const SWEEP_UNAVAILABLE_POLL_MS = 5000;
 
 export type SweepState = "loading" | "live" | "unavailable";
 
@@ -73,25 +76,28 @@ export function useLiveSweep(droneId: string, active: boolean): LiveSweep {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
+      let delay = SWEEP_POLL_MS;
       try {
         const reply = await fetchSweep(deviceId, cloud.current.seq);
         if (stopped) return;
         if (reply === "unavailable") {
+          // Navigation may start serving later: keep asking, more slowly.
           setState("unavailable");
-          return;
+          delay = SWEEP_UNAVAILABLE_POLL_MS;
+        } else {
+          const frame = parseSweep(reply);
+          if (frame && (frame.reset || frame.count > 0 || cloud.current.seq === null)) {
+            cloud.current = applySweep(cloud.current, frame);
+            setVersion((v) => v + 1);
+          } else if (frame) {
+            cloud.current = { ...cloud.current, seq: frame.seq };
+          }
+          setState("live");
         }
-        const frame = parseSweep(reply);
-        if (frame && (frame.reset || frame.count > 0 || cloud.current.seq === null)) {
-          cloud.current = applySweep(cloud.current, frame);
-          setVersion((v) => v + 1);
-        } else if (frame) {
-          cloud.current = { ...cloud.current, seq: frame.seq };
-        }
-        setState("live");
       } catch {
         // A failed poll keeps what the view holds; the next one retries.
       }
-      if (!stopped) timer = setTimeout(poll, SWEEP_POLL_MS);
+      if (!stopped) timer = setTimeout(poll, delay);
     };
     void poll();
     return () => {
