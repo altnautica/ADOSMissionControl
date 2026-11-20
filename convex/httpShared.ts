@@ -323,8 +323,10 @@ export function registerSharedRoutes(http: HttpRouter): void {
         result,
         data,
       });
+      // A row that is gone (or another device's) is a 404, never a 500: the
+      // agent drops that ack instead of resending it on every poll.
       return new Response(JSON.stringify(ackResult), {
-        status: 200,
+        status: "notFound" in ackResult && ackResult.notFound ? 404 : 200,
         headers: jsonHeaders,
       });
     }),

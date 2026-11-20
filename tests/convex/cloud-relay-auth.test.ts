@@ -9,7 +9,7 @@ vi.mock("@convex-dev/auth/server", () => ({
 }));
 
 import {
-  requireCommandForDevice,
+  commandForDevice,
   requireOwnedCommand,
   requireOwnedDroneByDeviceId,
 } from "../../convex/cmdDroneAccess";
@@ -129,17 +129,17 @@ describe("cloud relay authorization helpers", () => {
     });
 
     await expect(
-      requireCommandForDevice(ctx as never, "command-a" as never, "device-a"),
+      commandForDevice(ctx as never, "command-a" as never, "device-a"),
     ).resolves.toMatchObject({ _id: "command-a" });
     await expect(
-      requireCommandForDevice(ctx as never, "command-a" as never, "device-b"),
-    ).rejects.toThrow("Not found");
+      commandForDevice(ctx as never, "command-a" as never, "device-b"),
+    ).resolves.toBeNull();
   });
 
   it("blocks a non-owner from reading another user's command", async () => {
     // Client-callable command reads authenticate the caller via
     // requireOwnedCommand (owner-bound), not the agent-facing
-    // requireCommandForDevice (deviceId-only). Prove the owner-bound helper
+    // commandForDevice (deviceId-only). Prove the owner-bound helper
     // rejects a signed-in user who supplies a victim's commandId.
     const victimCommand = {
       _id: "command-victim",

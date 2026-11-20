@@ -9,7 +9,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import {
-  requireCommandForDevice,
+  commandForDevice,
   requireOwnedCommand,
   requireOwnedDroneByDeviceId,
 } from "./cmdDroneAccess";
@@ -174,7 +174,9 @@ export const claimCommands = internalMutation({
  * Only a row still awaiting its verdict (pending or delivering) takes an ack.
  * A row already terminal — failed as expired, cancelled by the GCS, or acked
  * once — keeps its verdict: a late ack is ignored, never allowed to overwrite
- * it.
+ * it. A row that is gone (deleted by the retention sweep while the node was
+ * away) or belongs to another device answers `notFound`, which the route
+ * serves as 404 so the agent stops resending that ack.
  */
 export const ackCommand = internalMutation({
   args: {
@@ -191,7 +193,8 @@ export const ackCommand = internalMutation({
     data: v.optional(v.any()),
   },
   handler: async (ctx, { commandId, deviceId, status, result, data }) => {
-    const command = await requireCommandForDevice(ctx, commandId, deviceId);
+    const command = await commandForDevice(ctx, commandId, deviceId);
+    if (!command) return { ok: false, notFound: true };
     if (command.status !== "pending" && command.status !== "delivering") {
       return { ok: true, ignored: true };
     }

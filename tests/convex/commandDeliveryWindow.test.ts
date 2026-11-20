@@ -173,6 +173,30 @@ describe("ackCommand", () => {
     expect(row.status).toBe("failed");
     expect(row.result).toEqual(cancelled);
   });
+
+  it("answers notFound for a row the retention sweep deleted", async () => {
+    // A node away for longer than the retention window comes back holding an
+    // ack for a row that no longer exists; it must learn so, not get a 500.
+    const { ctx, id } = seedRow("failed");
+    await ctx.db.delete(id);
+    const out = await invoke(commands.ackCommand, ctx, {
+      commandId: id,
+      deviceId: "dev-1",
+      status: "completed",
+    });
+    expect(out).toEqual({ ok: false, notFound: true });
+  });
+
+  it("answers notFound for another device's row and leaves it untouched", async () => {
+    const { ctx, id } = seedRow("delivering");
+    const out = await invoke(commands.ackCommand, ctx, {
+      commandId: id,
+      deviceId: "dev-2",
+      status: "completed",
+    });
+    expect(out).toEqual({ ok: false, notFound: true });
+    expect(ctx.db.rows("cmd_droneCommands")[0].status).toBe("delivering");
+  });
 });
 
 describe("cancelCommand", () => {

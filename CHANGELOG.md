@@ -22,6 +22,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 - Self-hosting: `tools/deploy/deploy.sh` keeps using an existing install at `~/ADOSMissionControl` (the checkout from before the repository was renamed to ADOSMissionControlGCS, with its `tools/selfhost/.env`) when `~/ADOSMissionControlGCS` does not exist, and says so, instead of cloning a second, empty copy. `ADOS_DIR` still picks any other directory.
 
+- Cloud relay: an agent's ack for a command row that no longer exists (deleted by the 7-day retention sweep while the node was offline) or that belongs to another device answers 404 instead of a 500, so the agent drops that ack instead of resending it on every poll. `ackCommand` returns `{ok: false, notFound: true}` for it.
+
 ## [0.66.0] - 2026-11-19
 
 This release covers 106 commits from 2026-11-14 to 2026-11-20, since 0.65.0.

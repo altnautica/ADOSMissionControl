@@ -63,14 +63,17 @@ export async function requireOwnedCommand(
   return command;
 }
 
-export async function requireCommandForDevice(
+/**
+ * The command row `commandId` names, if it belongs to `deviceId`. A row that
+ * is gone (pruned after the retention window) and a row of another device
+ * read the same, so an agent learns nothing about other devices' commands.
+ */
+export async function commandForDevice(
   ctx: Pick<MutationCtx, "db">,
   commandId: Id<"cmd_droneCommands">,
   deviceId: string,
-): Promise<Doc<"cmd_droneCommands">> {
+): Promise<Doc<"cmd_droneCommands"> | null> {
   const command = await ctx.db.get(commandId);
-  if (!command || command.deviceId !== deviceId) {
-    throw new Error("Not found");
-  }
+  if (!command || command.deviceId !== deviceId) return null;
   return command;
 }

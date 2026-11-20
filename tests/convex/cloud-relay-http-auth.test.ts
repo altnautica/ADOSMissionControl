@@ -106,6 +106,33 @@ describe("device-key routes reject an unauthenticated caller", () => {
   }
 });
 
+// ── ack of a command that is gone ────────────────────────────────────
+
+describe("POST /agent/commands/ack for a missing row", () => {
+  const ack = (mutationResult: unknown) =>
+    routeHandler("/agent/commands/ack", "POST")(
+      {
+        runQuery: async () => ({ deviceId: "d1", apiKey: "k" }),
+        runMutation: async () => mutationResult,
+      },
+      postJson(
+        "https://x.invalid/agent/commands/ack",
+        { deviceId: "d1", commandId: "c1", status: "completed" },
+        { "X-ADOS-Key": "k" },
+      ),
+    );
+
+  it("answers 404, so the agent stops resending the ack", async () => {
+    const res = await ack({ ok: false, notFound: true });
+    expect(res.status).toBe(404);
+  });
+
+  it("answers 200 for a row that took or ignored the ack", async () => {
+    expect((await ack({ ok: true })).status).toBe(200);
+    expect((await ack({ ok: true, ignored: true })).status).toBe(200);
+  });
+});
+
 // ── registration rate-limit key ──────────────────────────────────────
 
 describe("POST /pairing/register client bucket", () => {
