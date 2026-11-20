@@ -15,6 +15,10 @@ set -eu
 
 REPO_URL="${ADOS_REPO_URL:-https://github.com/altnautica/ADOSMissionControlGCS.git}"
 DIR="${ADOS_DIR:-$HOME/ADOSMissionControlGCS}"
+# The repository was named ADOSMissionControl before 0.66.0, and this script
+# used to clone it to ~/ADOSMissionControl. Keep using that checkout (and the
+# tools/selfhost/.env in it) instead of cloning an empty second one.
+OLD_DIR="$HOME/ADOSMissionControl"
 
 say() { printf '  %s\n' "$*"; }
 
@@ -23,6 +27,11 @@ if [ -f "tools/selfhost/docker-compose.yml" ]; then
   DIR="$(pwd)"
   say "using the current checkout: $DIR"
 elif [ -d "$DIR/.git" ]; then
+  say "updating existing checkout: $DIR"
+  git -C "$DIR" pull --ff-only >/dev/null 2>&1 || say "(could not fast-forward; using as-is)"
+elif [ -z "${ADOS_DIR:-}" ] && [ -d "$OLD_DIR/.git" ]; then
+  DIR="$OLD_DIR"
+  say "using the existing checkout at $DIR (the repo is now ADOSMissionControlGCS; set ADOS_DIR to choose another)"
   say "updating existing checkout: $DIR"
   git -C "$DIR" pull --ff-only >/dev/null 2>&1 || say "(could not fast-forward; using as-is)"
 else

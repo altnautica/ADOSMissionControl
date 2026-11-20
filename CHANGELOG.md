@@ -18,6 +18,10 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 - Cockpit: the steady take-off's phases are the agent's new ones (`find`, `bracket`, `settle`, `commit` in place of `probe` and `lift`); the demo's lift-off walks them.
 
+### Fixed
+
+- Self-hosting: `tools/deploy/deploy.sh` keeps using an existing install at `~/ADOSMissionControl` (the checkout from before the repository was renamed to ADOSMissionControlGCS, with its `tools/selfhost/.env`) when `~/ADOSMissionControlGCS` does not exist, and says so, instead of cloning a second, empty copy. `ADOS_DIR` still picks any other directory.
+
 ## [0.66.0] - 2026-11-19
 
 This release covers 106 commits from 2026-11-14 to 2026-11-20, since 0.65.0.
