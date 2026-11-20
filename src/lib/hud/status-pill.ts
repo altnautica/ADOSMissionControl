@@ -14,8 +14,10 @@
 //   warning:  vehicle link stale > 3 s, battery at or below the low band, a
 //             GPS fix below 3D while armed, frozen video, a battery-engine
 //             warning, the ground station re-pairing because its drone is on
-//             the air with a different key
-//   advisory: the ground station's uplink is offline (never in the pill)
+//             the air with a different key, the radio failing to restart onto
+//             a delivered fleet slot
+//   advisory: the ground station's uplink is offline, a delivered fleet slot
+//             waiting for the vehicle to land (never in the pill)
 // Every rule reads a real field; an unknown reading never alerts.
 
 import layoutJson from "../cockpit-spec/layout.json";
@@ -49,10 +51,12 @@ export interface BaseAlertInputs {
   /** The telemetry snapshot: arm state, GNSS fix and the FC's battery. */
   telemetry: (FcBatteryInput & { armed?: boolean | null; gps?: { fix_type?: number | null } | null }) | null;
   battery: BatteryHealthInput | null;
-  /** Ground station status: the uplink, and the radio link's re-pair. */
+  /** Node status: the ground station's uplink and its radio link's re-pair,
+   *  and a drone's pending fleet slot (`/api/status/full` `radioFleetApply`). */
   status: {
     network?: { uplink_type?: string | null; uplink_reachable?: boolean | null } | null;
     link?: { pair_rearm?: PairRearm | null } | null;
+    radioFleetApply?: RadioFleetApply | null;
   } | null;
   /** Milliseconds since vehicle telemetry was last live; null when it has
    *  never been live this session (nothing to have lost). */
@@ -79,6 +83,43 @@ export interface PairRearm {
  *  on a ground station, the `gs_repairing` alert. */
 export function repairingMisKeyed(r: PairRearm | null | undefined): boolean {
   return r?.active === true && r.cause === "mis_keyed";
+}
+
+/** A fleet address delivered to the vehicle and the radio restart it is owed
+ *  (`radioFleetApply` on `/api/status/full`, `radio.fleet_apply` in the cloud
+ *  heartbeat): `outcome` is `pending`, `deferred_armed` (waits for the vehicle
+ *  to disarm), `applied` or `restart_failed` (retried). */
+export interface RadioFleetApply {
+  outcome?: string | null;
+  fleetId?: number | null;
+  fleetSlot?: number | null;
+}
+
+/** The full status's `radioFleetApply`, or null when absent or not an
+ *  object; only the typed fields pass. */
+export function radioFleetApplyOf(v: unknown): RadioFleetApply | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const r = v as Record<string, unknown>;
+  return {
+    outcome: typeof r.outcome === "string" ? r.outcome : null,
+    fleetId: Number.isFinite(r.fleetId) ? (r.fleetId as number) : null,
+    fleetSlot: Number.isFinite(r.fleetSlot) ? (r.fleetSlot as number) : null,
+  };
+}
+
+/** The pending fleet slot as an alert: `fleet_slot_pending` (advisory) while
+ *  the delivered slot waits for the vehicle to land, `fleet_slot_failed`
+ *  (warning) while the radio restart onto it fails; null otherwise. */
+export function fleetSlotAlert(r: RadioFleetApply | null | undefined): BaseAlert | null {
+  const slot = r?.fleetSlot;
+  if (typeof slot !== "number") return null;
+  if (r?.outcome === "deferred_armed") {
+    return { id: "fleet_slot_pending", level: "advisory", title: specText("alert.fleet_slot_pending", { slot }) };
+  }
+  if (r?.outcome === "restart_failed") {
+    return { id: "fleet_slot_failed", level: "warning", title: specText("alert.fleet_slot_failed", { slot }) };
+  }
+  return null;
 }
 
 const LEVEL_RANK: Record<AlertLevel, number> = { critical: 0, warning: 1, advisory: 2 };
@@ -143,6 +184,9 @@ export function baseAlerts(i: BaseAlertInputs): BaseAlert[] {
   if (repairingMisKeyed(i.status?.link?.pair_rearm)) {
     out.push({ id: "gs_repairing", level: "warning", title: specText("alert.gs_repairing") });
   }
+
+  const fleetSlot = fleetSlotAlert(i.status?.radioFleetApply);
+  if (fleetSlot) out.push(fleetSlot);
 
   const uplinkType = i.status?.network?.uplink_type;
   if (uplinkType && i.status?.network?.uplink_reachable === false) {

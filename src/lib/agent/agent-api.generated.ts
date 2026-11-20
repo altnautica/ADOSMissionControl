@@ -181,6 +181,14 @@ export interface CrsfBlock {
   v: number | null;
 }
 
+export interface FleetApplyView {
+  at_ms: number | null;
+  fleet_id: number | null;
+  fleet_slot: number | null;
+  outcome: string;
+  since_ms: number | null;
+}
+
 export interface HardwareCheckItem {
   detail: string;
   fix_hint: string;
@@ -275,6 +283,7 @@ export interface RadioBlock {
   driver: string | null;
   fec_lost: number | null;
   fec_recovered: number | null;
+  fleet_apply?: FleetApplyView | null;
   freq_mhz: number | null;
   iface: string | null;
   loss_percent: number | null;

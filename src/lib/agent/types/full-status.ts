@@ -159,6 +159,9 @@ export interface LanStatusFull extends StatusFull, SnakeFcLiveness {
   peerDeviceId?: string | null;
   /** Peer-reported RSSI in dBm, paired with `peerDeviceId`. */
   peerRssiDbm?: number | null;
+  /** A fleet slot delivered to the drone and the radio restart it is owed
+   * (`outcome`, `fleetId`, `fleetSlot`, ...); omitted when none was written. */
+  radioFleetApply?: Record<string, unknown> | null;
   /** Every WFB peer this node reports. Preferred over `peerDeviceId`. */
   linked_peers?: StatusFullLinkedPeer[];
   /** Air-side camera discovery state ("ready" | "missing" | "error"). */

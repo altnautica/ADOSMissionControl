@@ -106,6 +106,16 @@ export const radioStatusArgs = {
       episodes: v.number(),
       active: v.boolean(),
     }), v.null())),
+    // A fleet slot delivered to the vehicle and the radio restart it is owed
+    // (agent `fleet_apply`): `deferred_armed` while it waits for the vehicle
+    // to disarm. Absent when no address was written this boot.
+    fleetApply: v.optional(v.union(v.object({
+      outcome: v.string(),
+      fleetId: v.union(v.number(), v.null()),
+      fleetSlot: v.union(v.number(), v.null()),
+      sinceMs: v.union(v.number(), v.null()),
+      atMs: v.union(v.number(), v.null()),
+    }), v.null())),
   })),
   // CRSF/ExpressLRS control-lane telemetry, mirrored from the agent's
   // crsf-stats sidecar. Pre-declared ahead of the emitting agent: the

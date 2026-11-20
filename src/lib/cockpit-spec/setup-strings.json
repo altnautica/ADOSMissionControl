@@ -13,6 +13,8 @@
     "alert.battery_pack": "Battery {pack}: {rule}",
     "alert.controller_lost": "Controller lost",
     "alert.controller_lost.detail": "The pilot is holding position",
+    "alert.fleet_slot_failed": "Radio restart onto fleet slot {slot} failed. Retrying.",
+    "alert.fleet_slot_pending": "New fleet slot {slot} applies after landing.",
     "alert.gps_no_3d": "GPS fix below 3D",
     "alert.gps_no_3d.fix_2d": "2D fix",
     "alert.gps_no_3d.no_fix": "No fix",

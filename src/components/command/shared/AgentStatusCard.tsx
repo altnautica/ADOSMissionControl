@@ -10,6 +10,7 @@ import {
   Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fleetSlotAlert } from "@/lib/hud/status-pill";
 import { formatDurationSeconds } from "@/lib/i18n/format";
 import type { AgentStatus } from "@/lib/agent/types";
 import type { AgentCapabilities } from "@/lib/agent/feature-types";
@@ -62,6 +63,9 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
           transportOpen: status.transport_open,
         }),
       ));
+  // A drone's delivered fleet slot waiting for landing, or a failed radio
+  // restart onto it: the cockpit spec's fleet slot alerts.
+  const fleetSlot = profile === "ground-station" ? null : fleetSlotAlert(status.radio_fleet_apply);
   // Read dynamic values directly from system store — the status prop may be stale
   // due to cross-store Zustand update batching issues
   const resources = useAgentSystemStore((s) => s.resources);
@@ -282,6 +286,25 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
         >
           <AlertTriangle size={12} className="mt-0.5 shrink-0" />
           <span>{t("fcCommandGated")}</span>
+        </div>
+      )}
+
+      {fleetSlot && (
+        <div
+          role="status"
+          className={cn(
+            "flex items-start gap-1.5 text-[11px] px-2 py-1 rounded",
+            fleetSlot.level === "warning"
+              ? "bg-status-error/10 text-status-error"
+              : "bg-status-warning/10 text-status-warning",
+          )}
+        >
+          <Radio size={12} className="mt-0.5 shrink-0" />
+          <span>
+            {t(fleetSlot.id === "fleet_slot_failed" ? "fleetSlotFailed" : "fleetSlotPending", {
+              slot: status.radio_fleet_apply?.fleetSlot ?? "",
+            })}
+          </span>
         </div>
       )}
 

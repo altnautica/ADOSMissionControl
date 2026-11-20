@@ -4,6 +4,8 @@
  * @license GPL-3.0-only
  */
 
+import type { RadioFleetApply } from "@/lib/hud/status-pill";
+
 /** Agent /api/version response. Capability flags are stable string keys
  * the GCS uses to gate features; an older agent simply omits the flag. */
 export interface AgentVersionInfo {
@@ -135,6 +137,10 @@ export interface AgentStatus {
    * dropped: a telemetry-only source such as MAVLink over ExpressLRS. Absent
    * on older agents. */
   fc_command_down_gated?: boolean;
+  /** A fleet slot delivered to the drone and the radio restart it is owed
+   * (LAN `radioFleetApply`, cloud `radio.fleetApply`); null when none was
+   * written, absent on older agents. */
+  radio_fleet_apply?: RadioFleetApply | null;
   /** Running kernel release (uname -r). Absent on older agents. */
   kernel_release?: string;
   /** How the WFB radio kernel module was provided on this board. */

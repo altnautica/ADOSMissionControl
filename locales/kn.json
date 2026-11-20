@@ -3253,6 +3253,8 @@
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
     "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "ಹೊಸ ಫ್ಲೀಟ್ ಸ್ಲಾಟ್ {slot} ಲ್ಯಾಂಡಿಂಗ್ ನಂತರ ಅನ್ವಯವಾಗುತ್ತದೆ.",
+    "fleetSlotFailed": "ಫ್ಲೀಟ್ ಸ್ಲಾಟ್ {slot}ಗೆ ರೇಡಿಯೋ ಮರುಪ್ರಾರಂಭ ವಿಫಲವಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುತ್ತಿದೆ.",
     "notAttached": {
       "title": "ಈ ನೋಡ್‌ಗೆ ನೇರ ಸಂಪರ್ಕವಿಲ್ಲ",
       "body": "ಇದರ ಸ್ಥಿತಿ, ಸೇವೆಗಳು, ಲಾಗ್‌ಗಳು ಮತ್ತು ಮರುಪ್ರಾರಂಭ ನಿಯಂತ್ರಣಗಳು ಈ ನೋಡ್‌ನ ಏಜೆಂಟ್‌ಗೆ ನೇರ ಸಂಪರ್ಕದಿಂದ ಬರುತ್ತವೆ. ಈ ಬ್ರೌಸರ್ ಅದಕ್ಕೆ ಸಂಪರ್ಕಿಸಿದಾಗ ಅವು ಕಾಣಿಸುತ್ತವೆ."

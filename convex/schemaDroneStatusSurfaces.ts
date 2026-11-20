@@ -175,6 +175,14 @@ export const droneStatusSurfaceFields = {
       episodes: v.number(),
       active: v.boolean(),
     }), v.null())),
+    // The fleet slot restart the radio is owed (agent `fleet_apply`).
+    fleetApply: v.optional(v.union(v.object({
+      outcome: v.string(),
+      fleetId: v.union(v.number(), v.null()),
+      fleetSlot: v.union(v.number(), v.null()),
+      sinceMs: v.union(v.number(), v.null()),
+      atMs: v.union(v.number(), v.null()),
+    }), v.null())),
   })),
   // CRSF/ExpressLRS control-lane telemetry, mirrored from the agent's
   // crsf-stats sidecar. Pre-declared ahead of the emitting agent: the

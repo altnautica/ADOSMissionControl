@@ -29,6 +29,7 @@ import type {
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import { normalizeServiceInfo } from "@/lib/agent/service-state";
 import { resolveAgentWhepUrl } from "@/lib/video/rewrite-whep-host";
+import { radioFleetApplyOf } from "@/lib/hud/status-pill";
 import { useAgentCapabilitiesStore } from "../agent-capabilities-store";
 import { useAgentPeripheralsStore } from "../agent-peripherals-store";
 import { useAgentSystemStore } from "../agent-system-store";
@@ -88,6 +89,9 @@ export function fullStatusToAgentStatus(full: LanStatusFull): AgentStatus {
     ...(typeof full.fc_command_down_gated === "boolean" && {
       fc_command_down_gated: full.fc_command_down_gated,
     }),
+    // A delivered fleet slot waiting for the drone to land, or a failed radio
+    // restart onto it; null when none was written.
+    radio_fleet_apply: radioFleetApplyOf(full.radioFleetApply),
   };
   return status as AgentStatus;
 }

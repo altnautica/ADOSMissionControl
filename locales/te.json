@@ -3253,6 +3253,8 @@
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
     "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "కొత్త ఫ్లీట్ స్లాట్ {slot} ల్యాండింగ్ తర్వాత అమలవుతుంది.",
+    "fleetSlotFailed": "ఫ్లీట్ స్లాట్ {slot}కి రేడియో పునఃప్రారంభం విఫలమైంది. మళ్లీ ప్రయత్నిస్తోంది.",
     "notAttached": {
       "title": "ఈ నోడ్‌కు నేరుగా కనెక్షన్ లేదు",
       "body": "దీని స్థితి, సేవలు, లాగ్‌లు, రీస్టార్ట్ నియంత్రణలు ఈ నోడ్ ఏజెంట్‌తో నేరుగా కనెక్షన్ నుండి వస్తాయి. ఈ బ్రౌజర్ దానికి కనెక్ట్ అయిన తర్వాత అవి కనిపిస్తాయి."

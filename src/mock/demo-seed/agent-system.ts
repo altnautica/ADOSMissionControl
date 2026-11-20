@@ -193,6 +193,8 @@ function demoAgentStatus(agent: PairedDrone, now: number): AgentStatus {
     install_status: "ok",
     install_version: agent.agentVersion,
     failed_steps: [],
+    // No fleet slot is waiting on a restart in the demo fleet.
+    radio_fleet_apply: null,
   };
 }
 

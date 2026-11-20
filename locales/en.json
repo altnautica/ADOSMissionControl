@@ -3256,7 +3256,9 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "New fleet slot {slot} applies after landing.",
+    "fleetSlotFailed": "Radio restart onto fleet slot {slot} failed. Retrying."
   },
   "fleetNetwork": {
     "title": "Fleet Network",

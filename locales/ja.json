@@ -3253,6 +3253,8 @@
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
     "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "新しいフリートスロット {slot} は着陸後に適用されます。",
+    "fleetSlotFailed": "フリートスロット {slot} への無線の再起動に失敗しました。再試行しています。",
     "notAttached": {
       "title": "このノードへの直接接続がありません",
       "body": "状態、サービス、ログ、再起動の操作は、このノードのエージェントへの直接接続から取得します。このブラウザーが接続すると表示されます。"

@@ -13,6 +13,7 @@ import type {
   InstallStatus,
   WfbModuleSource,
 } from "@/lib/agent/types";
+import { radioFleetApplyOf } from "@/lib/hud/status-pill";
 
 const WFB_MODULE_SOURCES = ["prebuilt", "dkms", "none"] as const;
 const INSTALL_STATUSES = ["ok", "degraded", "failed", "unknown"] as const;
@@ -150,5 +151,10 @@ export function mapCloudStatus(cloudStatus: Record<string, unknown>): AgentStatu
         ? cloudStatus.installVersion
         : undefined,
     failed_steps: asStringArray(cloudStatus.failedSteps),
+    // The heartbeat's radio block carries the fleet slot restart the radio
+    // is owed (`fleetApply`); a heartbeat without it clears it.
+    radio_fleet_apply: radioFleetApplyOf(
+      (cloudStatus.radio as Record<string, unknown> | undefined)?.fleetApply,
+    ),
   };
 }

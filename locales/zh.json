@@ -3253,6 +3253,8 @@
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
     "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "新的机队槽位 {slot} 将在降落后生效。",
+    "fleetSlotFailed": "无线电重启到机队槽位 {slot} 失败，正在重试。",
     "notAttached": {
       "title": "未直接连接到此节点",
       "body": "其状态、服务、日志和重启控制来自与此节点代理的直接连接。此浏览器连接到它后即会显示。"

@@ -141,6 +141,7 @@ export class MockAgentClient extends MockAgentClientExtras {
       install_status: "ok",
       install_version: "0.39.0",
       failed_steps: [],
+      radio_fleet_apply: null,
     };
   }
 

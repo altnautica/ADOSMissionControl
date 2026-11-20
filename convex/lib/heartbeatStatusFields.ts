@@ -122,6 +122,13 @@ export interface RadioPayload {
   publicKeyFingerprint?: string | null;
   autoPairEnabled?: boolean | null;
   pairRearm?: { cause: string | null; at: number; episodes: number; active: boolean } | null;
+  fleetApply?: {
+    outcome: string;
+    fleetId: number | null;
+    fleetSlot: number | null;
+    sinceMs: number | null;
+    atMs: number | null;
+  } | null;
 }
 
 export const RADIO_KEYS = declaredKeys(pushStatusArgs.radio);
@@ -155,7 +162,8 @@ export function radioField(
   for (const [k, value] of Object.entries(raw as Record<string, unknown>)) {
     const camelKey = k.replace(/_([a-z0-9])/g, (_m, c: string) => c.toUpperCase());
     if (RADIO_KEYS && !RADIO_KEYS.has(camelKey)) continue;
-    remapped[camelKey] = value;
+    // The fleet-apply view nests its own snake_case keys (`fleet_slot`).
+    remapped[camelKey] = camelKey === "fleetApply" && value ? snakeToCamelObject(value) ?? null : value;
   }
   // The validator's 14 non-optional fields are nullable, so an agent that
   // omits one gets an explicit null rather than an invalid block.

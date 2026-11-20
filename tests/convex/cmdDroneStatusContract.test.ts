@@ -428,6 +428,19 @@ describe("radio block survives the /agent/status transform", () => {
     const absent = required.filter((k) => !(k in out!));
     expect(absent, "required radio fields with no value").toEqual([]);
   });
+
+  it("carries the fleet slot restart with its nested keys in camelCase", () => {
+    const out = radioField(
+      {
+        radio: {
+          state: "paired",
+          fleet_apply: { outcome: "deferred_armed", fleet_id: 7, fleet_slot: 3, since_ms: 10, at_ms: 20 },
+        },
+      },
+      "radio",
+    ) as Record<string, unknown> | undefined;
+    expect(out?.fleetApply).toEqual({ outcome: "deferred_armed", fleetId: 7, fleetSlot: 3, sinceMs: 10, atMs: 20 });
+  });
 });
 
 // ── top-level wire contract ──────────────────────────────────────────

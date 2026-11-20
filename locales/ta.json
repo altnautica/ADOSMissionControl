@@ -3253,6 +3253,8 @@
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
     "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "புதிய ஃப்ளீட் ஸ்லாட் {slot} தரையிறங்கிய பிறகு பொருந்தும்.",
+    "fleetSlotFailed": "ஃப்ளீட் ஸ்லாட் {slot}-க்கு ரேடியோ மறுதொடக்கம் தோல்வியடைந்தது. மீண்டும் முயற்சிக்கிறது.",
     "notAttached": {
       "title": "இந்த நோடுடன் நேரடி இணைப்பு இல்லை",
       "body": "இதன் நிலை, சேவைகள், பதிவுகள், மறுதொடக்கக் கட்டுப்பாடுகள் இந்த நோடின் ஏஜென்டுடனான நேரடி இணைப்பிலிருந்து வருகின்றன. இந்த உலாவி அதனுடன் இணைந்ததும் அவை தோன்றும்."

@@ -3253,6 +3253,8 @@
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
     "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "fleetSlotPending": "새 플릿 슬롯 {slot}은(는) 착륙 후 적용됩니다.",
+    "fleetSlotFailed": "플릿 슬롯 {slot}(으)로 무선 재시작에 실패했습니다. 다시 시도하는 중입니다.",
     "notAttached": {
       "title": "이 노드에 직접 연결되어 있지 않음",
       "body": "상태, 서비스, 로그, 재시작 제어는 이 노드 에이전트와의 직접 연결에서 가져옵니다. 이 브라우저가 연결되면 표시됩니다."
