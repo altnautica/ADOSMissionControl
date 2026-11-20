@@ -269,6 +269,22 @@ describe("buildGroundStationPatch", () => {
     expect(patch?.linkHealthAt).toBe(NOW);
   });
 
+  it("carries the heartbeat's re-pair into the status, and clears it when the heartbeat drops it", () => {
+    const rearm = { cause: "mis_keyed", at: 700, episodes: 1, active: true };
+    const repairing = buildGroundStationPatch(
+      { profile: "ground-station", radio: { rssiDbm: null, pairRearm: rearm } },
+      current,
+      NOW,
+    );
+    expect((repairing?.status as Record<string, unknown>).pair_rearm).toEqual(rearm);
+    const done = buildGroundStationPatch(
+      { profile: "ground-station", radio: { rssiDbm: null } },
+      current,
+      NOW,
+    );
+    expect((done?.status as Record<string, unknown>).pair_rearm).toBeNull();
+  });
+
   it("maps the role and uplink blocks, accepting the snake_case profile alias", () => {
     const patch = buildGroundStationPatch(
       {

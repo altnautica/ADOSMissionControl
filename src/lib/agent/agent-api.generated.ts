@@ -229,6 +229,13 @@ export interface NetworkStatus {
   wifi_ssid: string | null;
 }
 
+export interface PairRearmView {
+  active: boolean;
+  at: number;
+  cause: string | null;
+  episodes: number;
+}
+
 export interface Peripheral {
   address: string;
   bus: string;
@@ -274,6 +281,7 @@ export interface RadioBlock {
   mcs_index: number | null;
   noise_dbm: number | null;
   packets_lost: number | null;
+  pair_rearm?: PairRearmView | null;
   paired: boolean;
   paired_at: string | null;
   paired_with_device_id: string | null;

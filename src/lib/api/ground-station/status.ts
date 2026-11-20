@@ -14,9 +14,10 @@ function numOrNull(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/** The agent's `link.pair_rearm`, or null when absent or not an object. Only
- *  the typed fields pass; anything else reads as unknown. */
-function pairRearmOrNull(v: unknown): PairRearm | null {
+/** The agent's re-arm view (`link.pair_rearm` on the LAN `/status`, radio
+ *  `pairRearm` in a cloud heartbeat), or null when absent or not an object.
+ *  Only the typed fields pass; anything else reads as unknown. */
+export function pairRearmOrNull(v: unknown): PairRearm | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
   const r = v as Raw;
   return {

@@ -121,6 +121,7 @@ export interface RadioPayload {
   pairedAt?: string | null;
   publicKeyFingerprint?: string | null;
   autoPairEnabled?: boolean | null;
+  pairRearm?: { cause: string | null; at: number; episodes: number; active: boolean } | null;
 }
 
 export const RADIO_KEYS = declaredKeys(pushStatusArgs.radio);

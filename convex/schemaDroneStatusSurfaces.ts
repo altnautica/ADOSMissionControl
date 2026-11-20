@@ -168,6 +168,13 @@ export const droneStatusSurfaceFields = {
     pairedAt: v.optional(v.union(v.string(), v.null())),
     publicKeyFingerprint: v.optional(v.union(v.string(), v.null())),
     autoPairEnabled: v.optional(v.union(v.boolean(), v.null())),
+    // The auto-pair re-arm this rig's key last took (agent `pair_rearm`).
+    pairRearm: v.optional(v.union(v.object({
+      cause: v.union(v.string(), v.null()),
+      at: v.number(),
+      episodes: v.number(),
+      active: v.boolean(),
+    }), v.null())),
   })),
   // CRSF/ExpressLRS control-lane telemetry, mirrored from the agent's
   // crsf-stats sidecar. Pre-declared ahead of the emitting agent: the

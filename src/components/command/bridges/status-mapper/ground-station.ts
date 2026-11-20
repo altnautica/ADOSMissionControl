@@ -8,6 +8,7 @@
  */
 
 import type { GroundStationRole } from "@/lib/api/ground-station/types";
+import { pairRearmOrNull } from "@/lib/api/ground-station/status";
 import type { RoleSnapshot } from "@/stores/ground-station/types";
 
 export interface GroundStationFanOutCurrent {
@@ -96,6 +97,10 @@ export function buildGroundStationPatch(
       paired_drone: pairedWithDeviceId ?? null,
       profile: "ground_station",
       uplink_active: cloudUplink ?? current.status.uplink_active,
+      // The agent's auto-pair re-arm rides in the heartbeat's radio block
+      // (`pairRearm`), absent when the key was never re-armed: the same reading
+      // the LAN `/status` carries in `link.pair_rearm`.
+      pair_rearm: pairRearmOrNull(radio.pairRearm),
     };
     patch.statusFetchedAt = now;
   }
