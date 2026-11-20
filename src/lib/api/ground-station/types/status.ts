@@ -5,6 +5,8 @@
  * @license GPL-3.0-only
  */
 
+import type { PairRearm } from "@/lib/hud/status-pill";
+
 export interface GroundStationLinkHealth {
   rssi_dbm: number | null;
   bitrate_mbps: number | null;
@@ -26,6 +28,10 @@ export interface GroundStationStatus {
   paired_drone: string | null;
   profile: GroundStationProfile;
   uplink_active: string | null;
+  /** The auto-pair re-arm this ground station's key last took (`link.pair_rearm`
+   *  on the agent's `/status`): its cause and whether its bind window runs.
+   *  Null when it was never re-armed, or on an agent that does not report it. */
+  pair_rearm: PairRearm | null;
 }
 
 export interface GroundStationStatusResponse extends GroundStationStatus {

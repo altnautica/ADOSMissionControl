@@ -31,6 +31,7 @@ export const INITIAL_STATUS: GroundStationStatus = {
   paired_drone: null,
   profile: "unconfigured",
   uplink_active: null,
+  pair_rearm: null,
 };
 
 export const INITIAL_PAIR: PairSlice = {

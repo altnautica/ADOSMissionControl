@@ -6877,6 +6877,7 @@
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
       "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "gsRepairing": "ग्राउंड स्टेशन पुन्हा पेअर होत आहे: त्याचे ड्रोन वेगळ्या कीसह प्रसारण करत आहे.",
       "txPowerMeasured": "Measured: {value}",
       "adapters": {
         "title": "Radio adapters",

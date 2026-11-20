@@ -22,6 +22,7 @@ import { PairingCard } from "./PairingCard";
 import { TxPowerCard } from "./TxPowerCard";
 import { WfbTuningCard } from "./WfbTuningCard";
 import { CalibrateLinkWizard } from "./CalibrateLinkWizard";
+import { GsRepairingBanner } from "./GsRepairingBanner";
 import { useLinkHealthPoll } from "./use-link-health-poll";
 import { useRadioReadings } from "./use-radio-readings";
 import { useRadioPairActions } from "./use-radio-pair-actions";
@@ -157,6 +158,7 @@ export function RadioPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      <GsRepairingBanner />
       <LinkHealthCard
         topology={topology}
         linkState={linkState}

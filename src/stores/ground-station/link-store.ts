@@ -82,6 +82,9 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
   invalidateLinkHealth: (message) =>
     set({
       linkHealth: INITIAL_LINK_HEALTH,
+      // The re-pair is a reading of the same failed poll: a ground station
+      // that stopped answering is not known to be re-pairing.
+      status: { ...get().status, pair_rearm: null },
       lastFetchedAt: null,
       linkHealthAt: null,
       lastError: message,

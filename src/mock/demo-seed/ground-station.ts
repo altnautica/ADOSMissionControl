@@ -80,6 +80,8 @@ export function seedGroundStationStore(): void {
       paired_drone: "alpha-1",
       profile: "ground_station",
       uplink_active: "ethernet",
+      // The demo pair is healthy: its key was never re-armed.
+      pair_rearm: null,
     },
     statusFetchedAt: Date.now(),
     linkHealth: {

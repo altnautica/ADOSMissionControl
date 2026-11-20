@@ -43,6 +43,7 @@ export function useLinkHealthPoll(agentUrl: string | null, apiKey: string | null
             paired_drone: status.paired_drone ?? null,
             profile: status.profile ?? "unconfigured",
             uplink_active: status.uplink_active ?? null,
+            pair_rearm: status.pair_rearm ?? null,
           },
           status.link_health,
         );

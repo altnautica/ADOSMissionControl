@@ -13,7 +13,8 @@
 //             pilot state reporting the FC's own failsafe RTL or land
 //   warning:  vehicle link stale > 3 s, battery at or below the low band, a
 //             GPS fix below 3D while armed, frozen video, a battery-engine
-//             warning
+//             warning, the ground station re-pairing because its drone is on
+//             the air with a different key
 //   advisory: the ground station's uplink is offline (never in the pill)
 // Every rule reads a real field; an unknown reading never alerts.
 
@@ -48,8 +49,11 @@ export interface BaseAlertInputs {
   /** The telemetry snapshot: arm state, GNSS fix and the FC's battery. */
   telemetry: (FcBatteryInput & { armed?: boolean | null; gps?: { fix_type?: number | null } | null }) | null;
   battery: BatteryHealthInput | null;
-  /** Ground station status: the uplink. */
-  status: { network?: { uplink_type?: string | null; uplink_reachable?: boolean | null } | null } | null;
+  /** Ground station status: the uplink, and the radio link's re-pair. */
+  status: {
+    network?: { uplink_type?: string | null; uplink_reachable?: boolean | null } | null;
+    link?: { pair_rearm?: PairRearm | null } | null;
+  } | null;
   /** Milliseconds since vehicle telemetry was last live; null when it has
    *  never been live this session (nothing to have lost). */
   msSinceLive: number | null;
@@ -58,6 +62,23 @@ export interface BaseAlertInputs {
   /** The arm state at the last live sample (the snapshot drops `armed` once
    *  the link goes quiet). Defaults to the snapshot's own value. */
   armedAtLastLive?: boolean | null;
+}
+
+/** The agent's auto-pair re-arm (`pair_rearm` on `GET /api/wfb` and on the
+ *  ground-station `/status` `link`): why the key was last re-armed (`unproven`,
+ *  `mis_keyed`, `forced`) and whether the bind window it opened still runs.
+ *  Null when the key on disk was never re-armed. */
+export interface PairRearm {
+  cause?: string | null;
+  active?: boolean | null;
+  at?: number | null;
+  episodes?: number | null;
+}
+
+/** A re-pair is running because the peer is on the air with a different key:
+ *  on a ground station, the `gs_repairing` alert. */
+export function repairingMisKeyed(r: PairRearm | null | undefined): boolean {
+  return r?.active === true && r.cause === "mis_keyed";
 }
 
 const LEVEL_RANK: Record<AlertLevel, number> = { critical: 0, warning: 1, advisory: 2 };
@@ -117,6 +138,10 @@ export function baseAlerts(i: BaseAlertInputs): BaseAlert[] {
 
   if (i.video === "frozen") {
     out.push({ id: "video_frozen", level: "warning", title: specText("alert.video_frozen") });
+  }
+
+  if (repairingMisKeyed(i.status?.link?.pair_rearm)) {
+    out.push({ id: "gs_repairing", level: "warning", title: specText("alert.gs_repairing") });
   }
 
   const uplinkType = i.status?.network?.uplink_type;

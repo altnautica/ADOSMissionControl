@@ -24,6 +24,7 @@ import { LogViewer } from "../shared/LogViewer";
 import { ServiceTable } from "../shared/ServiceTable";
 import { AgentDisconnectedPage } from "../AgentDisconnectedPage";
 import { StaleBanner } from "../shared/StaleBanner";
+import { GsRepairingBanner } from "@/components/hardware/radio/GsRepairingBanner";
 import { GroundStationMeshCard } from "../shared/GroundStationMeshCard";
 import { GroundStationLinkCard } from "../shared/GroundStationLinkCard";
 import { GroundStationUplinkCard } from "../shared/GroundStationUplinkCard";
@@ -99,6 +100,7 @@ export function GroundStationOverview({ name, nodeDeviceId }: GroundStationOverv
           paired_drone: gs.paired_drone ?? null,
           profile: gs.profile ?? "unconfigured",
           uplink_active: gs.uplink_active ?? null,
+          pair_rearm: gs.pair_rearm ?? null,
         },
         gs.link_health,
       );
@@ -172,6 +174,7 @@ export function GroundStationOverview({ name, nodeDeviceId }: GroundStationOverv
         </div>
       ) : null}
       <StaleBanner />
+      <GsRepairingBanner />
       <OverviewGrid>
         <OverviewTile span="half">
           <AgentStatusCard status={status} profile="ground-station" />

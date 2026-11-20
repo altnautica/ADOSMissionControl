@@ -6923,6 +6923,7 @@
       "packetsAllHint": "Total RF frames the receiver has seen, whether or not they decoded. A rising count with rising decrypt errors means frames arrive but cannot be decoded.",
       "decryptErrors": "Decrypt errors",
       "decryptErrorsHint": "Frames that reached the receiver but failed FEC decode or decryption. A climbing count usually points at a key or link-id mismatch between the two ends.",
+      "gsRepairing": "Ground station is re-pairing: its drone is on the air with a different key.",
       "txPowerMeasured": "Measured: {value}"
     },
     "videoLink": {

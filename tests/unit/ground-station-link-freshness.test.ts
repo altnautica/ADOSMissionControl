@@ -121,7 +121,12 @@ describe("link health invalidation", () => {
   it("drops the snapshot when the poll fails, so a dead link reads dead", () => {
     const store = useGroundStationStore.getState();
     store.loadStatus(
-      { paired_drone: "d1", profile: "ground_station", uplink_active: null },
+      {
+        paired_drone: "d1",
+        profile: "ground_station",
+        uplink_active: null,
+        pair_rearm: { cause: "mis_keyed", active: true, at: 700, episodes: 1 },
+      },
       { rssi_dbm: -58, bitrate_mbps: 18.5, fec_rec: 3, fec_lost: 0, channel: 161 },
     );
     expect(useGroundStationStore.getState().linkHealth.rssi_dbm).toBe(-58);
@@ -138,12 +143,14 @@ describe("link health invalidation", () => {
     expect(after.linkHealth.fec_rec).toBe(0);
     expect(after.lastFetchedAt).toBeNull();
     expect(after.lastError).toBe("fetch failed");
+    // A ground station that stopped answering is not known to be re-pairing.
+    expect(after.status.pair_rearm).toBeNull();
   });
 
   it("no longer reads as a live snapshot after invalidation", () => {
     const store = useGroundStationStore.getState();
     store.loadStatus(
-      { paired_drone: null, profile: "ground_station", uplink_active: null },
+      { paired_drone: null, profile: "ground_station", uplink_active: null, pair_rearm: null },
       { rssi_dbm: -58, bitrate_mbps: 18.5, fec_rec: 0, fec_lost: 0, channel: 161 },
     );
     store.invalidateLinkHealth("fetch failed");

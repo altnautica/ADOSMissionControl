@@ -1,5 +1,6 @@
 // Ground station overall status snapshot.
 
+import type { PairRearm } from "@/lib/hud/status-pill";
 import type { GroundStationStatusResponse } from "./types";
 import { gsRequest, type RequestContext } from "./request";
 
@@ -13,12 +14,26 @@ function numOrNull(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+/** The agent's `link.pair_rearm`, or null when absent or not an object. Only
+ *  the typed fields pass; anything else reads as unknown. */
+function pairRearmOrNull(v: unknown): PairRearm | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const r = v as Raw;
+  return {
+    cause: typeof r.cause === "string" ? r.cause : null,
+    active: typeof r.active === "boolean" ? r.active : null,
+    at: numOrNull(r.at),
+    episodes: numOrNull(r.episodes),
+  };
+}
+
 /**
  * Map the agent's `/ground-station/status` body (ados-control `gs_status.rs`
  * get_status) onto the store shape. The agent always sends `paired_drone` as
  * an object whose `device_id` is null while unpaired, carries the radio view
- * under `link` (with `fec_recovered`/`fec_lost`), spells the profile
- * `ground-station`, and reports no active uplink on this surface.
+ * under `link` (with `fec_recovered`/`fec_lost` and the auto-pair re-arm in
+ * `pair_rearm`), spells the profile `ground-station`, and reports no active
+ * uplink on this surface.
  */
 export function normaliseGroundStationStatus(body: unknown): GroundStationStatusResponse {
   const b = asObj(body);
@@ -33,6 +48,7 @@ export function normaliseGroundStationStatus(body: unknown): GroundStationStatus
           ? b.profile
           : "unconfigured",
     uplink_active: null,
+    pair_rearm: pairRearmOrNull(link.pair_rearm),
     link_health: {
       rssi_dbm: numOrNull(link.rssi_dbm),
       bitrate_mbps: numOrNull(link.bitrate_mbps),

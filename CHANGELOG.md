@@ -8,6 +8,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Ground station: the agent's `link.pair_rearm` is read from `/status` (`pair_rearm` on the ground-station status), and the Overview and Radio views show "Ground station is re-pairing: its drone is on the air with a different key." while a re-pair runs because the drone is mis-keyed (`hardware.radio.gsRepairing`, every locale). A failed status poll clears it. The cockpit spec and status pill carry the shared `gs_repairing` alert. Demo: the demo ground station reports `pair_rearm: null`.
 - Cockpit: the pilot frame's `clock` is parsed (`simClock`), and the status pill is followed by a "SIM ×N" badge while the pilot runs on a simulator's clock. Demo: the demo pilot reports `clock: {source: "wall"}`.
 - Cockpit: the pilot frame's `battery_reserve` (the charge a low-battery return home needs, `energy` or `floor` basis) is parsed (`batteryReserve`), and the cockpit spec carries the energy-aware return's banner string `pilot.banner.low_battery_rth_energy` ("Battery {pct}% · need {need_pct}% to reach home · Returning in {in_s} s"). Demo: `DEMO_LOW_BATTERY_ENERGY_PIN`.
 
