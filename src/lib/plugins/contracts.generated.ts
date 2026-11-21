@@ -25,6 +25,7 @@ export const CONTRACT_VERSIONS = {
   "nav.voxmap.v1": 1,
   "follow.beacon": 1,
   "vision.depth.v2": 2,
+  "vision.subject.v1": 1,
 } as const;
 
 export const SIDECAR_VERSIONS = {
@@ -258,6 +259,13 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     transport: "unix-stream",
     status: "active",
     description: "Metric monocular depth frames from the vision engine, broadcast on vision-depth-frames.sock (4-byte big-endian length-prefixed msgpack) for the vision.depth.v2 topic, at most 5 Hz per camera and only while a depth lease is held and a scale fit exists: {v, camera_id, stamp_ns (frame capture, host monotonic), w, h (128 x 96, the whole frame squeezed), fx, fy, cx, cy (pinhole, plane pixels, pixel centres at i + 0.5), pitch_down_deg (camera mount), depth_mm: bin (u16 LE optical-axis depth, 0 unknown), sigma_mm: bin (u16 LE one-sigma, saturating), fit: {scale, shift (1/Z = scale * x + shift on per-frame normalised model values), inliers, residual_m, held_ms (0 fresh, else the held fit's age)}}. A record is at most 64 KiB of msgpack, one plugin event payload.",
+  },
+  "vision.subject.v1": {
+    version: 1,
+    wire: "msgpack",
+    transport: "unix-stream",
+    status: "active",
+    description: "The designated subject's world state from the vision engine, broadcast on vision-subject.sock (4-byte big-endian length-prefixed msgpack, last-state) for the vision.subject.v1 topic, once per detector batch while the camera's tracker holds an operator-designated subject and the camera has a cameras[] mount and the flight controller's attitude and LOCAL_POSITION_NED cover the frame: {v, camera_id, id (the subject's track_id on vision.detection), stamp_ns (the tracker's frame clock: a simulated frame's sim time, else capture time on the host monotonic clock), fix_age_ms (0 when this update measured the subject, else the time since the last measurement), pos_ned ([n, e, d] local NED metres of the ground-contact point), cov (row-major 3 x 3, m²), vel_ned, mode_probs ([cv, ct, stop] interacting-multiple-model weights), height_m (the subject's estimated height), predictions ([{dt_s, pos_ned, cov}] at 0.5, 1, 1.5, 2 and 3 s, kept out of occupied space when a map is known), sources (the cues that fed the estimate within the last second: box, depth, ground, beacon; empty once the subject has been hidden for a second)}. A record is at most 4 KiB.",
   },
 };
 
