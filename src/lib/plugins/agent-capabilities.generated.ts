@@ -100,6 +100,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "medium",
     risk_reason: "High-rate raw sensor data, including the receiver's position stream. Enforced by the generated unit's mount namespace: without this grant the sensor bus socket and the clock file are not bound into the plugin's hidden run directory, so a connect fails with ENOENT.",
   },
+  "shm.voxmap": {
+    label: "Publish the 3D obstacle map to the pilot",
+    description: "Lets the plugin write the shared-memory voxel map (occupancy and obstacle distance around the vehicle) that the agent's pilot reads to plan and brake around obstacles. Used by the navigation extension; one writer per node.",
+    category: "flight_control",
+    risk: "high",
+    risk_reason: "The pilot flies around what this map shows: a wrong map can hide an obstacle or block a clear path. Enforced by the generated unit: only a plugin holding this grant joins the map file's group, and the pilot refuses a map file that is not in that group or that anyone but its owner may write.",
+  },
   "capture.storage.write": {
     label: "Write capture sessions to the capture storage volume",
     description: "Lets the plugin read the capture-storage state and write capture session directories under the agent's capture root, and raise the capture-active marker that switches the flight controller to its capture sensor rates. The agent's storage janitor still owns the budget, admission and eviction.",
