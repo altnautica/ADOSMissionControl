@@ -102,10 +102,10 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "shm.voxmap": {
     label: "Publish the 3D obstacle map to the pilot",
-    description: "Lets the plugin write the shared-memory voxel map (occupancy and obstacle distance around the vehicle) that the agent's pilot reads to plan and brake around obstacles. Used by the navigation extension; one writer per node.",
+    description: "Lets the plugin write the shared-memory voxel map (occupancy and obstacle distance around the vehicle) that the agent's pilot reads to plan and brake around obstacles. Used by the navigation extension; one writer per node: while two or more installed plugins hold this grant, neither may publish.",
     category: "flight_control",
     risk: "high",
-    risk_reason: "The pilot flies around what this map shows: a wrong map can hide an obstacle or block a clear path. Enforced by the generated unit: only a plugin holding this grant joins the map file's group, and the pilot refuses a map file that is not in that group or that anyone but its owner may write.",
+    risk_reason: "The pilot flies around what this map shows: a wrong map can hide an obstacle or block a clear path. Enforced by the plugin host and the generated unit: the host hands the map directory to the single plugin holding this grant (to nobody while several do) and binds it into that plugin's sandbox only, and the pilot refuses a map file not owned by the directory's owner, with more than one link, or that anyone but its owner may write.",
   },
   "capture.storage.write": {
     label: "Write capture sessions to the capture storage volume",
@@ -333,7 +333,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "vision.subject.read": {
     label: "Read the designated subject's position and motion",
-    description: "Lets the plugin read vision.subject.v1: the world state the vision engine estimates for the person the operator designated (ground position in the local frame with its uncertainty, velocity, motion-model weights, predicted positions over the next three seconds, estimated height and the cues that fed it). Only the host publishes the topic; it updates while the operator's designation holds, on the operator's shared phone position alone when vision has lost the person. Reading it does not designate a target, open the camera or command the vehicle.",
+    description: "Lets the plugin read vision.subject.v1: the world state the vision engine estimates for the person the operator picked with click-to-follow on the ground station (ground position in the local frame with its uncertainty, velocity, motion-model weights, predicted positions over the next three seconds, estimated height and the cues that fed it), and a released record when that subject is gone. A target a plugin designates is never published. Only the host publishes the topic; it updates while the operator's designation holds, on the operator's shared phone position alone when vision has lost the person. Reading it does not designate a target, open the camera or command the vehicle.",
     category: "data_network",
     risk: "medium",
     risk_reason: "Exposes the live position and motion of a tracked person to the plugin; read-only, no effect on flight by itself.",
