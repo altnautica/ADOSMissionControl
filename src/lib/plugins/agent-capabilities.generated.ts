@@ -333,7 +333,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "vision.subject.read": {
     label: "Read the designated subject's position and motion",
-    description: "Lets the plugin read vision.subject.v1: the world state the vision engine estimates for the person the operator designated (ground position in the local frame with its uncertainty, velocity, motion-model weights, predicted positions over the next three seconds, estimated height and the cues that fed it). Only the host publishes the topic; it updates while the operator's lock holds. Reading it does not designate a target, open the camera or command the vehicle.",
+    description: "Lets the plugin read vision.subject.v1: the world state the vision engine estimates for the person the operator designated (ground position in the local frame with its uncertainty, velocity, motion-model weights, predicted positions over the next three seconds, estimated height and the cues that fed it). Only the host publishes the topic; it updates while the operator's designation holds, on the operator's shared phone position alone when vision has lost the person. Reading it does not designate a target, open the camera or command the vehicle.",
     category: "data_network",
     risk: "medium",
     risk_reason: "Exposes the live position and motion of a tracked person to the plugin; read-only, no effect on flight by itself.",
