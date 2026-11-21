@@ -326,10 +326,17 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "vision.depth.read": {
     label: "Read metric depth frames from the vision engine",
-    description: "Lets the plugin read vision.depth.v2: the vision engine's camera depth frames (a 128 x 96 depth plane in millimetres with a per-pixel uncertainty, the camera intrinsics and how the frame was scaled to metres), for building a 3D map. Only the host publishes the topic. Frames flow only while the engine computes depth on a camera; reading them does not open the camera or command the vehicle.",
+    description: "Lets the plugin read vision.depth.v2: the vision engine's camera depth frames (a 128 x 96 depth plane in millimetres with a per-pixel uncertainty, the camera intrinsics and how the frame was scaled to metres), for building a 3D map. It includes requesting depth: the plugin may take and renew a depth lease on a camera (vision.request_detection with kind depth; detection and surfaces leases still need vision.track.designate), which keeps the engine's depth model running there. Only the host publishes the topic; reading it does not open the camera or command the vehicle.",
     category: "data_network",
     risk: "low",
-    risk_reason: "Derived depth data on a host-published topic; a coarse depth plane reveals little of the scene and does not affect flight.",
+    risk_reason: "Derived depth data on a host-published topic; a coarse depth plane reveals little of the scene and does not affect flight. A depth lease keeps the depth model running on the shared accelerator, which the engine schedules below detection.",
+  },
+  "vision.subject.read": {
+    label: "Read the designated subject's position and motion",
+    description: "Lets the plugin read vision.subject.v1: the world state the vision engine estimates for the person the operator designated (ground position in the local frame with its uncertainty, velocity, motion-model weights, predicted positions over the next three seconds, estimated height and the cues that fed it). Only the host publishes the topic; it updates while the operator's lock holds. Reading it does not designate a target, open the camera or command the vehicle.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Exposes the live position and motion of a tracked person to the plugin; read-only, no effect on flight by itself.",
   },
   "vision.track.designate": {
     label: "Set the vision engine's follow target",
