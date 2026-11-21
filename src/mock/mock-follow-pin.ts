@@ -50,6 +50,7 @@ function followWire(f: FollowState): Record<string, unknown> {
     height_setpoint_m: f.heightSetpointM,
     height_lowered: f.heightLowered,
     height_reason: f.heightReason,
+    subject_source: f.subjectSource,
     reacquire_mode: f.reacquireMode,
     reacquire_remaining_s: f.reacquireRemainingS,
     search_budget_s: f.searchBudgetS,

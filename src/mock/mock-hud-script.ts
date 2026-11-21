@@ -337,6 +337,8 @@ export function scriptFollow(tSec: number, ctx: FollowContext, phase: FollowPhas
     heightSetpointM: null,
     heightLowered: false,
     heightReason: null,
+    // The agent's prediction carries the subject while the camera lost it.
+    subjectSource: phase === "idle" ? null : phase === "predicting" ? "predicted" : "vision",
     reacquireMode: ctx.reacquireMode,
     reacquireRemainingS: null,
     searchBudgetS: null,

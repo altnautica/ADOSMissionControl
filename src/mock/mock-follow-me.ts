@@ -18,7 +18,7 @@
  */
 
 import type { OverheadAhead, PilotState } from "@/lib/hud/cockpit-frames";
-import type { FollowHeightReason, FollowState } from "@/lib/hud/nav-types";
+import type { FollowHeightReason, FollowState, SubjectSource } from "@/lib/hud/nav-types";
 import type { InlinePluginModule } from "@/lib/plugins/inline-host-types";
 import { demoInlineTab } from "./demo-inline-tab";
 import { FOLLOW_ME } from "./extension-manifests";
@@ -79,6 +79,9 @@ export interface FollowMeReadback {
   /** Why: `canopy` under the leaves, `canopy_floor` held at the head-height
    * floor with the leaves lower still; null when not lowered by leaves. */
   height_reason: FollowHeightReason | null;
+  /** The subject estimate flown on (`vision`, `beacon`, `predicted`); null
+   * on the follow's own. */
+  subject_source: SubjectSource | null;
   /** The shortest follow distance flown on the range the follow has. */
   standoff_min_m: number | null;
   /** True when the set distance was shorter and is held at the minimum. */
@@ -141,6 +144,7 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
     height_raised: false,
     height_lowered: false,
     height_reason: null,
+    subject_source: null,
     standoff_min_m: null,
     standoff_raised: false,
     standoff_reason: null,
@@ -186,6 +190,7 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
     height_raised: heightM < FOLLOW_MIN_HEIGHT_M,
     height_lowered: height.lowered,
     height_reason: height.reason,
+    subject_source: follow.subjectSource,
     standoff_min_m: FOLLOW_MIN_STANDOFF_M,
     standoff_raised: standoffRaised,
     standoff_reason: standoffRaised ? "camera-range" : null,

@@ -14,8 +14,10 @@
  * is lowered under leaves the line and the sheet say so ("Flying under
  * leaves: 3.9 m", the reason as the tooltip and the sheet's second line), and
  * the sheet shows the overhead clearance the pilot reports ahead while a
- * fresh pilot frame carries one. A `follow.state` older than 2 s blanks every
- * value, dims the plate and reads STALE.
+ * fresh pilot frame carries one. While the follow flies on the operator's
+ * phone position or a prediction, the line and the sheet name that source
+ * ("Following on phone position", "Predicted"). A `follow.state` older than
+ * 2 s blanks every value, dims the plate and reads STALE.
  *
  * @license GPL-3.0-only
  */
@@ -35,6 +37,7 @@ import {
   RANGE_CUE_ORDER,
   bearing3,
   intervalBar,
+  followSourceLine,
 } from "@/lib/hud/follow-chrome";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useFollowingMode } from "@/hooks/use-following-mode";
@@ -76,6 +79,7 @@ export function FollowRangePanel({
   const brg = live?.bearingDeg ?? null;
   const recovery = live ? followRecoveryLine(live) : null;
   const height = followHeightLine(live);
+  const source = followSourceLine(live?.subjectSource);
 
   if (variant === "line" || widthClass === "compact") {
     // A skill that measures the target's distance reports a range or range
@@ -89,6 +93,7 @@ export function FollowRangePanel({
           {measures && sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
           <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
           {recovery && <span className="frp-aux" data-testid="follow-recovery" style={{ color: "var(--hud-coast)" }}>{recovery}</span>}
+          {source && <span className="frp-aux" data-testid="follow-subject-source" style={{ color: "var(--hud-coast)" }}>{source}</span>}
           {height && (
             <span className="frp-aux" data-testid="follow-height-lowered" title={height.reason ?? undefined}
               style={{ color: "var(--hud-warn)" }}>{height.text}</span>
@@ -114,6 +119,11 @@ export function FollowRangePanel({
       {recovery && (
         <div className="frp-row" data-row="recovery" data-testid="follow-recovery" style={{ color: "var(--hud-coast)" }}>
           {recovery}
+        </div>
+      )}
+      {source && (
+        <div className="frp-row" data-row="source" data-testid="follow-subject-source" style={{ color: "var(--hud-coast)" }}>
+          {source}
         </div>
       )}
       {height && (

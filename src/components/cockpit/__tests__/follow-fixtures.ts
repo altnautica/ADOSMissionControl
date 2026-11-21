@@ -19,6 +19,7 @@ export function followState(over: Partial<FollowState> = {}): FollowState {
     heightSetpointM: 6,
     heightLowered: false,
     heightReason: null,
+    subjectSource: null,
     reacquireMode: "smart",
     reacquireRemainingS: null,
     searchBudgetS: null,

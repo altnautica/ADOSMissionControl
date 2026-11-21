@@ -20,7 +20,7 @@ import { nodeIdForDevice } from "@/lib/agent/node-id";
 import type { InlineHostApi } from "@/lib/plugins/inline-host-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { defaultFor } from "@/lib/plugins/parameters/schema";
-import type { FollowHeightReason } from "@/lib/hud/nav-types";
+import type { FollowHeightReason, SubjectSource } from "@/lib/hud/nav-types";
 import { FOLLOW_STALE_MS, freshData, useNavStreamStore } from "@/stores/nav-stream-store";
 import { demoExtensionLocale } from "./extension-locales";
 import { demoReleaseManifest, FOLLOW_ME } from "./extension-manifests";
@@ -46,6 +46,12 @@ const STANDOFF_REASON_KEYS: Record<FollowMeStandoffReason, string> = {
 const HEIGHT_REASON_KEYS: Record<FollowHeightReason, string> = {
   canopy: "metrics.heightCanopy",
   canopy_floor: "metrics.heightCanopyFloor",
+};
+
+/** The subject sources the panel names: not the camera's own (vision). */
+const SUBJECT_SOURCE_KEYS: Partial<Record<SubjectSource, string>> = {
+  beacon: "metrics.subjectSourceBeacon",
+  predicted: "metrics.subjectSourcePredicted",
 };
 
 /** A distance flown farther than set, with why. */
@@ -205,6 +211,9 @@ function FollowMeDemoPanel({ host }: { host: InlineHostApi }) {
         <Row name={t("metrics.guidedMode")} value={yesNo(readback.fc_guided)} testId="fm-fc-guided" />
         <Row name={t("metrics.targetId")} value={readback.target_id !== null ? `#${readback.target_id}` : "—"} testId="fm-target-id" />
         <Row name={t("metrics.range")} value={fmtMeters(readback.range_m)} testId="fm-range" />
+        {readback.subject_source && SUBJECT_SOURCE_KEYS[readback.subject_source] ? (
+          <Row name={t("metrics.subjectSource")} value={t(SUBJECT_SOURCE_KEYS[readback.subject_source] ?? "")} testId="fm-subject-source" />
+        ) : null}
         <Row name={t("metrics.distanceSetpoint")} value={withStandoffReason(fmtMeters(readback.distance_setpoint_m), readback, t)} testId="fm-distance-setpoint" />
         <Row
           name={t("metrics.heightSetpoint")}

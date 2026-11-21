@@ -26,7 +26,7 @@ import {
 } from "@/mock/mock-follow-me";
 import { applyFollowPin } from "@/mock/mock-follow-pin";
 import { REACQUIRED_TRACK, scriptFollow, TARGET_TRACK, type FollowContext } from "@/mock/mock-hud-script";
-import { DEMO_UNDER_LEAVES_PIN, demoPilotWire } from "@/mock/mock-pilot-wire";
+import { DEMO_BEACON_PIN, DEMO_UNDER_LEAVES_PIN, demoPilotWire } from "@/mock/mock-pilot-wire";
 import { getDemoDronePluginContributions } from "@/mock/mock-plugins";
 
 const FOLLOW_ME_ID = "com.altnautica.follow-me";
@@ -51,6 +51,7 @@ describe("demoFollowReadback", () => {
       height_raised: false,
       height_lowered: false,
       height_reason: null,
+      subject_source: null,
       standoff_min_m: null,
       standoff_raised: false,
       standoff_reason: null,
@@ -75,6 +76,7 @@ describe("demoFollowReadback", () => {
       height_raised: false,
       height_lowered: false,
       height_reason: null,
+      subject_source: "vision",
       standoff_min_m: 5,
       standoff_raised: false,
       standoff_reason: null,
@@ -120,6 +122,12 @@ describe("demoFollowReadback", () => {
     expect(state.overheadAhead).toEqual({ leaseId: 1, flyUnderAglM: 3.9, aheadM: 6 });
     const f = applyFollowPin(scriptFollow(12.5, CTX), DEMO_UNDER_LEAVES_PIN.follow as Record<string, unknown>);
     expect(f).toMatchObject({ phase: "following", heightSetpointM: 3.9, heightLowered: true, heightReason: "canopy" });
+  });
+
+  it("pins a follow on the phone's position, and the readback names the source the follow flies on", () => {
+    const f = applyFollowPin(scriptFollow(12.5, CTX), DEMO_BEACON_PIN.follow as Record<string, unknown>);
+    expect(f).toMatchObject({ phase: "following", subjectSource: "beacon" });
+    expect(demoFollowReadback({ follow: f, pilot: flying, ...settings }).subject_source).toBe("beacon");
   });
 
   it.each([

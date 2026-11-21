@@ -45,6 +45,10 @@ export type RangeCueKind = "ground" | "box_height" | "lidar";
  * the leaves the pilot reports ahead) or `canopy_floor` (held at the lowest
  * follow height, the leaves lower still). */
 export type FollowHeightReason = "canopy" | "canopy_floor";
+/** The subject estimate the follow flies on: `vision` (vision cues fed it),
+ * `beacon` (the operator's phone alone) or `predicted` (no cue within the
+ * last second); null on the follow's own estimate. */
+export type SubjectSource = "vision" | "beacon" | "predicted";
 export type NavHealth = "good" | "degraded" | "lost";
 
 export interface RangeCue {
@@ -95,6 +99,7 @@ export interface FollowState {
   /** The follow height flown is lower than the one set (under leaves). */
   heightLowered: boolean;
   heightReason: FollowHeightReason | null;
+  subjectSource: SubjectSource | null;
   reacquireMode: ReacquireMode | null;
   /** Seconds left of the recovery's search budget. */
   reacquireRemainingS: number | null;
@@ -330,6 +335,7 @@ export function parseFollowState(raw: unknown): FollowState | null {
     heightSetpointM: num(raw.height_setpoint_m),
     heightLowered: raw.height_lowered === true,
     heightReason: oneOf(raw.height_reason, ["canopy", "canopy_floor"] as const),
+    subjectSource: oneOf(raw.subject_source, ["vision", "beacon", "predicted"] as const),
     reacquireMode: oneOf(raw.reacquire_mode, ["strict", "smart"] as const),
     reacquireRemainingS: num(raw.reacquire_remaining_s),
     searchBudgetS: num(raw.search_budget_s),

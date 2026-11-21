@@ -190,4 +190,21 @@ describe("FollowRangePanel", () => {
     renderPanel("expanded", "detail");
     expect(rows()).toEqual(["range", "interval", "geometry", "cues"]);
   });
+
+  it("names the phone position or a prediction as the subject source, in the line and the sheet", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState({ subjectSource: "beacon" }));
+    const line = renderPanel("expanded", "line");
+    expect(screen.getByTestId("follow-subject-source").textContent).toBe("Following on phone position");
+    line.unmount();
+    renderPanel("expanded", "detail");
+    expect(rows()).toEqual(["range", "source", "interval", "geometry", "cues"]);
+    cleanup();
+    useNavStreamStore.getState().setFollow(DRONE, followState({ subjectSource: "predicted" }));
+    renderPanel("expanded", "detail");
+    expect(screen.getByTestId("follow-subject-source").textContent).toBe("Predicted");
+    cleanup();
+    useNavStreamStore.getState().setFollow(DRONE, followState({ subjectSource: "vision" }));
+    renderPanel("expanded", "detail");
+    expect(screen.queryByTestId("follow-subject-source")).toBeNull();
+  });
 });

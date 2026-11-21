@@ -386,6 +386,8 @@
     "follow.rec_start_failed": "Recording did not start",
     "follow.rec_stop_failed": "Recording did not stop",
     "follow.stop_tracking": "Stop tracking",
+    "follow.subject_source.beacon": "Following on phone position",
+    "follow.subject_source.predicted": "Predicted",
     "follow.swap_cameras": "Swap cameras {pair}",
     "follow.target": "Follow target",
     "follow.tracking_close": "Tracking ×",

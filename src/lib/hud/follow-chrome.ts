@@ -7,7 +7,8 @@
  * @license GPL-3.0-only
  */
 
-import type { FollowPhase, RangeCueKind } from "./nav-types";
+import type { FollowPhase, RangeCueKind, SubjectSource } from "./nav-types";
+import { specText } from "./spec-text";
 
 /** HUD role a phase word is drawn in. */
 export type PhaseTone = "track" | "coast" | "warn" | "crit" | "muted";
@@ -88,4 +89,12 @@ export function intervalBar(rangeM: number, sigmaM: number | null): IntervalBar 
 export function bearing3(deg: number): string {
   const whole = ((Math.round(deg) % 360) + 360) % 360;
   return String(whole).padStart(3, "0");
+}
+
+/** The follow's subject source when it is not its own camera's:
+ * `Following on phone position` (the operator's phone alone) or `Predicted`
+ * (no cue within the last second); null on vision or the follow's own
+ * estimate. */
+export function followSourceLine(source: SubjectSource | null | undefined): string | null {
+  return source === "beacon" || source === "predicted" ? specText(`follow.subject_source.${source}`) : null;
 }

@@ -162,6 +162,19 @@ export const DEMO_UNDER_LEAVES_PIN: Json = {
   follow: { phase: "following", height_setpoint_m: 3.9, height_lowered: true, height_reason: "canopy" },
 };
 
+/**
+ * The pin for a follow on the operator's phone position: the camera lost the
+ * subject and the phone's GNSS fix alone carries it. From the console, while
+ * the demo follows: `__adosDemoPilot.pin(DEMO_BEACON_PIN)`.
+ */
+export const DEMO_BEACON_PIN: Json = {
+  armed: true,
+  landed: false,
+  owner: "skill",
+  skill: { plugin_id: "com.altnautica.follow-me", skill_id: "follow-me", label: "Follow-Me" },
+  follow: { phase: "following", subject_source: "beacon" },
+};
+
 /** The wire's `position_unverified` reason and detail. */
 export interface DemoPositionUnverified {
   reason: string;
