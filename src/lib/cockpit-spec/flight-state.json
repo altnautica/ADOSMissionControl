@@ -82,6 +82,7 @@
     "mission-stalled": "Stalled",
     "no-vantage": "No clear view",
     "obstacle-close": "Obstacle close",
+    "position-reset": "Holding · position reset",
     "position-unverified": "Holding · position unverified",
     "obstacle-data-stale": "Holding: no fresh obstacle data",
     "return-blocked": "Return blocked",

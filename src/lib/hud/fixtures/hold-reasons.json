@@ -7,6 +7,7 @@
   { "reason": "no-vantage", "emitted_by": "crates/ados-pilot/src/core/control/vantage_goal.rs" },
   { "reason": "obstacle-close", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
   { "reason": "obstacle-data-stale", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
+  { "reason": "position-reset", "emitted_by": "crates/ados-pilot/src/core/pos_reset.rs" },
   { "reason": "position-unverified", "emitted_by": "crates/ados-pilot/src/core/position_check.rs" },
   { "reason": "return-blocked", "emitted_by": "crates/ados-pilot/src/core/control/stall.rs" },
   { "reason": "route-infeasible", "emitted_by": "crates/ados-pilot/src/core/control/route.rs" }
