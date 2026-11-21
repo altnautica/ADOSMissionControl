@@ -76,6 +76,30 @@ export function parseOverheadAhead(raw: unknown): OverheadAhead | null {
   return leaseId !== null && flyUnderAglM !== null && aheadM !== null ? { leaseId, flyUnderAglM, aheadM } : null;
 }
 
+/** The world model the pilot sees obstacles with: a 3D lidar's voxel map, a
+ *  depth camera's, learned depth from a camera, or a planar lidar's scan. */
+export const SENSING_TIERS = ["lidar3d", "depth", "camera", "planar"] as const;
+export type SensingTier = (typeof SENSING_TIERS)[number];
+
+/** The pilot's `sensing`: its tier, the range it sees clear along its motion
+ *  (m) and the horizontal speed that still stops inside that range (m/s). */
+export interface Sensing {
+  tier: SensingTier;
+  clearRangeM: number;
+  speedLimitMps: number;
+}
+
+/** `sensing` from the pilot frame, or null when absent (an older agent),
+ *  malformed or of a tier this surface does not know. */
+export function parseSensing(raw: unknown): Sensing | null {
+  const o = obj(raw);
+  if (!o) return null;
+  const tier = SENSING_TIERS.find((t) => t === o.tier) ?? null;
+  const clearRangeM = num(o.clear_range_m);
+  const speedLimitMps = num(o.speed_limit_mps);
+  return tier !== null && clearRangeM !== null && speedLimitMps !== null ? { tier, clearRangeM, speedLimitMps } : null;
+}
+
 /** The cap in m/s with at most one decimal (1.5 → "1.5", 2 → "2"), the same
  *  on every surface. */
 export function speedCapText(vHMps: number): string {

@@ -94,6 +94,7 @@
     "obstacle": "Slowed: obstacle",
     "obstacle_closing": "Slowed: obstacle closing",
     "seen_space": "Slowed: sensor range",
+    "sensing": "Slowed: sensing tier",
     "clearance": "Slowed: tight space",
     "push": "Pushing off obstacle",
     "subject": "Keeping distance from subject",

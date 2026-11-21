@@ -62,6 +62,8 @@ export function demoPilotWire(over: Json = {}): Json {
     failsafe_cause: null,
     setup_abort: null,
     place_class: "open",
+    // The 3D lidar's voxel map and the speed that stops inside its seen-clear range.
+    sensing: { tier: "lidar3d", clear_range_m: 11.6, speed_limit_mps: 4.2 },
     ...over,
   };
 }
