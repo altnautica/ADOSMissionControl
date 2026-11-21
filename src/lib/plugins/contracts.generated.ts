@@ -23,6 +23,7 @@ export const CONTRACT_VERSIONS = {
   "pilot.v1": 5,
   "simclock.v1": 1,
   "nav.voxmap.v1": 1,
+  "follow.beacon": 1,
 } as const;
 
 export const SIDECAR_VERSIONS = {
@@ -220,7 +221,7 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     wire: "newline-json",
     transport: "unix-stream",
     status: "active",
-    description: "The plugin event-bus export (seam K): a host service opens the plugin host's root-only _events.sock, writes one {v, op: subscribe, topics: [exact topic names]} line, and reads one {v, topic, publisher, ts_ms, payload} line per bus event on those topics. Every event already passed the host's publish check; the publisher id is host-stamped. The native control front reads the navigation, mapping and follow topics through it.",
+    description: "The plugin event-bus export (seam K): a host service opens the plugin host's root-only _events.sock, writes one {v, op: subscribe, topics: [exact topic names]} line, and reads one {v, topic, publisher, ts_ms, payload} line per bus event on those topics. Every event already passed the host's publish check; the publisher id is host-stamped. The native control front reads the navigation, mapping and follow topics through it. A connection may instead write {v, op: publish, topic, payload} lines: accepted only from a host-service peer (root or the host's own uid, never a plugin-plane uid, by the kernel's peer credentials), only on the host-owned topics (plugin.follow.beacon), payload at most 64 KiB, at most 20 per second per publisher uid; each event is published as publisher host, and only a refused line is answered ({v, error}).",
   },
   "pilot.v1": {
     version: 5,
@@ -242,6 +243,13 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     transport: "shared-memory",
     status: "active",
     description: "The 3D voxel map (seam M): Navigation writes /dev/shm/ados-voxmap-v1 (mode 0640, group ados-voxmap, which a plugin joins only with shm.voxmap) and the pilot reads it. Little-endian 80-byte header {[u8;4] magic ADVX, u16 version 1, u16 rsv, u64 seq (odd while the writer publishes), u64 stamp_ns (ADOS time), f32 res_m, i32[3] origin_cell, u16[3] dims, u16 rsv, f32[7] map_from_body (north, east, down, then quaternion w, x, y, z), u8 tier (0 unknown, 1 lidar3d, 2 depth, 3 camera, 4 planar), u8 rsv[3]}, then occupancy u8[nx*ny*nz] (0 unknown, 1 free, 2 occupied) and esdf_dm u8[nx*ny*nz] (distance in decimetres, capped at 40, to the nearest obstacle voxel: occupied, or once occupied and still holding positive evidence), x fastest over the window from origin_cell. Readers copy under the seqlock and retry a torn copy.",
+  },
+  "follow.beacon": {
+    version: 1,
+    wire: "msgpack",
+    transport: "event-bus",
+    status: "active",
+    description: "The operator's shared phone position on the plugin.follow.beacon topic: {v, lat, lon (degrees), alt_m (AMSL, null when unknown), vel_ned ([n, e, d] m/s, null when unmeasured), horiz_acc_m, vert_acc_m (null when unknown), stamp_ns (ADOS time at router receipt), source (gcs-phone), sysid, compid}. The router republishes MAVLink FOLLOW_TARGET from an authorised ground link only, at most 10 Hz, dropping fixes older than 2 s or with horizontal accuracy worse than 30 m; it publishes through the seam K publish op as publisher host. Read with event.subscribe plus follow.beacon.read; no plugin may publish it.",
   },
 };
 

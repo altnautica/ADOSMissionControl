@@ -422,4 +422,11 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "low",
     risk_reason: "Read-only node identity facts; no effect on flight, no imagery and no secrets.",
   },
+  "follow.beacon.read": {
+    label: "Read the operator's shared phone position",
+    description: "Lets the plugin read plugin.follow.beacon: the position, velocity and accuracy of the operator's phone while the operator shares it from a ground station for follow-me. The router publishes only fixes from an authorised ground link; the plugin cannot publish the topic.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Exposes the operator's live location to the plugin while sharing is on; read-only, no effect on flight by itself.",
+  },
 };
