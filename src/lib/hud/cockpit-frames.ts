@@ -22,6 +22,7 @@
 
 import {
   parseBatteryReserve,
+  parseOverheadAhead,
   parsePositionUnverified,
   parseProfileLimits,
   parseSpeedCap,
@@ -29,6 +30,7 @@ import {
   parseStickCommand,
   type BatteryReserve,
   type FcStatusText,
+  type OverheadAhead,
   type PositionUnverified,
   type ProfileLimits,
   type SpeedCap,
@@ -46,7 +48,7 @@ import {
 } from "./cockpit-mission";
 import { parseSimClock, type SimClock } from "./sim-clock";
 
-export type { BatteryReserve, FcStatusText, PositionUnverified, ProfileLimits, SpeedCap, StickCommand } from "./pilot-fields";
+export type { BatteryReserve, FcStatusText, OverheadAhead, PositionUnverified, ProfileLimits, SpeedCap, StickCommand } from "./pilot-fields";
 export {
   decodeBase64Into,
   decodeGridCode,
@@ -251,6 +253,9 @@ export interface PilotState {
   /** The pilot does not trust the horizontal position (an older agent sends
    *  none), or null. */
   positionUnverified: PositionUnverified | null;
+  /** Leaves or a ceiling the pilot sees overhead along the lease goal's way
+   *  (`overhead_ahead`), or null while nothing lies ahead. */
+  overheadAhead: OverheadAhead | null;
   /** The limits the operator's sticks fly at now, or null (an older agent). */
   profileLimits: ProfileLimits | null;
   /** The operator's sticks on the latest stick tick, while they own the
@@ -347,6 +352,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     routeCheck: parseRouteCheck(p.route_check),
     sensors: p.sensors ?? null,
     positionUnverified: parsePositionUnverified(p.position_unverified),
+    overheadAhead: parseOverheadAhead(p.overhead_ahead),
     profileLimits: parseProfileLimits(p.profile_limits),
     stick: parseStickCommand(p.stick),
     simClock: parseSimClock(p.clock),

@@ -6,6 +6,7 @@ import messages from "../../../../locales/en.json";
 import { FollowRangePanel } from "@/components/cockpit/FollowRangePanel";
 import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
+import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
@@ -152,6 +153,40 @@ describe("FollowRangePanel", () => {
 
   it("shows every row in the detail variant at expanded", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
+    renderPanel("expanded", "detail");
+    expect(rows()).toEqual(["range", "interval", "geometry", "cues"]);
+  });
+
+  it("says the height is lowered under leaves, with why, in the line and the sheet", () => {
+    useNavStreamStore
+      .getState()
+      .setFollow(DRONE, followState({ heightSetpointM: 3.87, heightLowered: true, heightReason: "canopy" }));
+    const line = renderPanel("expanded", "line");
+    const short = screen.getByTestId("follow-height-lowered");
+    expect(short.textContent).toBe("Flying under leaves: 3.9 m");
+    expect(short.getAttribute("title")).toBe("Lowered under the leaves ahead");
+    line.unmount();
+    renderPanel("expanded", "detail");
+    expect(rows()).toEqual(["range", "height", "interval", "geometry", "cues"]);
+    expect(screen.getByTestId("follow-height-lowered").textContent).toBe(
+      "Flying under leaves: 3.9 mLowered under the leaves ahead",
+    );
+  });
+
+  it("shows the overhead clearance ahead only while a fresh pilot frame reports one", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState());
+    const report = { owner: "skill", overhead_ahead: { lease_id: 7, fly_under_agl_m: 3.87, ahead_m: 2.5 } };
+    useNavStreamStore.getState().setPilot(DRONE, parsePilotState(report)!);
+    const fresh = renderPanel("expanded", "detail");
+    expect(rows()).toEqual(["range", "overhead", "interval", "geometry", "cues"]);
+    expect(screen.getByTestId("follow-overhead-ahead").textContent).toBe("Overhead clearance ahead: 3.9 m in 3 m");
+    fresh.unmount();
+    useNavStreamStore.getState().setPilot(DRONE, parsePilotState(report)!, Date.now() - 3000);
+    const stale = renderPanel("expanded", "detail");
+    expect(screen.queryByTestId("follow-overhead-ahead")).toBeNull();
+    stale.unmount();
+    const clear = { owner: "skill", overhead_ahead: { lease_id: 7, fly_under_agl_m: null, ahead_m: null } };
+    useNavStreamStore.getState().setPilot(DRONE, parsePilotState(clear)!);
     renderPanel("expanded", "detail");
     expect(rows()).toEqual(["range", "interval", "geometry", "cues"]);
   });

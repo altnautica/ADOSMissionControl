@@ -20,6 +20,7 @@ import { nodeIdForDevice } from "@/lib/agent/node-id";
 import type { InlineHostApi } from "@/lib/plugins/inline-host-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { defaultFor } from "@/lib/plugins/parameters/schema";
+import type { FollowHeightReason } from "@/lib/hud/nav-types";
 import { FOLLOW_STALE_MS, freshData, useNavStreamStore } from "@/stores/nav-stream-store";
 import { demoExtensionLocale } from "./extension-locales";
 import { demoReleaseManifest, FOLLOW_ME } from "./extension-manifests";
@@ -40,6 +41,11 @@ const STANDOFF_REASON_KEYS: Record<FollowMeStandoffReason, string> = {
   "range-unknown": "metrics.standoffRangeUnknown",
   "subject-standing": "metrics.standoffSubjectStanding",
   "closing-in": "metrics.standoffClosingIn",
+};
+
+const HEIGHT_REASON_KEYS: Record<FollowHeightReason, string> = {
+  canopy: "metrics.heightCanopy",
+  canopy_floor: "metrics.heightCanopyFloor",
 };
 
 /** A distance flown farther than set, with why. */
@@ -202,7 +208,13 @@ function FollowMeDemoPanel({ host }: { host: InlineHostApi }) {
         <Row name={t("metrics.distanceSetpoint")} value={withStandoffReason(fmtMeters(readback.distance_setpoint_m), readback, t)} testId="fm-distance-setpoint" />
         <Row
           name={t("metrics.heightSetpoint")}
-          value={readback.height_raised ? `${fmtMeters(readback.height_setpoint_m)} · ${t("metrics.heightRaised")}` : fmtMeters(readback.height_setpoint_m)}
+          value={
+            readback.height_reason
+              ? `${fmtMeters(readback.height_setpoint_m)} · ${t(HEIGHT_REASON_KEYS[readback.height_reason])}`
+              : readback.height_raised
+                ? `${fmtMeters(readback.height_setpoint_m)} · ${t("metrics.heightRaised")}`
+                : fmtMeters(readback.height_setpoint_m)
+          }
           testId="fm-height-setpoint"
         />
       </section>

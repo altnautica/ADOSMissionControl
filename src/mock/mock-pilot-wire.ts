@@ -145,6 +145,21 @@ export const DEMO_LOW_BATTERY_ENERGY_PIN: Json = {
   },
 };
 
+/**
+ * The pin for a follow under trees: the pilot sees leaves 6 m along the
+ * follow skill's way that the airframe passes under at 3.9 m, and follow-me
+ * lowers its height to that. From the console, while the demo follows:
+ * `__adosDemoPilot.pin(DEMO_UNDER_LEAVES_PIN)`.
+ */
+export const DEMO_UNDER_LEAVES_PIN: Json = {
+  armed: true,
+  landed: false,
+  owner: "skill",
+  skill: { plugin_id: "com.altnautica.follow-me", skill_id: "follow-me", label: "Follow-Me" },
+  overhead_ahead: { lease_id: 1, fly_under_agl_m: 3.9, ahead_m: 6 },
+  follow: { phase: "following", height_setpoint_m: 3.9, height_lowered: true, height_reason: "canopy" },
+};
+
 /** The wire's `position_unverified` reason and detail. */
 export interface DemoPositionUnverified {
   reason: string;

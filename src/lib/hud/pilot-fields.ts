@@ -55,6 +55,27 @@ export function parseBatteryReserve(raw: unknown): BatteryReserve | null {
   return needPct !== null && returnS !== null && basis !== null ? { needPct, basis, returnS } : null;
 }
 
+/** Leaves or a ceiling the pilot sees overhead along the way of a lease
+ *  goal (`overhead_ahead`): the highest height over the ground the airframe
+ *  passes under it at (`flyUnderAglM`, m) and how far along the way it lies
+ *  (`aheadM`, horizontal m), for the lease `leaseId`. */
+export interface OverheadAhead {
+  leaseId: number;
+  flyUnderAglM: number;
+  aheadM: number;
+}
+
+/** `overhead_ahead` from the pilot frame, or null when absent, malformed or
+ *  clear (the pilot sends null heights while nothing overhead lies ahead). */
+export function parseOverheadAhead(raw: unknown): OverheadAhead | null {
+  const o = obj(raw);
+  if (!o) return null;
+  const leaseId = num(o.lease_id);
+  const flyUnderAglM = num(o.fly_under_agl_m);
+  const aheadM = num(o.ahead_m);
+  return leaseId !== null && flyUnderAglM !== null && aheadM !== null ? { leaseId, flyUnderAglM, aheadM } : null;
+}
+
 /** The cap in m/s with at most one decimal (1.5 → "1.5", 2 → "2"), the same
  *  on every surface. */
 export function speedCapText(vHMps: number): string {

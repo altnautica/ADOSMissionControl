@@ -10,8 +10,12 @@
  * cue/latency row at `expanded`/`tv`) opens as a sheet from the strip. While
  * the subject is sought (predicting, moving to look, searching) the recovery
  * line follows the phase: seconds left of the search budget, the widening
- * step, the vantage state and what hides the subject. A `follow.state` older
- * than 2 s blanks every value, dims the plate and reads STALE.
+ * step, the vantage state and what hides the subject. While the follow height
+ * is lowered under leaves the line and the sheet say so ("Flying under
+ * leaves: 3.9 m", the reason as the tooltip and the sheet's second line), and
+ * the sheet shows the overhead clearance the pilot reports ahead while a
+ * fresh pilot frame carries one. A `follow.state` older than 2 s blanks every
+ * value, dims the plate and reads STALE.
  *
  * @license GPL-3.0-only
  */
@@ -19,7 +23,10 @@
 
 import { followRecoveryLine } from "@/lib/cockpit/follow-recovery";
 import { specString } from "@/lib/cockpit/spec-strings";
+import { followHeightLine, overheadAheadLine } from "@/lib/hud/follow-height";
 import type { FollowState } from "@/lib/hud/nav-types";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { formatRange, rangeInterval } from "@/lib/vision/target-format";
 import {
@@ -31,6 +38,7 @@ import {
 } from "@/lib/hud/follow-chrome";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useFollowingMode } from "@/hooks/use-following-mode";
+import { msSince } from "@/components/cockpit/band/format";
 
 const MODE_KEY = { strict: "follow.mode.strict", smart: "follow.mode.smart" } as const;
 
@@ -49,7 +57,11 @@ export function FollowRangePanel({
   const cockpitClass = useCockpitWidthClass();
   const widthClass = variant === "detail" && cockpitClass === "compact" ? "medium" : cockpitClass;
   const { follow, stale, following } = useFollowingMode(droneId);
+  const { pilot, receivedAt } = usePilotState(droneId);
   if (!following) return null;
+  // useFollowingMode re-renders on the 1 Hz clock, so a stalled pilot ages out.
+  const pilotLive = receivedAt !== null && pilotFresh(0, msSince(receivedAt));
+  const overhead = pilotLive ? overheadAheadLine(pilot?.overheadAhead ?? null) : null;
 
   // Every value reads from `live`, which is null once the report is stale.
   const live: FollowState | null = stale ? null : follow;
@@ -63,6 +75,7 @@ export function FollowRangePanel({
   const dep = live?.depressionDeg ?? null;
   const brg = live?.bearingDeg ?? null;
   const recovery = live ? followRecoveryLine(live) : null;
+  const height = followHeightLine(live);
 
   if (variant === "line" || widthClass === "compact") {
     // A skill that measures the target's distance reports a range or range
@@ -76,6 +89,10 @@ export function FollowRangePanel({
           {measures && sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
           <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
           {recovery && <span className="frp-aux" data-testid="follow-recovery" style={{ color: "var(--hud-coast)" }}>{recovery}</span>}
+          {height && (
+            <span className="frp-aux" data-testid="follow-height-lowered" title={height.reason ?? undefined}
+              style={{ color: "var(--hud-warn)" }}>{height.text}</span>
+          )}
         </div>
       </div>
     );
@@ -97,6 +114,17 @@ export function FollowRangePanel({
       {recovery && (
         <div className="frp-row" data-row="recovery" data-testid="follow-recovery" style={{ color: "var(--hud-coast)" }}>
           {recovery}
+        </div>
+      )}
+      {height && (
+        <div className="frp-row" data-row="height" data-testid="follow-height-lowered" style={{ flexWrap: "wrap" }}>
+          <span style={{ color: "var(--hud-warn)" }}>{height.text}</span>
+          {height.reason && <span className="frp-sub">{height.reason}</span>}
+        </div>
+      )}
+      {overhead && (
+        <div className="frp-row" data-row="overhead" data-testid="follow-overhead-ahead">
+          {overhead}
         </div>
       )}
       <div className="frp-row" data-row="interval">

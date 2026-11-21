@@ -45,6 +45,7 @@
  ],
  "link_loss_in_s": null,
  "link_loss_action": "rth",
+ "link_loss_s": 10,
  "mission": {
   "state": "loaded",
   "seq": 3,

@@ -41,6 +41,10 @@ export type UncertainMode = "follow" | "hold";
 export type ReacquireMode = "strict" | "smart";
 export type AglSource = "rng" | "baro";
 export type RangeCueKind = "ground" | "box_height" | "lidar";
+/** Why the follow height flown is lower than the one set: `canopy` (under
+ * the leaves the pilot reports ahead) or `canopy_floor` (held at the lowest
+ * follow height, the leaves lower still). */
+export type FollowHeightReason = "canopy" | "canopy_floor";
 export type NavHealth = "good" | "degraded" | "lost";
 
 export interface RangeCue {
@@ -86,6 +90,11 @@ export interface FollowState {
   targetSpeedMps: number | null;
   aglM: number | null;
   aglSource: AglSource | null;
+  /** The follow height flown (m over the ground). */
+  heightSetpointM: number | null;
+  /** The follow height flown is lower than the one set (under leaves). */
+  heightLowered: boolean;
+  heightReason: FollowHeightReason | null;
   reacquireMode: ReacquireMode | null;
   /** Seconds left of the recovery's search budget. */
   reacquireRemainingS: number | null;
@@ -318,6 +327,9 @@ export function parseFollowState(raw: unknown): FollowState | null {
     targetSpeedMps: num(raw.target_speed_mps),
     aglM: num(raw.agl_m),
     aglSource: oneOf(raw.agl_source, ["rng", "baro"] as const),
+    heightSetpointM: num(raw.height_setpoint_m),
+    heightLowered: raw.height_lowered === true,
+    heightReason: oneOf(raw.height_reason, ["canopy", "canopy_floor"] as const),
     reacquireMode: oneOf(raw.reacquire_mode, ["strict", "smart"] as const),
     reacquireRemainingS: num(raw.reacquire_remaining_s),
     searchBudgetS: num(raw.search_budget_s),

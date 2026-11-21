@@ -24,8 +24,9 @@ import {
   FOLLOW_ME_PANEL_ID,
   getDemoFollowMeContribution,
 } from "@/mock/mock-follow-me";
+import { applyFollowPin } from "@/mock/mock-follow-pin";
 import { REACQUIRED_TRACK, scriptFollow, TARGET_TRACK, type FollowContext } from "@/mock/mock-hud-script";
-import { demoPilotWire } from "@/mock/mock-pilot-wire";
+import { DEMO_UNDER_LEAVES_PIN, demoPilotWire } from "@/mock/mock-pilot-wire";
 import { getDemoDronePluginContributions } from "@/mock/mock-plugins";
 
 const FOLLOW_ME_ID = "com.altnautica.follow-me";
@@ -48,6 +49,8 @@ describe("demoFollowReadback", () => {
       distance_setpoint_m: null,
       height_setpoint_m: null,
       height_raised: false,
+      height_lowered: false,
+      height_reason: null,
       standoff_min_m: null,
       standoff_raised: false,
       standoff_reason: null,
@@ -70,6 +73,8 @@ describe("demoFollowReadback", () => {
       distance_setpoint_m: 8,
       height_setpoint_m: 4,
       height_raised: false,
+      height_lowered: false,
+      height_reason: null,
       standoff_min_m: 5,
       standoff_raised: false,
       standoff_reason: null,
@@ -93,6 +98,28 @@ describe("demoFollowReadback", () => {
     const follow = scriptFollow(12.5, CTX);
     const r = demoFollowReadback({ follow, pilot: flying, distanceM: 8, heightM: 1.5 });
     expect(r).toMatchObject({ commanding: true, height_setpoint_m: 3.4, height_raised: true });
+  });
+
+  it("lowers the follow height under the leaves the pilot reports ahead, never under the floor", () => {
+    const follow = scriptFollow(12.5, CTX);
+    const under = (fly: number, heightM = 6) =>
+      demoFollowReadback({
+        follow,
+        pilot: { state: pilot({ overhead_ahead: { lease_id: 1, fly_under_agl_m: fly, ahead_m: 6 } }), ageMs: 100 },
+        distanceM: 8,
+        heightM,
+      });
+    expect(under(3.9)).toMatchObject({ height_setpoint_m: 3.9, height_lowered: true, height_reason: "canopy" });
+    expect(under(2.5)).toMatchObject({ height_setpoint_m: 3.4, height_lowered: true, height_reason: "canopy_floor" });
+    expect(under(2.5, 3)).toMatchObject({ height_setpoint_m: 3.4, height_lowered: false, height_reason: "canopy_floor" });
+    expect(under(8)).toMatchObject({ height_setpoint_m: 6, height_lowered: false, height_reason: null });
+  });
+
+  it("pins a follow under leaves for every surface: the follow report and the pilot's overhead clearance", () => {
+    const state = parsePilotState(demoPilotWire(DEMO_UNDER_LEAVES_PIN))!;
+    expect(state.overheadAhead).toEqual({ leaseId: 1, flyUnderAglM: 3.9, aheadM: 6 });
+    const f = applyFollowPin(scriptFollow(12.5, CTX), DEMO_UNDER_LEAVES_PIN.follow as Record<string, unknown>);
+    expect(f).toMatchObject({ phase: "following", heightSetpointM: 3.9, heightLowered: true, heightReason: "canopy" });
   });
 
   it.each([

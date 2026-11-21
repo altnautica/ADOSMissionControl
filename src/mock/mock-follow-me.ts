@@ -17,8 +17,8 @@
  * @license GPL-3.0-only
  */
 
-import type { PilotState } from "@/lib/hud/cockpit-frames";
-import type { FollowState } from "@/lib/hud/nav-types";
+import type { OverheadAhead, PilotState } from "@/lib/hud/cockpit-frames";
+import type { FollowHeightReason, FollowState } from "@/lib/hud/nav-types";
 import type { InlinePluginModule } from "@/lib/plugins/inline-host-types";
 import { demoInlineTab } from "./demo-inline-tab";
 import { FOLLOW_ME } from "./extension-manifests";
@@ -73,6 +73,12 @@ export interface FollowMeReadback {
   height_setpoint_m: number | null;
   /** True when the setpoint was raised to the head-height floor. */
   height_raised: boolean;
+  /** True when the height flown is lower than the one set, under the leaves
+   * the pilot reports ahead (`overhead_ahead`). */
+  height_lowered: boolean;
+  /** Why: `canopy` under the leaves, `canopy_floor` held at the head-height
+   * floor with the leaves lower still; null when not lowered by leaves. */
+  height_reason: FollowHeightReason | null;
   /** The shortest follow distance flown on the range the follow has. */
   standoff_min_m: number | null;
   /** True when the set distance was shorter and is held at the minimum. */
@@ -93,6 +99,21 @@ export interface FollowMeReadbackInputs {
   /** The per-drone follow distance and height settings. */
   distanceM: number;
   heightM: number;
+}
+
+/**
+ * The follow height flown under the leaves the pilot reports ahead, as the
+ * extension lowers it: to the fly-under height, never under the head-height
+ * floor (held there, `canopy_floor`, when the leaves are lower still).
+ */
+export function underLeaves(
+  setM: number,
+  overhead: OverheadAhead | null,
+): { heightM: number; lowered: boolean; reason: FollowHeightReason | null } {
+  const ceiling = overhead?.flyUnderAglM ?? null;
+  if (ceiling === null || ceiling >= setM) return { heightM: setM, lowered: false, reason: null };
+  if (ceiling >= FOLLOW_MIN_HEIGHT_M) return { heightM: ceiling, lowered: true, reason: "canopy" };
+  return { heightM: FOLLOW_MIN_HEIGHT_M, lowered: setM > FOLLOW_MIN_HEIGHT_M, reason: "canopy_floor" };
 }
 
 /**
@@ -118,6 +139,8 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
     distance_setpoint_m: null,
     height_setpoint_m: null,
     height_raised: false,
+    height_lowered: false,
+    height_reason: null,
     standoff_min_m: null,
     standoff_raised: false,
     standoff_reason: null,
@@ -152,14 +175,17 @@ export function demoFollowReadback({ follow, pilot, distanceM, heightM }: Follow
   if (follow.phase === "holding" || follow.rangeM === null) return held("no-ground-fix", "locked", target);
   // Following, or predicting on the last commanded setpoint.
   const standoffRaised = distanceM < FOLLOW_MIN_STANDOFF_M;
+  const height = underLeaves(Math.max(heightM, FOLLOW_MIN_HEIGHT_M), pilot?.state.overheadAhead ?? null);
   return {
     active: true,
     lock_state: "locked",
     target_id: target,
     range_m: follow.rangeM,
     distance_setpoint_m: Math.max(distanceM, FOLLOW_MIN_STANDOFF_M),
-    height_setpoint_m: Math.max(heightM, FOLLOW_MIN_HEIGHT_M),
+    height_setpoint_m: height.heightM,
     height_raised: heightM < FOLLOW_MIN_HEIGHT_M,
+    height_lowered: height.lowered,
+    height_reason: height.reason,
     standoff_min_m: FOLLOW_MIN_STANDOFF_M,
     standoff_raised: standoffRaised,
     standoff_reason: standoffRaised ? "camera-range" : null,

@@ -72,6 +72,8 @@ const BUNDLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     "metrics.distanceSetpoint": "Distance setpoint",
     "metrics.heightSetpoint": "Height setpoint",
     "metrics.heightRaised": "kept above head height for safety",
+    "metrics.heightCanopy": "lowered under the trees ahead",
+    "metrics.heightCanopyFloor": "held at the lowest follow height under the trees",
     "metrics.standoffRaised": "held at {min} m",
     "metrics.standoffCameraRange": "at least {min} m with camera-only range",
     "metrics.standoffRangeUnknown": "held at {min} m until the range is measured",
