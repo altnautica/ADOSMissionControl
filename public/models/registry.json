@@ -14,24 +14,24 @@
       ]
     },
     {
-      "id": "depth_midas_v21_small",
+      "id": "depth_anything_v2_small",
       "task": "depth",
-      "name": "Depth Estimator (MiDaS v2.1 small)",
-      "description": "Monocular relative depth for the cockpit depth and surfaces layers. Runs only while a depth or surfaces layer is on; the drone scales it to metres with its LiDAR and rangefinder",
-      "license": "MIT",
+      "name": "Depth Estimator (Depth Anything V2 small)",
+      "description": "Monocular relative depth for the cockpit depth and surfaces layers and the camera depth tier. Runs only while a depth consumer is on; the drone scales it to metres with its LiDAR and rangefinder",
+      "license": "Apache-2.0",
       "recommended": true,
       "classes": [],
       "variants": [
         {
-          "variant": "cpu_fp32_256",
-          "input_size": "256x256",
+          "variant": "cpu_fp32_252x196",
+          "input_size": "252x196",
           "min_tops": 0,
           "runtime": "onnx",
-          "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"],
-          "filename": "midas_v21_small_256.onnx",
-          "size_bytes": 66764249,
-          "sha256": "2d8c6cb8f415229daf1eb041024208e2608c9f98e17c81cc7c6ecb449c56fd58",
-          "url": "https://github.com/isl-org/MiDaS/releases/download/v2_1/model-small.onnx"
+          "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5", "rock-5c-lite", "rock-5b-plus", "orange-pi-5"],
+          "filename": "depth_anything_v2_small_252x196.onnx",
+          "size_bytes": 98940280,
+          "sha256": "975ed202dbf6bbd2ce11a60c6d1e21e7fe403351486ee8b7b998f90dab396771",
+          "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v4/depth_anything_v2_small_252x196.onnx"
         }
       ]
     },
