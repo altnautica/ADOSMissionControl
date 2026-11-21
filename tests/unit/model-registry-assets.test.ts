@@ -8,12 +8,14 @@ import { describe, expect, it } from "vitest";
 const PUBLISHED_TAGS: Record<string, true> = {
   "vision-models-v2": true,
   "vision-models-v3": true,
+  "vision-models-v4": true,
 };
 
 interface Variant {
   url?: string;
   runtime?: string;
   platform?: string;
+  head?: string;
   sha256?: string;
   size_bytes?: number;
   filename?: string;
@@ -79,5 +81,15 @@ describe("public model registry", () => {
     const byId = Object.fromEntries(registry.models.map((m) => [m.id, m]));
     expect(byId.person_yolox_tiny_v1?.recommended_for).toEqual(["onnx"]);
     expect(byId.person_yolox_s_v1?.recommended_for).toEqual(["rknn"]);
+  });
+});
+
+describe("NPU person detector", () => {
+  it("ships YOLOX-S raw heads for both Rockchip NPU platforms", () => {
+    const s = registry.models.find((m) => m.id === "person_yolox_s_v1");
+    const npu = (s?.variants ?? []).filter((v) => v.runtime === "rknn");
+    expect(npu.map((v) => v.platform).sort()).toEqual(["rk3576", "rk3588"]);
+    // The RKNN files carry the undecoded per-stride heads the sidecar decodes.
+    for (const v of npu) expect(v.head, v.filename).toBe("yolox");
   });
 });
