@@ -21,6 +21,7 @@ vi.mock("@/lib/api/ground-station/ws", () => ({
 }));
 
 import { connectVisionDetections, detectionVersionNotice } from "../vision-detections-ws";
+import { CONTRACT_VERSIONS } from "@/lib/plugins/contracts.generated";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 
 const DRONE = "node:d1";
@@ -62,14 +63,14 @@ describe("connectVisionDetections engine availability", () => {
     expect(state.batches[DRONE]?.modelId).toBe("person");
   });
 
-  it("flags an older wire version instead of dropping it silently, and a v3 batch clears it", () => {
+  it("flags an older wire version instead of dropping it silently, and a current batch clears it", () => {
     const opts = open();
     opts.onEvent({ v: 2, model_id: "person", camera_id: "uvc-0", frame_id: 1, ts_ms: 1, detections: [] });
     let state = useVisionDetectionsStore.getState();
     expect(state.outdatedDetectionVersion[DRONE]).toBe(2);
     expect(state.batches[DRONE]).toBeUndefined();
     expect(detectionVersionNotice(2)).toContain("update the agent");
-    opts.onEvent({ v: 3, model_id: "person", camera_id: "uvc-0", frame_id: 2, ts_ms: Date.now(), detections: [] });
+    opts.onEvent({ v: CONTRACT_VERSIONS["vision.detection"], model_id: "person", camera_id: "uvc-0", frame_id: 2, ts_ms: Date.now(), detections: [] });
     state = useVisionDetectionsStore.getState();
     expect(DRONE in state.outdatedDetectionVersion).toBe(false);
     expect(state.batches[DRONE]?.frameId).toBe(2);

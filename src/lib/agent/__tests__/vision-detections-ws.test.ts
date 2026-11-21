@@ -10,7 +10,11 @@
 
 import { describe, it, expect } from "vitest";
 import { mapWireBatch } from "../vision-detections-ws";
+import { CONTRACT_VERSIONS } from "@/lib/plugins/contracts.generated";
 import type { VisionDetectionBatch } from "@/stores/vision-detections-store";
+
+/** The detection wire version this GCS speaks (the agent's contract registry). */
+const WIRE_V = CONTRACT_VERSIONS["vision.detection"];
 
 /** Narrow the now-nullable `mapWireBatch` result for the known-good batches
  * these mapping tests build (they omit `v` or carry the supported one). */
@@ -168,7 +172,7 @@ describe("mapWireBatch", () => {
 describe("mapWireBatch wire-version gate (A7)", () => {
   it("maps a batch stamped with the current wire version", () => {
     const batch = mapWireBatch({
-      v: 3,
+      v: WIRE_V,
       model_id: "m",
       camera_id: "c",
       frame_id: 4,
@@ -214,7 +218,7 @@ describe("mapWireBatch wire-version gate (A7)", () => {
 describe("mapWireBatch typed percept fields", () => {
   it("maps mask, keypoints, depth, and world position off the wire", () => {
     const batch = mapWireBatch({
-      v: 3,
+      v: WIRE_V,
       model_id: "m",
       camera_id: "c",
       frame_id: 1,
@@ -251,7 +255,7 @@ describe("mapWireBatch typed percept fields", () => {
 
   it("maps a box-less percept to an absent bbox", () => {
     const batch = mapWireBatch({
-      v: 3,
+      v: WIRE_V,
       model_id: "m",
       camera_id: "c",
       frame_id: 1,

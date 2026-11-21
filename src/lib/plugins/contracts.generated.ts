@@ -7,7 +7,7 @@ export const CONTRACT_VERSIONS = {
   "framebus.ring": 1,
   "framebus.descriptor": 2,
   "tap.frame": 2,
-  "vision.detection": 3,
+  "vision.detection": 4,
   "state.v2": 6,
   "frame": 0,
   "mavlink.socket": 2,
@@ -132,11 +132,11 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     description: "Vision-tap frame header (ADVT magic) between the video pipeline and the vision engine. v2 adds ts_mono_ns, the host monotonic arrival time of the frame.",
   },
   "vision.detection": {
-    version: 3,
+    version: 4,
     wire: "msgpack",
     transport: "event-bus",
     status: "active",
-    description: "Self-describing detection/percept batches published on the vision.detection topic (v2 adds optional mask, keypoints, depth, world position, and an optional 2D box; v3 stamps ts_ms from the frame's host monotonic clock, not wall-clock).",
+    description: "Self-describing detection/percept batches published on the vision.detection topic (v2 adds optional mask, keypoints, depth, world position, and an optional 2D box; v3 stamps ts_ms from the frame's host monotonic clock, not wall-clock; v4 adds the multi-object tracker's per-detection track_state and appearance_id, with track_id on every tracked detection).",
   },
   "state.v2": {
     version: 6,
