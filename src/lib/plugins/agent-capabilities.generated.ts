@@ -424,7 +424,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "follow.beacon.read": {
     label: "Read the operator's shared phone position",
-    description: "Lets the plugin read plugin.follow.beacon: the position, velocity and accuracy of the operator's phone while the operator shares it from a ground station for follow-me. The router publishes only fixes from an authorised ground link; the plugin cannot publish the topic.",
+    description: "Lets the plugin read plugin.follow.beacon: the position, velocity and accuracy of the operator's phone while the operator shares it from a ground station for follow-me, with the link it arrived on. The router publishes only fixes from an authorised ground link, a local service or a relay; no plugin can publish the topic or send the message behind it. The position is low-trust: corroborate it with what the camera sees before acting on it.",
     category: "data_network",
     risk: "medium",
     risk_reason: "Exposes the operator's live location to the plugin while sharing is on; read-only, no effect on flight by itself.",

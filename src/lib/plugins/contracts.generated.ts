@@ -24,6 +24,7 @@ export const CONTRACT_VERSIONS = {
   "simclock.v1": 1,
   "nav.voxmap.v1": 1,
   "follow.beacon": 1,
+  "vision.depth.v2": 2,
 } as const;
 
 export const SIDECAR_VERSIONS = {
@@ -221,7 +222,7 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     wire: "newline-json",
     transport: "unix-stream",
     status: "active",
-    description: "The plugin event-bus export (seam K): a host service opens the plugin host's root-only _events.sock, writes one {v, op: subscribe, topics: [exact topic names]} line, and reads one {v, topic, publisher, ts_ms, payload} line per bus event on those topics. Every event already passed the host's publish check; the publisher id is host-stamped. The native control front reads the navigation, mapping and follow topics through it. A connection may instead write {v, op: publish, topic, payload} lines: accepted only from a host-service peer (root or the host's own uid, never a plugin-plane uid, by the kernel's peer credentials), only on the host-owned topics (plugin.follow.beacon), payload at most 64 KiB, at most 20 per second per publisher uid; each event is published as publisher host, and only a refused line is answered ({v, error}).",
+    description: "The plugin event-bus export (seam K): a host service opens the plugin host's root-only _events.sock, writes one {v, op: subscribe, topics: [exact topic names]} line, and reads one {v, topic, publisher, ts_ms, payload} line per bus event on those topics. Every event already passed the host's publish check; the publisher id is host-stamped. The native control front reads the navigation, mapping and follow topics through it. A connection may instead write {v, op: publish, topic, payload} lines: accepted only from a host-service peer (root or the host's own uid, never a plugin-plane uid or group, primary or supplementary, by the kernel's peer credentials), only on the host-owned topics (plugin.follow.beacon), payload at most 64 KiB, at most 20 per second per publisher uid; each event is published as publisher host, and only a refused line is answered ({v, error}). At most 8 subscribers and 9 connections, so one is always left for a publisher.",
   },
   "pilot.v1": {
     version: 5,
@@ -249,7 +250,14 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     wire: "msgpack",
     transport: "event-bus",
     status: "active",
-    description: "The operator's shared phone position on the plugin.follow.beacon topic: {v, lat, lon (degrees), alt_m (AMSL, null when unknown), vel_ned ([n, e, d] m/s, null when unmeasured), horiz_acc_m, vert_acc_m (null when unknown), stamp_ns (ADOS time at router receipt), source (gcs-phone), sysid, compid}. The router republishes MAVLink FOLLOW_TARGET from an authorised ground link only, at most 10 Hz, dropping fixes older than 2 s or with horizontal accuracy worse than 30 m; it publishes through the seam K publish op as publisher host. Read with event.subscribe plus follow.beacon.read; no plugin may publish it.",
+    description: "The operator's shared phone position on the plugin.follow.beacon topic: {v, lat, lon (degrees), alt_m (AMSL, null when unknown), vel_ned ([n, e, d] m/s, null when unmeasured), horiz_acc_m, vert_acc_m (null when unknown), stamp_ns (ADOS time at router receipt), origin (ground_link | on_box | relay, stamped by the router), link (the router's connection id), sysid, compid (as the sender claimed)}. The router judges MAVLink FOLLOW_TARGET from client links: accepted only from an authorised ground link, a local service or a relay (never an unauthenticated peer, a plugin or the plugin host's link), one link at a time until it is silent for 5 s, at most 10 Hz, dropping fixes older than 2 s against the link's least-delayed fix or with horizontal accuracy worse than 30 m. The message is kept off the flight controller (unless mavlink.follow_target_to_fc), the aux uplink and every other client. Published through the seam K publish op as publisher host; read with event.subscribe plus follow.beacon.read; no plugin may publish it or send FOLLOW_TARGET. Low-trust: a consumer corroborates it with vision before acting, and following on the beacon alone holds to one locked link.",
+  },
+  "vision.depth.v2": {
+    version: 2,
+    wire: "msgpack",
+    transport: "unix-stream",
+    status: "active",
+    description: "Metric monocular depth frames from the vision engine, broadcast on vision-depth-frames.sock (4-byte big-endian length-prefixed msgpack) for the vision.depth.v2 topic, at most 5 Hz per camera and only while a depth lease is held and a scale fit exists: {v, camera_id, stamp_ns (frame capture, host monotonic), w, h (128 x 96, the whole frame squeezed), fx, fy, cx, cy (pinhole, plane pixels, pixel centres at i + 0.5), pitch_down_deg (camera mount), depth_mm: bin (u16 LE optical-axis depth, 0 unknown), sigma_mm: bin (u16 LE one-sigma, saturating), fit: {scale, shift (1/Z = scale * x + shift on per-frame normalised model values), inliers, residual_m, held_ms (0 fresh, else the held fit's age)}}. A record is at most 64 KiB of msgpack, one plugin event payload.",
   },
 };
 
