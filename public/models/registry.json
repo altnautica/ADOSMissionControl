@@ -105,12 +105,26 @@
       "id": "person_yolox_tiny_v1",
       "task": "detection",
       "name": "Person Detector (YOLOX-Tiny)",
-      "description": "Person-only detector for Follow Me on boards without an NPU. YOLOX-Tiny exported to ONNX with in-graph box decoding; reproducible with scripts/models/export_yolox_person.py in the drone agent repository",
+      "description": "Person-only detector for Follow Me on low-compute boards without an NPU. YOLOX-Tiny exported to ONNX with in-graph box decoding; reproducible with scripts/models/export_yolox_person.py in the drone agent repository",
       "license": "Apache-2.0",
+      "recommended_for": ["onnx"],
       "classes": ["person"],
       "variants": [
         { "variant": "cpu_fp32_640", "input_size": "640x640", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_640.onnx", "size_bytes": 20344089, "sha256": "ec126ff2786d394e02730181e5a97ede16c173e0625b39cd18661d507e06da32", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_640.onnx" },
         { "variant": "cpu_fp32_320", "input_size": "320x320", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_320.onnx", "size_bytes": 20292555, "sha256": "41f2e75b4c3be99aaf7af3d6f8d24475bac391be44e00b135117f942a0deb935", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_320.onnx" }
+      ]
+    },
+    {
+      "id": "person_yolox_s_v1",
+      "task": "detection",
+      "name": "Person Detector (YOLOX-S)",
+      "description": "Person detector for Follow Me, the default on boards whose NPU runs it: more accurate than YOLOX-Tiny at about five times its compute, so CPU boards keep YOLOX-Tiny by default. YOLOX-S exported to ONNX with in-graph box decoding; reproducible with scripts/models/export_yolox_person.py --model s in the drone agent repository",
+      "license": "Apache-2.0",
+      "recommended_for": ["rknn"],
+      "classes": ["person"],
+      "variants": [
+        { "variant": "cpu_fp32_640", "input_size": "640x640", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "classes": ["person"], "board_match": ["generic-x86_64", "generic-arm64", "rpi5", "rock-5c-lite", "orange-pi-5"], "filename": "yolox_s_person_640.onnx", "size_bytes": 35982275, "sha256": "01f2c3d706e01abfeb821357bf8f320fc51d409267d70aeedb04da5f0d103199", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v3/yolox_s_person_640.onnx" },
+        { "variant": "cpu_fp32_320", "input_size": "320x320", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "classes": ["person"], "board_match": ["generic-x86_64", "generic-arm64", "rpi5", "rock-5c-lite", "orange-pi-5"], "filename": "yolox_s_person_320.onnx", "size_bytes": 35930741, "sha256": "7c2b4a2ffa7c0cf4b04b50cb7671d1d488e06875f5a5c43bcb4bd3acc1811573", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v3/yolox_s_person_320.onnx" }
       ]
     },
     {
