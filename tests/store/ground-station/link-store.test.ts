@@ -30,6 +30,7 @@ describe("ground-station link slice", () => {
       channel: null,
     });
     expect(s.status).toEqual({
+      pair_rearm: null,
       paired_drone: null,
       profile: "unconfigured",
       uplink_active: null,
