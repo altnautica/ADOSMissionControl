@@ -324,6 +324,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "low",
     risk_reason: "Detections are derived data on a sandboxed topic and do not affect flight.",
   },
+  "vision.depth.read": {
+    label: "Read metric depth frames from the vision engine",
+    description: "Lets the plugin read vision.depth.v2: the vision engine's camera depth frames (a 128 x 96 depth plane in millimetres with a per-pixel uncertainty, the camera intrinsics and how the frame was scaled to metres), for building a 3D map. Only the host publishes the topic. Frames flow only while the engine computes depth on a camera; reading them does not open the camera or command the vehicle.",
+    category: "data_network",
+    risk: "low",
+    risk_reason: "Derived depth data on a host-published topic; a coarse depth plane reveals little of the scene and does not affect flight.",
+  },
   "vision.track.designate": {
     label: "Set the vision engine's follow target",
     description: "Lets the plugin choose which object the vision engine's single-object tracker locks onto (the follow target), by naming the box to track. This selects a target for downstream follow / framing logic; designation alone does not command the vehicle.",
